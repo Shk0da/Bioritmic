@@ -2,9 +2,9 @@ package com.github.shk0da.bioritmic.config;
 
 import com.github.shk0da.bioritmic.security.AuthoritiesConstants;
 import com.github.shk0da.bioritmic.security.Http401UnauthorizedEntryPoint;
+import com.github.shk0da.bioritmic.security.jwt.JWTAuthenticationProvider;
 import com.github.shk0da.bioritmic.security.jwt.JWTConfigurer;
 import com.github.shk0da.bioritmic.security.jwt.TokenProvider;
-import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -16,56 +16,33 @@ import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-
-import javax.annotation.PostConstruct;
 
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
-    private final AuthenticationManagerBuilder authenticationManagerBuilder;
+    private final JWTAuthenticationProvider jwtAuthenticationProvider;
     private final Http401UnauthorizedEntryPoint authenticationEntryPoint;
     private final TokenProvider tokenProvider;
 
-    public SecurityConfig(AuthenticationManagerBuilder authenticationManagerBuilder,
-                                    Http401UnauthorizedEntryPoint authenticationEntryPoint,
-                                    TokenProvider tokenProvider) {
-        this.authenticationManagerBuilder = authenticationManagerBuilder;
+    public SecurityConfig(JWTAuthenticationProvider jwtAuthenticationProvider,
+                          Http401UnauthorizedEntryPoint authenticationEntryPoint,
+                          TokenProvider tokenProvider) {
+        this.jwtAuthenticationProvider = jwtAuthenticationProvider;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.tokenProvider = tokenProvider;
     }
 
-    @PostConstruct
-    public void init() {
-        try {
-            authenticationManagerBuilder
-                    .userDetailsService(userDetailsService())
-                    .passwordEncoder(passwordEncoder());
-        } catch (Exception e) {
-            throw new BeanInitializationException("Security configuration failed", e);
-        }
+    @Override
+    protected void configure(AuthenticationManagerBuilder authenticationManagerBuilder) {
+        authenticationManagerBuilder.authenticationProvider(jwtAuthenticationProvider);
     }
 
     @Bean
     @Override
     public AuthenticationManager authenticationManagerBean() throws Exception {
         return super.authenticationManagerBean();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService() {
-        InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager();
-        return manager;
     }
 
     @Override

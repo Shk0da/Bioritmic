@@ -27,7 +27,7 @@
             <column name="birth_date" type="datetime">
                 <constraints nullable="false"/>
             </column>
-            <column name="gender" type="varchar(10)">
+            <column name="gender" type="int(1)">
                 <constraints nullable="false"/>
             </column>
             <column name="status" type="varchar(10)" />
@@ -76,7 +76,7 @@
             <column name="login">admin</column>
             <column name="email">admin@newsparser.local</column>
             <column name="birth_date">now()</column>
-            <column name="gender">Man</column>
+            <column name="gender">0</column>
             <column name="password_hash">$2a$04$Ty3gu5RHmjIex6kU17R9pe38DevAMK78CM7xnU7.BgpwQNUqS9flm</column>
             <column name="activated">true</column>
         </insert>

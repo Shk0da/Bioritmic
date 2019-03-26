@@ -1,21 +1,10 @@
 package com.github.shk0da.bioritmic.domain.jwt;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
+@Data
+@AllArgsConstructor
 public class JWTToken {
-
-    private String idToken;
-
-    public JWTToken(String idToken) {
-        this.idToken = idToken;
-    }
-
-    @JsonProperty("id_token")
-    public String getIdToken() {
-        return idToken;
-    }
-
-    public void setIdToken(String idToken) {
-        this.idToken = idToken;
-    }
+    private String token;
 }

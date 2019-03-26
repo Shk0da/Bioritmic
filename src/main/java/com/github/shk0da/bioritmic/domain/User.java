@@ -1,12 +1,17 @@
 package com.github.shk0da.bioritmic.domain;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.google.common.collect.Sets;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
+import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -15,11 +20,15 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.Set;
@@ -42,8 +51,8 @@ public class User implements Serializable {
 
     @Column(name = "login")
     @QuerySqlField(index = true)
-    @NotNull(message = "Mandatory parameter [nickname] is missed")
-    private String nickname;
+    @NotNull(message = "Mandatory parameter [login] is missed")
+    private String login;
 
     @QuerySqlField(index = true)
     @Email
@@ -75,9 +84,23 @@ public class User implements Serializable {
     @QuerySqlField
     private Set<User> phoneBook;
 
-    @Column(name = "password_hash")
-    private String passwordHash;
+    @JsonIgnore
+    @NotNull
+    @Size(min = 1, max = 60)
+    @Column(name = "password_hash", length = 60)
+    private String password;
 
     @QuerySqlField
     private Boolean activated;
+
+    @Builder.Default
+    @JsonIgnore
+    @ManyToMany
+    @JoinTable(
+            name = "user_authority",
+            joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "id")},
+            inverseJoinColumns = {@JoinColumn(name = "authority_name", referencedColumnName = "name")})
+    @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
+    @BatchSize(size = 20)
+    private Set<Authority> authorities = Sets.newHashSet();
 }
