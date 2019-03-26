@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @RestController
 @AllArgsConstructor
-@RequestMapping(ApiRoutes.API_PATH + "/location")
+@RequestMapping(ApiRoutes.API_VERSION_1 + "/location")
 @Secured({AuthoritiesConstants.ADMIN, AuthoritiesConstants.USER})
 public class LocationController {
 

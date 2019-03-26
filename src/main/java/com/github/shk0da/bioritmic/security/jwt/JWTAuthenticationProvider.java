@@ -3,6 +3,7 @@ package com.github.shk0da.bioritmic.security.jwt;
 import com.github.shk0da.bioritmic.domain.User;
 import com.github.shk0da.bioritmic.repository.UserRepository;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -22,6 +23,8 @@ import java.util.stream.Collectors;
 public class JWTAuthenticationProvider implements AuthenticationProvider {
 
     private final UserRepository userRepository;
+
+    @Getter
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override

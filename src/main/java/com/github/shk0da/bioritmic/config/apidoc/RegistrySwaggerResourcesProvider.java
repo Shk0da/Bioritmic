@@ -1,5 +1,6 @@
 package com.github.shk0da.bioritmic.config.apidoc;
 
+import com.github.shk0da.bioritmic.config.BiroritmicConfig;
 import com.github.shk0da.bioritmic.config.ProfileConfigConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
@@ -20,8 +21,10 @@ public class RegistrySwaggerResourcesProvider implements SwaggerResourcesProvide
     @Override
     public List<SwaggerResource> get() {
         List<SwaggerResource> resources = new ArrayList<>();
-        //Add the registry swagger resource that correspond to the own swagger doc
-        resources.add(swaggerResource("bioritmic", "/v2/api-docs"));
+        // Add the registry swagger resource that correspond to the own swagger doc
+        resources.add(swaggerResource(BiroritmicConfig.APPLICATION_NAME, "/v2/api-docs"));
+        // Add the registered microservices swagger docs as additional swagger resources
+        // ...
         return resources;
     }
 

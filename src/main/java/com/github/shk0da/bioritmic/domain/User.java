@@ -3,6 +3,7 @@ package com.github.shk0da.bioritmic.domain;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Sets;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -47,6 +48,7 @@ public class User implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     @QuerySqlField(index = true)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
 
     @Column(name = "login")
@@ -55,7 +57,7 @@ public class User implements Serializable {
     private String login;
 
     @QuerySqlField(index = true)
-    @Email
+    @Email(message = "Parameter [email] has wrong format")
     @NotNull(message = "Mandatory parameter [email] is missed")
     private String email;
 
@@ -66,30 +68,33 @@ public class User implements Serializable {
     @Column(name = "birth_date")
     @QuerySqlField(index = true)
     @NotNull(message = "Mandatory parameter [birthDate] is missed")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy HH:mm:ss")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
     private Date birthDate;
 
     @QuerySqlField(index = true)
-    @NotNull(message = "Mandatory parameter [gender] is missed")
+    @NotNull(message = "Mandatory parameter [birthDate] is missed")
     private Gender gender;
 
     @QuerySqlField
     private String status;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @QuerySqlField
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private Set<MediaLibrary> mediaLibraries;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @OneToMany(fetch = FetchType.LAZY)
     @QuerySqlField
     private Set<User> phoneBook;
 
-    @JsonIgnore
-    @NotNull
-    @Size(min = 1, max = 60)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @NotNull(message = "Mandatory parameter [password] is missed")
+    @Size(min = 1, max = 60, message = "Mandatory parameter [password] has wrong size")
     @Column(name = "password_hash", length = 60)
     private String password;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @QuerySqlField
     private Boolean activated;
 
@@ -103,4 +108,16 @@ public class User implements Serializable {
     @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     @BatchSize(size = 20)
     private Set<Authority> authorities = Sets.newHashSet();
+
+    public String getPhone() {
+        return phone != null ? phone : "";
+    }
+
+    public Set<MediaLibrary> getMediaLibraries() {
+        return mediaLibraries != null ? mediaLibraries : Sets.newHashSet();
+    }
+
+    public Set<User> getPhoneBook() {
+        return phoneBook != null ? phoneBook : Sets.newHashSet();
+    }
 }

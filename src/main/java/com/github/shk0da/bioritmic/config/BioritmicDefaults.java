@@ -39,9 +39,9 @@ public interface BioritmicDefaults {
     }
 
     interface Swagger {
-        String title = "Application API";
+        String title = BiroritmicConfig.APPLICATION_NAME;
         String description = "API documentation";
-        String version = "0.0.1";
+        String version = "v1";
         String termsOfServiceUrl = null;
         String contactName = null;
         String contactUrl = null;

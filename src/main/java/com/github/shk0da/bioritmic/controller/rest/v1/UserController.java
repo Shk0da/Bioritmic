@@ -13,15 +13,18 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 @Slf4j
 @RestController
 @AllArgsConstructor
-@RequestMapping(ApiRoutes.API_PATH + "/users")
+@RequestMapping(ApiRoutes.API_VERSION_1 + "/users")
 @Secured({AuthoritiesConstants.ADMIN, AuthoritiesConstants.USER})
 public class UserController {
 
@@ -34,9 +37,12 @@ public class UserController {
         return ResponseUtils.response(userService.getById(id));
     }
 
-    @PostMapping
-    public ResponseEntity<User> saveUser(@Valid User user) {
+    @PostMapping(value = "/")
+    public ResponseEntity<User> saveUser(@Valid @RequestBody User user) throws URISyntaxException {
         log.debug("#saveUser({})", user);
-        return ResponseUtils.response(userService.save(user));
+        User createdUser = userService.create(user);
+        return ResponseEntity
+                .created(new URI(ApiRoutes.API_VERSION_1 + "/users/" + createdUser.getId()))
+                .body(createdUser);
     }
 }
