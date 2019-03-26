@@ -5,5 +5,5 @@ public interface ApiRoutes {
     String API_PATH = "/api";
 
     // versions
-    String API_VERSION_1_0 = API_PATH + "/v1.0/";
+    String API_VERSION_1 = API_PATH + "/v1/";
 }

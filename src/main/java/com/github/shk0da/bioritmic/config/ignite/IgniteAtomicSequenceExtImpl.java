@@ -10,17 +10,14 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 public class IgniteAtomicSequenceExtImpl implements IgniteAtomicSequenceExt {
 
-    private final Ignite ignite;
+    public static final String DEFERRED_RESULT_ID_GENERATOR = "deferredResultIdGenerator";
 
+    private final Ignite ignite;
     private final AtomicReference<IgniteAtomicSequence> igniteAtomicSequence;
 
     public IgniteAtomicSequenceExtImpl(Ignite ignite) {
         this.ignite = ignite;
-        this.igniteAtomicSequence = new AtomicReference<>(ignite.atomicSequence(
-                IgniteCrossCacheConstants.DEFERRED_RESULT_ID_GENERATOR,
-                0,
-                true
-        ));
+        igniteAtomicSequence = new AtomicReference<>(ignite.atomicSequence(DEFERRED_RESULT_ID_GENERATOR, 0, true));
     }
 
     @Override
@@ -85,10 +82,6 @@ public class IgniteAtomicSequenceExtImpl implements IgniteAtomicSequenceExt {
 
     @Override
     public void recreate() {
-        igniteAtomicSequence.set(ignite.atomicSequence(
-                IgniteCrossCacheConstants.DEFERRED_RESULT_ID_GENERATOR,
-                0,
-                true
-        ));
+        igniteAtomicSequence.set(ignite.atomicSequence(DEFERRED_RESULT_ID_GENERATOR, 0, true));
     }
 }

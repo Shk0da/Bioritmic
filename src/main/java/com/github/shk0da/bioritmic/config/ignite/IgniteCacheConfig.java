@@ -1,84 +1,118 @@
 package com.github.shk0da.bioritmic.config.ignite;
 
+import com.github.shk0da.bioritmic.domain.Location;
+import com.github.shk0da.bioritmic.domain.Media;
+import com.github.shk0da.bioritmic.domain.MediaLibrary;
 import com.github.shk0da.bioritmic.domain.User;
+import org.apache.ignite.Ignite;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.plugin.CachePluginConfiguration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import javax.cache.Cache;
 
 @Configuration
 public class IgniteCacheConfig {
 
+    public enum LockStatus {LOCKED, UNLOCKED, FINISHED}
+
     @Bean
-    public CacheConfiguration<String, User> userCacheConfiguration(
-            @Value("${ignite.memory.on_heap.user_cache.enabled:false}") boolean onHeap,
-            Optional<CachePluginConfiguration> pluginConfiguration) {
-        CacheConfiguration<String, User> cacheConfiguration = new CacheConfiguration<>();
-        cacheConfiguration.setName(IgniteCacheName.USER.getName());
-        cacheConfiguration.setIndexedTypes(String.class, User.class);
-        cacheConfiguration.setTypes(String.class, User.class);
-        setupReplicatedCache(onHeap, cacheConfiguration, pluginConfiguration);
-        return cacheConfiguration;
+    public CacheConfiguration<Long, User> userCacheConfiguration(
+            @Value("${ignite.memory.on_heap.user_cache.enabled:false}") boolean onHeap
+    ) {
+        CacheConfiguration<Long, User> cacheConfiguration = new CacheConfiguration<>();
+        cacheConfiguration.setName(User.CACHE_NAME);
+        cacheConfiguration.setIndexedTypes(Long.class, User.class);
+        cacheConfiguration.setTypes(Long.class, User.class);
+        return defaultSetupCache(onHeap, cacheConfiguration);
     }
 
+    @Bean
+    public Cache<Long, User> userCache(Ignite ignite, CacheConfiguration<Long, User> userCacheConfiguration) {
+        return ignite.getOrCreateCache(userCacheConfiguration);
+    }
 
     @Bean
-    public CacheConfiguration<String, IgniteContext.LockStatus> lockStatusCacheConfiguration(
-            @Value("${ignite.memory.on_heap.lock_status_cache.enabled:false}") boolean onHeap) {
-        CacheConfiguration<String, IgniteContext.LockStatus> cacheConfiguration = new CacheConfiguration<>();
-        cacheConfiguration.setName(IgniteCacheName.LOCK_STATUS.getName());
-        cacheConfiguration.setIndexedTypes(String.class, IgniteContext.LockStatus.class);
-        cacheConfiguration.setTypes(String.class, IgniteContext.LockStatus.class);
+    public CacheConfiguration<Long, Location> locationCacheConfiguration(
+            @Value("${ignite.memory.on_heap.location_cache.enabled:false}") boolean onHeap
+    ) {
+        CacheConfiguration<Long, Location> cacheConfiguration = new CacheConfiguration<>();
+        cacheConfiguration.setName(Location.CACHE_NAME);
+        cacheConfiguration.setIndexedTypes(Long.class, Location.class);
+        cacheConfiguration.setTypes(Long.class, Location.class);
+        return defaultSetupCache(onHeap, cacheConfiguration);
+    }
 
-        setupReplicatedCache(onHeap, cacheConfiguration, Optional.empty());
-        return cacheConfiguration;
+    @Bean
+    public Cache<Long, Location> locationCache(Ignite ignite, CacheConfiguration<Long, Location> locationCacheConfiguration) {
+        return ignite.getOrCreateCache(locationCacheConfiguration);
+    }
+
+    @Bean
+    public CacheConfiguration<Long, Media> mediaCacheConfiguration(
+            @Value("${ignite.memory.on_heap.media_cache.enabled:false}") boolean onHeap
+    ) {
+        CacheConfiguration<Long, Media> cacheConfiguration = new CacheConfiguration<>();
+        cacheConfiguration.setName(Media.CACHE_NAME);
+        cacheConfiguration.setIndexedTypes(Long.class, Media.class);
+        cacheConfiguration.setTypes(Long.class, Media.class);
+        return defaultSetupCache(onHeap, cacheConfiguration);
+    }
+
+    @Bean
+    public Cache<Long, Media> mediaCache(Ignite ignite, CacheConfiguration<Long, Media> mediaCacheConfiguration) {
+        return ignite.getOrCreateCache(mediaCacheConfiguration);
+    }
+
+    @Bean
+    public CacheConfiguration<Long, MediaLibrary> mediaLibraryCacheConfiguration(
+            @Value("${ignite.memory.on_heap.media_library_cache.enabled:false}") boolean onHeap
+    ) {
+        CacheConfiguration<Long, MediaLibrary> cacheConfiguration = new CacheConfiguration<>();
+        cacheConfiguration.setName(MediaLibrary.CACHE_NAME);
+        cacheConfiguration.setIndexedTypes(Long.class, MediaLibrary.class);
+        cacheConfiguration.setTypes(Long.class, MediaLibrary.class);
+        return defaultSetupCache(onHeap, cacheConfiguration);
+    }
+
+    @Bean
+    public Cache<Long, MediaLibrary> mediaLibraryCache(Ignite ignite, CacheConfiguration<Long, MediaLibrary> mediaLibraryCacheConfiguration) {
+        return ignite.getOrCreateCache(mediaLibraryCacheConfiguration);
+    }
+
+    @Bean
+    public CacheConfiguration<String, LockStatus> lockStatusCacheConfiguration(
+            @Value("${ignite.memory.on_heap.lock_status_cache.enabled:false}") boolean onHeap
+    ) {
+        CacheConfiguration<String, LockStatus> cacheConfiguration = new CacheConfiguration<>();
+        cacheConfiguration.setName("lockStatusCache");
+        cacheConfiguration.setIndexedTypes(String.class, LockStatus.class);
+        cacheConfiguration.setTypes(String.class, LockStatus.class);
+        return defaultSetupCache(onHeap, cacheConfiguration);
     }
 
     @Bean
     public CacheConfiguration<String, Long> lockTimeStampCacheConfiguration(
-            @Value("${ignite.memory.on_heap.lock_timestamp_cache.enabled:false}") boolean onHeap) {
+            @Value("${ignite.memory.on_heap.lock_timestamp_cache.enabled:false}") boolean onHeap
+    ) {
         CacheConfiguration<String, Long> cacheConfiguration = new CacheConfiguration<>();
-        cacheConfiguration.setName(IgniteCacheName.LOCK_TIME_STAMP.getName());
+        cacheConfiguration.setName("lockTimestampCache");
         cacheConfiguration.setIndexedTypes(String.class, Long.class);
         cacheConfiguration.setTypes(String.class, Long.class);
-
-        setupReplicatedCache(onHeap, cacheConfiguration, Optional.empty());
-        return cacheConfiguration;
+        return defaultSetupCache(onHeap, cacheConfiguration);
     }
 
-    private void setupReplicatedCache(boolean onHeap,
-                                      CacheConfiguration<?, ?> cacheConfiguration,
-                                      Optional<CachePluginConfiguration> pluginConfiguration) {
+    private <K, V> CacheConfiguration<K, V> defaultSetupCache(boolean onHeap, CacheConfiguration<K, V> cacheConfiguration) {
         cacheConfiguration.setCacheMode(CacheMode.REPLICATED);
-        setupCommonConfigForCache(onHeap, cacheConfiguration, pluginConfiguration);
-    }
-
-    private void setupCommonConfigForCache(boolean onHeap,
-                                           CacheConfiguration<?, ?> cacheConfiguration,
-                                           Optional<CachePluginConfiguration> pluginConfiguration) {
-
-        List<String> cacheNamesNotReplicated = Arrays.stream(IgniteCacheName.values())
-                .filter(cacheName -> !cacheName.isCrossLocationReplicate())
-                .map(IgniteCacheName::getName)
-                .collect(Collectors.toList());
-
-        if (!cacheNamesNotReplicated.contains(cacheConfiguration.getName())) {
-            pluginConfiguration.ifPresent(cacheConfiguration::setPluginConfigurations);
-        }
-
         cacheConfiguration.setAtomicityMode(CacheAtomicityMode.ATOMIC);
         cacheConfiguration.setEvictionPolicyFactory(null);
         cacheConfiguration.setReadFromBackup(false);
         cacheConfiguration.setOnheapCacheEnabled(onHeap);
         cacheConfiguration.setCopyOnRead(false);
         cacheConfiguration.setNearConfiguration(null);
+        return cacheConfiguration;
     }
 }

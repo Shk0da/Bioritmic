@@ -18,8 +18,6 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class IgniteContext {
 
-    public enum LockStatus {LOCKED, UNLOCKED, FINISHED}
-
     @Bean(destroyMethod = "close")
     public Ignite ignite(IgniteConfiguration igniteConfiguration) throws IgniteException {
         final Ignite ignite = Ignition.start(igniteConfiguration);

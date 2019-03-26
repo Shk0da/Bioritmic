@@ -2,16 +2,12 @@ package com.github.shk0da.bioritmic.config.ignite;
 
 import com.github.shk0da.bioritmic.config.BiroritmicConfig;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteException;
-import org.apache.ignite.Ignition;
 import org.apache.ignite.configuration.BinaryConfiguration;
 import org.apache.ignite.configuration.ConnectorConfiguration;
 import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
-import org.apache.ignite.springdata.repository.config.EnableIgniteRepositories;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.context.annotation.Bean;
@@ -21,7 +17,6 @@ import java.util.Collections;
 
 @Slf4j
 @Configuration
-@EnableIgniteRepositories
 @ConditionalOnClass(name = "org.apache.ignite.Ignite")
 public class IgniteMainConfig {
 
