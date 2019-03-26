@@ -33,6 +33,10 @@ public class BiroritmicService {
             this.cycle = cycle;
             this.description = description;
         }
+
+        public static Biorhythm[] values(boolean onlyMain) {
+            return onlyMain ? new Biorhythm[]{Physical, Emotional, Intellectual} : values();
+        }
     }
 
     public Map<Biorhythm, Double> getBiorhythms(Date birthday) {
