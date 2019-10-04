@@ -42,7 +42,7 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setActivated(true);
         User createdUser = save(user);
-        log.debug("Create user {} successfully!", createdUser.getLogin());
+        log.debug("Create user with login '{}' successfully!", createdUser.getLogin());
         return createdUser;
     }
 

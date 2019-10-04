@@ -1,0 +1,8 @@
+${AnsiColor.BRIGHT_CYAN}
+${AnsiColor.BRIGHT_CYAN} ,-----.   ,--.                 ,--.   ,--.              ,--.
+${AnsiColor.BRIGHT_CYAN} |  |) /_  `--'  ,---.  ,--.--. `--' ,-'  '-. ,--,--,--. `--'  ,---.
+${AnsiColor.BRIGHT_CYAN} |  .-.  \ ,--. | .-. | |  .--' ,--. '-.  .-' |        | ,--. | .--'
+${AnsiColor.BRIGHT_CYAN} |  '--' / |  | ' '-' ' |  |    |  |   |  |   |  |  |  | |  | \ `--.
+${AnsiColor.BRIGHT_CYAN} `------'  `--'  `---'  `--'    `--'   `--'   `--`--`--' `--'  `---'
+${AnsiColor.BRIGHT_CYAN}
+${AnsiColor.BRIGHT_YELLOW}:: Bioritmic :: Running Spring Boot ${spring-boot.version} ::
