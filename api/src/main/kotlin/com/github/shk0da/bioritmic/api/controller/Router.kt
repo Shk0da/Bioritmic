@@ -1,6 +1,6 @@
 package com.github.shk0da.bioritmic.api.controller
 
-import com.github.shk0da.bioritmic.api.controller.v1.ExampleController
+import com.github.shk0da.bioritmic.api.controller.v1.rest.ExampleController
 import com.github.shk0da.bioritmic.api.model.JsonSampleClass
 import io.ktor.application.Application
 import io.ktor.application.call
