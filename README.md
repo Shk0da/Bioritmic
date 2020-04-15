@@ -1,1 +1,1 @@
-# Ktor, React, NodeJS, Casandra, GraphQL.
+# Ktor, React

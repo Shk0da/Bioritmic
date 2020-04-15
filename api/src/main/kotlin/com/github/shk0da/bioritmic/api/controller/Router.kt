@@ -1,53 +1,34 @@
 package com.github.shk0da.bioritmic.api.controller
 
-import com.github.shk0da.bioritmic.api.controller.v1.rest.ExampleController
-import com.github.shk0da.bioritmic.api.model.JsonSampleClass
+import com.github.shk0da.bioritmic.api.controller.v1.rest.users.RegistrationController
 import io.ktor.application.Application
 import io.ktor.application.call
-import io.ktor.http.ContentType
 import io.ktor.http.content.resources
 import io.ktor.http.content.static
-import io.ktor.locations.KtorExperimentalLocationsAPI
-import io.ktor.locations.get
-import io.ktor.response.respond
-import io.ktor.response.respondText
-import io.ktor.routing.Routing
-import io.ktor.routing.get
-import io.ktor.routing.route
-import io.ktor.routing.routing
+import io.ktor.routing.*
 
-@KtorExperimentalLocationsAPI
 object Router {
+
+    const val API_V1: String = "/api/1.0/"
 
     fun Application.routing() {
         routing {
             static("/static") {
                 resources("static")
             }
-
-            get("/") {
-                call.respondText("HELLO WORLD!", contentType = ContentType.Text.Plain)
-            }
-
-            get("/json") {
-                call.respond(JsonSampleClass("HELLO WORLD!"))
-            }
-
-            example()
         }
     }
 
-    private fun Routing.example() {
-        route("") {
-            get<ExampleController.MyLocation> {
-                call.respondText("Location: name=${it.name}, arg1=${it.arg1}, arg2=${it.arg2}")
+    fun Route.userRegistration(registrationController: RegistrationController) {
+        route(Router.API_V1 + "/user/registration") {
+            get {
+                registrationController.getAllUsers(call)
             }
-            // Register nested routes
-            get<ExampleController.Type.Edit> {
-                call.respondText("Inside $it")
+            get("/{userId}") {
+                registrationController.getUser(call)
             }
-            get<ExampleController.Type.List> {
-                call.respondText("Inside $it")
+            post {
+                registrationController.createUser(call)
             }
         }
     }
