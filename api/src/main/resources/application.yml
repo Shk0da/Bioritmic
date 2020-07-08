@@ -1,0 +1,41 @@
+spring:
+  application:
+    basic-name: Bioritmic
+    name: ${spring.application.basic-name}
+    description: Bitoritmic app
+  r2dbc:
+    url: r2dbc:postgresql://127.0.0.1:5432/bioritmic
+    username: postgres
+    password: postgres
+    pool.enabled: true
+    pool.initial-size: 10
+    pool.max-idle-time: 1m
+    pool.max-size: 30
+  data:
+    r2dbc.repositories:.enabled: true
+  datasource:
+    primary:
+      url: jdbc:postgresql://127.0.0.1:5432/bioritmic
+      username: postgres
+      password: postgres
+      driver-class-name: org.postgresql.Driver
+      max-connections: 5
+    replica:
+      url: ${spring.datasource.primary.url}
+      username: ${spring.datasource.primary.username}
+      password:  ${spring.datasource.primary.password}
+      driver-class-name: ${spring.datasource.primary.driver-class-name}
+      max-connections: 5
+  jpa:
+    generate-ddl: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+      hibernate.id.new_generator_mapping: true
+      hibernate.order_updates: true
+      hibernate.order_inserts: true
+      hibernate.jdbc.batch_versioned_data: true
+      hibernate.jdbc.fetch_size: 25
+      hibernate.jdbc.batch_size: 25
+      hibernate.jdbc.lob.non_contextual_creation: true

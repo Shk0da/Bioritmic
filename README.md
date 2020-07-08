@@ -1,1 +1,1 @@
-# Ktor, React
+Bioritmic project
