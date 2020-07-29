@@ -3,28 +3,24 @@ spring:
     basic-name: Bioritmic
     name: ${spring.application.basic-name}
     description: Bitoritmic app
-  r2dbc:
-    url: r2dbc:postgresql://127.0.0.1:5432/bioritmic
-    username: postgres
-    password: postgres
-    pool.enabled: true
-    pool.initial-size: 10
-    pool.max-idle-time: 1m
-    pool.max-size: 30
-  data:
-    r2dbc.repositories:.enabled: true
   datasource:
-    primary:
-      url: jdbc:postgresql://127.0.0.1:5432/bioritmic
+    master:
+      host: 127.0.0.1
+      port: 5432
+      database: bioritmic
+      url: r2dbc:postgresql://${spring.datasource.master.host}:${spring.datasource.master.port}/${spring.datasource.master.database}
+      driver: postgresql
       username: postgres
       password: postgres
-      driver-class-name: org.postgresql.Driver
       max-connections: 5
-    replica:
-      url: ${spring.datasource.primary.url}
-      username: ${spring.datasource.primary.username}
-      password:  ${spring.datasource.primary.password}
-      driver-class-name: ${spring.datasource.primary.driver-class-name}
+    slave:
+      host: ${spring.datasource.master.host}
+      port: ${spring.datasource.master.port}
+      database: ${spring.datasource.master.database}
+      url: r2dbc:postgresql://${spring.datasource.slave.host}:${spring.datasource.slave.port}/${spring.datasource.slave.database}
+      driver: ${spring.datasource.master.driver}
+      username: ${spring.datasource.master.username}
+      password:  ${spring.datasource.master.password}
       max-connections: 5
   jpa:
     generate-ddl: false

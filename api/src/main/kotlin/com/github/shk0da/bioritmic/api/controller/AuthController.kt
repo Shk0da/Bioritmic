@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
@@ -23,11 +24,9 @@ class AuthController(val authService: AuthService) {
     //   POST /authorization/ {email, password} <- Oauth (JWT, refresh token)
 
     @PostMapping(value = ["/registration"], produces = [APPLICATION_JSON_VALUE])
-    fun registration(userModel: UserModel?): Mono<ResponseEntity<Any>> {
-        if (null != userModel) {
-            val user: User = authService.createNewUser(userModel)
-            log.info("Created new {}", user)
-        }
+    fun registration(@RequestBody userModel: UserModel): Mono<ResponseEntity<Any>> {
+        val user: User = authService.createNewUser(userModel)
+        log.info("Created new {}", user)
         return Mono.just(ResponseEntity.status(HttpStatus.CREATED).build())
     }
 }
