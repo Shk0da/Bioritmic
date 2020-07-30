@@ -1,5 +1,7 @@
 package com.github.shk0da.bioritmic.api.configuration
 
+import com.github.shk0da.bioritmic.api.configuration.CacheConfiguration.Constants.DEFAULT_CACHE
+import com.github.shk0da.bioritmic.api.configuration.CacheConfiguration.Constants.FAST_CACHE
 import com.google.common.cache.CacheBuilder
 import org.springframework.cache.Cache
 import org.springframework.cache.CacheManager
@@ -21,7 +23,7 @@ import java.util.concurrent.ConcurrentMap
 @Configuration
 class CacheConfiguration : CachingConfigurerSupport() {
 
-    companion object {
+    object Constants {
         const val DEFAULT_CACHE = "defaultCache"
         const val FAST_CACHE = "fastCache"
     }

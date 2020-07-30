@@ -3,6 +3,8 @@ package com.github.shk0da.bioritmic.api.controller
 interface ApiRoutes {
     companion object {
 
+        const val ERROR_PATH = "/error"
+
         const val API_PATH = "/api"
 
         // Versions
