@@ -25,13 +25,17 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
+	implementation("org.springframework.boot:spring-boot-devtools")
+
+	implementation("io.springfox:springfox-boot-starter:3.0.0")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
+	implementation("com.google.guava:guava:29.0-jre")
+
+	implementation("org.jetbrains:annotations:19.0.0")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
-
-	implementation("com.google.guava:guava:29.0-jre")
 
 	runtimeOnly("io.r2dbc:r2dbc-postgresql")
 	runtimeOnly("org.postgresql:postgresql")
@@ -51,5 +55,18 @@ tasks.withType<KotlinCompile> {
 	kotlinOptions {
 		freeCompilerArgs = listOf("-Xjsr305=strict")
 		jvmTarget = "11"
+	}
+}
+
+// use like this: gradle -Pprofile=${profile} build
+tasks.withType<ProcessResources> {
+	if (project.hasProperty("profile")) {
+		doLast {
+			val applicationYml = file("${buildDir}/resources/main/application.yml")
+			applicationYml.writer().use { writer ->
+				val profile: String by project
+				writer.append("\n\nspring.profiles.active: $profile")
+			}
+		}
 	}
 }

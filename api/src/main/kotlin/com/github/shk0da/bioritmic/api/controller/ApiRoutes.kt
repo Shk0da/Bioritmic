@@ -8,5 +8,8 @@ interface ApiRoutes {
         // Versions
         const val VERSION_1 = "/v1"
         const val VERSION_2 = "/v2"
+
+        const val API_WITH_VERSION_1 = API_PATH + VERSION_1
+        const val API_WITH_VERSION_2 = API_PATH + VERSION_2
     }
 }

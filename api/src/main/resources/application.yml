@@ -3,6 +3,7 @@ spring:
     basic-name: Bioritmic
     name: ${spring.application.basic-name}
     description: Bitoritmic app
+  devtools.add-properties: false
   datasource:
     master:
       host: 127.0.0.1
