@@ -33,9 +33,9 @@ import javax.validation.constraints.Size
 
 @ControllerAdvice
 @RestControllerAdvice
-class BasicExceptionHandler {
+class ApiExceptionHandler {
 
-    private val log = LoggerFactory.getLogger(BasicExceptionHandler::class.java)
+    private val log = LoggerFactory.getLogger(ApiExceptionHandler::class.java)
 
     companion object {
         const val SERVICE_UNAVAILABLE_RETRY_AFTER = "10" // delay-seconds
