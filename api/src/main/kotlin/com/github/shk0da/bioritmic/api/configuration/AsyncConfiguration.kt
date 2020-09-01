@@ -22,8 +22,7 @@ class AsyncConfiguration {
         private val log = LoggerFactory.getLogger(AsyncConfiguration::class.java)
 
         private val AVAILABLE_PROCESSORS = max(4, Runtime.getRuntime().availableProcessors())
-        private val AVAILABLE_TASK_THREADS = AVAILABLE_PROCESSORS * 2
-        private val WEAK_AVAILABLE_TASK_THREADS = AVAILABLE_PROCESSORS / 2
+        private val AVAILABLE_TASK_THREADS = max(16, AVAILABLE_PROCESSORS * 4)
 
         init {
             log.info("Available processors: {}", AVAILABLE_PROCESSORS)
@@ -36,13 +35,6 @@ class AsyncConfiguration {
     fun taskExecutor(): TaskExecutor {
         val taskExecutor = ConcurrentTaskExecutor()
         taskExecutor.setConcurrentExecutor(Executors.newWorkStealingPool(AVAILABLE_TASK_THREADS))
-        return taskExecutor
-    }
-
-    @Bean("weakTaskExecutor")
-    fun weakTaskExecutor(): TaskExecutor {
-        val taskExecutor = ConcurrentTaskExecutor()
-        taskExecutor.setConcurrentExecutor(Executors.newWorkStealingPool(WEAK_AVAILABLE_TASK_THREADS))
         return taskExecutor
     }
 

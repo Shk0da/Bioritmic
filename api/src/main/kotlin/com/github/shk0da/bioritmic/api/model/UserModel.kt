@@ -1,3 +1,23 @@
 package com.github.shk0da.bioritmic.api.model
 
-data class UserModel(val name: String?, val email: String?)
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.github.shk0da.bioritmic.api.domain.User
+import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
+
+data class UserModel(@JsonProperty(access = JsonProperty.Access.READ_ONLY) val id: Long? = null,
+                     val name: String,
+                     val email: String,
+                     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) val password: String? = null) : BasicPresentation {
+
+    companion object {
+        fun of(user: User): UserModel {
+            return UserModel(id = user.id, name = user.name!!, email = user.email!!)
+        }
+    }
+
+    @JsonIgnore
+    fun isFilledInput(): Boolean {
+        return isNotBlank(name) && isNotBlank(email) && isNotBlank(password)
+    }
+}

@@ -10,8 +10,10 @@ spring:
       host: 127.0.0.1
       port: 5432
       database: bioritmic
-      url: r2dbc:postgresql://${spring.datasource.master.host}:${spring.datasource.master.port}/${spring.datasource.master.database}
+      r2dbc-url: r2dbc:postgresql://${spring.datasource.master.host}:${spring.datasource.master.port}/${spring.datasource.master.database}
+      jpa-url: jdbc:postgresql://${spring.datasource.master.host}:${spring.datasource.master.port}/${spring.datasource.master.database}
       driver: postgresql
+      driver-class-name: org.postgresql.Driver
       username: postgres
       password: postgres
       max-connections: 5
@@ -19,21 +21,14 @@ spring:
       host: ${spring.datasource.master.host}
       port: ${spring.datasource.master.port}
       database: ${spring.datasource.master.database}
-      url: r2dbc:postgresql://${spring.datasource.slave.host}:${spring.datasource.slave.port}/${spring.datasource.slave.database}
+      r2dbc-url: r2dbc:postgresql://${spring.datasource.slave.host}:${spring.datasource.slave.port}/${spring.datasource.slave.database}
+      jpa-url: jdbc:postgresql://${spring.datasource.slave.host}:${spring.datasource.slave.port}/${spring.datasource.slave.database}
       driver: ${spring.datasource.master.driver}
+      driver-class-name: ${spring.datasource.master.driver-class-name}
       username: ${spring.datasource.master.username}
       password:  ${spring.datasource.master.password}
       max-connections: 5
-  jpa:
-    generate-ddl: false
-    hibernate:
-      ddl-auto: none
-    properties:
-      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
-      hibernate.id.new_generator_mapping: true
-      hibernate.order_updates: true
-      hibernate.order_inserts: true
-      hibernate.jdbc.batch_versioned_data: true
-      hibernate.jdbc.fetch_size: 25
-      hibernate.jdbc.batch_size: 25
-      hibernate.jdbc.lob.non_contextual_creation: true
+  liquibase:
+    contexts: default
+    change-log: classpath:db-migrations/changelog.xml
+    enabled: true

@@ -1,14 +1,19 @@
 package com.github.shk0da.bioritmic.api.controller
 
-import com.github.shk0da.bioritmic.api.domain.User
+import com.github.shk0da.bioritmic.api.exceptions.ApiException
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.RecoveryModel
 import com.github.shk0da.bioritmic.api.model.UserModel
+import com.github.shk0da.bioritmic.api.model.UserToken
 import com.github.shk0da.bioritmic.api.service.AuthService
+import com.google.common.collect.ImmutableMap
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.http.ResponseEntity
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -22,11 +27,22 @@ class AuthController(val authService: AuthService) {
     private val log = LoggerFactory.getLogger(AuthController::class.java)
 
     // POST /registration/ {name, email}  -> send email with approve
+    @Transactional
     @PostMapping(value = ["/registration"], produces = [APPLICATION_JSON_VALUE])
-    fun registration(@RequestBody userModel: UserModel): Mono<ResponseEntity<Any>> {
-        val user: User = authService.createNewUser(userModel)
-        log.info("Created new {}", user)
-        return Mono.just(ResponseEntity.status(HttpStatus.CREATED).build())
+    fun registration(@RequestBody userModel: UserModel): Mono<ResponseEntity<UserModel>> {
+        if (!userModel.isFilledInput()) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, ImmutableMap.of(PARAMETER_NAME, "user"))
+        }
+
+        if (authService.isUserExists(userModel)) {
+            throw ApiException(ErrorCode.USER_EXISTS)
+        }
+        return authService.createNewUser(userModel)
+                .map { UserModel.of(it) }
+                .map {
+                    log.info("Created new {}", it)
+                    ResponseEntity.status(HttpStatus.CREATED).body(it)
+                }
     }
 
     // POST /recovery/ {email} -> send email with code
@@ -37,7 +53,8 @@ class AuthController(val authService: AuthService) {
 
     // POST /authorization/ {email, password} <- Oauth (JWT, refresh token)
     @PostMapping(value = ["/authorization"], produces = [APPLICATION_JSON_VALUE])
-    fun authorization(@RequestBody authorizationModel: AuthorizationModel): Mono<ResponseEntity<Any>> {
-        return Mono.just(ResponseEntity.status(HttpStatus.OK).build())
+    fun authorization(@RequestBody authorizationModel: AuthorizationModel): Mono<ResponseEntity<UserToken>> {
+        val userToken = UserToken("", "", null, null)
+        return Mono.just(ResponseEntity.ok(userToken))
     }
 }
