@@ -19,7 +19,7 @@ class ReadOnlyRouteInterceptor {
 
     @Throws(Throwable::class)
     @Around("@annotation(transactional)")
-    fun proceed(proceedingJoinPoint: ProceedingJoinPoint, transactional: Transactional): Any {
+    fun proceed(proceedingJoinPoint: ProceedingJoinPoint, transactional: Transactional): Any? {
         return try {
             if (transactional.readOnly) {
                 setSlaveRoute()

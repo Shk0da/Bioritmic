@@ -22,6 +22,9 @@ import reactor.core.publisher.Mono
 class SecurityConfiguration(private val authService: AuthService) {
 
     private val openRoutes = arrayOf(
+            "/swagger-ui/**",
+            "/swagger-resources/**",
+            "/v2/api-docs/**",
             ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/registration",
             ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/recovery",
             ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/authorization"
