@@ -17,10 +17,12 @@ import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants.DefaultD
 import com.google.common.collect.Maps
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
+import io.r2dbc.pool.PoolingConnectionFactoryProvider.MAX_SIZE
 import io.r2dbc.spi.ConnectionFactories
 import io.r2dbc.spi.ConnectionFactory
 import io.r2dbc.spi.ConnectionFactoryOptions
 import io.r2dbc.spi.Option
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Conditional
 import org.springframework.context.annotation.Configuration
@@ -51,12 +53,13 @@ class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcCo
 
     @Bean
     @Primary
-    fun r2dbcTransactionManager(connectionFactory: ConnectionFactory): TransactionManager {
+    fun r2dbcTransactionManager(@Qualifier("connectionFactory") connectionFactory: ConnectionFactory): TransactionManager {
         return R2dbcTransactionManager(connectionFactory)
     }
 
     @Bean
     @Primary
+    @Qualifier("connectionFactory")
     override fun connectionFactory(): ConnectionFactory {
         val factories = Maps.newHashMap<String, Any>()
         factories[MASTER_ROUTING_KEY] = masterConnectionFactory()
@@ -90,6 +93,7 @@ class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcCo
         val host = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_HOST")!!
         val port = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_PORT")!!
         val database = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_DATABASE")!!
+        val maxPoolSize = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_MAX_CONNECTIONS")!!.toInt()
         val connectionFactory = ConnectionFactories.get(ConnectionFactoryOptions.builder()
                 .option(Option.valueOf(PROPERTY_KEY_DRIVER), driver)
                 .option(Option.valueOf(PROPERTY_KEY_HOST), host)
@@ -99,9 +103,9 @@ class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcCo
                 .option(Option.valueOf(PROPERTY_KEY_USER), username)
                 .option(Option.valueOf(PROPERTY_KEY_USERNAME), username)
                 .option(Option.valueOf(PROPERTY_KEY_PASSWORD), password)
+                .option(MAX_SIZE, maxPoolSize)
                 .build())
 
-        val maxPoolSize = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_MAX_CONNECTIONS")!!.toInt()
         val config = ConnectionPoolConfiguration
                 .builder(connectionFactory)
                 .name(dataSourcePrefix + "R2dbc")

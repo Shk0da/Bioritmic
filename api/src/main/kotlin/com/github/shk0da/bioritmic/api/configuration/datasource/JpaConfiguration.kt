@@ -20,7 +20,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.transaction.annotation.EnableTransactionManagement
 import javax.sql.DataSource
-import kotlin.math.min
 
 @Configuration
 @EnableTransactionManagement
@@ -71,7 +70,7 @@ class JpaConfiguration(private val environment: Environment) : DataSourceConfigu
         val hikariConfig = HikariConfig()
         hikariConfig.poolName = dataSourcePrefix + "Jpa"
         hikariConfig.maximumPoolSize = maxPoolSize
-        hikariConfig.minimumIdle = min(DataSourceConfiguration.MINIMUM_IDLE, maxPoolSize)
+        hikariConfig.minimumIdle = DataSourceConfiguration.MINIMUM_IDLE
         hikariConfig.jdbcUrl = url
         hikariConfig.username = username
         hikariConfig.password = password

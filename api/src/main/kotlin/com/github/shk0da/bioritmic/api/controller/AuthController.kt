@@ -69,4 +69,13 @@ class AuthController(val userService: UserService, val authService: AuthService)
                     ResponseEntity.status(HttpStatus.OK).body(it)
                 }
     }
+
+    @PostMapping(value = ["/logout"], produces = [APPLICATION_JSON_VALUE])
+    fun logout(@RequestBody userToken: UserToken): Mono<Void> {
+        val user = userService.findUser(userToken)
+        if (null == user) {
+            throw ApiException(USER_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, userToken.email))
+        }
+        return authService.deleteAuth(userToken, user)
+    }
 }

@@ -42,8 +42,9 @@ dependencies {
 	implementation("io.dropwizard.metrics:metrics-jvm")
 	implementation("io.dropwizard.metrics:metrics-servlet")
 	implementation("io.dropwizard.metrics:metrics-servlets")
-	implementation("com.ryantenney.metrics:metrics-spring:3.1.3")
 	implementation("org.springframework.plugin:spring-plugin-core")
+
+	implementation("net.logstash.logback:logstash-logback-encoder:6.4")
 
 	implementation("org.jetbrains:annotations:19.0.0")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")

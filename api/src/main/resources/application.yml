@@ -1,12 +1,26 @@
+server.port: 8080
+
 info.app.name: ${spring.application.basic-name}
 info.app.description: ${spring.application.description}
 info.app.version: 0.1
 
 server.error.whitelabel.enabled: false
 
-management.endpoints.web.base-path: "/management/actuator"
-management.endpoint.health.show-details: always
-management.endpoints.web.exposure.include: configprops,env,health,info,threaddump,logfile,metrics,refresh,loggers
+management:
+  server.port: 8081
+  endpoint.health.show-details: always
+  endpoints.web.base-path: "/management/actuator"
+  endpoints.web.exposure.include: configprops,env,health,info,threaddump,logfile,metrics,refresh,loggers
+  metrics: # DropWizard Metrics configuration, used by MetricsConfiguration
+    logs: # Reports Dropwizard metrics in the logs
+      enabled: false
+      report-frequency: 60 # in seconds
+  logging:
+    logstash: # Forward logs to logstash over a socket, used by LoggingConfiguration
+      enabled: false
+      host: localhost
+      port: 5000
+      queue-size: 512
 
 spring:
   application:
@@ -25,7 +39,7 @@ spring:
       driver-class-name: org.postgresql.Driver
       username: postgres
       password: postgres
-      max-connections: 5
+      max-connections: 25
     slave:
       host: ${spring.datasource.master.host}
       port: ${spring.datasource.master.port}
@@ -36,7 +50,7 @@ spring:
       driver-class-name: ${spring.datasource.master.driver-class-name}
       username: ${spring.datasource.master.username}
       password:  ${spring.datasource.master.password}
-      max-connections: 5
+      max-connections: 20
   liquibase:
     contexts: default
     change-log: classpath:db-migrations/changelog.xml
