@@ -1,4 +1,13 @@
-server.error.whitelabel.enabled: true
+info.app.name: ${spring.application.basic-name}
+info.app.description: ${spring.application.description}
+info.app.version: 0.1
+
+server.error.whitelabel.enabled: false
+
+management.endpoints.web.base-path: "/management/actuator"
+management.endpoint.health.show-details: always
+management.endpoints.web.exposure.include: configprops,env,health,info,threaddump,logfile,metrics,refresh,loggers
+
 spring:
   application:
     basic-name: Bioritmic

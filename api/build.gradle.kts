@@ -28,11 +28,22 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
 	implementation("org.springframework.boot:spring-boot-starter-mail")
 	implementation("org.springframework.boot:spring-boot-devtools")
+	implementation("org.springframework.retry:spring-retry")
 
 	implementation("io.springfox:springfox-boot-starter:3.0.0")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
 	implementation("com.google.guava:guava:29.0-jre")
+
+	implementation("io.micrometer:micrometer-core")
+	implementation("io.dropwizard.metrics:metrics-core")
+	implementation("io.dropwizard.metrics:metrics-annotation")
+	implementation("io.dropwizard.metrics:metrics-json")
+	implementation("io.dropwizard.metrics:metrics-jvm")
+	implementation("io.dropwizard.metrics:metrics-servlet")
+	implementation("io.dropwizard.metrics:metrics-servlets")
+	implementation("com.ryantenney.metrics:metrics-spring:3.1.3")
+	implementation("org.springframework.plugin:spring-plugin-core")
 
 	implementation("org.jetbrains:annotations:19.0.0")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")

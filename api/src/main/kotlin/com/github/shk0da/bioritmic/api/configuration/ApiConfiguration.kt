@@ -10,9 +10,14 @@ import javax.annotation.PostConstruct
 @Configuration
 class ApiConfiguration {
 
+    companion object {
+        val defaultZone: ZoneOffset = ZoneOffset.UTC
+        val defaultLocale: Locale = Locale.US
+    }
+
     @PostConstruct
     fun defaultTimezone() {
-        Locale.setDefault(Locale.US)
-        TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC))
+        Locale.setDefault(defaultLocale)
+        TimeZone.setDefault(TimeZone.getTimeZone(defaultZone))
     }
 }

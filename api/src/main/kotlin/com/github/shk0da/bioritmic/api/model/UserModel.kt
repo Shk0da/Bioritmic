@@ -20,4 +20,8 @@ data class UserModel(@JsonProperty(access = JsonProperty.Access.READ_ONLY) val i
     fun isFilledInput(): Boolean {
         return isNotBlank(name) && isNotBlank(email) && isNotBlank(password)
     }
+
+    override fun toString(): String {
+        return "User(id=$id, name='$name', email='$email')"
+    }
 }

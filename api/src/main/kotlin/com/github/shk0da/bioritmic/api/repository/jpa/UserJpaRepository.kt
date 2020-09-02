@@ -10,4 +10,7 @@ interface UserJpaRepository : JpaRepository<User, Long> {
 
     @Transactional(readOnly = true)
     fun existsByEmail(email: String): Boolean
+
+    @Transactional(readOnly = true)
+    fun findByEmail(email: String): User?
 }

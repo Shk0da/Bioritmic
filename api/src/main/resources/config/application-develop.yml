@@ -2,3 +2,4 @@
 spring.application.name: ${spring.application.basic-name} (Develop mode)
 spring.profiles.include: default,swagger
 spring.devtools.add-properties: true
+logging.level.com.github.shk0da.bioritmic.api: debug
