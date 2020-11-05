@@ -30,7 +30,7 @@ allprojects {
     }
 
     tasks.withType(Test) {
-        useJUnitPlatform()
+        // useJUnitPlatform()
         maxHeapSize = '2048m'
         systemProperty "file.encoding", "utf-8"
         testLogging { exceptionFormat = 'full' }

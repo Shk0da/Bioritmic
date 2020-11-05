@@ -6,6 +6,7 @@ import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfig
 import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_MAX_CONNECTIONS
 import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_PASSWORD
 import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_USERNAME
+import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants.DefaultDataSourceProfileCondition
 import com.google.common.collect.ImmutableMap
 import com.zaxxer.hikari.HikariConfig
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Conditional
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.springframework.core.env.Environment
+import org.springframework.core.env.Profiles
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.transaction.annotation.EnableTransactionManagement
@@ -62,7 +64,10 @@ class JpaConfiguration(private val environment: Environment) : DataSourceConfigu
         val url = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_JPA_URL")!!
         val username = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_USERNAME")!!
         val password = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_PASSWORD")!!
-        checkDataSource(DriverManagerDataSource(url, username, password))
+
+        if (!environment.acceptsProfiles(Profiles.of(ProfileConfigConstants.SPRING_PROFILE_DEVELOPMENT))) {
+            checkDataSource(DriverManagerDataSource(url, username, password))
+        }
 
         val driver = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_DRIVER_CLASS_NAME")!!
         val maxPoolSize = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_MAX_CONNECTIONS")!!.toInt()

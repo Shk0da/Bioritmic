@@ -13,6 +13,7 @@ import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfig
 import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_USER
 import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_USERNAME
 import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.SLAVE_ROUTING_KEY
+import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants.DefaultDataSourceProfileCondition
 import com.google.common.collect.Maps
 import io.r2dbc.pool.ConnectionPool
@@ -28,6 +29,7 @@ import org.springframework.context.annotation.Conditional
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.springframework.core.env.Environment
+import org.springframework.core.env.Profiles
 import org.springframework.data.r2dbc.config.AbstractR2dbcConfiguration
 import org.springframework.data.r2dbc.connectionfactory.R2dbcTransactionManager
 import org.springframework.data.r2dbc.connectionfactory.lookup.AbstractRoutingConnectionFactory
@@ -87,7 +89,10 @@ class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcCo
         val url = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_R2DBC_URL")!!
         val username = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_USERNAME")!!
         val password = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_PASSWORD")!!
-        checkDataSource(DriverManagerDataSource(url.replace("r2dbc", "jdbc"), username, password))
+
+        if (!environment.acceptsProfiles(Profiles.of(ProfileConfigConstants.SPRING_PROFILE_DEVELOPMENT))) {
+            checkDataSource(DriverManagerDataSource(url.replace("r2dbc", "jdbc"), username, password))
+        }
 
         val driver = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_DRIVER")!!
         val host = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_HOST")!!

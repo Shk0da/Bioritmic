@@ -1,25 +1,33 @@
 package com.github.shk0da.bioritmic.api.configuration
 
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_USER
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes
 import com.github.shk0da.bioritmic.api.domain.Auth
 import com.github.shk0da.bioritmic.api.service.AuthService
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpHeaders
 import org.springframework.security.authentication.ReactiveAuthenticationManager
+import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
-import org.springframework.security.core.Authentication
-import org.springframework.security.oauth2.server.resource.BearerTokenAuthenticationToken
+import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken
 import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter
-import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers.pathMatchers
+import org.springframework.web.reactive.config.CorsRegistry
+import org.springframework.web.reactive.config.WebFluxConfigurer
 import reactor.core.publisher.Mono
 
 @Configuration
 @EnableWebFluxSecurity
-class SecurityConfiguration(private val authService: AuthService) {
+@EnableReactiveMethodSecurity
+class SecurityConfiguration(private val authService: AuthService) : WebFluxConfigurer {
+
+    private val log = LoggerFactory.getLogger(SecurityConfiguration::class.java)
 
     private val openRoutes = arrayOf(
             "/swagger-ui/**",
@@ -30,58 +38,64 @@ class SecurityConfiguration(private val authService: AuthService) {
             ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/authorization"
     )
 
-    private val securityRoutes = arrayOf(
-            ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/**"
-    )
+    override fun addCorsMappings(registry: CorsRegistry) {
+        registry
+                .addMapping("/**")
+                .allowedOrigins("*")
+                .allowedMethods("*")
+                .allowedHeaders("*")
+    }
 
     @Bean
     fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain? {
         http
-                .csrf().disable()
-                .formLogin().disable()
-                .httpBasic().disable()
-                .logout().disable()
-                .headers().frameOptions().disable()
+                    .csrf().disable()
+                    .formLogin().disable()
+                    .httpBasic().disable()
+                    .logout().disable()
+                    .headers().frameOptions().disable()
                 .and()
                     .authorizeExchange()
                     .pathMatchers(*openRoutes)
                     .permitAll()
                 .and()
-                    .authorizeExchange()
-                    .pathMatchers(*securityRoutes)
-                    .authenticated()
-                .and()
                     .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION)
+                    .authorizeExchange()
+                    .anyExchange()
+                    .authenticated()
         return http.build()
     }
 
-    private fun bearerAuthenticationFilter(): AuthenticationWebFilter? {
+    @Bean
+    fun bearerAuthenticationFilter(): AuthenticationWebFilter? {
         return with(AuthenticationWebFilter(ReactiveAuthenticationManager { Mono.just(it) })) {
             setServerAuthenticationConverter {
                 val bearer = "Bearer "
                 Mono.justOrEmpty(it)
-                        .flatMap<String> { exchange ->
+                        .flatMap { exchange ->
                             Mono.justOrEmpty(exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION))
                         }
                         .filter { token ->
                             token.length > bearer.length
                         }
-                        .flatMap<String> { token ->
+                        .flatMap { token ->
                             Mono.justOrEmpty(token.substring(bearer.length))
                         }
                         .flatMap<Auth> { token ->
                             authService.getAuthByAccessToken(token)
                         }
-                        .flatMap<Authentication> { auth ->
-                            with(BearerTokenAuthenticationToken(auth.accessToken)) {
-                                isAuthenticated = true
-                                details = auth.userId
-                                Mono.just(this)
-                            }
+                        .map { auth ->
+                            PreAuthenticatedAuthenticationToken(
+                                    auth.userId,
+                                    auth.accessToken,
+                                    mutableListOf(SimpleGrantedAuthority(ROLE_USER)))
                         }
-                        .log()
             }
-            setRequiresAuthenticationMatcher(pathMatchers(*securityRoutes))
+            setAuthenticationSuccessHandler { webFilterExchange, authentication ->
+                log.debug("authentication: {}", authentication)
+                SecurityContextHolder.getContext().authentication = authentication
+                webFilterExchange.chain.filter(webFilterExchange.exchange)
+            }
             this
         }
     }

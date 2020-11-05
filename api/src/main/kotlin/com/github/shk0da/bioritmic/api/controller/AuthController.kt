@@ -17,10 +17,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.http.ResponseEntity
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
 @Transactional
@@ -31,6 +28,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     private val log = LoggerFactory.getLogger(AuthController::class.java)
 
     // POST /registration/ {name, email}  -> send email with approve
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping(value = ["/registration"], produces = [APPLICATION_JSON_VALUE])
     fun registration(@RequestBody userModel: UserModel): Mono<ResponseEntity<UserModel>> {
         with(userModel) {
@@ -46,6 +44,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     }
 
     // POST /recovery/ {email} -> send email with code
+    @ResponseStatus(HttpStatus.OK)
     @PostMapping(value = ["/recovery"], produces = [APPLICATION_JSON_VALUE])
     fun recovery(@RequestBody recoveryModel: RecoveryModel): Mono<ResponseEntity<Any>> {
         // TODO create New Password, save it and send email
@@ -53,6 +52,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     }
 
     // POST /authorization/ {email, password} <- Oauth (JWT, refresh token)
+    @ResponseStatus(HttpStatus.OK)
     @PostMapping(value = ["/authorization"], produces = [APPLICATION_JSON_VALUE])
     fun authorization(@RequestBody authorizationModel: AuthorizationModel): Mono<ResponseEntity<UserToken>> {
         val user = userService.findUser(authorizationModel)
@@ -70,6 +70,8 @@ class AuthController(val userService: UserService, val authService: AuthService)
                 }
     }
 
+    // POST /logout -> clear token
+    @ResponseStatus(HttpStatus.OK)
     @PostMapping(value = ["/logout"], produces = [APPLICATION_JSON_VALUE])
     fun logout(@RequestBody userToken: UserToken): Mono<Void> {
         val user = userService.findUser(userToken)

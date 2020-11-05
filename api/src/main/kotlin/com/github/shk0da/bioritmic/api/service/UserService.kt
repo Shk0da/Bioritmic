@@ -7,9 +7,11 @@ import com.github.shk0da.bioritmic.api.model.UserToken
 import com.github.shk0da.bioritmic.api.repository.jpa.UserJpaRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.UserR2dbcRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
 
 @Service
+@Transactional
 class UserService(val userJpaRepository: UserJpaRepository, val userR2dbcRepository: UserR2dbcRepository) {
 
     fun findUser(userToken: UserToken): User? {
@@ -22,6 +24,10 @@ class UserService(val userJpaRepository: UserJpaRepository, val userR2dbcReposit
 
     fun isUserExists(userModel: UserModel): Boolean {
         return userJpaRepository.existsByEmail(userModel.email)
+    }
+
+    fun findUserById(id: Long): Mono<User> {
+        return userR2dbcRepository.findById(id)
     }
 
     fun createNewUser(userModel: UserModel): Mono<User> {
