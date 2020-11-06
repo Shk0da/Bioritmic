@@ -19,9 +19,11 @@ import org.springframework.context.annotation.Primary
 import org.springframework.core.env.Environment
 import org.springframework.core.env.Profiles
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
+import org.springframework.jdbc.datasource.DataSourceTransactionManager
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.transaction.annotation.EnableTransactionManagement
 import javax.sql.DataSource
+
 
 @Configuration
 @EnableTransactionManagement
@@ -30,6 +32,11 @@ import javax.sql.DataSource
 class JpaConfiguration(private val environment: Environment) : DataSourceConfiguration {
 
     private val log = LoggerFactory.getLogger(DataSourceConfiguration::class.java)
+
+    companion object {
+        const val transactionManager = "transactionManager"
+        const val jpaTransactionManager = "jpaTransactionManager"
+    }
 
     @Bean
     @Primary
@@ -51,6 +58,9 @@ class JpaConfiguration(private val environment: Environment) : DataSourceConfigu
         }
         return routingDataSource
     }
+
+    @Bean(transactionManager, jpaTransactionManager)
+    fun transactionManager(dataSource: DataSource) = DataSourceTransactionManager(dataSource)
 
     private fun masterDataSource(): DataSource {
         return buildDataSource(DataSourceConfiguration.MASTER_ROUTING_KEY)

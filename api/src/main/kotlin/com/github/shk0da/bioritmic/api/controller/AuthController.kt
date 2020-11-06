@@ -11,16 +11,15 @@ import com.github.shk0da.bioritmic.api.model.UserToken
 import com.github.shk0da.bioritmic.api.service.AuthService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
+import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import com.google.common.collect.ImmutableMap
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.http.ResponseEntity
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
-@Transactional
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1)
 class AuthController(val userService: UserService, val authService: AuthService) {
@@ -47,15 +46,37 @@ class AuthController(val userService: UserService, val authService: AuthService)
     @ResponseStatus(HttpStatus.OK)
     @PostMapping(value = ["/recovery"], produces = [APPLICATION_JSON_VALUE])
     fun recovery(@RequestBody recoveryModel: RecoveryModel): Mono<ResponseEntity<Any>> {
-        // TODO create New Password, save it and send email
-        return Mono.just(ResponseEntity.status(HttpStatus.OK).build())
+        val user = userService.findUserByEmail(recoveryModel.email)
+        if (null == user) {
+            throw ApiException(USER_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, recoveryModel.email))
+        }
+        return authService.sendRecoveryEmail(user)
+                .map {
+                    log.debug("Recovery User: {}", user)
+                    ResponseEntity.status(HttpStatus.OK).build()
+                }
+    }
+
+    // GET /recovery/ ?{code} <- validate code and reset password
+    @ResponseStatus(HttpStatus.OK)
+    @GetMapping(value = ["/reset-password"], params = ["code"], produces = [APPLICATION_JSON_VALUE])
+    fun resetPassword(@RequestParam code: String): Mono<ResponseEntity<Any>> {
+        val user = authService.findUserByRecoveryCode(code) ?: throw ApiException(INVALID_RECOVERY_CODE)
+        if (null == user.recoveryCodeExpireTime && user.recoveryCodeExpireTime!!.time < System.currentTimeMillis()) {
+            throw ApiException(INVALID_RECOVERY_CODE)
+        }
+        return authService.resetPasswordAndSendEmail(user)
+                .map {
+                    log.debug("Reset password for: {}", user)
+                    ResponseEntity.status(HttpStatus.OK).build()
+                }
     }
 
     // POST /authorization/ {email, password} <- Oauth (JWT, refresh token)
     @ResponseStatus(HttpStatus.OK)
     @PostMapping(value = ["/authorization"], produces = [APPLICATION_JSON_VALUE])
     fun authorization(@RequestBody authorizationModel: AuthorizationModel): Mono<ResponseEntity<UserToken>> {
-        val user = userService.findUser(authorizationModel)
+        val user = userService.findUserByEmail(authorizationModel.email)
         if (null == user) {
             throw ApiException(USER_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, authorizationModel.email))
         }
@@ -71,13 +92,14 @@ class AuthController(val userService: UserService, val authService: AuthService)
     }
 
     // POST /logout -> clear token
-    @ResponseStatus(HttpStatus.OK)
-    @PostMapping(value = ["/logout"], produces = [APPLICATION_JSON_VALUE])
-    fun logout(@RequestBody userToken: UserToken): Mono<Void> {
-        val user = userService.findUser(userToken)
-        if (null == user) {
-            throw ApiException(USER_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, userToken.email))
-        }
-        return authService.deleteAuth(userToken, user)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @DeleteMapping(value = ["/logout"], produces = [APPLICATION_JSON_VALUE])
+    fun logout(): Mono<ResponseEntity<Void>> {
+        val userId = getUserId()
+        return authService.deleteAuthByUserId(userId)
+                .map {
+                    log.debug("Delete User with ID: {}", userId)
+                    ResponseEntity.status(HttpStatus.NO_CONTENT).build()
+                }
     }
 }

@@ -3,3 +3,13 @@ spring.application.name: ${spring.application.basic-name} (Develop mode)
 spring.profiles.include: default,swagger
 spring.devtools.add-properties: true
 logging.level.com.github.shk0da.bioritmic.api: debug
+
+spring:
+  mail:
+    host: smtp.bioritmic.com
+    username: admin@bioritmic.com
+    password: admin
+    properties:
+      mail.smtp.port: 25
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: false

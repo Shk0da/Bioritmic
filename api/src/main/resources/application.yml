@@ -55,3 +55,13 @@ spring:
     contexts: default
     change-log: classpath:db-migrations/changelog.xml
     enabled: true
+  mail:
+    host: email-smtp.us-west-2.amazonaws.com
+    username: <login user to smtp server>
+    password: <login password to smtp server>
+    properties:
+      #mail.transport.protocol: smtp
+      #mail.smtp.port: 25
+      #mail.smtp.auth: true
+      #mail.smtp.starttls.enable: true
+      #mail.smtp.starttls.required: true

@@ -11,6 +11,8 @@ class ApiException : RuntimeException {
     var httpStatus: HttpStatus? = null
     var parameters: Map<String, String> = Maps.newHashMap()
 
+    constructor(message: String) : super(message)
+
     constructor(errorCode: ErrorCode) : super(errorCode.toString()) {
         this.errorCode = errorCode
         httpStatus = errorCode.httpCode

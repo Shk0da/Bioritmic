@@ -2,6 +2,7 @@ package com.github.shk0da.bioritmic.api.domain
 
 import com.github.shk0da.bioritmic.api.model.UserModel
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
+import java.sql.Timestamp
 import javax.persistence.*
 
 @Entity
@@ -27,6 +28,14 @@ class User {
     @org.springframework.data.relational.core.mapping.Column
     var password: String? = null
 
+    @Column(name = "recovery_code")
+    @org.springframework.data.relational.core.mapping.Column("recovery_code")
+    var recoveryCode: String? = null
+
+    @Column(name = "recovery_code_expire_time")
+    @org.springframework.data.relational.core.mapping.Column("recovery_code_expire_time")
+    var recoveryCodeExpireTime: Timestamp? = null
+
     companion object {
         fun of(userModel: UserModel): User {
             val user = User()
@@ -35,5 +44,9 @@ class User {
             user.password = passwordEncoder.encode(userModel.password)
             return user
         }
+    }
+
+    override fun toString(): String {
+        return "User(id=$id, name=$name, email=$email)"
     }
 }

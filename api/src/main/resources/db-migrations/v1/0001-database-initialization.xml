@@ -22,6 +22,12 @@
             <column name="password" type="varchar(255)">
                 <constraints nullable="false"/>
             </column>
+            <column name="recovery_code" type="varchar(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="recovery_code_expire_time" type="timestamp">
+                <constraints nullable="true"/>
+            </column>
         </createTable>
 
         <createTable tableName="authorizations">

@@ -46,6 +46,10 @@ import java.time.temporal.ChronoUnit
 @Conditional(value = [DefaultDataSourceProfileCondition::class])
 class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcConfiguration(), DataSourceConfiguration {
 
+    companion object {
+        const val r2dbcTransactionManager = "r2dbcTransactionManager"
+    }
+
     inner class RoutingConnectionFactory : AbstractRoutingConnectionFactory() {
         override fun determineCurrentLookupKey(): Mono<Any> = forCurrentTransaction().map {
             val isReadOnly = it.isActualTransactionActive && it.isCurrentTransactionReadOnly
@@ -53,8 +57,8 @@ class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcCo
         }
     }
 
-    @Bean
     @Primary
+    @Bean(r2dbcTransactionManager)
     fun r2dbcTransactionManager(@Qualifier("connectionFactory") connectionFactory: ConnectionFactory): TransactionManager {
         return R2dbcTransactionManager(connectionFactory)
     }

@@ -46,4 +46,8 @@ class Auth {
             }
         }
     }
+
+    override fun toString(): String {
+        return "Auth(id=$id, userId=$userId, expireTime=$expireTime)"
+    }
 }

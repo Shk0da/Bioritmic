@@ -35,6 +35,7 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
             "/v2/api-docs/**",
             ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/registration",
             ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/recovery",
+            ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/reset-password",
             ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/authorization"
     )
 
