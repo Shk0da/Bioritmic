@@ -1,7 +1,7 @@
 package com.github.shk0da.bioritmic.api.configuration
 
 import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_USER
-import com.github.shk0da.bioritmic.api.controller.ApiRoutes
+import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.domain.Auth
 import com.github.shk0da.bioritmic.api.service.AuthService
 import org.slf4j.LoggerFactory
@@ -33,10 +33,11 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
             "/swagger-ui/**",
             "/swagger-resources/**",
             "/v2/api-docs/**",
-            ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/registration",
-            ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/recovery",
-            ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/reset-password",
-            ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/authorization"
+            "$API_WITH_VERSION_1/registration",
+            "$API_WITH_VERSION_1/refresh-token",
+            "$API_WITH_VERSION_1/recovery",
+            "$API_WITH_VERSION_1/reset-password",
+            "$API_WITH_VERSION_1/authorization"
     )
 
     override fun addCorsMappings(registry: CorsRegistry) {

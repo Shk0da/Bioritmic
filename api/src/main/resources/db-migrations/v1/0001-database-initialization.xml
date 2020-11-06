@@ -50,6 +50,22 @@
 
         <addUniqueConstraint tableName="authorizations" columnNames="user_id" constraintName="uq_authorizations_user_id"/>
 
+        <createTable tableName="gis_data">
+            <column name="user_id" type="bigint">
+                <constraints primaryKey="true" nullable="false" unique="true"
+                             references="users" referencedColumnNames="id" foreignKeyName="fk_gis_data_user_id"/>
+            </column>
+            <column name="lat" type="float">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lan" type="float">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timestamp" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
         <rollback>
             <dropTable cascadeConstraints="true" tableName="user"/>
             <dropTable cascadeConstraints="true" tableName="authorizations"/>

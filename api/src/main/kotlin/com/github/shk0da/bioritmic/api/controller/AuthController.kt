@@ -48,7 +48,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     fun recovery(@RequestBody recoveryModel: RecoveryModel): Mono<ResponseEntity<Any>> {
         val user = userService.findUserByEmail(recoveryModel.email)
         if (null == user) {
-            throw ApiException(USER_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, recoveryModel.email))
+            throw ApiException(USER_WITH_EMAIL_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, recoveryModel.email))
         }
         return authService.sendRecoveryEmail(user)
                 .map {
@@ -78,7 +78,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     fun authorization(@RequestBody authorizationModel: AuthorizationModel): Mono<ResponseEntity<UserToken>> {
         val user = userService.findUserByEmail(authorizationModel.email)
         if (null == user) {
-            throw ApiException(USER_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, authorizationModel.email))
+            throw ApiException(USER_WITH_EMAIL_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, authorizationModel.email))
         }
         if (!passwordEncoder.matches(authorizationModel.password, user.password)) {
             throw ApiException(INVALID_PARAMETER, ImmutableMap.of(PARAMETER_NAME, "password"))
@@ -87,6 +87,17 @@ class AuthController(val userService: UserService, val authService: AuthService)
                 .map { UserToken.of(user, it) }
                 .map {
                     log.debug("Created new {}", it)
+                    ResponseEntity.status(HttpStatus.OK).body(it)
+                }
+    }
+
+    // POST /refresh-token/ <- {email, refreshToken} -> new accesToken
+    @ResponseStatus(HttpStatus.OK)
+    @PostMapping(value = ["/refresh-token"], produces = [APPLICATION_JSON_VALUE])
+    fun refreshToken(@RequestBody userToken: UserToken): Mono<ResponseEntity<UserToken>> {
+        return authService.refreshToken(userToken)
+                .map {
+                    log.debug("Refreshed {}", it)
                     ResponseEntity.status(HttpStatus.OK).body(it)
                 }
     }

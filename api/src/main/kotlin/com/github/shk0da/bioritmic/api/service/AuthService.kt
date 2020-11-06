@@ -4,6 +4,8 @@ import com.github.shk0da.bioritmic.api.configuration.datasource.JpaConfiguration
 import com.github.shk0da.bioritmic.api.domain.Auth
 import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
+import com.github.shk0da.bioritmic.api.model.UserToken
 import com.github.shk0da.bioritmic.api.repository.jpa.AuthJpaRepository
 import com.github.shk0da.bioritmic.api.repository.jpa.UserJpaRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.AuthR2dbcRepository
@@ -41,6 +43,23 @@ class AuthService(val authJpaRepository: AuthJpaRepository,
             newAuth.refreshToken = newAuth.refreshToken
         }
         return authR2dbcRepository.save(newAuth)
+    }
+
+    @Transactional
+    fun refreshToken(userToken: UserToken): Mono<UserToken> {
+        return userR2dbcRepository.findByEmail(userToken.email!!)
+                .map {
+                    val user = it
+                    authR2dbcRepository.findByUserIdAndRefreshToken(user!!.id!!, userToken.refreshToken!!)
+                            .flatMap {
+                                val auth = it!!.refresh()
+                                authR2dbcRepository.save(auth)
+                            }
+                            .map { UserToken.of(user, it) }
+                            .switchIfEmpty(Mono.error(ApiException(ErrorCode.AUTH_NOT_FOUND)))
+                }
+                .flatMap { it }
+                .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
     }
 
     @Transactional(readOnly = true)
@@ -87,6 +106,7 @@ class AuthService(val authJpaRepository: AuthJpaRepository,
         user.password = passwordEncoder.encode(newPassword)
         return userR2dbcRepository.save(user)
                 .map {
+                    authR2dbcRepository.deleteByUserId(it.id!!)
                     log.debug("Send new password: '{}' for {}", newPassword, user)
                     emailService.sendTextEmail(user.email!!, "New password", newPassword)
                 }

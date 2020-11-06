@@ -16,7 +16,8 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
     USER_EXISTS("API-409", "The user with this email is already registered.", HttpStatus.CONFLICT),
 
     INVALID_URI("API-404", "Invalid URI.", HttpStatus.NOT_FOUND),
-    USER_NOT_FOUND("API-404", "User with email: [\${${Constants.PARAMETER_VALUE}}] not found.", HttpStatus.NOT_FOUND),
+    USER_WITH_EMAIL_NOT_FOUND("API-404", "User with email: [\${${Constants.PARAMETER_VALUE}}] not found.", HttpStatus.NOT_FOUND),
+    USER_NOT_FOUND("API-404", "User not found.", HttpStatus.NOT_FOUND),
     AUTH_NOT_FOUND("API-404", "Authorization not found.", HttpStatus.NOT_FOUND),
 
     API_INTERNAL_ERROR("API-500", "Unknown error.", HttpStatus.INTERNAL_SERVER_ERROR),

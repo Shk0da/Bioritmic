@@ -47,6 +47,12 @@ class Auth {
         }
     }
 
+    fun refresh(): Auth {
+        accessToken = UUID.randomUUID().toString()
+        expireTime = Timestamp(LocalDateTime.now().plusHours(1).toInstant(defaultZone).toEpochMilli())
+        return this
+    }
+
     override fun toString(): String {
         return "Auth(id=$id, userId=$userId, expireTime=$expireTime)"
     }
