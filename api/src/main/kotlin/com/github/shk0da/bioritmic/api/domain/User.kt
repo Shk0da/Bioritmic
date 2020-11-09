@@ -28,6 +28,10 @@ class User {
     @org.springframework.data.relational.core.mapping.Column
     var password: String? = null
 
+    @Column(name = "birthday")
+    @org.springframework.data.relational.core.mapping.Column("birthday")
+    var birthday: Timestamp? = null
+
     @Column(name = "recovery_code")
     @org.springframework.data.relational.core.mapping.Column("recovery_code")
     var recoveryCode: String? = null
@@ -36,17 +40,22 @@ class User {
     @org.springframework.data.relational.core.mapping.Column("recovery_code_expire_time")
     var recoveryCodeExpireTime: Timestamp? = null
 
+    @JoinColumn(name = "id", referencedColumnName = "id")
+    @OneToOne(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, optional = true)
+    var userSettings: UserSettings? = null
+
     companion object {
         fun of(userModel: UserModel): User {
             val user = User()
             user.name = userModel.name
             user.email = userModel.email
+            user.birthday = Timestamp(userModel.birthday.time)
             user.password = passwordEncoder.encode(userModel.password)
             return user
         }
     }
 
     override fun toString(): String {
-        return "User(id=$id, name=$name, email=$email)"
+        return "User(id=$id, name=$name, email=$email, birthday=$birthday)"
     }
 }

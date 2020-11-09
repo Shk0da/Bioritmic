@@ -6,17 +6,17 @@ import com.github.shk0da.bioritmic.api.domain.GisData
 import java.sql.Timestamp
 
 data class GisDataModel(@JsonIgnore val userId: Long? = null,
-                        val lat: Double?,
-                        val lan: Double?,
+                        val lat: Double,
+                        val lon: Double,
                         @JsonProperty(access = JsonProperty.Access.READ_ONLY) val timestamp: Timestamp? = null) : BasicPresentation {
 
     companion object {
         fun of(gisData: GisData): GisDataModel {
-            return GisDataModel(gisData.userId, gisData.lat, gisData.lan, Timestamp(System.currentTimeMillis()))
+            return GisDataModel(gisData.userId, gisData.lat!!, gisData.lon!!, Timestamp(System.currentTimeMillis()))
         }
     }
 
     override fun toString(): String {
-        return "GisDataModel(userId=$userId, lat=$lat, lan=$lan, timestamp=$timestamp)"
+        return "GisDataModel(userId=$userId, lat=$lat, lon=$lon, timestamp=$timestamp)"
     }
 }

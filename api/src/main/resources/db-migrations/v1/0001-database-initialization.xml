@@ -22,10 +22,29 @@
             <column name="password" type="varchar(255)">
                 <constraints nullable="false"/>
             </column>
+            <column name="birthday" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
             <column name="recovery_code" type="varchar(255)">
                 <constraints nullable="true"/>
             </column>
             <column name="recovery_code_expire_time" type="timestamp">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="user_settings">
+            <column name="user_id" type="bigint">
+                <constraints primaryKey="true" nullable="false" unique="true"
+                             references="users" referencedColumnNames="id" foreignKeyName="fk_user_settings_user_id"/>
+            </column>
+            <column name="gender" type="varchar(15)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="age_min" type="smallint">
+                <constraints nullable="true"/>
+            </column>
+            <column name="age_max" type="smallint">
                 <constraints nullable="true"/>
             </column>
         </createTable>
@@ -58,7 +77,7 @@
             <column name="lat" type="float">
                 <constraints nullable="false"/>
             </column>
-            <column name="lan" type="float">
+            <column name="lon" type="float">
                 <constraints nullable="false"/>
             </column>
             <column name="timestamp" type="timestamp">
@@ -66,9 +85,16 @@
             </column>
         </createTable>
 
+        <sql endDelimiter=";">
+            create extension if not exists cube;
+            create extension if not exists earthdistance;
+        </sql>
+
         <rollback>
             <dropTable cascadeConstraints="true" tableName="user"/>
+            <dropTable cascadeConstraints="true" tableName="user_settings"/>
             <dropTable cascadeConstraints="true" tableName="authorizations"/>
+            <dropTable cascadeConstraints="true" tableName="gis_data"/>
         </rollback>
     </changeSet>
 </databaseChangeLog>

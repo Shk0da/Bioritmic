@@ -22,24 +22,27 @@ class GisData {
 
     @Column
     @org.springframework.data.relational.core.mapping.Column
-    var lan: Double? = null
+    var lon: Double? = null
 
     @Column(name = "timestamp")
     @org.springframework.data.relational.core.mapping.Column("timestamp")
     var timestamp: Timestamp? = null
+
+    @Transient
+    var distance: Double? = null
 
     companion object {
         fun of(userId: Long, gisDataModel: GisDataModel): GisData {
             val gisData = GisData()
             gisData.userId = userId
             gisData.lat = gisDataModel.lat
-            gisData.lan = gisDataModel.lan
+            gisData.lon = gisDataModel.lon
             gisData.timestamp = Timestamp(System.currentTimeMillis())
             return gisData
         }
     }
 
     override fun toString(): String {
-        return "GisData(userId=$userId, lat=$lat, lan=$lan, timestamp=$timestamp)"
+        return "GisData(userId=$userId, lat=$lat, lon=$lon, timestamp=$timestamp)"
     }
 }

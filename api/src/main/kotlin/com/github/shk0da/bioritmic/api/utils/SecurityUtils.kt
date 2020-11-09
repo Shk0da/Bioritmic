@@ -3,9 +3,15 @@ package com.github.shk0da.bioritmic.api.utils
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken
+import java.security.Principal
 import java.util.*
 
 object SecurityUtils {
+
+    fun getUserId(principal: Principal): Long {
+        return (principal as PreAuthenticatedAuthenticationToken).principal as Long
+    }
 
     fun getUserId(): Long {
         val auth = SecurityContextHolder.getContext().authentication
