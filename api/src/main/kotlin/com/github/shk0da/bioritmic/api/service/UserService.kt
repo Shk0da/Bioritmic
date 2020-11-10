@@ -53,6 +53,7 @@ class UserService(val userJpaRepository: UserJpaRepository,
                                 user.userSettings = it
                                 user
                             }
+                            .switchIfEmpty(Mono.just(user))
                 }
                 .flatMap { it }
     }
