@@ -27,8 +27,6 @@ class UserService(val userJpaRepository: UserJpaRepository,
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
 
-    private val defaultDistance = 1.0
-
     @Transactional(readOnly = true, transactionManager = jpaTransactionManager)
     fun findUserByEmail(email: String): User? {
         return userJpaRepository.findByEmail(email)
@@ -86,13 +84,14 @@ class UserService(val userJpaRepository: UserJpaRepository,
 
     @Transactional(readOnly = true)
     fun searchByFilter(search: UserSearch): Flux<GisUser> {
-        return gisDataR2dbcRepository.findById(search.userId)
+        return gisDataR2dbcRepository.findById(search.userId!!)
                 .map {
                     gisUserR2dbcRepository.findNearest(
                             it.userId!!,
                             it.lat!!,
                             it.lon!!,
-                            search.distance ?: defaultDistance
+                            search.distance,
+                            search.timestamp,
                     )
                 }
                 .flatMapMany { it }

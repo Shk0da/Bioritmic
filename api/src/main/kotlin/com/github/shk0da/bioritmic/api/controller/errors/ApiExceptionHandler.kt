@@ -13,6 +13,7 @@ import com.github.shk0da.bioritmic.api.model.error.ApiErrors
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.Maps
 import org.slf4j.LoggerFactory
+import org.springframework.beans.TypeMismatchException
 import org.springframework.core.codec.DecodingException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -71,6 +72,8 @@ class ApiExceptionHandler {
 
     @ResponseBody
     @ExceptionHandler(
+            IllegalArgumentException::class,
+            TypeMismatchException::class,
             JsonMappingException::class,
             InvalidFormatException::class,
             UnexpectedTypeException::class,
@@ -103,19 +106,25 @@ class ApiExceptionHandler {
             is InvalidFormatException -> {
                 parameter = throwable.path
                         .stream()
-                        .map<String> { it.fieldName }
+                        .map { it.fieldName }
                         .collect(Collectors.joining(", "))
             }
             is JsonMappingException -> {
                 parameter = throwable.path
                         .stream()
-                        .map<String> { it.fieldName }
+                        .map { it.fieldName }
                         .collect(Collectors.joining(", "))
+            }
+            is IllegalArgumentException -> {
+                parameter = throwable.message as String
+            }
+            is TypeMismatchException -> {
+                parameter = throwable.value as String
             }
             is MismatchedInputException -> {
                 parameter = throwable.path
                         .stream()
-                        .map<String> { it.fieldName }
+                        .map { it.fieldName }
                         .collect(Collectors.joining(", "))
             }
             is NumberFormatException -> {

@@ -40,8 +40,7 @@ class User {
     @org.springframework.data.relational.core.mapping.Column("recovery_code_expire_time")
     var recoveryCodeExpireTime: Timestamp? = null
 
-    @JoinColumn(name = "id", referencedColumnName = "id")
-    @OneToOne(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, optional = true)
+    @Transient
     var userSettings: UserSettings? = null
 
     companion object {
