@@ -1,9 +1,9 @@
 package com.github.shk0da.bioritmic.api.controller.search
 
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes
-import com.github.shk0da.bioritmic.api.model.UserInfo
-import com.github.shk0da.bioritmic.api.model.UserInfo.Companion.ofWithCompare
 import com.github.shk0da.bioritmic.api.model.search.UserSearch
+import com.github.shk0da.bioritmic.api.model.user.UserInfo
+import com.github.shk0da.bioritmic.api.model.user.UserInfo.Companion.ofWithCompare
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.slf4j.LoggerFactory

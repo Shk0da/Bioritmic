@@ -1,8 +1,9 @@
-package com.github.shk0da.bioritmic.api.model
+package com.github.shk0da.bioritmic.api.model.gis
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.shk0da.bioritmic.api.domain.GisData
+import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import java.sql.Timestamp
 
 data class GisDataModel(@JsonIgnore val userId: Long? = null,

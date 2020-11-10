@@ -5,7 +5,7 @@ import com.github.shk0da.bioritmic.api.domain.Auth
 import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
-import com.github.shk0da.bioritmic.api.model.UserToken
+import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.api.repository.jpa.AuthJpaRepository
 import com.github.shk0da.bioritmic.api.repository.jpa.UserJpaRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.AuthR2dbcRepository

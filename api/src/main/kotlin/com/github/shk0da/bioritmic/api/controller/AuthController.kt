@@ -6,8 +6,8 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.RecoveryModel
-import com.github.shk0da.bioritmic.api.model.UserModel
-import com.github.shk0da.bioritmic.api.model.UserToken
+import com.github.shk0da.bioritmic.api.model.user.UserModel
+import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.api.service.AuthService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder

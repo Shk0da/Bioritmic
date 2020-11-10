@@ -3,8 +3,8 @@ package com.github.shk0da.bioritmic.api.controller.users
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
-import com.github.shk0da.bioritmic.api.model.GisDataModel
-import com.github.shk0da.bioritmic.api.model.UserInfo
+import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
+import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.slf4j.LoggerFactory

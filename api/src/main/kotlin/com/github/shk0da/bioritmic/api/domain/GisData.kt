@@ -1,6 +1,6 @@
 package com.github.shk0da.bioritmic.api.domain
 
-import com.github.shk0da.bioritmic.api.model.GisDataModel
+import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import java.sql.Timestamp
 import javax.persistence.*
 

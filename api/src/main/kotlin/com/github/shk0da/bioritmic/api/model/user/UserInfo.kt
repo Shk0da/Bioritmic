@@ -1,9 +1,10 @@
-package com.github.shk0da.bioritmic.api.model
+package com.github.shk0da.bioritmic.api.model.user
 
 import com.fasterxml.jackson.annotation.JsonFormat
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.shk0da.bioritmic.api.domain.GisUser
 import com.github.shk0da.bioritmic.api.domain.User
+import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import com.github.shk0da.bioritmic.api.service.BiorhythmService
 import java.util.*
 

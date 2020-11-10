@@ -4,12 +4,14 @@ import com.github.shk0da.bioritmic.api.configuration.datasource.JpaConfiguration
 import com.github.shk0da.bioritmic.api.domain.GisData
 import com.github.shk0da.bioritmic.api.domain.GisUser
 import com.github.shk0da.bioritmic.api.domain.User
+import com.github.shk0da.bioritmic.api.domain.UserSettings
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
-import com.github.shk0da.bioritmic.api.model.GisDataModel
-import com.github.shk0da.bioritmic.api.model.UserInfo
-import com.github.shk0da.bioritmic.api.model.UserModel
+import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.search.UserSearch
+import com.github.shk0da.bioritmic.api.model.user.UserInfo
+import com.github.shk0da.bioritmic.api.model.user.UserModel
+import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
 import com.github.shk0da.bioritmic.api.repository.jpa.UserJpaRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.GisDataR2dbcRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.GisUserR2dbcRepository
@@ -134,5 +136,36 @@ class UserService(val userJpaRepository: UserJpaRepository,
                 .doOnError {
                     log.error("Failed get nearest users for [{}]: {}", search, it.message)
                 }
+    }
+
+    @Transactional
+    fun getUserSettingsById(userId: Long): Mono<UserSettings> {
+        return userSettingsR2dbcRepository.findById(userId)
+                .switchIfEmpty(Mono.error(ApiException(ErrorCode.SETTINGS_NOT_FOUND)))
+    }
+
+    @Transactional
+    fun updateUserSettingsById(userId: Long, settings: UserSettingsModel): Mono<UserSettings> {
+        return userSettingsR2dbcRepository.findById(userId)
+                .switchIfEmpty(Mono.just(UserSettings()))
+                .map { userSettings ->
+                    with(userSettings) {
+                        if (null != gender) {
+                            gender = settings.gender
+                        }
+                        if (null != ageMin) {
+                            ageMin = settings.ageMin
+                        }
+                        if (null != ageMax) {
+                            ageMax = settings.ageMax
+                        }
+                        if (null != distance) {
+                            distance = settings.distance
+                        }
+                    }
+                    userSettingsR2dbcRepository.save(userSettings)
+                }
+                .flatMap { it }
+                .switchIfEmpty(Mono.error(ApiException(ErrorCode.SETTINGS_NOT_FOUND)))
     }
 }

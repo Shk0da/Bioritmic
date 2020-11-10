@@ -1,6 +1,6 @@
 package com.github.shk0da.bioritmic.api.domain
 
-import com.github.shk0da.bioritmic.api.model.UserModel
+import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import java.sql.Timestamp
 import java.util.*
