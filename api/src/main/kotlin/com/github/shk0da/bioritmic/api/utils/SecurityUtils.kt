@@ -9,7 +9,10 @@ import java.util.*
 
 object SecurityUtils {
 
-    fun getUserId(principal: Principal): Long {
+    fun getUserId(principal: Principal?): Long {
+        if (null == principal) {
+            throw ApiException(ErrorCode.AUTH_NOT_FOUND)
+        }
         return (principal as PreAuthenticatedAuthenticationToken).principal as Long
     }
 

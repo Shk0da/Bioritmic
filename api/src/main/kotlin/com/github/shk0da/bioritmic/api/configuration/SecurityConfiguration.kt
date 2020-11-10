@@ -37,7 +37,8 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
             "$API_WITH_VERSION_1/refresh-token",
             "$API_WITH_VERSION_1/recovery",
             "$API_WITH_VERSION_1/reset-password",
-            "$API_WITH_VERSION_1/authorization"
+            "$API_WITH_VERSION_1/authorization",
+            "$API_WITH_VERSION_1/update-email"
     )
 
     override fun addCorsMappings(registry: CorsRegistry) {

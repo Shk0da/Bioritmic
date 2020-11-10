@@ -1,24 +1,35 @@
 package com.github.shk0da.bioritmic.api.model
 
 import com.fasterxml.jackson.annotation.JsonFormat
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.shk0da.bioritmic.api.domain.GisUser
 import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.service.BiorhythmService
 import java.util.*
 
-data class UserInfo(val id: Long? = null,
+data class UserInfo(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+                    val id: Long? = null,
                     val name: String? = null,
                     val email: String? = null,
                     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
                     val birthday: Date? = null,
+                    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val age: Int? = null,
+                    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val compare: HashMap<String, Double>? = null,
+                    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val isBioCompatible: Boolean? = null,
+                    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val isHoroCompatible: Boolean? = null,
+                    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val isFullCompatible: Boolean? = null,
+                    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val image: String? = null,
+                    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val lat: Double? = null,
+                    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val lon: Double? = null,
+                    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val distance: Double? = null) : BasicPresentation {
 
     companion object {

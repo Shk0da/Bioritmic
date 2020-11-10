@@ -32,7 +32,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     fun registration(@RequestBody userModel: UserModel): Mono<ResponseEntity<UserModel>> {
         with(userModel) {
             if (!isFilledInput()) throw ApiException(INVALID_PARAMETER, ImmutableMap.of(PARAMETER_NAME, "user"))
-            if (userService.isUserExists(userModel)) throw ApiException(USER_EXISTS)
+            if (userService.isUserExists(userModel.email)) throw ApiException(USER_EXISTS)
         }
         return userService.createNewUser(userModel)
                 .map { UserModel.of(it) }
@@ -68,6 +68,20 @@ class AuthController(val userService: UserService, val authService: AuthService)
         return authService.resetPasswordAndSendEmail(user)
                 .map {
                     log.debug("Reset password for: {}", user)
+                    ResponseEntity.status(HttpStatus.OK).build()
+                }
+    }
+
+    // GET /update-email?code=$code&email=$newEmail
+    @GetMapping(value = ["/update-email"], params = ["code", "email"], produces = [APPLICATION_JSON_VALUE])
+    fun updateEmail(code: String, email: String): Mono<ResponseEntity<Any>> {
+        val user = authService.findUserByRecoveryCode(code) ?: throw ApiException(INVALID_RECOVERY_CODE)
+        if (null == user.recoveryCodeExpireTime && user.recoveryCodeExpireTime!!.time < System.currentTimeMillis()) {
+            throw ApiException(INVALID_RECOVERY_CODE)
+        }
+        return userService.updateEmail(user, email)
+                .map {
+                    log.debug("New email for: {}", user)
                     ResponseEntity.status(HttpStatus.OK).build()
                 }
     }

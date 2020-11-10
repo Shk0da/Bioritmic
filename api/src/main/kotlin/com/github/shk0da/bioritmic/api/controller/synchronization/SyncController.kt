@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Flux
 import java.sql.Timestamp
@@ -22,7 +23,7 @@ class SyncController(val userService: UserService) {
 
     // GET /synchronization -> timestamp
     @GetMapping(params = ["timestamp"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun sync(timestamp: Long): Flux<UserInfo> {
+    fun sync(@RequestParam("timestamp") timestamp: Long): Flux<UserInfo> {
         val userId = getUserId()
         return userService.findUserByIdWithSettings(userId)
                 .map { UserSearch.of(it).withTimestamp(Timestamp(timestamp)) }

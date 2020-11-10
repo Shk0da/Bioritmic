@@ -115,12 +115,6 @@ class ApiExceptionHandler {
                         .map { it.fieldName }
                         .collect(Collectors.joining(", "))
             }
-            is IllegalArgumentException -> {
-                parameter = throwable.message as String
-            }
-            is TypeMismatchException -> {
-                parameter = throwable.value as String
-            }
             is MismatchedInputException -> {
                 parameter = throwable.path
                         .stream()
@@ -129,6 +123,15 @@ class ApiExceptionHandler {
             }
             is NumberFormatException -> {
                 throw RuntimeException(error)
+            }
+            is IllegalArgumentException -> {
+                parameter = throwable.message as String
+            }
+            is TypeMismatchException -> {
+                parameter = throwable.value as String
+            }
+            is ServerWebInputException -> {
+                parameter = throwable.methodParameter?.parameterName
             }
             is JsonParseException -> {
                 return handleApiException(ApiException(ErrorCode.JSON_CANT_BE_PARSED))

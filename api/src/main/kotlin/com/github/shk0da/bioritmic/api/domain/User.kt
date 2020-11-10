@@ -3,6 +3,8 @@ package com.github.shk0da.bioritmic.api.domain
 import com.github.shk0da.bioritmic.api.model.UserModel
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import java.sql.Timestamp
+import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.persistence.*
 
 @Entity
@@ -41,7 +43,19 @@ class User {
     var recoveryCodeExpireTime: Timestamp? = null
 
     @Transient
+    @org.springframework.data.annotation.Transient
     var userSettings: UserSettings? = null
+
+    fun setRecoveryCode() {
+        val code = UUID.randomUUID().toString()
+        recoveryCode = code
+        recoveryCodeExpireTime = Timestamp(System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(60))
+    }
+
+    fun resetRecoveryCode() {
+        recoveryCode?.let { recoveryCode = null }
+        recoveryCodeExpireTime?.let { recoveryCodeExpireTime = null }
+    }
 
     companion object {
         fun of(userModel: UserModel): User {

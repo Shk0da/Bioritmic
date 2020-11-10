@@ -16,9 +16,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
-import java.sql.Timestamp
-import java.util.*
-import java.util.concurrent.TimeUnit
 
 @Service
 class AuthService(val authJpaRepository: AuthJpaRepository,
@@ -76,14 +73,10 @@ class AuthService(val authJpaRepository: AuthJpaRepository,
             throw ApiException("Email was not be empty!")
         }
 
-        val code = UUID.randomUUID().toString()
-        user.recoveryCode = code
-        user.recoveryCodeExpireTime = Timestamp(System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(60))
+        user.setRecoveryCode()
         return userR2dbcRepository.save(user)
                 .map {
-                    val link = "http://localhost:8080/api/v1/reset-password?code=$code"
-                    log.debug("Send recovery link: '{}' for {}", link, user)
-                    emailService.sendTextEmail(user.email!!, "Reset password", link)
+                    emailService.sendRecoveryLink(user.email!!, user.recoveryCode!!)
                 }
     }
 
@@ -100,15 +93,13 @@ class AuthService(val authJpaRepository: AuthJpaRepository,
         if (null == user.email) {
             throw ApiException("Email was not be empty!")
         }
-        user.recoveryCode?.let { user.recoveryCode = null }
-        user.recoveryCodeExpireTime?.let { user.recoveryCodeExpireTime = null }
+        user.resetRecoveryCode()
         val newPassword = generateRandomPassword(10)
         user.password = passwordEncoder.encode(newPassword)
         return userR2dbcRepository.save(user)
                 .map {
                     authR2dbcRepository.deleteByUserId(it.id!!)
-                    log.debug("Send new password: '{}' for {}", newPassword, user)
-                    emailService.sendTextEmail(user.email!!, "New password", newPassword)
+                    emailService.sendNewPassword(user.email!!, newPassword)
                 }
     }
 }

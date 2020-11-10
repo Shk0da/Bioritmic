@@ -10,6 +10,7 @@ import org.springframework.scheduling.TaskScheduler
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.concurrent.ConcurrentTaskExecutor
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
+import java.lang.System.setProperty
 import java.util.concurrent.Executors
 import kotlin.math.max
 
@@ -23,10 +24,13 @@ class AsyncConfiguration {
 
         private val AVAILABLE_PROCESSORS = max(4, Runtime.getRuntime().availableProcessors())
         private val AVAILABLE_TASK_THREADS = max(16, AVAILABLE_PROCESSORS * 4)
+        private val AVAILABLE_NETTY_WORKERS = AVAILABLE_TASK_THREADS * 2
 
         init {
+            setProperty("reactor.ipc.netty.workerCount", AVAILABLE_NETTY_WORKERS.toString())
             log.info("Available processors: {}", AVAILABLE_PROCESSORS)
             log.info("Available task threads: {}", AVAILABLE_TASK_THREADS)
+            log.info("Available netty workerCount: {}", AVAILABLE_NETTY_WORKERS)
         }
     }
 

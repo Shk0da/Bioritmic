@@ -29,6 +29,13 @@ class UserController(val userService: UserService) {
         return userService.findUserById(userId).map { UserInfo.of(it) }
     }
 
+    // PUT/PATH /me -> UserInfo
+    @RequestMapping(value = ["/me"], method = [RequestMethod.PATCH, RequestMethod.PUT], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun update(@RequestBody userInfo: UserInfo, principal: Principal): Mono<UserInfo> {
+        val userId = getUserId(principal)
+        return userService.updateUserById(userId, userInfo).map { UserInfo.of(it) }
+    }
+
     // DELETE /me -> send email with approve ??
     @DeleteMapping(value = ["/me"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun deleteMe(): Mono<Void> {
