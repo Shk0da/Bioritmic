@@ -5,6 +5,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.GisDataModel
 import com.github.shk0da.bioritmic.api.model.UserInfo
+import com.github.shk0da.bioritmic.api.model.UserInfo.Companion.ofWithCompare
 import com.github.shk0da.bioritmic.api.model.search.UserSearch
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
@@ -83,13 +84,13 @@ class UserController(val userService: UserService) {
                             gender = settings?.gender,
                             ageMin = settings?.ageMin,
                             ageMax = settings?.ageMax,
+                            distance = settings?.distance
                     )
                 }
-                .map {
-                    log.debug("User search: {}", it)
-                    userService.searchByFilter(it)
+                .map {search ->
+                    log.debug("User search: {}", search)
+                    userService.searchByFilter(search) .map { gisUser -> ofWithCompare(gisUser, search.birthdate) }
                 }
                 .flatMapMany { it }
-                .map { UserInfo.of(it) }
     }
 }

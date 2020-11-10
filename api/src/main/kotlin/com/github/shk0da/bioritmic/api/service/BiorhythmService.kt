@@ -1,17 +1,18 @@
 package com.github.shk0da.bioritmic.api.service
 
-import com.github.shk0da.bioritmic.api.model.BiorhythmModel
-import org.springframework.stereotype.Service
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.collections.HashMap
 import kotlin.math.abs
 import kotlin.math.floor
 
-@Service
 class BiorhythmService {
 
-    private val biorhythms: Map<String, BiorhythmModel> = with(HashMap<String, BiorhythmModel>()) {
+    companion object {
+        val instance: BiorhythmService = BiorhythmService()
+    }
+
+    private val biorhythms: Map<String, Double> = with(HashMap<String, Double>()) {
         /*
            Физический — 23,6884 суток — соответствует нижней чакре Муладхара
            Эмоциональный — 28,426125 суток — вторая чакра Свадхистана
@@ -21,13 +22,13 @@ class BiorhythmService {
            Интуитивный — 47,3769 суток — шестая чакра Аджна
            Высшая чакра — 52,1146 суток — седьмая чакра Сахасрара
         */
-        put("fiz", BiorhythmModel("Физическая", 23.6884))
-        put("emo", BiorhythmModel("Эмоциональная", 28.426125))
-        put("int", BiorhythmModel("Интелектуальная", 33.163812))
-        put("hrt", BiorhythmModel("Сердечный", 37.901499))
-        put("crt", BiorhythmModel("Творческий", 42.6392))
-        put("inv", BiorhythmModel("Интуитивный", 47.3769))
-        put("upp", BiorhythmModel("Высшая чакра", 52.1146))
+        put("Physical", 23.6884)
+        put("Emotional", 28.426125)
+        put("Intellectual", 33.163812)
+        put("Heartfelt", 37.901499)
+        put("Creative", 42.6392)
+        put("Intuitive", 47.3769)
+        put("HighestChakra", 52.1146)
         this
     }
 
@@ -115,9 +116,9 @@ class BiorhythmService {
         val diffInMillis: Long = abs(birthDate1.time - birthDate2.time)
         val livedDaysDiff = TimeUnit.DAYS.convert(diffInMillis, TimeUnit.MILLISECONDS)
         biorhythms.forEach {
-            val relation = livedDaysDiff / it.value.cycle
+            val relation = livedDaysDiff / it.value
             val rhythm = floor((relation - floor(relation)) * 100)
-            compare[it.value.name] = if (rhythm > 50) ((rhythm - 50) * 2) else (-1) * ((rhythm - 50) * 2)
+            compare[it.key] = if (rhythm > 50) ((rhythm - 50) * 2) else (-1) * ((rhythm - 50) * 2)
         }
         return compare
     }
@@ -132,7 +133,24 @@ class BiorhythmService {
         return average >= 60
     }
 
+    fun boolCompare(compare: HashMap<String, Double>): Boolean {
+        val values = compare.values
+        val average = values.sum() / values.size
+        return average >= 60
+    }
+
     fun fullCompare(birthDate1: Date, birthDate2: Date): Boolean {
         return horoCompare(birthDate1, birthDate2) && boolCompare(birthDate1, birthDate2)
+    }
+
+    fun calculateAge(birthDate: Date): Int {
+        return with(Calendar.getInstance(TimeZone.getDefault())) {
+            time = birthDate
+
+            val today = Calendar.getInstance()
+            var age = today[Calendar.YEAR] - this[Calendar.YEAR]
+            if (today[Calendar.DAY_OF_YEAR] < this[Calendar.DAY_OF_YEAR]) age--
+            age
+        }
     }
 }

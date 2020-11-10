@@ -47,6 +47,9 @@
             <column name="age_max" type="smallint">
                 <constraints nullable="true"/>
             </column>
+            <column name="distance" type="float">
+                <constraints nullable="true"/>
+            </column>
         </createTable>
 
         <createTable tableName="authorizations">

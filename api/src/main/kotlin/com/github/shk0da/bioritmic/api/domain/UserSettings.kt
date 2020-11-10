@@ -28,6 +28,10 @@ class UserSettings {
     @org.springframework.data.relational.core.mapping.Column
     var ageMax: Int? = null
 
+    @Column(name = "distance")
+    @org.springframework.data.relational.core.mapping.Column
+    var distance: Double? = null
+
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     @OneToOne(fetch = FetchType.LAZY)
     var user: User? = null

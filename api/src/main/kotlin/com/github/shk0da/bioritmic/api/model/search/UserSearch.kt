@@ -6,4 +6,5 @@ data class UserSearch(val userId: Long,
                       val birthdate: Date,
                       val gender: Gender? = null,
                       val ageMin: Int? = null,
-                      val ageMax: Int? = null)
+                      val ageMax: Int? = null,
+                      val distance: Double? = null)
