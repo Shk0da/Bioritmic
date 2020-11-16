@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.shk0da.bioritmic.api.domain.GisUser
 import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.model.BasicPresentation
+import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.service.BiorhythmService
 import java.util.*
 
@@ -16,6 +17,8 @@ data class UserInfo(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val birthday: Date? = null,
                     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val age: Int? = null,
+                    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+                    val gender: Gender? = null,
                     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val compare: HashMap<String, Double>? = null,
                     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
@@ -46,6 +49,7 @@ data class UserInfo(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     id = gisUser.id,
                     name = gisUser.name,
                     age = biorhythmService.calculateAge(Date(gisUser.birthday!!.time)),
+                    gender = gisUser.getGender(),
                     lat = gisUser.lat,
                     lon = gisUser.lon,
                     distance = gisUser.distance
@@ -62,6 +66,7 @@ data class UserInfo(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     id = gisUser.id,
                     name = gisUser.name,
                     age = biorhythmService.calculateAge(Date(gisUser.birthday!!.time)),
+                    gender = gisUser.getGender(),
                     lat = gisUser.lat,
                     lon = gisUser.lon,
                     distance = gisUser.distance,

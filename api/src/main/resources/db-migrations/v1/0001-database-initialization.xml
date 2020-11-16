@@ -25,6 +25,9 @@
             <column name="birthday" type="timestamp">
                 <constraints nullable="false"/>
             </column>
+            <column name="gender" type="smallint">
+                <constraints nullable="true"/>
+            </column>
             <column name="recovery_code" type="varchar(255)">
                 <constraints nullable="true"/>
             </column>
@@ -38,7 +41,7 @@
                 <constraints primaryKey="true" nullable="false" unique="true"
                              references="users" referencedColumnNames="id" foreignKeyName="fk_user_settings_user_id"/>
             </column>
-            <column name="gender" type="varchar(15)">
+            <column name="gender" type="smallint">
                 <constraints nullable="true"/>
             </column>
             <column name="age_min" type="smallint">

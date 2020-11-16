@@ -11,6 +11,7 @@ import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
 import java.security.Principal
+import javax.validation.Valid
 
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/search")
@@ -33,7 +34,8 @@ class SearchController(val userService: UserService) {
 
     // POST /search/ <- List of Users around with custom search
     @PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun search(@RequestBody userSearch: UserSearch, principal: Principal): Flux<UserInfo> {
+    fun search(@Valid  @RequestBody userSearch: UserSearch, principal: Principal): Flux<UserInfo> {
+        userSearch.validate()
         val userId = getUserId(principal)
         return userService.findUserById(userId)
                 .map { userSearch.withUser(it) }

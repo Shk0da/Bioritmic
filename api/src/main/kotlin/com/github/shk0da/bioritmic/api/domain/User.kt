@@ -1,5 +1,6 @@
 package com.github.shk0da.bioritmic.api.domain
 
+import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import java.sql.Timestamp
@@ -34,6 +35,10 @@ class User {
     @org.springframework.data.relational.core.mapping.Column("birthday")
     var birthday: Timestamp? = null
 
+    @Column(name = "gender")
+    @org.springframework.data.relational.core.mapping.Column
+    var gender: Short? = null
+
     @Column(name = "recovery_code")
     @org.springframework.data.relational.core.mapping.Column("recovery_code")
     var recoveryCode: String? = null
@@ -45,6 +50,18 @@ class User {
     @Transient
     @org.springframework.data.annotation.Transient
     var userSettings: UserSettings? = null
+
+    fun getGender(): Gender? {
+        if (null == this.gender || Gender.values().size < this.gender as Int) {
+            return null
+        }
+        return Gender.values()[this.gender as Int]
+    }
+
+    fun setGender(gender: Gender?) {
+        if (null == gender) return
+        this.gender = gender.ordinal as Short
+    }
 
     fun setRecoveryCode() {
         val code = UUID.randomUUID().toString()
@@ -63,12 +80,13 @@ class User {
             user.name = userModel.name
             user.email = userModel.email
             user.birthday = Timestamp(userModel.birthday.time)
+            user.setGender(userModel.gender)
             user.password = passwordEncoder.encode(userModel.password)
             return user
         }
     }
 
     override fun toString(): String {
-        return "User(id=$id, name=$name, email=$email, birthday=$birthday)"
+        return "User(id=$id, name=$name, email=$email, birthday=$birthday, gender=${getGender()})"
     }
 }

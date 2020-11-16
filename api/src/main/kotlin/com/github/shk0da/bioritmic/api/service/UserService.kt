@@ -107,6 +107,7 @@ class UserService(val userJpaRepository: UserJpaRepository,
     @Transactional(readOnly = true)
     fun getGis(userId: Long): Mono<GisData> {
         return gisDataR2dbcRepository.findById(userId)
+                .switchIfEmpty(Mono.error(ApiException(ErrorCode.COORDINATES_NOT_FOUND)))
     }
 
     @Transactional
@@ -123,13 +124,13 @@ class UserService(val userJpaRepository: UserJpaRepository,
     @Transactional(readOnly = true)
     fun searchByFilter(search: UserSearch): Flux<GisUser> {
         return gisDataR2dbcRepository.findById(search.userId!!)
+                .switchIfEmpty(Mono.error(ApiException(ErrorCode.COORDINATES_NOT_FOUND)))
                 .map {
                     gisUserR2dbcRepository.findNearest(
                             it.userId!!,
-                            it.lat!!,
-                            it.lon!!,
-                            search.distance,
-                            search.timestamp,
+                            it.lat!!, it.lon!!,
+                            search.distance, search.timestamp,
+                            search.gender, search.ageMin, search.ageMax
                     )
                 }
                 .flatMapMany { it }
@@ -150,16 +151,16 @@ class UserService(val userJpaRepository: UserJpaRepository,
                 .switchIfEmpty(Mono.just(UserSettings()))
                 .map { userSettings ->
                     with(userSettings) {
-                        if (null != gender) {
-                            gender = settings.gender
+                        if (null != settings.gender) {
+                            gender = settings.gender!!.ordinal as Short
                         }
-                        if (null != ageMin) {
+                        if (null != settings.ageMin) {
                             ageMin = settings.ageMin
                         }
-                        if (null != ageMax) {
+                        if (null != settings.ageMax) {
                             ageMax = settings.ageMax
                         }
-                        if (null != distance) {
+                        if (null != settings.distance) {
                             distance = settings.distance
                         }
                     }
