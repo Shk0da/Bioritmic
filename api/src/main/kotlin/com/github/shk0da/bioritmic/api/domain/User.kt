@@ -52,15 +52,15 @@ class User {
     var userSettings: UserSettings? = null
 
     fun getGender(): Gender? {
-        if (null == this.gender || Gender.values().size < this.gender as Int) {
+        if (null == this.gender || Gender.values().size < this.gender!!.toInt()) {
             return null
         }
-        return Gender.values()[this.gender as Int]
+        return Gender.values()[this.gender!!.toInt()]
     }
 
     fun setGender(gender: Gender?) {
         if (null == gender) return
-        this.gender = gender.ordinal as Short
+        this.gender = gender.ordinal.toShort()
     }
 
     fun setRecoveryCode() {

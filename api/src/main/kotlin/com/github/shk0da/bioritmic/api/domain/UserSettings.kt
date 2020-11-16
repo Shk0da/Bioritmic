@@ -1,12 +1,14 @@
 package com.github.shk0da.bioritmic.api.domain
 
 import com.github.shk0da.bioritmic.api.model.search.Gender
+import org.springframework.data.annotation.Transient
+import org.springframework.data.domain.Persistable
 import javax.persistence.*
 
 @Entity
 @Table(name = "user_settings")
 @org.springframework.data.relational.core.mapping.Table("user_settings")
-class UserSettings {
+class UserSettings : Persistable<Long> {
 
     @Id
     @Column(name = "user_id")
@@ -31,14 +33,31 @@ class UserSettings {
     @org.springframework.data.relational.core.mapping.Column
     var distance: Double? = null
 
+    @Transient
+    private var isNew: Boolean = false
+
+    @Transient
+    override fun getId(): Long? {
+        return userId
+    }
+
+    @Transient
+    override fun isNew(): Boolean {
+       return isNew
+    }
+
+    fun markAsNew() {
+        isNew = true
+    }
+
     fun getGender(): Gender? {
-        if (null == this.gender || Gender.values().size < this.gender as Int) {
+        if (null == this.gender || Gender.values().size < this.gender!!.toInt()) {
             return null
         }
-        return Gender.values()[this.gender as Int]
+        return Gender.values()[this.gender!!.toInt()]
     }
 
     fun setGender(gender: Gender) {
-        this.gender = gender.ordinal as Short
+        this.gender = gender.ordinal.toShort()
     }
 }

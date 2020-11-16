@@ -151,8 +151,12 @@ class UserService(val userJpaRepository: UserJpaRepository,
                 .switchIfEmpty(Mono.just(UserSettings()))
                 .map { userSettings ->
                     with(userSettings) {
+                        if (null == this.userId) {
+                            markAsNew()
+                        }
+                        this.userId = userId
                         if (null != settings.gender) {
-                            gender = settings.gender!!.ordinal as Short
+                            gender = settings.gender!!.ordinal.toShort()
                         }
                         if (null != settings.ageMin) {
                             ageMin = settings.ageMin
@@ -167,6 +171,5 @@ class UserService(val userJpaRepository: UserJpaRepository,
                     userSettingsR2dbcRepository.save(userSettings)
                 }
                 .flatMap { it }
-                .switchIfEmpty(Mono.error(ApiException(ErrorCode.SETTINGS_NOT_FOUND)))
     }
 }
