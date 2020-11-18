@@ -12,6 +12,7 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
     INVALID_PARAMETER_SIZE("API-400.5", "The parameter [\${${Constants.PARAMETER_NAME}}] cannot be longer than [\${${Constants.PARAMETER_VALUE_LENGTH}}] characters.", HttpStatus.BAD_REQUEST),
     INVALID_PARAMETER_RANGE("API-400.6", "Parameter [\${${Constants.PARAMETER_NAME}}] value is invalid. Valid range of values: [\${${Constants.PARAMETER_VALUE_START}}-\${${Constants.PARAMETER_VALUE_END}}].", HttpStatus.BAD_REQUEST),
     INVALID_RECOVERY_CODE("API-400.7", "Recovery code is invalid.", HttpStatus.BAD_REQUEST),
+    MANY_BOOKMARKS("API-400.8", "User has to many bookmarks.", HttpStatus.BAD_REQUEST),
 
     USER_EXISTS("API-409", "The user with this email is already registered.", HttpStatus.CONFLICT),
 

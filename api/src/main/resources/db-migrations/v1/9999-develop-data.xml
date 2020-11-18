@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="9999" author="scaffolding" runOnChange="true">
+
+        <comment>Init develop data</comment>
+
+        <sql endDelimiter=";">
+            INSERT INTO public.users ("name",email,"password",birthday,gender,recovery_code,recovery_code_expire_time) VALUES
+            ('Name 1','alxndrwht91@gmail.com','$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.','1990-01-14 00:00:00.000',0,NULL,NULL)
+            ,('SuperBoy','alxndrwht90@gmail.com','$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.','1990-01-14 00:00:00.000',NULL,NULL,NULL)
+            ;
+        </sql>
+
+        <sql endDelimiter=";">
+            INSERT INTO public.authorizations (user_id,access_token,refresh_token,expire_time) VALUES
+            (1,'d96787ad-55fe-44f5-8283-a51789cccb5f','bc7377d5-ee1a-4793-a9bc-ce044d83b152','2020-11-16 13:54:57.254')
+            ;
+        </sql>
+
+        <sql endDelimiter=";">
+            INSERT INTO public.gis_data (user_id,lat,lon,"timestamp") VALUES
+            (1,59.983184,30.218012,'2021-11-16 14:02:39.000')
+            ,(2,59.983184,30.218012,'2021-11-16 14:02:39.000')
+            ;
+        </sql>
+
+        <sql endDelimiter=";">
+            INSERT INTO public.user_settings (user_id,gender,age_min,age_max,distance) VALUES
+            (1,1,19,32,30.0)
+            ;
+        </sql>
+
+        <sql endDelimiter=";">
+            INSERT INTO public.bookmarks (user_id,bookmark_user_id,"timestamp") VALUES
+            (1,2,'2020-11-18 10:54:49.499')
+            ,(1,1,'2020-11-18 10:55:11.074')
+            ;
+        </sql>
+
+    </changeSet>
+</databaseChangeLog>

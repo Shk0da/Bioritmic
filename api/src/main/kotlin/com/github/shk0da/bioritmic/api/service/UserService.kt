@@ -1,28 +1,24 @@
 package com.github.shk0da.bioritmic.api.service
 
 import com.github.shk0da.bioritmic.api.configuration.datasource.JpaConfiguration.Companion.jpaTransactionManager
-import com.github.shk0da.bioritmic.api.domain.GisData
-import com.github.shk0da.bioritmic.api.domain.GisUser
-import com.github.shk0da.bioritmic.api.domain.User
-import com.github.shk0da.bioritmic.api.domain.UserSettings
+import com.github.shk0da.bioritmic.api.domain.*
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.search.UserSearch
+import com.github.shk0da.bioritmic.api.model.user.UserBookmark
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
 import com.github.shk0da.bioritmic.api.repository.jpa.UserJpaRepository
-import com.github.shk0da.bioritmic.api.repository.r2dbc.GisDataR2dbcRepository
-import com.github.shk0da.bioritmic.api.repository.r2dbc.GisUserR2dbcRepository
-import com.github.shk0da.bioritmic.api.repository.r2dbc.UserR2dbcRepository
-import com.github.shk0da.bioritmic.api.repository.r2dbc.UserSettingsR2dbcRepository
+import com.github.shk0da.bioritmic.api.repository.r2dbc.*
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.ImageTag
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.cropAndSaveUserImage
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.deleteUserImages
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.profileImagePath
 import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
+import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkUserBookmarks
 import org.slf4j.LoggerFactory
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
@@ -41,6 +37,7 @@ class UserService(val userJpaRepository: UserJpaRepository,
                   val gisDataR2dbcRepository: GisDataR2dbcRepository,
                   val userSettingsR2dbcRepository: UserSettingsR2dbcRepository,
                   val gisUserR2dbcRepository: GisUserR2dbcRepository,
+                  val bookmarkR2dbcRepository: BookmarkR2dbcRepository,
                   val emailService: EmailService) {
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
@@ -207,11 +204,44 @@ class UserService(val userJpaRepository: UserJpaRepository,
                     cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_250x250)
                 }
                 .doOnError {
-                    log.error("Failed save for userId [{}]: {}", userId, it.message)
+                    log.error("Failed save photos for userId [{}]: {}", userId, it.message)
+                    Mono.error<Mono<Void>>(it)
                 }
     }
 
     fun deletePhoto(userId: Long): Mono<Any> {
         return just(deleteUserImages(userId))
+    }
+
+    @Transactional
+    fun findBookmarksByUserId(userId: Long): Flux<Bookmark> {
+        return bookmarkR2dbcRepository.findAllByUserId(userId)
+    }
+
+    @Transactional
+    fun saveBookmarks(userId: Long, bookmarks: Flux<UserBookmark>): Flux<Bookmark> {
+        return bookmarkR2dbcRepository.findAllByUserId(userId)
+                .map { it.bookmarkUserId ?: -1 }
+                .collectList()
+                .map { checkUserBookmarks(it) }
+                .map { existUserIds ->
+                    val filteredBookmarks = bookmarks
+                            .filter { !existUserIds.contains(it.userId) }
+                            .map { Bookmark.of(userId, it) }
+                    bookmarkR2dbcRepository.saveAll(filteredBookmarks)
+                    userId
+                }
+                .switchIfEmpty(just(userId))
+                .map { bookmarkR2dbcRepository.findAllByUserId(it) }
+                .flatMapMany { it }
+                .doOnError {
+                    log.error("Failed save bookmarks for userId [{}]: {}", userId, it.message)
+                    Mono.error<Flux<Bookmark>>(it)
+                }
+    }
+
+    @Transactional
+    fun deleteBookmarks(userId: Long, bookmarks: List<UserBookmark>): Mono<Void> {
+        return bookmarkR2dbcRepository.deleteByUserIdAndBookmarkUserIdIn(userId, bookmarks.map { it.userId!! })
     }
 }

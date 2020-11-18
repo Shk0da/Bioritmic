@@ -32,4 +32,9 @@ object ValidateUtils {
             ))
         }
     }
+
+    fun checkUserBookmarks(it: MutableList<Long>): List<Long> {
+        if (it.size >= 100) throw ApiException(ErrorCode.MANY_BOOKMARKS)
+        return it
+    }
 }

@@ -22,7 +22,7 @@
             <column name="password" type="varchar(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="birthday" type="timestamp">
+            <column name="birthday" type="timestamp" defaultValue="NOW()">
                 <constraints nullable="false"/>
             </column>
             <column name="gender" type="smallint">
@@ -69,7 +69,7 @@
                 <constraints nullable="false"/>
             </column>
             <column name="expire_time" type="timestamp">
-                <constraints nullable="false"/>
+                <constraints nullable="true"/>
             </column>
         </createTable>
 
@@ -86,7 +86,7 @@
             <column name="lon" type="float">
                 <constraints nullable="false"/>
             </column>
-            <column name="timestamp" type="timestamp">
+            <column name="timestamp" type="timestamp" defaultValue="NOW()">
                 <constraints nullable="false"/>
             </column>
         </createTable>
@@ -96,11 +96,29 @@
             create extension if not exists earthdistance;
         </sql>
 
+        <createTable tableName="bookmarks">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" unique="true"/>
+            </column>
+            <column name="user_id" type="bigint">
+                <constraints nullable="false" references="users" referencedColumnNames="id" foreignKeyName="fk_bookmarks_user_id"/>
+            </column>
+            <column name="bookmark_user_id" type="bigint">
+                <constraints nullable="false" references="users" referencedColumnNames="id" foreignKeyName="fk_bookmarks_bookmark_user_id"/>
+            </column>
+            <column name="timestamp" type="timestamp" defaultValue="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="bookmarks" columnNames="user_id,bookmark_user_id" constraintName="uq_bookmarks"/>
+
         <rollback>
-            <dropTable cascadeConstraints="true" tableName="user"/>
-            <dropTable cascadeConstraints="true" tableName="user_settings"/>
-            <dropTable cascadeConstraints="true" tableName="authorizations"/>
+            <dropTable cascadeConstraints="true" tableName="bookmarks"/>
             <dropTable cascadeConstraints="true" tableName="gis_data"/>
+            <dropTable cascadeConstraints="true" tableName="authorizations"/>
+            <dropTable cascadeConstraints="true" tableName="user_settings"/>
+            <dropTable cascadeConstraints="true" tableName="user"/>
         </rollback>
     </changeSet>
 </databaseChangeLog>

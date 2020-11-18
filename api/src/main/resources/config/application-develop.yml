@@ -10,6 +10,7 @@ logging.level.org.springframework.data.r2dbc.core.DefaultDatabaseClient: debug
 logging.level.com.github.shk0da.bioritmic.api: debug
 
 spring:
+  liquibase.contexts: develop
   mail:
     host: smtp.bioritmic.com
     username: admin@bioritmic.com
