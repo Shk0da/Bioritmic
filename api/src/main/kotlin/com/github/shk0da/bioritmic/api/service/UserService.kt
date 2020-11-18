@@ -210,4 +210,8 @@ class UserService(val userJpaRepository: UserJpaRepository,
                     log.error("Failed save for userId [{}]: {}", userId, it.message)
                 }
     }
+
+    fun deletePhoto(userId: Long): Mono<Any> {
+        return just(deleteUserImages(userId))
+    }
 }

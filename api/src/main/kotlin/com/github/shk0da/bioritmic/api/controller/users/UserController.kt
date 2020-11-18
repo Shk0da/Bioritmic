@@ -100,4 +100,15 @@ class UserController(val userService: UserService) {
                     ResponseEntity.status(HttpStatus.ACCEPTED).build()
                 }
     }
+
+    // DELETE /me/photo
+    @DeleteMapping(value = ["/me/photo"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun deletePhoto(): Mono<ResponseEntity<Void>> {
+        val userId = getUserId()
+        return userService.deletePhoto(userId)
+                .map {
+                    log.debug("Deleted all photo for userId: {}", userId)
+                    ResponseEntity.status(HttpStatus.NO_CONTENT).build()
+                }
+    }
 }

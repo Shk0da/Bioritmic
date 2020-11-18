@@ -59,7 +59,7 @@ object ImageUtils {
             val image = File(profileImagePath(userId, it))
             if (image.exists()) {
                 image.delete()
-                log.debug("Delete image '{}' gor userId: {}", image, userId)
+                log.debug("Delete image '{}' for userId: {}", image, userId)
             }
         }
     }
