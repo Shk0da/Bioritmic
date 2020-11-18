@@ -86,12 +86,5 @@ Thumbs.db
 
 *.iws
 *.ipr
-!/pdv/pla_ap2_ams.zip
-/.PVS-Studio/
-/eam/screenShots/
-/eam/pageSource/
-/eam/pageSources/
-/k8s/chart/eam/generated.yml
-/e2e-tests/pageSource/
-/e2e-tests/pageSources/
-/e2e-tests/screenShots/
+
+/storage

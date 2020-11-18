@@ -17,13 +17,23 @@ import com.github.shk0da.bioritmic.api.repository.r2dbc.GisDataR2dbcRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.GisUserR2dbcRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.UserR2dbcRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.UserSettingsR2dbcRepository
+import com.github.shk0da.bioritmic.api.utils.ImageUtils
+import com.github.shk0da.bioritmic.api.utils.ImageUtils.ImageTag
+import com.github.shk0da.bioritmic.api.utils.ImageUtils.cropAndSaveUserImage
+import com.github.shk0da.bioritmic.api.utils.ImageUtils.deleteUserImages
+import com.github.shk0da.bioritmic.api.utils.ImageUtils.profileImagePath
 import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
 import org.slf4j.LoggerFactory
+import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.publisher.Mono.just
+import java.io.File
+import java.nio.file.Files.readAllBytes
 import java.sql.Timestamp
+
 
 @Service
 class UserService(val userJpaRepository: UserJpaRepository,
@@ -59,7 +69,7 @@ class UserService(val userJpaRepository: UserJpaRepository,
                                 user.userSettings = it
                                 user
                             }
-                            .switchIfEmpty(Mono.just(user))
+                            .switchIfEmpty(just(user))
                 }
                 .flatMap { it }
     }
@@ -102,6 +112,9 @@ class UserService(val userJpaRepository: UserJpaRepository,
     @Transactional(readOnly = true)
     fun deleteUserById(userId: Long): Mono<Void> {
         return userR2dbcRepository.deleteById(userId)
+                .doOnSuccess {
+                    deleteUserImages(userId)
+                }
     }
 
     @Transactional(readOnly = true)
@@ -148,7 +161,7 @@ class UserService(val userJpaRepository: UserJpaRepository,
     @Transactional
     fun updateUserSettingsById(userId: Long, settings: UserSettingsModel): Mono<UserSettings> {
         return userSettingsR2dbcRepository.findById(userId)
-                .switchIfEmpty(Mono.just(UserSettings()))
+                .switchIfEmpty(just(UserSettings()))
                 .map { userSettings ->
                     with(userSettings) {
                         if (null == this.userId) {
@@ -171,5 +184,30 @@ class UserService(val userJpaRepository: UserJpaRepository,
                     userSettingsR2dbcRepository.save(userSettings)
                 }
                 .flatMap { it }
+    }
+
+    @Transactional
+    fun getPhoto(userId: Long): Mono<ByteArray> {
+        return userR2dbcRepository.existsById(userId)
+                .filter { it == true }
+                .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
+                .map { File(profileImagePath(userId)) }
+                .filter { it.exists() }
+                .switchIfEmpty(just(ImageUtils.noImageFile))
+                .map { readAllBytes(it.toPath()) }
+                .switchIfEmpty(Mono.error(ApiException(ErrorCode.IMAGE_NOT_FOUND)))
+    }
+
+    fun updatePhoto(userId: Long, filePart: Mono<FilePart>): Mono<Void> {
+        val originalFile = File(profileImagePath(userId, ImageTag.ORIGINAL))
+        return filePart
+                .flatMap { it.transferTo(originalFile) }
+                .doOnSuccess {
+                    cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_100x100)
+                    cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_250x250)
+                }
+                .doOnError {
+                    log.error("Failed save for userId [{}]: {}", userId, it.message)
+                }
     }
 }

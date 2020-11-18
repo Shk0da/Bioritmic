@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.http.codec.multipart.FilePart
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 import java.lang.Long.valueOf
@@ -72,6 +73,31 @@ class UserController(val userService: UserService) {
                 .map {
                     log.debug("New gisData: {}", it)
                     ResponseEntity.status(HttpStatus.OK).body(it)
+                }
+    }
+
+    // GET /{id}/photo <- UserInfo
+    @GetMapping(value = ["/{id}/photo"], produces = [MediaType.IMAGE_JPEG_VALUE])
+    fun photo(@PathVariable id: String): Mono<ByteArray> {
+        val userId = valueOf(id)
+        return userService.getPhoto(userId)
+    }
+
+    // GET /me/photo <- UserInfo
+    @GetMapping(value = ["/me/photo"], produces = [MediaType.IMAGE_JPEG_VALUE])
+    fun mePhoto(): Mono<ByteArray> {
+        val userId = getUserId()
+        return userService.getPhoto(userId)
+    }
+
+    // POST /me/photo -> UserInfo
+    @PostMapping(value = ["/me/photo"], consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun uploadPhoto(@RequestPart("file") file: Mono<FilePart>, principal: Principal): Mono<ResponseEntity<Void>> {
+        val userId = getUserId(principal)
+        return userService.updatePhoto(userId, file)
+                .map {
+                    log.debug("Update photo: {}", userId)
+                    ResponseEntity.status(HttpStatus.ACCEPTED).build()
                 }
     }
 }

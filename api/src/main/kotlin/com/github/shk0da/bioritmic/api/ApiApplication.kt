@@ -1,5 +1,6 @@
 package com.github.shk0da.bioritmic.api
 
+import com.github.shk0da.bioritmic.api.utils.ImageUtils
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
@@ -7,5 +8,6 @@ import org.springframework.boot.runApplication
 class ApiApplication
 
 fun main(args: Array<String>) {
+    ImageUtils.initStorages()
     runApplication<ApiApplication>(*args)
 }

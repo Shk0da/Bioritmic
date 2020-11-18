@@ -27,7 +27,6 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
 	implementation("org.springframework.boot:spring-boot-starter-mail")
-	implementation("org.springframework.boot:spring-boot-devtools")
 	implementation("org.springframework.retry:spring-retry")
 
 	implementation("io.springfox:springfox-boot-starter:3.0.0")

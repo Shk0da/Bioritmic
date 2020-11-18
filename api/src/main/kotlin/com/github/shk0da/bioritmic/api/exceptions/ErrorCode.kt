@@ -21,6 +21,7 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
     SETTINGS_NOT_FOUND("API-404", "Settings for User not found.", HttpStatus.NOT_FOUND),
     COORDINATES_NOT_FOUND("API-404", "Coordinates for User not found. Please update GIS data.", HttpStatus.NOT_FOUND),
     AUTH_NOT_FOUND("API-404", "Authorization not found.", HttpStatus.NOT_FOUND),
+    IMAGE_NOT_FOUND("API-404", "Image not found.", HttpStatus.NOT_FOUND),
 
     API_INTERNAL_ERROR("API-500", "Unknown error.", HttpStatus.INTERNAL_SERVER_ERROR),
     API_SERVICE_UNAVAILABLE("API-503", "Service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
