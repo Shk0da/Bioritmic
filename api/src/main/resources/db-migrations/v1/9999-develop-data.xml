@@ -42,5 +42,16 @@
             ;
         </sql>
 
+        <sql endDelimiter=";">
+            INSERT INTO public.mailbox (from_user_id,to_user_id,message,"timestamp") VALUES
+            (1,2,'sdwdsdsd','2020-11-18 15:53:21.973')
+            ,(1,2,'sdwdsdsd','2020-11-18 15:53:25.404')
+            ,(1,2,'sdwdsdsd','2020-11-18 15:53:40.889')
+            ,(1,2,'12323213','2020-11-18 15:54:04.309')
+            ,(2,1,'fhj3irvorv','2020-11-18 15:53:21.000')
+            ,(1,2,'aaa','2020-11-18 15:55:18.848')
+            ;
+        </sql>
+
     </changeSet>
 </databaseChangeLog>

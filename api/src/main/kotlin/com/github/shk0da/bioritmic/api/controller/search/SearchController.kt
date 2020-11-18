@@ -34,7 +34,7 @@ class SearchController(val userService: UserService) {
 
     // POST /search/ <- List of Users around with custom search
     @PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun search(@Valid  @RequestBody userSearch: UserSearch, principal: Principal): Flux<UserInfo> {
+    fun search(@Valid @RequestBody userSearch: UserSearch, principal: Principal): Flux<UserInfo> {
         userSearch.validate()
         val userId = getUserId(principal)
         return userService.findUserById(userId)

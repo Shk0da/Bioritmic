@@ -33,6 +33,16 @@ object ValidateUtils {
         }
     }
 
+    fun validate(message: String?) {
+        if (StringUtils.isBlank(message) || message!!.length < 1 || message.length >= 1024) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER_RANGE, ImmutableMap.of(
+                    ErrorCode.Constants.PARAMETER_NAME, "message",
+                    ErrorCode.Constants.PARAMETER_VALUE_START, "1",
+                    ErrorCode.Constants.PARAMETER_VALUE_END, "1024"
+            ))
+        }
+    }
+
     fun checkUserBookmarks(it: MutableList<Long>): Boolean {
         if (it.size >= 100) throw ApiException(ErrorCode.MANY_BOOKMARKS)
         return true

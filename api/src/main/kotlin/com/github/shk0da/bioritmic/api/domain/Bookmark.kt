@@ -24,8 +24,8 @@ class Bookmark {
     @org.springframework.data.relational.core.mapping.Column("bookmark_user_id")
     var bookmarkUserId: Long? = null
 
-    @Column
-    @org.springframework.data.relational.core.mapping.Column
+    @Column(name = "timestamp")
+    @org.springframework.data.relational.core.mapping.Column("timestamp")
     var timestamp: Timestamp? = null
 
     companion object {

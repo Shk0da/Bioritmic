@@ -60,7 +60,8 @@
                 <constraints primaryKey="true" nullable="false" unique="true"/>
             </column>
             <column name="user_id" type="bigint">
-                <constraints nullable="false" references="users" referencedColumnNames="id" foreignKeyName="fk_authorizations_user_id"/>
+                <constraints nullable="false" references="users" referencedColumnNames="id"
+                             foreignKeyName="fk_authorizations_user_id"/>
             </column>
             <column name="access_token" type="varchar(255)">
                 <constraints nullable="false"/>
@@ -73,7 +74,8 @@
             </column>
         </createTable>
 
-        <addUniqueConstraint tableName="authorizations" columnNames="user_id" constraintName="uq_authorizations_user_id"/>
+        <addUniqueConstraint tableName="authorizations" columnNames="user_id"
+                             constraintName="uq_authorizations_user_id"/>
 
         <createTable tableName="gis_data">
             <column name="user_id" type="bigint">
@@ -101,19 +103,43 @@
                 <constraints primaryKey="true" nullable="false" unique="true"/>
             </column>
             <column name="user_id" type="bigint">
-                <constraints nullable="false" references="users" referencedColumnNames="id" foreignKeyName="fk_bookmarks_user_id"/>
+                <constraints nullable="false" references="users" referencedColumnNames="id"
+                             foreignKeyName="fk_bookmarks_user_id"/>
             </column>
             <column name="bookmark_user_id" type="bigint">
-                <constraints nullable="false" references="users" referencedColumnNames="id" foreignKeyName="fk_bookmarks_bookmark_user_id"/>
+                <constraints nullable="false" references="users" referencedColumnNames="id"
+                             foreignKeyName="fk_bookmarks_bookmark_user_id"/>
             </column>
             <column name="timestamp" type="timestamp" defaultValue="NOW()">
                 <constraints nullable="false"/>
             </column>
         </createTable>
 
-        <addUniqueConstraint tableName="bookmarks" columnNames="user_id,bookmark_user_id" constraintName="uq_bookmarks"/>
+        <addUniqueConstraint tableName="bookmarks" columnNames="user_id,bookmark_user_id"
+                             constraintName="uq_bookmarks"/>
+
+        <createTable tableName="mailbox">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" unique="true"/>
+            </column>
+            <column name="from_user_id" type="bigint">
+                <constraints nullable="false" references="users" referencedColumnNames="id"
+                             foreignKeyName="fk_mailbox_from_user_id"/>
+            </column>
+            <column name="to_user_id" type="bigint">
+                <constraints nullable="false" references="users" referencedColumnNames="id"
+                             foreignKeyName="fk_mailbox_to_user_id"/>
+            </column>
+            <column name="message" type="varchar(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timestamp" type="timestamp" defaultValue="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
 
         <rollback>
+            <dropTable cascadeConstraints="true" tableName="mailbox"/>
             <dropTable cascadeConstraints="true" tableName="bookmarks"/>
             <dropTable cascadeConstraints="true" tableName="gis_data"/>
             <dropTable cascadeConstraints="true" tableName="authorizations"/>
