@@ -41,7 +41,7 @@ data class UserInfo(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
         private val biorhythmService: BiorhythmService = BiorhythmService.instance
 
         fun of(user: User): UserInfo {
-            return UserInfo(name = user.name, email = user.email, birthday = Date(user.birthday!!.time), gender = user.getGender())
+            return UserInfo(id = user.id, name = user.name, email = user.email, birthday = Date(user.birthday!!.time), gender = user.getGender())
         }
 
         fun of(gisUser: GisUser): UserInfo {

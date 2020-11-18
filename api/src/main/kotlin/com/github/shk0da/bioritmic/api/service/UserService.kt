@@ -214,34 +214,56 @@ class UserService(val userJpaRepository: UserJpaRepository,
     }
 
     @Transactional
-    fun findBookmarksByUserId(userId: Long): Flux<Bookmark> {
+    fun findBookmarksByUserId(userId: Long): Flux<User> {
         return bookmarkR2dbcRepository.findAllByUserId(userId)
+                .collectList()
+                .map { bookmarks ->
+                    userR2dbcRepository.findAllById(bookmarks.map { it.bookmarkUserId })
+                }
+                .flatMapMany { it }
     }
 
     @Transactional
-    fun saveBookmarks(userId: Long, bookmarks: Flux<UserBookmark>): Flux<Bookmark> {
+    fun saveBookmarks(userId: Long, bookmarks: Flux<UserBookmark>): Flux<User> {
         return bookmarkR2dbcRepository.findAllByUserId(userId)
                 .map { it.bookmarkUserId ?: -1 }
                 .collectList()
-                .map { checkUserBookmarks(it) }
+                .filter { checkUserBookmarks(it) }
                 .map { existUserIds ->
                     val filteredBookmarks = bookmarks
                             .filter { !existUserIds.contains(it.userId) }
                             .map { Bookmark.of(userId, it) }
                     bookmarkR2dbcRepository.saveAll(filteredBookmarks)
-                    userId
+                            .collectList()
+                            .map { userId }
                 }
+                .flatMap { it }
                 .switchIfEmpty(just(userId))
-                .map { bookmarkR2dbcRepository.findAllByUserId(it) }
+                .map { id ->
+                    val usersByBookmarks = bookmarkR2dbcRepository.findAllByUserId(id).map { item -> item.bookmarkUserId!! }
+                    userR2dbcRepository.findAllById(usersByBookmarks)
+                }
                 .flatMapMany { it }
                 .doOnError {
                     log.error("Failed save bookmarks for userId [{}]: {}", userId, it.message)
-                    Mono.error<Flux<Bookmark>>(it)
+                    Mono.error<Flux<Any>>(it)
                 }
     }
 
     @Transactional
-    fun deleteBookmarks(userId: Long, bookmarks: List<UserBookmark>): Mono<Void> {
-        return bookmarkR2dbcRepository.deleteByUserIdAndBookmarkUserIdIn(userId, bookmarks.map { it.userId!! })
+    fun deleteBookmarks(userId: Long, bookmarks: List<UserBookmark>): Flux<User> {
+        return bookmarkR2dbcRepository
+                .deleteByUserIdAndBookmarkUserIdIn(userId, bookmarks.map { it.userId!! })
+                .map { userId }
+                .switchIfEmpty(just(userId))
+                .map { id ->
+                    val usersByBookmarks = bookmarkR2dbcRepository.findAllByUserId(id).map { item -> item.bookmarkUserId!! }
+                    userR2dbcRepository.findAllById(usersByBookmarks)
+                }
+                .flatMapMany { it }
+                .doOnError {
+                    log.error("Failed delete bookmarks for userId [{}]: {}", userId, it.message)
+                    Mono.error<Flux<Any>>(it)
+                }
     }
 }
