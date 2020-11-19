@@ -6,14 +6,19 @@ import com.google.common.collect.ImmutableMap
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
+import org.springframework.data.domain.Sort.unsorted
 
-class PageableRequest @JvmOverloads constructor(page: Int = 1, size: Int = 100, sort: Sort? = Sort.unsorted())
-    : PageRequest(page - 1, size, sort!!), Pageable {
+class PageableRequest @JvmOverloads constructor(page: Int = 1, size: Int = 100, sort: Sort? = unsorted()) : PageRequest(page - 1, size, sort!!), Pageable {
+
     companion object {
-        fun of(pageable: Pageable): PageableRequest {
-            if (pageable.pageNumber <= 0) {
+        fun of(pageable: Pageable?): PageableRequest {
+            if (null == pageable) return PageableRequest()
+
+            if (pageable.pageNumber < 0) {
                 throw ApiException(ErrorCode.INVALID_PARAMETER, ImmutableMap.of(ErrorCode.Constants.PARAMETER_NAME, "page"))
             }
+            val pageNumber = if (pageable.pageNumber > 0) pageable.pageNumber else 1
+
             if (pageable.pageSize <= 0 || pageable.pageSize > 100) {
                 throw ApiException(
                         ErrorCode.INVALID_PARAMETER_RANGE,
@@ -23,19 +28,8 @@ class PageableRequest @JvmOverloads constructor(page: Int = 1, size: Int = 100, 
                                 ErrorCode.Constants.PARAMETER_VALUE_END, "100"
                         ))
             }
-            return PageableRequest(pageable.pageNumber, pageable.pageSize, pageable.sort)
-        }
 
-        fun single(): PageableRequest {
-            return PageableRequest(1, 1, null)
-        }
-
-        fun one(sort: Sort?): PageableRequest {
-            return PageableRequest(1, 1, sort)
-        }
-
-        fun size(size: Int): PageableRequest {
-            return PageableRequest(1, size, null)
+            return PageableRequest(pageNumber, pageable.pageSize, pageable.sort)
         }
     }
 }

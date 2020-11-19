@@ -5,7 +5,6 @@ import com.github.shk0da.bioritmic.api.model.user.UserBookmark
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
-import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
@@ -15,8 +14,6 @@ import javax.validation.Valid
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/bookmarks")
 class BookmarkController(val userService: UserService) {
-
-    private val log = LoggerFactory.getLogger(BookmarkController::class.java)
 
     // GET /bookmarks/
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
