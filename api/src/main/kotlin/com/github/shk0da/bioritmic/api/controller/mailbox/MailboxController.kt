@@ -5,6 +5,8 @@ import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
 import com.github.shk0da.bioritmic.api.service.MailboxService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
+import io.swagger.annotations.ApiImplicitParam
+import io.swagger.annotations.ApiImplicitParams
 import org.springframework.data.domain.Pageable
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
@@ -19,6 +21,10 @@ class MailboxController(val mailboxService: MailboxService) {
 
     // GET /mailbox <- Mails
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ApiImplicitParams(value = [
+        ApiImplicitParam(name = "page", dataType = "number", paramType = "query"),
+        ApiImplicitParam(name = "size", dataType = "number", paramType = "query")
+    ])
     fun mailbox(pageable: Pageable): Flux<UserMailModel> {
         val userId = getUserId()
         return mailboxService.getUserMailbox(userId, of(pageable)).map { UserMailModel.of(it) }
