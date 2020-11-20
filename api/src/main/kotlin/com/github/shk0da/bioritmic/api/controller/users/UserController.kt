@@ -3,10 +3,14 @@ package com.github.shk0da.bioritmic.api.controller.users
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_PARAMETER
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
+import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
+import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkNotEmpty
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -96,9 +100,12 @@ class UserController(val userService: UserService) {
 
     // POST /me/photo -> UserInfo
     @PostMapping(value = ["/me/photo"], consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun uploadPhoto(@RequestPart("file") @Valid @NotNull file: Mono<FilePart>, principal: Principal): Mono<ResponseEntity<Void>> {
+    fun uploadPhoto(@RequestPart("file") file: Mono<@Valid @NotNull FilePart>, principal: Principal): Mono<ResponseEntity<Void>> {
         val userId = getUserId(principal)
-        return userService.updatePhoto(userId, file)
+        val checkedFilePart = file
+                .filter { checkNotEmpty(it.filename(), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file"))) }
+                .filter { checkFileExtension(it.filename(), arrayListOf("png", "jpg"), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file"))) }
+        return userService.updatePhoto(userId, checkedFilePart)
                 .map {
                     log.debug("Update photo: {}", userId)
                     ResponseEntity.status(HttpStatus.ACCEPTED).build()

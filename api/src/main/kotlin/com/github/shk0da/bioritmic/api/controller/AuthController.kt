@@ -12,6 +12,8 @@ import com.github.shk0da.bioritmic.api.service.AuthService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
+import io.swagger.annotations.ApiImplicitParam
+import io.swagger.annotations.ApiImplicitParams
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
@@ -20,6 +22,7 @@ import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 import javax.validation.Valid
+import javax.validation.constraints.NotEmpty
 
 @Validated
 @RestController
@@ -61,8 +64,11 @@ class AuthController(val userService: UserService, val authService: AuthService)
 
     // GET /recovery/ ?{code} <- validate code and reset password
     @ResponseStatus(HttpStatus.OK)
-    @GetMapping(value = ["/reset-password"], params = ["code"], produces = [APPLICATION_JSON_VALUE])
-    fun resetPassword(@RequestParam code: String): Mono<ResponseEntity<Any>> {
+    @GetMapping(value = ["/reset-password"], produces = [APPLICATION_JSON_VALUE])
+    @ApiImplicitParams(value = [
+        ApiImplicitParam(name = "code", dataType = "java.lang.String", paramType = "query")
+    ])
+    fun resetPassword(@RequestParam @Valid @NotEmpty code: String): Mono<ResponseEntity<Any>> {
         val user = authService.findUserByRecoveryCode(code) ?: throw ApiException(INVALID_RECOVERY_CODE)
         if (null == user.recoveryCodeExpireTime && user.recoveryCodeExpireTime!!.time < System.currentTimeMillis()) {
             throw ApiException(INVALID_RECOVERY_CODE)
@@ -75,8 +81,12 @@ class AuthController(val userService: UserService, val authService: AuthService)
     }
 
     // GET /update-email?code=$code&email=$newEmail
-    @GetMapping(value = ["/update-email"], params = ["code", "email"], produces = [APPLICATION_JSON_VALUE])
-    fun updateEmail(code: String, email: String): Mono<ResponseEntity<Any>> {
+    @GetMapping(value = ["/update-email"], produces = [APPLICATION_JSON_VALUE])
+    @ApiImplicitParams(value = [
+        ApiImplicitParam(name = "code", dataType = "java.lang.String", paramType = "query"),
+        ApiImplicitParam(name = "email", dataType = "java.lang.String", paramType = "query")
+    ])
+    fun updateEmail(@Valid @NotEmpty code: String, @Valid @NotEmpty email: String): Mono<ResponseEntity<Any>> {
         val user = authService.findUserByRecoveryCode(code) ?: throw ApiException(INVALID_RECOVERY_CODE)
         if (null == user.recoveryCodeExpireTime && user.recoveryCodeExpireTime!!.time < System.currentTimeMillis()) {
             throw ApiException(INVALID_RECOVERY_CODE)

@@ -4,7 +4,9 @@ info.app.name: ${spring.application.basic-name}
 info.app.description: ${spring.application.description}
 info.app.version: 0.1
 
+server.error.path: "/error"
 server.error.whitelabel.enabled: false
+# spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration
 
 management:
   server.port: 8081

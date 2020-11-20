@@ -85,6 +85,7 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
                         .flatMap<Auth> { token ->
                             authService.getAuthByAccessToken(token)
                         }
+                        .filter { auth -> !auth.isExpired() }
                         .map { auth ->
                             PreAuthenticatedAuthenticationToken(
                                     auth.userId,

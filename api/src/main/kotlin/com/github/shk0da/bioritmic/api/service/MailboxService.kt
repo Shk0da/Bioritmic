@@ -26,11 +26,10 @@ class MailboxService(val userService: UserService, val mailboxR2dbcRepository: M
 
     @Transactional
     fun sendUserMail(userId: Long, userMailModel: UserMailModel): Flux<UserMail> {
-        return userService.findUserById(userMailModel.to)
+        return userService.findUserById(userMailModel.to!!)
                 .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
                 .map { to ->
                     userMailModel.from = userId
-                    userMailModel.to = to.id!!
                     val userMail = UserMail.of(userMailModel)
                     mailboxR2dbcRepository.save(userMail)
                             .map {

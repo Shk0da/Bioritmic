@@ -46,6 +46,19 @@ object ValidateUtils {
         }
     }
 
+    fun checkNotEmpty(item: Any?, errorCode: ErrorCode, parameters: Map<String, String>): Boolean {
+        if (null == item) throw ApiException(errorCode, parameters)
+        if (item is String && item.isEmpty()) throw ApiException(errorCode, parameters)
+        return true
+    }
+
+    fun checkFileExtension(fileName: String?, extensions: List<String>, errorCode: ErrorCode, parameters: Map<String, String>): Boolean {
+        if (null == fileName || fileName.isEmpty()) throw ApiException(errorCode, parameters)
+        val extension = fileName.substring(fileName.lastIndexOf(".") + 1)
+        if (!extensions.contains(extension)) throw ApiException(errorCode, parameters)
+        return true
+    }
+
     fun checkSize(size: Number, expectedSize: Int, errorCode: ErrorCode): Boolean {
         if (size.toInt() > expectedSize) throw ApiException(errorCode)
         return true

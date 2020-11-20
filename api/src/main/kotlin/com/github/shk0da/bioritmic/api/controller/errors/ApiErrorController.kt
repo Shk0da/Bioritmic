@@ -35,7 +35,7 @@ class ApiErrorController : ErrorController {
         return just(ResponseEntity(ApiErrors(of(ErrorCode.INVALID_URI)), ErrorCode.INVALID_URI.httpCode))
     }
 
-    override fun getErrorPath(): String {
-        return ERROR_PATH
+    override fun getErrorPath(): String? {
+        return null
     }
 }

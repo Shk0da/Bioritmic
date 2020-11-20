@@ -22,11 +22,14 @@ import org.springframework.util.MultiValueMap
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.support.WebExchangeBindException
 import org.springframework.web.server.ServerWebInputException
 import java.io.IOException
 import java.sql.SQLException
 import java.util.*
 import java.util.stream.Collectors
+import java.util.stream.Collectors.joining
+import javax.validation.ConstraintViolationException
 import javax.validation.UnexpectedTypeException
 import javax.validation.constraints.Size
 
@@ -80,7 +83,8 @@ class ApiExceptionHandler {
             HttpMessageNotReadableException::class,
             MismatchedInputException::class,
             DecodingException::class,
-            ServerWebInputException::class
+            ServerWebInputException::class,
+            ConstraintViolationException::class
     )
     @ResponseStatus(value = HttpStatus.BAD_REQUEST)
     fun handleIllegalArgumentException(ex: Exception): ResponseEntity<ApiErrors> {
@@ -101,26 +105,45 @@ class ApiExceptionHandler {
 
         var parameter: String? = null
         when (throwable) {
+            is ConstraintViolationException -> {
+                val parameterNames: ArrayList<String> = ArrayList()
+                throwable.constraintViolations.forEach { constraint ->
+                    var item: String? = null
+                    val items = constraint.propertyPath.iterator()
+                    while (items.hasNext()) {
+                        item = items.next().name
+                    }
+                    if (null != item) {
+                        parameterNames.add(item)
+                    }
+                }
+                if (parameterNames.isNotEmpty()) {
+                    parameter = parameterNames.stream().collect(joining(", "))
+                }
+            }
             is InvalidFormatException -> {
                 parameter = throwable.path
                         .stream()
                         .map { it.fieldName }
-                        .collect(Collectors.joining(", "))
+                        .collect(joining(", "))
             }
             is JsonMappingException -> {
                 parameter = throwable.path
                         .stream()
                         .map { it.fieldName }
-                        .collect(Collectors.joining(", "))
+                        .collect(joining(", "))
             }
             is MismatchedInputException -> {
                 parameter = throwable.path
                         .stream()
                         .map { it.fieldName }
-                        .collect(Collectors.joining(", "))
+                        .collect(joining(", "))
             }
-            is NumberFormatException -> {
-                throw RuntimeException(error)
+            is WebExchangeBindException -> {
+                parameter = throwable.fieldErrors
+                        .stream()
+                        .map { it.field }
+                        .collect(joining(", "))
             }
             is IllegalArgumentException -> {
                 parameter = throwable.message as String
@@ -130,6 +153,9 @@ class ApiExceptionHandler {
             }
             is ServerWebInputException -> {
                 parameter = throwable.methodParameter?.parameterName
+            }
+            is NumberFormatException -> {
+                throw RuntimeException(error)
             }
             is JsonParseException -> {
                 return handleApiException(ApiException(ErrorCode.JSON_CANT_BE_PARSED))

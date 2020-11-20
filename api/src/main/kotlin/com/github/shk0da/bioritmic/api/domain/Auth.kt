@@ -53,6 +53,10 @@ class Auth {
         return this
     }
 
+    fun isExpired(): Boolean {
+        return null != expireTime && expireTime!!.before(Timestamp(System.currentTimeMillis()))
+    }
+
     override fun toString(): String {
         return "Auth(id=$id, userId=$userId, expireTime=$expireTime)"
     }

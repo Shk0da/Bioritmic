@@ -34,7 +34,7 @@ class MailboxController(val mailboxService: MailboxService) {
 
     // POST /me/mailbox -> Mail
     @PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun mailbox(@Valid @RequestBody userMailModel: UserMailModel, principal: Principal): Flux<UserMailModel> {
+    fun mailbox(@RequestBody @Valid userMailModel: UserMailModel, principal: Principal): Flux<UserMailModel> {
         val userId = getUserId(principal)
         return mailboxService.sendUserMail(userId, userMailModel).map { UserMailModel.of(it) }
     }
