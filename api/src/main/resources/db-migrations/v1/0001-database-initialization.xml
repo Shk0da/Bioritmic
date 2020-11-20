@@ -38,8 +38,8 @@
 
         <createTable tableName="user_settings">
             <column name="user_id" type="bigint">
-                <constraints primaryKey="true" nullable="false" unique="true"
-                             references="users" referencedColumnNames="id" foreignKeyName="fk_user_settings_user_id"/>
+                <constraints primaryKey="true" nullable="false" unique="true" deleteCascade="true"
+                             references="users" referencedColumnNames="id" foreignKeyName="fk_user_settings_user_id" />
             </column>
             <column name="gender" type="smallint">
                 <constraints nullable="true"/>
@@ -60,7 +60,7 @@
                 <constraints primaryKey="true" nullable="false" unique="true"/>
             </column>
             <column name="user_id" type="bigint">
-                <constraints nullable="false" references="users" referencedColumnNames="id"
+                <constraints nullable="false" references="users" referencedColumnNames="id" deleteCascade="true"
                              foreignKeyName="fk_authorizations_user_id"/>
             </column>
             <column name="access_token" type="varchar(255)">
@@ -79,7 +79,7 @@
 
         <createTable tableName="gis_data">
             <column name="user_id" type="bigint">
-                <constraints primaryKey="true" nullable="false" unique="true"
+                <constraints primaryKey="true" nullable="false" unique="true" deleteCascade="true"
                              references="users" referencedColumnNames="id" foreignKeyName="fk_gis_data_user_id"/>
             </column>
             <column name="lat" type="float">
@@ -100,11 +100,11 @@
 
         <createTable tableName="bookmarks">
             <column name="user_id" type="bigint">
-                <constraints nullable="false" references="users" referencedColumnNames="id"
+                <constraints nullable="false" references="users" referencedColumnNames="id" deleteCascade="true"
                              foreignKeyName="fk_meetings_user_id"/>
             </column>
             <column name="other_user_id" type="bigint">
-                <constraints nullable="false" references="users" referencedColumnNames="id"
+                <constraints nullable="false" references="users" referencedColumnNames="id" deleteCascade="true"
                              foreignKeyName="fk_meetings_other_user_id"/>
             </column>
             <column name="timestamp" type="timestamp" defaultValue="NOW()">
@@ -120,11 +120,11 @@
                 <constraints primaryKey="true" nullable="false" unique="true"/>
             </column>
             <column name="from_user_id" type="bigint">
-                <constraints nullable="false" references="users" referencedColumnNames="id"
+                <constraints nullable="false" references="users" referencedColumnNames="id" deleteCascade="true"
                              foreignKeyName="fk_mailbox_from_user_id"/>
             </column>
             <column name="to_user_id" type="bigint">
-                <constraints nullable="false" references="users" referencedColumnNames="id"
+                <constraints nullable="false" references="users" referencedColumnNames="id" deleteCascade="true"
                              foreignKeyName="fk_mailbox_to_user_id"/>
             </column>
             <column name="message" type="varchar(1024)">
@@ -137,11 +137,11 @@
 
         <createTable tableName="meetings">
             <column name="user_id" type="bigint">
-                <constraints nullable="false" references="users" referencedColumnNames="id"
+                <constraints nullable="false" references="users" referencedColumnNames="id" deleteCascade="true"
                              foreignKeyName="fk_meetings_user_id"/>
             </column>
             <column name="other_user_id" type="bigint">
-                <constraints nullable="false" references="users" referencedColumnNames="id"
+                <constraints nullable="false" references="users" referencedColumnNames="id" deleteCascade="true"
                              foreignKeyName="fk_meetings_other_user_id"/>
             </column>
             <column name="other_user_lat" type="float"/>

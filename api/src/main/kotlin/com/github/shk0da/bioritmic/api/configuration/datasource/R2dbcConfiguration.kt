@@ -15,7 +15,6 @@ import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfig
 import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.SLAVE_ROUTING_KEY
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants.DefaultDataSourceProfileCondition
-import com.google.common.collect.Maps
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.pool.PoolingConnectionFactoryProvider.MAX_SIZE
@@ -67,7 +66,7 @@ class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcCo
     @Primary
     @Qualifier("connectionFactory")
     override fun connectionFactory(): ConnectionFactory {
-        val factories = Maps.newHashMap<String, Any>()
+        val factories = HashMap<String, Any>()
         factories[MASTER_ROUTING_KEY] = masterConnectionFactory()
         factories[SLAVE_ROUTING_KEY] = slaveConnectionFactory()
 

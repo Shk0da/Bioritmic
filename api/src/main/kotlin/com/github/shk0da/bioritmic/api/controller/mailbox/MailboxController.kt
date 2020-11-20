@@ -24,8 +24,8 @@ class MailboxController(val mailboxService: MailboxService) {
     // GET /mailbox <- Mails
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
     @ApiImplicitParams(value = [
-        ApiImplicitParam(name = "page", dataType = "String", paramType = "query"),
-        ApiImplicitParam(name = "size", dataType = "String", paramType = "query")
+        ApiImplicitParam(name = "page", dataType = "java.lang.Integer", paramType = "query"),
+        ApiImplicitParam(name = "size", dataType = "java.lang.Integer", paramType = "query")
     ])
     fun mailbox(pageable: Pageable): Flux<UserMailModel> {
         val userId = getUserId()

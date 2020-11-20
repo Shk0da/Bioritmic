@@ -12,7 +12,6 @@ import com.github.shk0da.bioritmic.api.service.AuthService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
-import com.google.common.collect.ImmutableMap
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
@@ -34,7 +33,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     @PostMapping(value = ["/registration"], produces = [APPLICATION_JSON_VALUE])
     fun registration(@RequestBody @Valid userModel: UserModel): Mono<ResponseEntity<UserModel>> {
         with(userModel) {
-            if (!isFilledInput()) throw ApiException(INVALID_PARAMETER, ImmutableMap.of(PARAMETER_NAME, "user"))
+            if (!isFilledInput()) throw ApiException(INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "user")))
             if (userService.isUserExists(userModel.email)) throw ApiException(USER_EXISTS)
         }
         return userService.createNewUser(userModel)
@@ -51,7 +50,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     fun recovery(@RequestBody @Valid recoveryModel: RecoveryModel): Mono<ResponseEntity<Any>> {
         val user = userService.findUserByEmail(recoveryModel.email)
         if (null == user) {
-            throw ApiException(USER_WITH_EMAIL_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, recoveryModel.email))
+            throw ApiException(USER_WITH_EMAIL_NOT_FOUND, mapOf(Pair(PARAMETER_VALUE, recoveryModel.email)))
         }
         return authService.sendRecoveryEmail(user)
                 .map {
@@ -95,10 +94,10 @@ class AuthController(val userService: UserService, val authService: AuthService)
     fun authorization(@RequestBody @Valid authorizationModel: AuthorizationModel): Mono<ResponseEntity<UserToken>> {
         val user = userService.findUserByEmail(authorizationModel.email)
         if (null == user) {
-            throw ApiException(USER_WITH_EMAIL_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, authorizationModel.email))
+            throw ApiException(USER_WITH_EMAIL_NOT_FOUND, mapOf(Pair(PARAMETER_VALUE, authorizationModel.email)))
         }
         if (!passwordEncoder.matches(authorizationModel.password, user.password)) {
-            throw ApiException(INVALID_PARAMETER, ImmutableMap.of(PARAMETER_NAME, "password"))
+            throw ApiException(INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "password")))
         }
         return authService.createNewAuth(user)
                 .map { UserToken.of(user, it) }

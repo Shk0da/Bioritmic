@@ -5,7 +5,6 @@ import com.codahale.metrics.MetricRegistry
 import com.codahale.metrics.Slf4jReporter
 import com.codahale.metrics.health.HealthCheckRegistry
 import com.codahale.metrics.jvm.*
-import com.google.common.collect.Maps
 import com.sun.management.OperatingSystemMXBean
 import io.micrometer.core.aop.TimedAspect
 import io.micrometer.core.instrument.MeterRegistry
@@ -53,26 +52,26 @@ class MetricsConfiguration(
 
     @Bean
     fun metricRegistry(): MetricRegistry {
-        val customMetrics: HashMap<String, Gauge<Any>> = Maps.newHashMap()
-        customMetrics["process.uptime"] = SimpleGauge(Supplier { runtimeMxBean.uptime })
-        customMetrics["process.cpu.load"] = SimpleGauge(Supplier { operatingSystemMxBean.processCpuLoad })
-        customMetrics["system.cpu.load"] = SimpleGauge(Supplier { operatingSystemMxBean.systemCpuLoad })
-        customMetrics["threads.peak"] = SimpleGauge(Supplier { threadMxBean.peakThreadCount })
-        customMetrics["threads.daemon"] = SimpleGauge(Supplier { threadMxBean.daemonThreadCount })
-        customMetrics["threads.totalStarted"] = SimpleGauge(Supplier { threadMxBean.totalStartedThreadCount })
-        customMetrics["threads"] = SimpleGauge(Supplier { threadMxBean.threadCount })
-        customMetrics["heap.committed"] = SimpleGauge(Supplier { memoryUsageHeapMxBean.committed })
-        customMetrics["heap.init"] = SimpleGauge(Supplier { memoryUsageHeapMxBean.init })
-        customMetrics["heap.used"] = SimpleGauge(Supplier { memoryUsageHeapMxBean.used })
-        customMetrics["heap"] = SimpleGauge(Supplier { memoryUsageHeapMxBean.max })
-        customMetrics["heap.used.percent"] = SimpleGauge(Supplier { getPercent(memoryUsageHeapMxBean.max, memoryUsageHeapMxBean.used) })
-        customMetrics["non_heap.committed"] = SimpleGauge(Supplier { memoryUsageNonHeapMxBean.committed })
-        customMetrics["non_heap.init"] = SimpleGauge(Supplier { memoryUsageNonHeapMxBean.init })
-        customMetrics["non_heap.used"] = SimpleGauge(Supplier { memoryUsageNonHeapMxBean.used })
-        customMetrics["non_heap"] = SimpleGauge(Supplier { memoryUsageNonHeapMxBean.max })
-        customMetrics["free.physical.memory.size"] = SimpleGauge(Supplier { operatingSystemMxBean.freePhysicalMemorySize })
-        customMetrics["total.physical.memory.size"] = SimpleGauge(Supplier { operatingSystemMxBean.totalPhysicalMemorySize })
-        customMetrics["free.physical.memory.percent"] = SimpleGauge(Supplier { getPercent(operatingSystemMxBean.totalPhysicalMemorySize, operatingSystemMxBean.freePhysicalMemorySize) })
+        val customMetrics: HashMap<String, Gauge<Any>> = HashMap()
+        customMetrics["process.uptime"] = SimpleGauge({ runtimeMxBean.uptime })
+        customMetrics["process.cpu.load"] = SimpleGauge({ operatingSystemMxBean.processCpuLoad })
+        customMetrics["system.cpu.load"] = SimpleGauge({ operatingSystemMxBean.systemCpuLoad })
+        customMetrics["threads.peak"] = SimpleGauge({ threadMxBean.peakThreadCount })
+        customMetrics["threads.daemon"] = SimpleGauge({ threadMxBean.daemonThreadCount })
+        customMetrics["threads.totalStarted"] = SimpleGauge({ threadMxBean.totalStartedThreadCount })
+        customMetrics["threads"] = SimpleGauge({ threadMxBean.threadCount })
+        customMetrics["heap.committed"] = SimpleGauge({ memoryUsageHeapMxBean.committed })
+        customMetrics["heap.init"] = SimpleGauge({ memoryUsageHeapMxBean.init })
+        customMetrics["heap.used"] = SimpleGauge({ memoryUsageHeapMxBean.used })
+        customMetrics["heap"] = SimpleGauge({ memoryUsageHeapMxBean.max })
+        customMetrics["heap.used.percent"] = SimpleGauge({ getPercent(memoryUsageHeapMxBean.max, memoryUsageHeapMxBean.used) })
+        customMetrics["non_heap.committed"] = SimpleGauge({ memoryUsageNonHeapMxBean.committed })
+        customMetrics["non_heap.init"] = SimpleGauge({ memoryUsageNonHeapMxBean.init })
+        customMetrics["non_heap.used"] = SimpleGauge({ memoryUsageNonHeapMxBean.used })
+        customMetrics["non_heap"] = SimpleGauge({ memoryUsageNonHeapMxBean.max })
+        customMetrics["free.physical.memory.size"] = SimpleGauge({ operatingSystemMxBean.freePhysicalMemorySize })
+        customMetrics["total.physical.memory.size"] = SimpleGauge({ operatingSystemMxBean.totalPhysicalMemorySize })
+        customMetrics["free.physical.memory.percent"] = SimpleGauge({ getPercent(operatingSystemMxBean.totalPhysicalMemorySize, operatingSystemMxBean.freePhysicalMemorySize) })
 
         customMetrics.forEach { (key, value) -> metricRegistry.gauge(key) { value } }
 

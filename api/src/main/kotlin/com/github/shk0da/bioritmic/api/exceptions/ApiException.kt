@@ -1,6 +1,5 @@
 package com.github.shk0da.bioritmic.api.exceptions
 
-import com.google.common.collect.Maps
 import org.springframework.http.HttpStatus
 
 class ApiException : RuntimeException {
@@ -9,7 +8,7 @@ class ApiException : RuntimeException {
     var parameter: String? = null
     var error: String? = null
     var httpStatus: HttpStatus? = null
-    var parameters: Map<String, String> = Maps.newHashMap()
+    var parameters: Map<String, String> = HashMap()
 
     constructor(message: String) : super(message)
 

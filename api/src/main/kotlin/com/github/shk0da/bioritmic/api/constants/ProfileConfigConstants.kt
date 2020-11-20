@@ -1,6 +1,5 @@
 package com.github.shk0da.bioritmic.api.constants
 
-import com.google.common.collect.Lists
 import org.springframework.boot.autoconfigure.condition.ConditionOutcome
 import org.springframework.boot.autoconfigure.condition.SpringBootCondition
 import org.springframework.context.annotation.ConditionContext
@@ -27,7 +26,7 @@ interface ProfileConfigConstants {
         }
 
         companion object {
-            private val EMBEDDED_LIST: List<String> = Lists.newArrayList(SPRING_PROFILE_PG_EMBEDDED)
+            private val EMBEDDED_LIST: List<String> = arrayListOf(SPRING_PROFILE_PG_EMBEDDED)
         }
     }
 }

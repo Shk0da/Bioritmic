@@ -1,6 +1,5 @@
 package com.github.shk0da.bioritmic.api.configuration
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -45,9 +44,7 @@ class AsyncConfiguration {
     @Bean("cachedThreadPoolExecutor")
     fun cachedThreadPoolExecutor(): TaskExecutor {
         val taskExecutor = ConcurrentTaskExecutor()
-        taskExecutor.setConcurrentExecutor(Executors.newCachedThreadPool(
-                ThreadFactoryBuilder().setNameFormat("main-task-executor-%d").build()
-        ))
+        taskExecutor.setConcurrentExecutor(Executors.newCachedThreadPool(Executors.defaultThreadFactory()))
         return taskExecutor
     }
 

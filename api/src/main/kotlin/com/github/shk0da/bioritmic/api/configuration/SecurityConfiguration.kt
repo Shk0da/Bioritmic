@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpHeaders
 import org.springframework.security.authentication.ReactiveAuthenticationManager
-import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
@@ -24,7 +23,6 @@ import reactor.core.publisher.Mono
 
 @Configuration
 @EnableWebFluxSecurity
-@EnableReactiveMethodSecurity
 class SecurityConfiguration(private val authService: AuthService) : WebFluxConfigurer {
 
     private val log = LoggerFactory.getLogger(SecurityConfiguration::class.java)

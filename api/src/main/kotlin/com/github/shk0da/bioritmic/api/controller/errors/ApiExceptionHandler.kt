@@ -10,8 +10,6 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE_LENGTH
 import com.github.shk0da.bioritmic.api.model.error.ApiError
 import com.github.shk0da.bioritmic.api.model.error.ApiErrors
-import com.google.common.collect.ImmutableMap
-import com.google.common.collect.Maps
 import org.slf4j.LoggerFactory
 import org.springframework.beans.TypeMismatchException
 import org.springframework.core.codec.DecodingException
@@ -138,7 +136,7 @@ class ApiExceptionHandler {
             }
         }
         return if (null != parameter)
-            handleApiException(ApiException(ErrorCode.INVALID_PARAMETER, ImmutableMap.of(PARAMETER_NAME, parameter)))
+            handleApiException(ApiException(ErrorCode.INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, parameter))))
         else
             handleException(ex)
     }
@@ -153,14 +151,14 @@ class ApiExceptionHandler {
             ResponseEntity(ApiErrors(ApiError.of(ex.errorCode!!, ex.parameters)), ex.httpStatus!!)
         else
         // default
-            ResponseEntity(ApiErrors(ApiError.of(ErrorCode.INVALID_PARAMETER, ImmutableMap.of(PARAMETER_NAME, ex.parameter!!))), HttpStatus.BAD_REQUEST)
+            ResponseEntity(ApiErrors(ApiError.of(ErrorCode.INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, ex.parameter!!)))), HttpStatus.BAD_REQUEST)
     }
 
     private fun extractParameterizedError(errors: List<FieldError>): Optional<ResponseEntity<ApiErrors>> {
         for (fieldError in errors) {
             val errorCode: Optional<ErrorCode> = ErrorCode.byCode(fieldError.defaultMessage)
             if (errorCode.isPresent) {
-                val parameters: MutableMap<String, String?> = Maps.newHashMap()
+                val parameters: MutableMap<String, String?> = HashMap()
                 // Parameter name
                 parameters[PARAMETER_NAME] = fieldError.field
                 // Parameter value length

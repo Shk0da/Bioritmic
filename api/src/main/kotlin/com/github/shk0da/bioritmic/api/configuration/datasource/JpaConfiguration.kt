@@ -8,7 +8,6 @@ import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfig
 import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_USERNAME
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants.DefaultDataSourceProfileCondition
-import com.google.common.collect.ImmutableMap
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
@@ -45,9 +44,9 @@ class JpaConfiguration(private val environment: Environment) : DataSourceConfigu
         try {
             val primaryDataSource = masterDataSource()
             val replicaDataSource = slaveDataSource()
-            val targetDataSources: Map<Any, Any> = ImmutableMap.of<Any, Any>(
-                    RoutingDataSource.Route.MASTER, primaryDataSource,
-                    RoutingDataSource.Route.SLAVE, replicaDataSource
+            val targetDataSources: Map<Any, Any> = mapOf(
+                    Pair(RoutingDataSource.Route.MASTER, primaryDataSource),
+                    Pair(RoutingDataSource.Route.SLAVE, replicaDataSource)
             )
             routingDataSource = RoutingDataSource()
             routingDataSource.setTargetDataSources(targetDataSources)
