@@ -1,38 +1,47 @@
 package com.github.shk0da.bioritmic.api.controller.bookmarks
 
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes
+import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.user.UserBookmark
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
-import com.github.shk0da.bioritmic.api.service.UserService
+import com.github.shk0da.bioritmic.api.service.BookmarksService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
+import io.swagger.annotations.ApiImplicitParam
+import io.swagger.annotations.ApiImplicitParams
+import org.springframework.data.domain.Pageable
 import org.springframework.http.MediaType
+import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
 import java.security.Principal
 import javax.validation.Valid
 
+@Validated
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/bookmarks")
-class BookmarkController(val userService: UserService) {
+class BookmarkController(val bookmarksService: BookmarksService) {
 
     // GET /bookmarks/
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun bookmarks(): Flux<UserInfo> {
+    @ApiImplicitParams(value = [
+        ApiImplicitParam(name = "page", dataType = "String", paramType = "query"),
+        ApiImplicitParam(name = "size", dataType = "String", paramType = "query")
+    ])
+    fun bookmarks(pageable: Pageable): Flux<UserInfo> {
         val userId = getUserId()
-        return userService.findBookmarksByUserId(userId).map { UserInfo.of(it) }
+        return bookmarksService.findBookmarksByUserId(userId, of(pageable)).map { UserInfo.of(it) }
     }
 
     // POST /bookmarks/
     @PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun saveBookmarks(@Valid @RequestBody bookmarks: Flux<UserBookmark>, principal: Principal): Flux<UserInfo> {
+    fun saveBookmarks(@RequestBody @Valid bookmarks: Flux<UserBookmark>, principal: Principal): Flux<UserInfo> {
         val userId = getUserId(principal)
-        return userService.saveBookmarks(userId, bookmarks).map { UserInfo.of(it) }
+        return bookmarksService.saveBookmarks(userId, bookmarks).map { UserInfo.of(it) }
     }
 
-    // DELETE /bookmarks/
-    @DeleteMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun deleteBookmarks(@Valid @RequestBody bookmarks: List<UserBookmark>, principal: Principal): Flux<UserInfo> {
-        val userId = getUserId(principal)
-        return userService.deleteBookmarks(userId, bookmarks).map { UserInfo.of(it) }
+    @DeleteMapping(value = ["/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun deleteBookmark(@PathVariable userId: Long): Flux<UserInfo> {
+        val currentUserId = getUserId()
+        return bookmarksService.deleteBookmarks(currentUserId, userId).map { UserInfo.of(it) }
     }
 }

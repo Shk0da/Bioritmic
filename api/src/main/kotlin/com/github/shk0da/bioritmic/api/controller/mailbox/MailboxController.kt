@@ -9,12 +9,14 @@ import io.swagger.annotations.ApiImplicitParam
 import io.swagger.annotations.ApiImplicitParams
 import org.springframework.data.domain.Pageable
 import org.springframework.http.MediaType
+import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.security.Principal
 import javax.validation.Valid
 
+@Validated
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/mailbox")
 class MailboxController(val mailboxService: MailboxService) {
@@ -22,8 +24,8 @@ class MailboxController(val mailboxService: MailboxService) {
     // GET /mailbox <- Mails
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
     @ApiImplicitParams(value = [
-        ApiImplicitParam(name = "page", dataType = "number", paramType = "query"),
-        ApiImplicitParam(name = "size", dataType = "number", paramType = "query")
+        ApiImplicitParam(name = "page", dataType = "String", paramType = "query"),
+        ApiImplicitParam(name = "size", dataType = "String", paramType = "query")
     ])
     fun mailbox(pageable: Pageable): Flux<UserMailModel> {
         val userId = getUserId()

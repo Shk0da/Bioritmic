@@ -1,43 +1,40 @@
 package com.github.shk0da.bioritmic.api.service
 
 import com.github.shk0da.bioritmic.api.configuration.datasource.JpaConfiguration.Companion.jpaTransactionManager
-import com.github.shk0da.bioritmic.api.domain.*
+import com.github.shk0da.bioritmic.api.domain.GisData
+import com.github.shk0da.bioritmic.api.domain.User
+import com.github.shk0da.bioritmic.api.domain.UserSettings
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
-import com.github.shk0da.bioritmic.api.model.search.UserSearch
-import com.github.shk0da.bioritmic.api.model.user.UserBookmark
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
 import com.github.shk0da.bioritmic.api.repository.jpa.UserJpaRepository
-import com.github.shk0da.bioritmic.api.repository.r2dbc.*
+import com.github.shk0da.bioritmic.api.repository.r2dbc.GisDataR2dbcRepository
+import com.github.shk0da.bioritmic.api.repository.r2dbc.UserR2dbcRepository
+import com.github.shk0da.bioritmic.api.repository.r2dbc.UserSettingsR2dbcRepository
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.ImageTag
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.cropAndSaveUserImage
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.deleteUserImages
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.profileImagePath
 import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
-import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkUserBookmarks
 import org.slf4j.LoggerFactory
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Mono.just
 import java.io.File
 import java.nio.file.Files.readAllBytes
 import java.sql.Timestamp
 
-
 @Service
 class UserService(val userJpaRepository: UserJpaRepository,
                   val userR2dbcRepository: UserR2dbcRepository,
                   val gisDataR2dbcRepository: GisDataR2dbcRepository,
                   val userSettingsR2dbcRepository: UserSettingsR2dbcRepository,
-                  val gisUserR2dbcRepository: GisUserR2dbcRepository,
-                  val bookmarkR2dbcRepository: BookmarkR2dbcRepository,
                   val emailService: EmailService) {
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
@@ -131,24 +128,6 @@ class UserService(val userJpaRepository: UserJpaRepository,
         ).map { GisDataModel.of(gisData) }
     }
 
-    @Transactional(readOnly = true)
-    fun searchByFilter(search: UserSearch): Flux<GisUser> {
-        return gisDataR2dbcRepository.findById(search.userId!!)
-                .switchIfEmpty(Mono.error(ApiException(ErrorCode.COORDINATES_NOT_FOUND)))
-                .map {
-                    gisUserR2dbcRepository.findNearest(
-                            it.userId!!,
-                            it.lat!!, it.lon!!,
-                            search.distance, search.timestamp,
-                            search.gender, search.ageMin, search.ageMax
-                    )
-                }
-                .flatMapMany { it }
-                .doOnError {
-                    log.error("Failed get nearest users for [{}]: {}", search, it.message)
-                }
-    }
-
     @Transactional
     fun getUserSettingsById(userId: Long): Mono<UserSettings> {
         return userSettingsR2dbcRepository.findById(userId)
@@ -166,7 +145,7 @@ class UserService(val userJpaRepository: UserJpaRepository,
                         }
                         this.userId = userId
                         if (null != settings.gender) {
-                            gender = settings.gender!!.ordinal.toShort()
+                            gender = settings.gender.ordinal.toShort()
                         }
                         if (null != settings.ageMin) {
                             ageMin = settings.ageMin
@@ -211,59 +190,5 @@ class UserService(val userJpaRepository: UserJpaRepository,
 
     fun deletePhoto(userId: Long): Mono<Any> {
         return just(deleteUserImages(userId))
-    }
-
-    @Transactional
-    fun findBookmarksByUserId(userId: Long): Flux<User> {
-        return bookmarkR2dbcRepository.findAllByUserId(userId)
-                .collectList()
-                .map { bookmarks ->
-                    userR2dbcRepository.findAllById(bookmarks.map { it.bookmarkUserId })
-                }
-                .flatMapMany { it }
-    }
-
-    @Transactional
-    fun saveBookmarks(userId: Long, bookmarks: Flux<UserBookmark>): Flux<User> {
-        return bookmarkR2dbcRepository.findAllByUserId(userId)
-                .map { it.bookmarkUserId ?: -1 }
-                .collectList()
-                .filter { checkUserBookmarks(it) }
-                .map { existUserIds ->
-                    val filteredBookmarks = bookmarks
-                            .filter { !existUserIds.contains(it.userId) }
-                            .map { Bookmark.of(userId, it) }
-                    bookmarkR2dbcRepository.saveAll(filteredBookmarks)
-                            .collectList()
-                            .map { userId }
-                }
-                .flatMap { it }
-                .switchIfEmpty(just(userId))
-                .map { id ->
-                    val usersByBookmarks = bookmarkR2dbcRepository.findAllByUserId(id).map { item -> item.bookmarkUserId!! }
-                    userR2dbcRepository.findAllById(usersByBookmarks)
-                }
-                .flatMapMany { it }
-                .doOnError {
-                    log.error("Failed save bookmarks for userId [{}]: {}", userId, it.message)
-                    Mono.error<Flux<Any>>(it)
-                }
-    }
-
-    @Transactional
-    fun deleteBookmarks(userId: Long, bookmarks: List<UserBookmark>): Flux<User> {
-        return bookmarkR2dbcRepository
-                .deleteByUserIdAndBookmarkUserIdIn(userId, bookmarks.map { it.userId!! })
-                .map { userId }
-                .switchIfEmpty(just(userId))
-                .map { id ->
-                    val usersByBookmarks = bookmarkR2dbcRepository.findAllByUserId(id).map { item -> item.bookmarkUserId!! }
-                    userR2dbcRepository.findAllById(usersByBookmarks)
-                }
-                .flatMapMany { it }
-                .doOnError {
-                    log.error("Failed delete bookmarks for userId [{}]: {}", userId, it.message)
-                    Mono.error<Flux<Any>>(it)
-                }
     }
 }

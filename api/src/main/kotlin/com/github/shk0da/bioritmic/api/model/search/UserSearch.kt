@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils
-import org.springframework.validation.annotation.Validated
 import java.sql.Timestamp
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -13,15 +12,14 @@ import javax.validation.constraints.DecimalMin
 import javax.validation.constraints.Max
 import javax.validation.constraints.Min
 
-@Validated
 data class UserSearch(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
                       var userId: Long? = null,
                       @JsonProperty(access = JsonProperty.Access.READ_ONLY)
                       var birthdate: Date? = null,
                       val gender: Gender? = null,
-                      @Min(14) @Max(100) val ageMin: Int? = null,
-                      @Min(14) @Max(100) val ageMax: Int? = null,
-                      @DecimalMin("0.05") @DecimalMax("30") val distance: Double = defaultDistance,
+                      @field:Min(14) @field:Max(100) val ageMin: Int? = null,
+                      @field:Min(14) @field:Max(100) val ageMax: Int? = null,
+                      @field:DecimalMin("0.05") @field:DecimalMax("30") val distance: Double = defaultDistance,
                       var timestamp: Timestamp = hourAgo()) : BasicPresentation {
 
     companion object {

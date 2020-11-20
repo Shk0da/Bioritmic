@@ -8,10 +8,11 @@ import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
 import java.util.*
+import javax.validation.constraints.NotEmpty
 
 data class UserModel(@JsonProperty(access = JsonProperty.Access.READ_ONLY) val id: Long? = null,
-                     val name: String,
-                     val email: String,
+                     @field:NotEmpty val name: String,
+                     @field:NotEmpty val email: String,
                      @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy") val birthday: Date,
                      val gender: Gender? = null,
                      @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) val password: String? = null) : BasicPresentation {

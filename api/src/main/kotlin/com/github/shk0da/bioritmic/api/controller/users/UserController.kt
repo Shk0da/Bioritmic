@@ -12,11 +12,15 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
+import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 import java.lang.Long.valueOf
 import java.security.Principal
+import javax.validation.Valid
+import javax.validation.constraints.NotNull
 
+@Validated
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/user")
 class UserController(val userService: UserService) {
@@ -32,7 +36,7 @@ class UserController(val userService: UserService) {
 
     // PUT/PATH /me -> UserInfo
     @RequestMapping(value = ["/me"], method = [RequestMethod.PATCH, RequestMethod.PUT], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun update(@RequestBody userInfo: UserInfo, principal: Principal): Mono<UserInfo> {
+    fun update(@RequestBody @Valid userInfo: UserInfo, principal: Principal): Mono<UserInfo> {
         val userId = getUserId(principal)
         return userService.updateUserById(userId, userInfo).map { UserInfo.of(it) }
     }
@@ -67,7 +71,7 @@ class UserController(val userService: UserService) {
 
     // POST /me/gis -> UpdateGIS (+ anti SPAM in radius 100km[param] in hour)
     @PostMapping(value = ["/me/gis"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun meSaveGis(@RequestBody gisData: GisDataModel, principal: Principal): Mono<ResponseEntity<GisDataModel>> {
+    fun meSaveGis(@RequestBody @Valid gisData: GisDataModel, principal: Principal): Mono<ResponseEntity<GisDataModel>> {
         val userId = getUserId(principal)
         return userService.saveGis(userId, gisData)
                 .map {
@@ -92,7 +96,7 @@ class UserController(val userService: UserService) {
 
     // POST /me/photo -> UserInfo
     @PostMapping(value = ["/me/photo"], consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun uploadPhoto(@RequestPart("file") file: Mono<FilePart>, principal: Principal): Mono<ResponseEntity<Void>> {
+    fun uploadPhoto(@RequestPart("file") @Valid @NotNull file: Mono<FilePart>, principal: Principal): Mono<ResponseEntity<Void>> {
         val userId = getUserId(principal)
         return userService.updatePhoto(userId, file)
                 .map {

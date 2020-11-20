@@ -43,8 +43,8 @@ object ValidateUtils {
         }
     }
 
-    fun checkUserBookmarks(it: MutableList<Long>): Boolean {
-        if (it.size >= 100) throw ApiException(ErrorCode.MANY_BOOKMARKS)
+    fun checkSize(size: Number, expectedSize: Int, errorCode: ErrorCode): Boolean {
+        if (size.toInt() > expectedSize) throw ApiException(errorCode)
         return true
     }
 }

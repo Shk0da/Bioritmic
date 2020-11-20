@@ -7,6 +7,7 @@ import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.service.BiorhythmService
+import com.github.shk0da.bioritmic.api.utils.ImageUtils
 import java.util.*
 
 data class UserInfo(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
@@ -41,7 +42,14 @@ data class UserInfo(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
         private val biorhythmService: BiorhythmService = BiorhythmService.instance
 
         fun of(user: User): UserInfo {
-            return UserInfo(id = user.id, name = user.name, email = user.email, birthday = Date(user.birthday!!.time), gender = user.getGender())
+            return UserInfo(
+                    id = user.id,
+                    name = user.name,
+                    email = user.email,
+                    birthday = Date(user.birthday!!.time),
+                    gender = user.getGender(),
+                    image = ImageUtils.getProfileImageUri(user.id!!)
+            )
         }
 
         fun of(gisUser: GisUser): UserInfo {
@@ -52,7 +60,8 @@ data class UserInfo(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     gender = gisUser.getGender(),
                     lat = gisUser.lat,
                     lon = gisUser.lon,
-                    distance = gisUser.distance
+                    distance = gisUser.distance,
+                    image = ImageUtils.getProfileImageUri(gisUser.id!!)
             )
         }
 
@@ -73,7 +82,8 @@ data class UserInfo(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     compare = compare,
                     isBioCompatible = isBioCompatible,
                     isHoroCompatible = isHoroCompatible,
-                    isFullCompatible = isFullCompatible
+                    isFullCompatible = isFullCompatible,
+                    image = ImageUtils.getProfileImageUri(gisUser.id!!)
             )
         }
     }

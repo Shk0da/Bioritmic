@@ -10,7 +10,7 @@
         <comment>Init develop data</comment>
 
         <sql endDelimiter=";">
-            TRUNCATE mailbox, bookmarks, gis_data, authorizations, user_settings, users RESTART IDENTITY;
+            TRUNCATE meetings, mailbox, bookmarks, gis_data, authorizations, user_settings, users RESTART IDENTITY;
         </sql>
 
         <sql endDelimiter=";">
@@ -41,7 +41,7 @@
         </sql>
 
         <sql endDelimiter=";">
-            INSERT INTO public.bookmarks (user_id,bookmark_user_id,"timestamp") VALUES
+            INSERT INTO public.bookmarks (user_id,other_user_id,"timestamp") VALUES
             (1,2,'2020-11-18 10:54:49.499')
             ,(1,1,'2020-11-18 10:55:11.074')
             ;
@@ -60,6 +60,12 @@
             ,(3,2,'aa3','2020-11-18 15:59:18.848')
             ,(3,1,'bb','2020-11-18 15:59:18.848')
             ,(1,3,'bb','2020-11-18 16:00:18.848')
+            ;
+        </sql>
+
+        <sql endDelimiter=";">
+            INSERT INTO public.meetings (user_id,other_user_id,other_user_lat,other_user_lon,distance,"timestamp") VALUES
+            (1,2,50.0,60.0,2.0,'2020-11-19 18:30:14.140')
             ;
         </sql>
 

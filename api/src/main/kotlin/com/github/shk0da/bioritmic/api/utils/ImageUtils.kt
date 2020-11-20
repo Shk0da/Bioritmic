@@ -39,6 +39,10 @@ object ImageUtils {
         }
     }
 
+    fun getProfileImageUri(userId: Long): String {
+        return "/api/v1/user/$userId/photo"
+    }
+
     fun profileImagePath(userId: Long): String {
         return profileImagePath(userId, ImageTag.CROPP_250x250)
     }

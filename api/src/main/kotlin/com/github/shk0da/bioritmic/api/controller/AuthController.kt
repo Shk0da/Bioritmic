@@ -17,9 +17,12 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.http.ResponseEntity
+import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
+import javax.validation.Valid
 
+@Validated
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1)
 class AuthController(val userService: UserService, val authService: AuthService) {
@@ -29,7 +32,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     // POST /registration/ {name, email}  -> send email with approve
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping(value = ["/registration"], produces = [APPLICATION_JSON_VALUE])
-    fun registration(@RequestBody userModel: UserModel): Mono<ResponseEntity<UserModel>> {
+    fun registration(@RequestBody @Valid userModel: UserModel): Mono<ResponseEntity<UserModel>> {
         with(userModel) {
             if (!isFilledInput()) throw ApiException(INVALID_PARAMETER, ImmutableMap.of(PARAMETER_NAME, "user"))
             if (userService.isUserExists(userModel.email)) throw ApiException(USER_EXISTS)
@@ -45,7 +48,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     // POST /recovery/ {email} -> send email with code
     @ResponseStatus(HttpStatus.OK)
     @PostMapping(value = ["/recovery"], produces = [APPLICATION_JSON_VALUE])
-    fun recovery(@RequestBody recoveryModel: RecoveryModel): Mono<ResponseEntity<Any>> {
+    fun recovery(@RequestBody @Valid recoveryModel: RecoveryModel): Mono<ResponseEntity<Any>> {
         val user = userService.findUserByEmail(recoveryModel.email)
         if (null == user) {
             throw ApiException(USER_WITH_EMAIL_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, recoveryModel.email))
@@ -89,7 +92,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     // POST /authorization/ {email, password} <- Oauth (JWT, refresh token)
     @ResponseStatus(HttpStatus.OK)
     @PostMapping(value = ["/authorization"], produces = [APPLICATION_JSON_VALUE])
-    fun authorization(@RequestBody authorizationModel: AuthorizationModel): Mono<ResponseEntity<UserToken>> {
+    fun authorization(@RequestBody @Valid authorizationModel: AuthorizationModel): Mono<ResponseEntity<UserToken>> {
         val user = userService.findUserByEmail(authorizationModel.email)
         if (null == user) {
             throw ApiException(USER_WITH_EMAIL_NOT_FOUND, ImmutableMap.of(PARAMETER_VALUE, authorizationModel.email))
@@ -108,7 +111,7 @@ class AuthController(val userService: UserService, val authService: AuthService)
     // POST /refresh-token/ <- {email, refreshToken} -> new accesToken
     @ResponseStatus(HttpStatus.OK)
     @PostMapping(value = ["/refresh-token"], produces = [APPLICATION_JSON_VALUE])
-    fun refreshToken(@RequestBody userToken: UserToken): Mono<ResponseEntity<UserToken>> {
+    fun refreshToken(@RequestBody @Valid userToken: UserToken): Mono<ResponseEntity<UserToken>> {
         return authService.refreshToken(userToken)
                 .map {
                     log.debug("Refreshed {}", it)
