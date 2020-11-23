@@ -29,7 +29,7 @@ class GisUserR2dbcRepository(val slaveConnectionFactory: ConnectionFactory) {
 
     private val searchQuery = "SELECT usr.id, usr.name, usr.birthday, usr.gender, gis.lat, gis.lon, gis.distance " +
             "FROM users AS usr, (SELECT *, (point(lat, lon) <@> point($2, $3)) AS distance FROM gis_data ORDER BY distance) AS gis " +
-            "WHERE gis.user_id <> $1 AND gis.distance <= $4 AND usr.id = gis.user_id AND gis.timestamp >= $5"
+            "WHERE gis.user_id <> $1 AND gis.distance <= $4 AND usr.id = gis.user_id AND gis.timestamp >= $5 order by gis.distance limit 100"
 
     fun findNearest(userId: Long,
                     lat: Double, lon: Double,

@@ -1,6 +1,7 @@
 package com.github.shk0da.bioritmic.api.domain
 
 import com.github.shk0da.bioritmic.api.configuration.ApiConfiguration.Companion.defaultZone
+import java.io.Serializable
 import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.util.*
@@ -11,7 +12,7 @@ import javax.persistence.*
     UniqueConstraint(name = "uq_authorizations_user_id", columnNames = ["user_id"])
 ])
 @org.springframework.data.relational.core.mapping.Table("authorizations")
-class Auth {
+class Auth : Serializable {
 
     @Id
     @org.springframework.data.annotation.Id
@@ -36,6 +37,9 @@ class Auth {
     var expireTime: Timestamp? = null
 
     companion object {
+
+        const val lifetimeInMinutes = 60L
+
         fun createFrom(user: User): Auth {
             return with(Auth()) {
                 userId = user.id
@@ -49,7 +53,7 @@ class Auth {
 
     fun refresh(): Auth {
         accessToken = UUID.randomUUID().toString()
-        expireTime = Timestamp(LocalDateTime.now().plusHours(1).toInstant(defaultZone).toEpochMilli())
+        expireTime = Timestamp(LocalDateTime.now().plusMinutes(lifetimeInMinutes).toInstant(defaultZone).toEpochMilli())
         return this
     }
 

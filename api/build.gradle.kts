@@ -53,6 +53,8 @@ dependencies {
 	runtimeOnly("io.r2dbc:r2dbc-postgresql")
 	runtimeOnly("org.postgresql:postgresql")
 
+	implementation("org.infinispan:infinispan-spring-boot-starter-embedded:2.3.4.Final")
+
 	testImplementation("org.springframework.boot:spring-boot-starter-test") {
 		exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
 	}

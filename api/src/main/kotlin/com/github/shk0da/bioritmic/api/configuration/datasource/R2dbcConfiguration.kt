@@ -30,10 +30,10 @@ import org.springframework.context.annotation.Primary
 import org.springframework.core.env.Environment
 import org.springframework.core.env.Profiles
 import org.springframework.data.r2dbc.config.AbstractR2dbcConfiguration
-import org.springframework.data.r2dbc.connectionfactory.R2dbcTransactionManager
-import org.springframework.data.r2dbc.connectionfactory.lookup.AbstractRoutingConnectionFactory
 import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories
 import org.springframework.jdbc.datasource.DriverManagerDataSource
+import org.springframework.r2dbc.connection.R2dbcTransactionManager
+import org.springframework.r2dbc.connection.lookup.AbstractRoutingConnectionFactory
 import org.springframework.transaction.TransactionManager
 import org.springframework.transaction.reactive.TransactionSynchronizationManager.forCurrentTransaction
 import reactor.core.publisher.Mono
@@ -49,7 +49,7 @@ class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcCo
         const val r2dbcTransactionManager = "r2dbcTransactionManager"
     }
 
-    inner class RoutingConnectionFactory : AbstractRoutingConnectionFactory() {
+    inner class RoutingConnectionFactory :  AbstractRoutingConnectionFactory() {
         override fun determineCurrentLookupKey(): Mono<Any> = forCurrentTransaction().map {
             val isReadOnly = it.isActualTransactionActive && it.isCurrentTransactionReadOnly
             if (isReadOnly) SLAVE_ROUTING_KEY else MASTER_ROUTING_KEY

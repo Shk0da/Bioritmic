@@ -12,6 +12,7 @@ import com.github.shk0da.bioritmic.api.repository.r2dbc.AuthR2dbcRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.UserR2dbcRepository
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.generateRandomPassword
+import org.infinispan.Cache
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -22,13 +23,18 @@ class AuthService(val authJpaRepository: AuthJpaRepository,
                   val authR2dbcRepository: AuthR2dbcRepository,
                   val userJpaRepository: UserJpaRepository,
                   val userR2dbcRepository: UserR2dbcRepository,
-                  val emailService: EmailService) {
+                  val emailService: EmailService,
+                  val authTokenCache: Cache<String, Auth>) {
 
     private val log = LoggerFactory.getLogger(AuthService::class.java)
 
     @Transactional
     fun deleteAuthByUserId(userId: Long): Mono<Void> {
-        return authR2dbcRepository.deleteByUserId(userId)
+        return authR2dbcRepository.findByUserId(userId)
+                .map { auth ->
+                    authTokenCache.remove(auth?.accessToken)
+                    authR2dbcRepository.deleteByUserId(userId)
+                }.flatMap { it }
     }
 
     @Transactional
@@ -39,20 +45,22 @@ class AuthService(val authJpaRepository: AuthJpaRepository,
             newAuth.id = currentAuth.id
             newAuth.refreshToken = newAuth.refreshToken
         }
+        authTokenCache[newAuth.accessToken] = newAuth
         return authR2dbcRepository.save(newAuth)
     }
 
     @Transactional
     fun refreshToken(userToken: UserToken): Mono<UserToken> {
-        return userR2dbcRepository.findByEmail(userToken.email!!)
+        return userR2dbcRepository.findByEmail(userToken.email)
                 .map {
                     val user = it
-                    authR2dbcRepository.findByUserIdAndRefreshToken(user!!.id!!, userToken.refreshToken!!)
-                            .flatMap {
-                                val auth = it!!.refresh()
-                                authR2dbcRepository.save(auth)
+                    authR2dbcRepository.findByUserIdAndRefreshToken(user!!.id!!, userToken.refreshToken)
+                            .flatMap { auth ->
+                                val newAuth = auth!!.refresh()
+                                authTokenCache[auth.accessToken] = auth
+                                authR2dbcRepository.save(newAuth)
                             }
-                            .map { UserToken.of(user, it) }
+                            .map { auth -> UserToken.of(user, auth) }
                             .switchIfEmpty(Mono.error(ApiException(ErrorCode.AUTH_NOT_FOUND)))
                 }
                 .flatMap { it }
@@ -61,7 +69,16 @@ class AuthService(val authJpaRepository: AuthJpaRepository,
 
     @Transactional(readOnly = true)
     fun getAuthByAccessToken(token: String): Mono<Auth?> {
-        return authR2dbcRepository.findByAccessToken(token)
+        return Mono
+                .justOrEmpty(authTokenCache[token])
+                .switchIfEmpty(authR2dbcRepository
+                        .findByAccessToken(token)
+                        .doOnSuccess { auth ->
+                            if (null != auth) {
+                                authTokenCache[auth.accessToken] = auth
+                            }
+                        }
+                )
     }
 
     @Transactional
@@ -98,8 +115,13 @@ class AuthService(val authJpaRepository: AuthJpaRepository,
         user.password = passwordEncoder.encode(newPassword)
         return userR2dbcRepository.save(user)
                 .map {
-                    authR2dbcRepository.deleteByUserId(it.id!!)
-                    emailService.sendNewPassword(user.email!!, newPassword)
+                    authR2dbcRepository.findByUserId(user.id!!)
+                            .map { auth ->
+                                authTokenCache.remove(auth?.accessToken)
+                                authR2dbcRepository.deleteByUserId(user.id!!)
+                            }.map {
+                                emailService.sendNewPassword(user.email!!, newPassword)
+                            }
                 }
     }
 }
