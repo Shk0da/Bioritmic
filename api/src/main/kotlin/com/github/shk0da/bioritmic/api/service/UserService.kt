@@ -6,12 +6,14 @@ import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.domain.UserSettings
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
+import com.github.shk0da.bioritmic.api.model.PageableRequest
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
 import com.github.shk0da.bioritmic.api.repository.jpa.UserJpaRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.GisDataR2dbcRepository
+import com.github.shk0da.bioritmic.api.repository.r2dbc.UserBlockR2dbcRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.UserR2dbcRepository
 import com.github.shk0da.bioritmic.api.repository.r2dbc.UserSettingsR2dbcRepository
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
@@ -24,9 +26,11 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Mono.just
 import java.io.File
+import java.lang.System.currentTimeMillis
 import java.nio.file.Files.readAllBytes
 import java.sql.Timestamp
 
@@ -35,6 +39,7 @@ class UserService(val userJpaRepository: UserJpaRepository,
                   val userR2dbcRepository: UserR2dbcRepository,
                   val gisDataR2dbcRepository: GisDataR2dbcRepository,
                   val userSettingsR2dbcRepository: UserSettingsR2dbcRepository,
+                  val userBlockR2dbcRepository: UserBlockR2dbcRepository,
                   val emailService: EmailService) {
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
@@ -52,6 +57,38 @@ class UserService(val userJpaRepository: UserJpaRepository,
     @Transactional(readOnly = true)
     fun findUserById(id: Long): Mono<User> {
         return userR2dbcRepository.findById(id)
+    }
+
+    @Transactional
+    fun blockedUsers(userId: Long, pageable: PageableRequest): Flux<User> {
+        return userBlockR2dbcRepository.findAllByUserId(userId, pageable.pageSize, pageable.offset)
+                .map { it.otherUserId!! }
+                .collectList()
+                .flatMapMany {
+                    userR2dbcRepository.findAllById(it)
+                }
+    }
+
+    @Transactional
+    fun blockUser(userId: Long, otherUserId: Long): Mono<User> {
+        return userR2dbcRepository.findById(otherUserId)
+                .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
+                .map {user ->
+                    userBlockR2dbcRepository
+                            .insert(userId, otherUserId, Timestamp(currentTimeMillis()))
+                            .map { user }
+                }.flatMap { it }
+    }
+
+    @Transactional
+    fun unblockUser(userId: Long, otherUserId: Long): Mono<User> {
+        return userR2dbcRepository.findById(otherUserId)
+                .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
+                .map {user ->
+                    userBlockR2dbcRepository
+                            .delete(userId, otherUserId)
+                            .map { user }
+                }.flatMap { it }
     }
 
     @Transactional(readOnly = true)

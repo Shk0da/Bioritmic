@@ -25,6 +25,8 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
     AUTH_NOT_FOUND("API-404", "Authorization not found.", HttpStatus.NOT_FOUND),
     IMAGE_NOT_FOUND("API-404", "Image not found.", HttpStatus.NOT_FOUND),
 
+    USER_IS_BLOCKED("API-412", "The user blocked you.", HttpStatus.PRECONDITION_FAILED),
+
     API_INTERNAL_ERROR("API-500", "Unknown error.", HttpStatus.INTERNAL_SERVER_ERROR),
     API_SERVICE_UNAVAILABLE("API-503", "Service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
 

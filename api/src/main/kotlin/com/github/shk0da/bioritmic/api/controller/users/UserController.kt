@@ -5,19 +5,24 @@ import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_PARAMETER
+import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkNotEmpty
+import io.swagger.annotations.ApiImplicitParam
+import io.swagger.annotations.ApiImplicitParams
 import org.slf4j.LoggerFactory
+import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.lang.Long.valueOf
 import java.security.Principal
@@ -54,11 +59,36 @@ class UserController(val userService: UserService) {
 
     // GET /user/{id} <- UserInfo. id - hash?? of real id
     @GetMapping(value = ["/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun user(@PathVariable id: String): Mono<UserInfo> {
+    fun user(@PathVariable id: Long): Mono<UserInfo> {
         val userId = valueOf(id)
         return userService.findUserById(userId)
                 .map { UserInfo.of(it) }
                 .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
+    }
+
+    // GET /blocked <- UserInfo
+    @GetMapping(value = ["/blocked"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ApiImplicitParams(value = [
+        ApiImplicitParam(name = "page", dataType = "java.lang.Integer", paramType = "query"),
+        ApiImplicitParam(name = "size", dataType = "java.lang.Integer", paramType = "query")
+    ])
+    fun blockedUsers(pageable: Pageable): Flux<UserInfo> {
+        val userId = getUserId()
+        return userService.blockedUsers(userId, of(pageable)).map { UserInfo.of(it) }
+    }
+
+    // PUT /user/{id}/block <- UserInfo
+    @PutMapping(value = ["/{id}/block"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun blockUser(@PathVariable id: Long): Mono<UserInfo> {
+        val userId = getUserId()
+        return userService.blockUser(userId, id).map { UserInfo.of(it) }
+    }
+
+    // PUT /user/{id}/block <- unblock
+    @PutMapping(value = ["/{id}/unblock"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun unblockUser(@PathVariable id: Long): Mono<UserInfo> {
+        val userId = getUserId()
+        return userService.unblockUser(userId, id).map { UserInfo.of(it) }
     }
 
     // GET /me/gis <- GIS

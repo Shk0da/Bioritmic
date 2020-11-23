@@ -3,6 +3,7 @@ package com.github.shk0da.bioritmic.api.domain
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
+import java.lang.System.currentTimeMillis
 import java.sql.Timestamp
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -47,6 +48,10 @@ class User {
     @org.springframework.data.relational.core.mapping.Column("recovery_code_expire_time")
     var recoveryCodeExpireTime: Timestamp? = null
 
+    @Column(name = "register_date")
+    @org.springframework.data.relational.core.mapping.Column("register_date")
+    var registerDate: Timestamp? = null
+
     @Transient
     @org.springframework.data.annotation.Transient
     var userSettings: UserSettings? = null
@@ -66,7 +71,7 @@ class User {
     fun setRecoveryCode() {
         val code = UUID.randomUUID().toString()
         recoveryCode = code
-        recoveryCodeExpireTime = Timestamp(System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(60))
+        recoveryCodeExpireTime = Timestamp(currentTimeMillis() + TimeUnit.SECONDS.toMillis(60))
     }
 
     fun resetRecoveryCode() {
@@ -82,11 +87,12 @@ class User {
             user.birthday = Timestamp(userModel.birthday.time)
             user.setGender(userModel.gender)
             user.password = passwordEncoder.encode(userModel.password)
+            user.registerDate = Timestamp(currentTimeMillis())
             return user
         }
     }
 
     override fun toString(): String {
-        return "User(id=$id, name=$name, email=$email, birthday=$birthday, gender=${getGender()})"
+        return "User(id=$id, name=$name, email=$email, birthday=$birthday, gender=${getGender()}, registerDate=$registerDate)"
     }
 }

@@ -21,6 +21,7 @@ class Scheduler(val entityManager: EntityManager,
     private val log = LoggerFactory.getLogger(Scheduler::class.java)
 
     private val twoHoursInMillis = TimeUnit.HOURS.toMillis(2)
+    private val yearInMillis = TimeUnit.DAYS.toMillis(365)
 
     @Scheduled(cron = "0 0 */1 * * ?")
     @Transactional(propagation = Propagation.REQUIRES_NEW, transactionManager = jpaTransactionManager)
@@ -30,6 +31,22 @@ class Scheduler(val entityManager: EntityManager,
             entityManager
                     .createQuery("delete from GisData where timestamp <= :timestamp")
                     .setParameter("timestamp", Timestamp(currentTimeMillis() - twoHoursInMillis))
+                    .executeUpdate()
+            entityManager.flush()
+        }
+    }
+
+    @Scheduled(cron = "0 0 0 * * ?")
+    @Transactional(propagation = Propagation.REQUIRES_NEW, transactionManager = jpaTransactionManager)
+    fun fireCleanOldUsers() {
+        wrapWithLock("fireCleanOldUsers") {
+            entityManager.joinTransaction()
+            entityManager
+                    .createQuery("delete from User where id in " +
+                            "(select u.id from User u " +
+                            "left join Auth a on u.id = a.userId " +
+                            "where u.registerDate < :timestamp and a.expireTime < :timestamp)")
+                    .setParameter("timestamp", Timestamp(currentTimeMillis() - yearInMillis))
                     .executeUpdate()
             entityManager.flush()
         }
