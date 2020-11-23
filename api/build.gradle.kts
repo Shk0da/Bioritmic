@@ -1,10 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-	id("org.springframework.boot") version "2.4.0"
-	id("io.spring.dependency-management") version "1.0.10.RELEASE"
-	kotlin("jvm") version "1.4.10"
-	kotlin("plugin.spring") version "1.4.10"
+    id("org.springframework.boot") version "2.4.0"
+    id("io.spring.dependency-management") version "1.0.10.RELEASE"
+    kotlin("jvm") version "1.4.10"
+    kotlin("plugin.spring") version "1.4.10"
 }
 
 group = "com.github.shk0da.bioritmic"
@@ -12,77 +12,84 @@ version = "0.1"
 java.sourceCompatibility = JavaVersion.VERSION_11
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-	implementation("org.springframework.boot:spring-boot-starter-actuator")
-	implementation("org.springframework.boot:spring-boot-starter-aop")
-	implementation("org.springframework.boot:spring-boot-starter-batch")
-	implementation("org.springframework.boot:spring-boot-starter-cache")
-	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
-	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
-	implementation("org.springframework.boot:spring-boot-starter-security")
-	implementation("org.springframework.boot:spring-boot-starter-validation")
-	implementation("org.springframework.boot:spring-boot-starter-webflux")
-	implementation("org.springframework.boot:spring-boot-starter-mail")
-	implementation("org.springframework.retry:spring-retry")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.boot:spring-boot-starter-aop")
+    implementation("org.springframework.boot:spring-boot-starter-batch")
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("org.springframework.retry:spring-retry")
 
-	implementation("io.springfox:springfox-boot-starter:3.0.0")
-	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-	implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
+    implementation("io.springfox:springfox-boot-starter:3.0.0")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
 
-	implementation("io.micrometer:micrometer-core")
-	implementation("io.dropwizard.metrics:metrics-core")
-	implementation("io.dropwizard.metrics:metrics-annotation")
-	implementation("io.dropwizard.metrics:metrics-json")
-	implementation("io.dropwizard.metrics:metrics-jvm")
-	implementation("io.dropwizard.metrics:metrics-servlet")
-	implementation("io.dropwizard.metrics:metrics-servlets")
-	implementation("org.springframework.plugin:spring-plugin-core")
+    implementation("io.micrometer:micrometer-core")
+    implementation("io.dropwizard.metrics:metrics-core")
+    implementation("io.dropwizard.metrics:metrics-annotation")
+    implementation("io.dropwizard.metrics:metrics-json")
+    implementation("io.dropwizard.metrics:metrics-jvm")
+    implementation("io.dropwizard.metrics:metrics-servlet")
+    implementation("io.dropwizard.metrics:metrics-servlets")
+    implementation("org.springframework.plugin:spring-plugin-core")
 
-	implementation("net.logstash.logback:logstash-logback-encoder:6.4")
+    implementation("net.logstash.logback:logstash-logback-encoder:6.4")
 
-	implementation("org.jetbrains:annotations:19.0.0")
-	implementation("org.jetbrains.kotlin:kotlin-reflect")
-	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+    implementation("org.jetbrains:annotations:19.0.0")
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
-	implementation("org.liquibase:liquibase-core")
-	runtimeOnly("io.r2dbc:r2dbc-postgresql")
-	runtimeOnly("org.postgresql:postgresql")
+    implementation("org.liquibase:liquibase-core")
+    runtimeOnly("io.r2dbc:r2dbc-postgresql")
+    runtimeOnly("org.postgresql:postgresql")
 
-	implementation("org.infinispan:infinispan-spring-boot-starter-embedded:2.3.4.Final")
+    implementation("org.infinispan:infinispan-spring-boot-starter-embedded:2.3.4.Final")
 
-	testImplementation("org.springframework.boot:spring-boot-starter-test") {
-		exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
-	}
-	testImplementation("io.projectreactor:reactor-test")
-	testImplementation("org.springframework.batch:spring-batch-test")
-	testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-test") {
+        exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
+    }
+
+    testImplementation("io.projectreactor:reactor-test")
+    testImplementation("org.springframework.batch:spring-batch-test")
+    testImplementation("org.springframework.security:spring-security-test")
+
+    testImplementation("io.rest-assured:rest-assured:4.3.2")
+    testImplementation("io.rest-assured:json-path:4.3.2")
+    testImplementation("io.rest-assured:xml-path:4.3.2")
+    testImplementation("io.rest-assured:kotlin-extensions:4.3.2")
+    testImplementation("org.testcontainers:postgresql:1.15.0")
 }
 
 tasks.withType<Test> {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }
 
 tasks.withType<KotlinCompile> {
-	kotlinOptions {
-		freeCompilerArgs = listOf("-Xjsr305=strict")
-		jvmTarget = "11"
-	}
+    kotlinOptions {
+        freeCompilerArgs = listOf("-Xjsr305=strict")
+        jvmTarget = "11"
+    }
 }
 
 // use like this: gradle -Pprofile=${profile} build
 tasks.withType<ProcessResources> {
-	if (project.hasProperty("profile")) {
-		doLast {
-			val applicationYml = file("${buildDir}/resources/main/application.yml")
-			applicationYml.writer().use { writer ->
-				val profile: String by project
-				writer.append("\n\nspring.profiles.active: $profile")
-			}
-		}
-	}
+    if (project.hasProperty("profile")) {
+        doLast {
+            val applicationYml = file("${buildDir}/resources/main/application.yml")
+            applicationYml.writer().use { writer ->
+                val profile: String by project
+                writer.append("\n\nspring.profiles.active: $profile")
+            }
+        }
+    }
 }

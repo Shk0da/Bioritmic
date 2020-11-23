@@ -41,10 +41,10 @@ import javax.sql.DataSource
 @EnableJpaRepositories("com.github.shk0da.bioritmic.api.repository.jpa")
 @Conditional(value = [DefaultDataSourceProfileCondition::class])
 class JpaConfiguration(private val environment: Environment,
-                       private val metricRegistry: MetricRegistry,
-                       private val healthCheckRegistry: HealthCheckRegistry) : DataSourceConfiguration {
+                       private val metricRegistry: MetricRegistry? = null,
+                       private val healthCheckRegistry: HealthCheckRegistry? = null) : DataSourceConfiguration {
 
-    private val log = LoggerFactory.getLogger(DataSourceConfiguration::class.java)
+    private val log = LoggerFactory.getLogger(JpaConfiguration::class.java)
 
     companion object {
 
@@ -118,6 +118,7 @@ class JpaConfiguration(private val environment: Environment,
 
     @Bean
     @Primary
+    @Conditional(value = [DefaultDataSourceProfileCondition::class])
     fun dataSource(): DataSource {
         val routingDataSource: RoutingDataSource
         try {
@@ -173,8 +174,12 @@ class JpaConfiguration(private val environment: Environment,
         hikariConfig.password = password
         hikariConfig.driverClassName = driver
 
-        hikariConfig.metricRegistry = metricRegistry
-        hikariConfig.healthCheckRegistry = healthCheckRegistry
+        if (null != metricRegistry) {
+            hikariConfig.metricRegistry = metricRegistry
+        }
+        if (null != healthCheckRegistry) {
+            hikariConfig.healthCheckRegistry = healthCheckRegistry
+        }
 
         return HikariDataSource(hikariConfig)
     }
