@@ -10,7 +10,8 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE_LENGTH
 import com.github.shk0da.bioritmic.api.model.error.ApiError
 import com.github.shk0da.bioritmic.api.model.error.ApiErrors
-import org.slf4j.LoggerFactory
+import com.github.shk0da.bioritmic.api.utils.LoggingUtils.Level.ERROR
+import com.github.shk0da.bioritmic.api.utils.LoggingUtils.logWithErrorCode
 import org.springframework.beans.TypeMismatchException
 import org.springframework.core.codec.DecodingException
 import org.springframework.http.HttpHeaders
@@ -37,8 +38,6 @@ import javax.validation.constraints.Size
 @RestControllerAdvice
 class ApiExceptionHandler {
 
-    private val log = LoggerFactory.getLogger(ApiExceptionHandler::class.java)
-
     companion object {
         const val SERVICE_UNAVAILABLE_RETRY_AFTER = "10" // delay-seconds
     }
@@ -47,8 +46,11 @@ class ApiExceptionHandler {
     @ExceptionHandler(Exception::class)
     @ResponseStatus(value = HttpStatus.INTERNAL_SERVER_ERROR)
     fun handleException(ex: Exception): ResponseEntity<ApiErrors> {
-        log.error("{}", getRootCauseMessage(ex), ex)
-        return ResponseEntity(ApiErrors(ApiError.of(ErrorCode.API_INTERNAL_ERROR)), ErrorCode.API_INTERNAL_ERROR.httpCode)
+        logError(ex)
+        return ResponseEntity(
+            ApiErrors(ApiError.of(ErrorCode.API_INTERNAL_ERROR)),
+            ErrorCode.API_INTERNAL_ERROR.httpCode
+        )
     }
 
     /**
@@ -62,33 +64,37 @@ class ApiExceptionHandler {
     @ExceptionHandler(SQLException::class, IOException::class)
     @ResponseStatus(value = HttpStatus.SERVICE_UNAVAILABLE)
     fun handleSQLException(ex: Exception): ResponseEntity<ApiErrors> {
-        log.error("{}", getRootCauseMessage(ex), ex)
+        logError(ex)
         val headers: MultiValueMap<String, String> = object : LinkedMultiValueMap<String, String>() {
             init {
                 add(HttpHeaders.RETRY_AFTER, SERVICE_UNAVAILABLE_RETRY_AFTER)
             }
         }
-        return ResponseEntity(ApiErrors(ApiError.of(ErrorCode.API_SERVICE_UNAVAILABLE)), headers, ErrorCode.API_SERVICE_UNAVAILABLE.httpCode)
+        return ResponseEntity(
+            ApiErrors(ApiError.of(ErrorCode.API_SERVICE_UNAVAILABLE)),
+            headers,
+            ErrorCode.API_SERVICE_UNAVAILABLE.httpCode
+        )
     }
 
     @ResponseBody
     @ExceptionHandler(
-            IllegalArgumentException::class,
-            TypeMismatchException::class,
-            JsonMappingException::class,
-            InvalidFormatException::class,
-            UnexpectedTypeException::class,
-            IllegalArgumentException::class,
-            MethodArgumentNotValidException::class,
-            HttpMessageNotReadableException::class,
-            MismatchedInputException::class,
-            DecodingException::class,
-            ServerWebInputException::class,
-            ConstraintViolationException::class
+        IllegalArgumentException::class,
+        TypeMismatchException::class,
+        JsonMappingException::class,
+        InvalidFormatException::class,
+        UnexpectedTypeException::class,
+        IllegalArgumentException::class,
+        MethodArgumentNotValidException::class,
+        HttpMessageNotReadableException::class,
+        MismatchedInputException::class,
+        DecodingException::class,
+        ServerWebInputException::class,
+        ConstraintViolationException::class
     )
     @ResponseStatus(value = HttpStatus.BAD_REQUEST)
     fun handleIllegalArgumentException(ex: Exception): ResponseEntity<ApiErrors> {
-        log.error("{}", getRootCauseMessage(ex))
+        logError(ex)
         var error = ex.message
         val throwable = getRootCause(ex)
         if (throwable is MethodArgumentNotValidException) {
@@ -96,7 +102,7 @@ class ApiExceptionHandler {
             val parameterizedError = extractParameterizedError(errors)
             if (parameterizedError.isPresent) return parameterizedError.get()
             val parameters = errors.stream().collect(
-                    Collectors.toMap({ obj: FieldError -> obj.field }, { obj: FieldError -> obj.defaultMessage })
+                Collectors.toMap({ obj: FieldError -> obj.field }, { obj: FieldError -> obj.defaultMessage })
             )
             val parameter = java.lang.String.join(", ", parameters.keys)
             error = java.lang.String.join("; ", parameters.values)
@@ -123,27 +129,27 @@ class ApiExceptionHandler {
             }
             is InvalidFormatException -> {
                 parameter = throwable.path
-                        .stream()
-                        .map { it.fieldName }
-                        .collect(joining(", "))
+                    .stream()
+                    .map { it.fieldName }
+                    .collect(joining(", "))
             }
             is JsonMappingException -> {
                 parameter = throwable.path
-                        .stream()
-                        .map { it.fieldName }
-                        .collect(joining(", "))
+                    .stream()
+                    .map { it.fieldName }
+                    .collect(joining(", "))
             }
             is MismatchedInputException -> {
                 parameter = throwable.path
-                        .stream()
-                        .map { it.fieldName }
-                        .collect(joining(", "))
+                    .stream()
+                    .map { it.fieldName }
+                    .collect(joining(", "))
             }
             is WebExchangeBindException -> {
                 parameter = throwable.fieldErrors
-                        .stream()
-                        .map { it.field }
-                        .collect(joining(", "))
+                    .stream()
+                    .map { it.field }
+                    .collect(joining(", "))
             }
             is IllegalArgumentException -> {
                 parameter = throwable.message as String
@@ -171,13 +177,17 @@ class ApiExceptionHandler {
     @ExceptionHandler(ApiException::class)
     @ResponseStatus(value = HttpStatus.BAD_REQUEST)
     fun handleApiException(ex: ApiException): ResponseEntity<ApiErrors> {
-        log.error("{}", getRootCauseMessage(ex))
+        logError(ex)
         return if (ex.errorCode != null)
         // with ErrorCode
             ResponseEntity(ApiErrors(ApiError.of(ex.errorCode!!, ex.parameters)), ex.httpStatus!!)
         else
         // default
-            ResponseEntity(ApiErrors(ApiError.of(ErrorCode.INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, ex.parameter!!)))), HttpStatus.BAD_REQUEST)
+            ResponseEntity(
+                ApiErrors(
+                    ApiError.of(ErrorCode.INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, ex.parameter!!)))
+                ), HttpStatus.BAD_REQUEST
+            )
     }
 
     private fun extractParameterizedError(errors: List<FieldError>): Optional<ResponseEntity<ApiErrors>> {
@@ -216,5 +226,24 @@ class ApiExceptionHandler {
             throwable = throwable.cause
         }
         return list
+    }
+
+    private fun logError(ex: java.lang.Exception) {
+        when (ex) {
+            is ApiException -> {
+                val errorCode = ex.errorCode?.code ?: "API-000"
+                var message: String = ex.message ?: ""
+                for ((key, value) in ex.parameters) {
+                    message = message.replace("\${$key}", value)
+                }
+                logWithErrorCode(ERROR, errorCode, "{}", message)
+            }
+            is IOException -> {
+                logWithErrorCode(ERROR, "IOException", "{}", getRootCauseMessage(ex), ex)
+            }
+            else -> {
+                logWithErrorCode(ERROR, "Exception", "{}", getRootCauseMessage(ex), ex)
+            }
+        }
     }
 }

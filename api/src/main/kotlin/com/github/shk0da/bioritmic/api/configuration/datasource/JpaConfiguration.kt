@@ -41,8 +41,8 @@ import javax.sql.DataSource
 @EnableJpaRepositories("com.github.shk0da.bioritmic.api.repository.jpa")
 @Conditional(value = [DefaultDataSourceProfileCondition::class])
 class JpaConfiguration(private val environment: Environment,
-                       private val metricRegistry: MetricRegistry? = null,
-                       private val healthCheckRegistry: HealthCheckRegistry? = null) : DataSourceConfiguration {
+                       private val metricRegistry: MetricRegistry?,
+                       private val healthCheckRegistry: HealthCheckRegistry?) : DataSourceConfiguration {
 
     private val log = LoggerFactory.getLogger(JpaConfiguration::class.java)
 

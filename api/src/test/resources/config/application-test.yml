@@ -2,6 +2,8 @@
 spring.application.name: ${spring.application.basic-name} (Testing mode)
 spring.profiles.include: default
 
+logging.level.com.github.shk0da.bioritmic: debug
+
 spring:
   liquibase.contexts: test
   mail:
@@ -14,14 +16,17 @@ spring:
       mail.smtp.starttls.enable: false
   datasource:
     host: 127.0.0.1
-    port: 5444
+    port: 5432
     database: bioritmic
-    url: jdbc:postgresql://${spring.datasource.host}:${spring.datasource.port}/${spring.datasource.database}
+    jpa-url: jdbc:postgresql://${spring.datasource.host}:${spring.datasource.port}/${spring.datasource.database}
+    r2dbc-url: r2dbc:postgresql://${spring.datasource.host}:${spring.datasource.port}/${spring.datasource.database}
+    driver: postgresql
+    url: ${spring.datasource.jpa-url}
     driver-class-name: org.postgresql.Driver
     username: postgres
     password: postgres
   r2dbc:
-    url: r2dbc:postgresql://${spring.datasource.host}:${spring.datasource.port}/${spring.datasource.database}
-    name: bioritmic
-    password: postgres
-    username: postgres
+    url: ${spring.datasource.r2dbc-url}
+    name: ${spring.datasource.database}
+    username: ${spring.datasource.username}
+    password: ${spring.datasource.password}

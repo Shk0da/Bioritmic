@@ -63,11 +63,9 @@ dependencies {
     testImplementation("org.springframework.batch:spring-batch-test")
     testImplementation("org.springframework.security:spring-security-test")
 
-    testImplementation("io.rest-assured:rest-assured:4.3.2")
-    testImplementation("io.rest-assured:json-path:4.3.2")
-    testImplementation("io.rest-assured:xml-path:4.3.2")
-    testImplementation("io.rest-assured:kotlin-extensions:4.3.2")
-    testImplementation("org.testcontainers:postgresql:1.15.0")
+    testImplementation("org.testcontainers:jdbc:1.15.1")
+    testImplementation("org.testcontainers:r2dbc:1.15.1")
+    testImplementation("org.testcontainers:postgresql:1.15.1")
 }
 
 tasks.withType<Test> {

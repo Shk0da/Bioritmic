@@ -26,7 +26,7 @@ object ImageUtils {
         CROPP_100x100(100, 100),
     }
 
-    val noImageFile = File(classLoader.getResource("image/no_image.png")?.file!!)
+    val noImageFile = File(classLoader.getResource("images/no_image.png")?.file!!)
 
     fun initStorages() {
         val storages = arrayListOf(storage, usersImageStorage)
