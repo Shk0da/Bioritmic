@@ -5,7 +5,7 @@ import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils
 import java.sql.Timestamp
-import java.util.*
+import java.util.Date
 import java.util.concurrent.TimeUnit
 import javax.validation.constraints.DecimalMax
 import javax.validation.constraints.DecimalMin

@@ -34,8 +34,4 @@ class ApiErrorController : ErrorController {
     fun handleResourceNotFoundException(): Mono<ResponseEntity<ApiErrors>> {
         return just(ResponseEntity(ApiErrors(of(ErrorCode.INVALID_URI)), ErrorCode.INVALID_URI.httpCode))
     }
-
-    override fun getErrorPath(): String? {
-        return null
-    }
 }

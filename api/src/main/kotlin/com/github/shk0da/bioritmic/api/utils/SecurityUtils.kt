@@ -5,7 +5,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken
 import java.security.Principal
-import java.util.*
+import java.util.Random
 
 object SecurityUtils {
 

@@ -1,5 +1,6 @@
 package com.github.shk0da.bioritmic.api.configuration
 
+import org.infinispan.configuration.cache.Configuration as InfiniSpanConfiguration
 import com.github.shk0da.bioritmic.api.domain.Auth
 import org.infinispan.Cache
 import org.infinispan.commons.api.CacheContainerAdmin
@@ -13,7 +14,6 @@ import org.springframework.cache.annotation.EnableCaching
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.util.concurrent.TimeUnit
-import org.infinispan.configuration.cache.Configuration as InfiniSpanConfiguration
 
 @EnableCaching
 @Configuration

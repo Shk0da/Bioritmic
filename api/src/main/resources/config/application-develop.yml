@@ -1,6 +1,5 @@
 # Develop mode: -Dspring.profiles.active=develop
 spring.application.name: ${spring.application.basic-name} (Develop mode)
-spring.profiles.include: default,swagger
 spring.devtools.add-properties: true
 spring.jpa.properties.hibernate.show_sql: true
 spring.jpa.properties.hibernate.use_sql_comments: false
@@ -16,10 +15,11 @@ logging.level.com.github.shk0da.bioritmic.api: debug
 spring:
   liquibase.contexts: develop
   mail:
-    host: smtp.bioritmic.com
-    username: admin@bioritmic.com
-    password: admin
+    port: 465
+    host: smtp.yandex.ru
+    test-connection: true
+    username: bioritmic.project@yandex.ru
+    password: password
     properties:
-      mail.smtp.port: 25
       mail.smtp.auth: true
-      mail.smtp.starttls.enable: false
+      mail.smtp.starttls.enable: true

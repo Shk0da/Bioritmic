@@ -1,3 +1,4 @@
 rootProject.name = "bioritmic"
  
 include 'api'
+include 'ui'

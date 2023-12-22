@@ -4,7 +4,11 @@ import com.github.shk0da.bioritmic.api.model.user.UserBookmark
 import java.io.Serializable
 import java.lang.System.currentTimeMillis
 import java.sql.Timestamp
-import javax.persistence.*
+import javax.persistence.Column
+import javax.persistence.Entity
+import javax.persistence.Id
+import javax.persistence.IdClass
+import javax.persistence.Table
 
 @Entity
 @IdClass(Bookmark.PrimaryKey::class)

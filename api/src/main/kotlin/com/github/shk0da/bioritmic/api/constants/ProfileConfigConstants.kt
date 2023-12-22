@@ -4,7 +4,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionOutcome
 import org.springframework.boot.autoconfigure.condition.SpringBootCondition
 import org.springframework.context.annotation.ConditionContext
 import org.springframework.core.type.AnnotatedTypeMetadata
-import java.util.*
+import java.util.Arrays
 
 interface ProfileConfigConstants {
 

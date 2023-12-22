@@ -3,7 +3,11 @@ package com.github.shk0da.bioritmic.api.domain
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import java.io.Serializable
 import java.sql.Timestamp
-import javax.persistence.*
+import javax.persistence.Column
+import javax.persistence.Entity
+import javax.persistence.Id
+import javax.persistence.IdClass
+import javax.persistence.Table
 
 @Entity
 @IdClass(Meeting.PrimaryKey::class)

@@ -8,7 +8,7 @@ import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.service.BiorhythmService
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
-import java.util.*
+import java.util.Date
 
 data class UserInfo(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
                     val id: Long? = null,

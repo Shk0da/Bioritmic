@@ -1,7 +1,7 @@
 package com.github.shk0da.bioritmic.api.exceptions
 
 import org.springframework.http.HttpStatus
-import java.util.*
+import java.util.Optional
 
 enum class ErrorCode(val code: String, val message: String, val httpCode: HttpStatus) {
 

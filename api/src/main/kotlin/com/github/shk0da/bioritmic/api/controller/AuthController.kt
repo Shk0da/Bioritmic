@@ -1,9 +1,12 @@
 package com.github.shk0da.bioritmic.api.controller
 
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
-import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.*
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_PARAMETER
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_RECOVERY_CODE
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.USER_EXISTS
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.USER_WITH_EMAIL_NOT_FOUND
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.RecoveryModel
 import com.github.shk0da.bioritmic.api.model.user.UserModel
@@ -19,7 +22,14 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
 import javax.validation.Valid
 import javax.validation.constraints.NotEmpty

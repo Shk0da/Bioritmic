@@ -4,7 +4,11 @@ import com.codahale.metrics.Gauge
 import com.codahale.metrics.MetricRegistry
 import com.codahale.metrics.Slf4jReporter
 import com.codahale.metrics.health.HealthCheckRegistry
-import com.codahale.metrics.jvm.*
+import com.codahale.metrics.jvm.BufferPoolMetricSet
+import com.codahale.metrics.jvm.FileDescriptorRatioGauge
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet
 import com.sun.management.OperatingSystemMXBean
 import io.micrometer.core.aop.TimedAspect
 import io.micrometer.core.instrument.MeterRegistry

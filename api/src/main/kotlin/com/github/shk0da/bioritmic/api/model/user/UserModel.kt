@@ -7,7 +7,7 @@ import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
-import java.util.*
+import java.util.Date
 import javax.validation.constraints.NotEmpty
 
 data class UserModel(@JsonProperty(access = JsonProperty.Access.READ_ONLY) val id: Long? = null,

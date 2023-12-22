@@ -4,8 +4,14 @@ import com.github.shk0da.bioritmic.api.configuration.ApiConfiguration.Companion.
 import java.io.Serializable
 import java.sql.Timestamp
 import java.time.LocalDateTime
-import java.util.*
-import javax.persistence.*
+import java.util.UUID
+import javax.persistence.Column
+import javax.persistence.Entity
+import javax.persistence.GeneratedValue
+import javax.persistence.GenerationType
+import javax.persistence.Id
+import javax.persistence.Table
+import javax.persistence.UniqueConstraint
 
 @Entity
 @Table(name = "authorizations", uniqueConstraints = [

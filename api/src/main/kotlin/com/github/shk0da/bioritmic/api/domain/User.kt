@@ -5,9 +5,15 @@ import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import java.lang.System.currentTimeMillis
 import java.sql.Timestamp
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit
-import javax.persistence.*
+import javax.persistence.Column
+import javax.persistence.Entity
+import javax.persistence.GeneratedValue
+import javax.persistence.GenerationType
+import javax.persistence.Id
+import javax.persistence.Table
+import javax.persistence.Transient
 
 @Entity
 @Table(name = "users")

@@ -26,7 +26,7 @@ management:
 
 spring:
   application:
-    basic-name: Bioritmic
+    basic-name: Bioritmic API
     name: ${spring.application.basic-name}
     description: Bitoritmic app
   devtools.add-properties: false
@@ -61,7 +61,7 @@ spring:
     host: email-smtp.us-west-2.amazonaws.com
     username: <login user to smtp server>
     password: <login password to smtp server>
-    properties:
+    #properties:
       #mail.transport.protocol: smtp
       #mail.smtp.port: 25
       #mail.smtp.auth: true

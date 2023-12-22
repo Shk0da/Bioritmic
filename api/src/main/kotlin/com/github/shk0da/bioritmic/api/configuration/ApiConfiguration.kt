@@ -2,7 +2,8 @@ package com.github.shk0da.bioritmic.api.configuration
 
 import org.springframework.context.annotation.Configuration
 import java.time.ZoneOffset
-import java.util.*
+import java.util.Locale
+import java.util.TimeZone
 import javax.annotation.PostConstruct
 
 @Configuration
