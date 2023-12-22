@@ -12,14 +12,19 @@ logging.level.org.springframework.r2dbc.core.DefaultDatabaseClient: debug
 logging.level.org.springframework.r2dbc.connection.R2dbcTransactionManager: debug
 logging.level.com.github.shk0da.bioritmic.api: debug
 
+server.url: bioritmic.ru
+
 spring:
   liquibase.contexts: develop
   mail:
-    port: 465
-    host: smtp.yandex.ru
-    test-connection: true
-    username: bioritmic.project@yandex.ru
-    password: password
+    mailbox: bioritmic.project@mail.ru
+    host: smtp.mail.ru
+    username: bioritmic.project
+    password: none
     properties:
+      mail.transport.protocol: smtp
+      mail.smtp.port: 465
       mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
       mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true

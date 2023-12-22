@@ -4,6 +4,8 @@ info.app.name: ${spring.application.basic-name}
 info.app.description: ${spring.application.description}
 info.app.version: 0.1
 
+server.url: bioritmic.com
+server.protocol: https
 server.error.path: "/error"
 server.error.whitelabel.enabled: false
 # spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration
@@ -58,6 +60,7 @@ spring:
     change-log: classpath:db-migrations/changelog.xml
     enabled: true
   mail:
+    mailbox: admin@bioritmic.com
     host: email-smtp.us-west-2.amazonaws.com
     username: <login user to smtp server>
     password: <login password to smtp server>

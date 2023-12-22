@@ -24,7 +24,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
 
-    implementation("io.springfox:springfox-boot-starter:3.0.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
 
@@ -35,7 +34,6 @@ dependencies {
     implementation("io.dropwizard.metrics:metrics-jvm")
     implementation("io.dropwizard.metrics:metrics-servlet")
     implementation("io.dropwizard.metrics:metrics-servlets")
-    implementation("org.springframework.plugin:spring-plugin-core")
 
     implementation("net.logstash.logback:logstash-logback-encoder:6.4")
 
