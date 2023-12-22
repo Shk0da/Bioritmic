@@ -28,6 +28,7 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
     private val log = LoggerFactory.getLogger(SecurityConfiguration::class.java)
 
     private val openRoutes = arrayOf(
+            "/management/actuator/**",
             "/swagger-ui/**",
             "/swagger-resources/**",
             "/v2/api-docs/**",
