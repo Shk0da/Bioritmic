@@ -32,6 +32,7 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
             "/swagger-ui/**",
             "/swagger-resources/**",
             "/v2/api-docs/**",
+            "/v3/api-docs/**",
             "$API_WITH_VERSION_1/registration",
             "$API_WITH_VERSION_1/refresh-token",
             "$API_WITH_VERSION_1/recovery",
