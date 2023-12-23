@@ -4,23 +4,22 @@ info.app.name: ${spring.application.basic-name}
 info.app.description: ${spring.application.description}
 info.app.version: 0.1
 
-server.url: bioritmic.com
-server.protocol: https
+server.url: bioritmic.ru
+server.protocol: http
 server.error.path: "/error"
 server.error.whitelabel.enabled: false
-# spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration
 
 management:
   server.port: 8081
   endpoint.health.show-details: always
   endpoints.web.base-path: "/management/actuator"
   endpoints.web.exposure.include: configprops,env,health,info,threaddump,logfile,metrics,refresh,loggers
-  metrics: # DropWizard Metrics configuration, used by MetricsConfiguration
-    logs: # Reports Dropwizard metrics in the logs
+  metrics:
+    logs:
       enabled: false
       report-frequency: 60 # in seconds
   logging:
-    logstash: # Forward logs to logstash over a socket, used by LoggingConfiguration
+    logstash:
       enabled: false
       host: localhost
       port: 5000
@@ -60,13 +59,14 @@ spring:
     change-log: classpath:db-migrations/changelog.xml
     enabled: true
   mail:
-    mailbox: admin@bioritmic.com
-    host: email-smtp.us-west-2.amazonaws.com
-    username: <login user to smtp server>
-    password: <login password to smtp server>
-    #properties:
-      #mail.transport.protocol: smtp
-      #mail.smtp.port: 25
-      #mail.smtp.auth: true
-      #mail.smtp.starttls.enable: true
-      #mail.smtp.starttls.required: true
+    mailbox: bioritmic.project@mail.ru
+    host: smtp.mail.ru
+    username: bioritmic.project
+    password: password
+    properties:
+      mail.transport.protocol: smtp
+      mail.smtp.port: 465
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true

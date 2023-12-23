@@ -13,7 +13,6 @@ object ImageUtils {
 
     private val log = LoggerFactory.getLogger(ImageUtils::class.java)
 
-    private val classLoader = javaClass.classLoader
     private val storage = File("storage").absolutePath
     private val usersImageStorage = File("$storage${File.separatorChar}image${File.separatorChar}users").absolutePath
 
@@ -26,7 +25,7 @@ object ImageUtils {
         CROPP_100x100(100, 100),
     }
 
-    val noImageFile = File(classLoader.getResource("images/no_image.png")?.file!!)
+    val noImageFile = File("storage/image/no_image.png")
 
     fun initStorages() {
         val storages = arrayListOf(storage, usersImageStorage)
