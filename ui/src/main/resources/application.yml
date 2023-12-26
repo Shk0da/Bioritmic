@@ -1,15 +1,16 @@
-server.port: 80
+server.port: 8082
 
 info.app.name: ${spring.application.basic-name}
 info.app.description: ${spring.application.description}
 info.app.version: 0.1
 
+server.backand.port: 8080
 server.error.path: "/error"
 server.error.whitelabel.enabled: false
 # spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration
 
 management:
-  server.port: 81
+  server.port: 8083
   endpoint.health.show-details: always
   endpoints.web.base-path: "/management/actuator"
   endpoints.web.exposure.include: configprops,env,health,info,threaddump,logfile,metrics,refresh,loggers

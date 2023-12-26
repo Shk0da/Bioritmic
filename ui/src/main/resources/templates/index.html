@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bioritmic</title>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet">
+</head>
+<body>
+<div id="root">
+    <div class="container text-center">
+        <div class="d-flex justify-content-center">
+            <div class="col align-self-center">
+                <div class="d-flex justify-content-center">
+                    <form>
+                        <div>
+                            <h3>Биоритмик</h3>
+                            <div>
+                                Впервые у нас? <a href="/start-react/auth/registration">Создать учетную запись</a>
+                            </div>
+                        </div>
+                        <div class="alert alert-info">
+                            <div class="alert-text ">
+                                Используйте <strong>admin@demo.com</strong> и <strong>demo</strong> для входа.
+                            </div>
+                        </div>
+                        <div>
+                            <label>Электронная почта</label>
+                            <input placeholder="Email"
+                                   name="email"
+                                   class="form-control form-control-lg form-control-solid is-valid"
+                                   type="email"
+                                   autocomplete="off"
+                                   value="admin@demo.com">
+                        </div>
+                        <div>
+                            <div>
+                                <label>Пароль</label>
+                                <a href="/auth/forgot-password">Забыли пароль?</a>
+                            </div>
+                            <input type="password" autocomplete="off" name="password"
+                                   class="form-control form-control-lg form-control-solid" value="demo">
+                        </div>
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <span>Войти</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

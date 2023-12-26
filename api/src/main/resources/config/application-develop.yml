@@ -20,7 +20,7 @@ spring:
     mailbox: bioritmic.project@mail.ru
     host: smtp.mail.ru
     username: bioritmic.project
-    password: password
+    password: 5gEdg1wdyJc4KV0XQFTN
     properties:
       mail.transport.protocol: smtp
       mail.smtp.port: 465
