@@ -49,7 +49,7 @@ class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcCo
         const val r2dbcTransactionManager = "r2dbcTransactionManager"
     }
 
-    inner class RoutingConnectionFactory :  AbstractRoutingConnectionFactory() {
+    inner class RoutingConnectionFactory : AbstractRoutingConnectionFactory() {
         override fun determineCurrentLookupKey(): Mono<Any> = forCurrentTransaction().map {
             val isReadOnly = it.isActualTransactionActive && it.isCurrentTransactionReadOnly
             if (isReadOnly) SLAVE_ROUTING_KEY else MASTER_ROUTING_KEY
@@ -102,7 +102,8 @@ class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcCo
         val port = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_PORT")!!
         val database = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_DATABASE")!!
         val maxPoolSize = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_MAX_CONNECTIONS")!!.toInt()
-        val connectionFactory = ConnectionFactories.get(ConnectionFactoryOptions.builder()
+        val connectionFactory = ConnectionFactories.get(
+            ConnectionFactoryOptions.builder()
                 .option(Option.valueOf(PROPERTY_KEY_DRIVER), driver)
                 .option(Option.valueOf(PROPERTY_KEY_HOST), host)
                 .option(Option.valueOf(PROPERTY_KEY_PORT), port)
@@ -112,14 +113,15 @@ class R2dbcConfiguration(private val environment: Environment) : AbstractR2dbcCo
                 .option(Option.valueOf(PROPERTY_KEY_USERNAME), username)
                 .option(Option.valueOf(PROPERTY_KEY_PASSWORD), password)
                 .option(MAX_SIZE, maxPoolSize)
-                .build())
+                .build()
+        )
 
         val config = ConnectionPoolConfiguration
-                .builder(connectionFactory)
-                .name(dataSourcePrefix + "R2dbc")
-                .maxIdleTime(Duration.of(MINIMUM_IDLE.toLong(), ChronoUnit.SECONDS))
-                .maxSize(maxPoolSize)
-                .build()
+            .builder(connectionFactory)
+            .name(dataSourcePrefix + "R2dbc")
+            .maxIdleTime(Duration.of(MINIMUM_IDLE.toLong(), ChronoUnit.SECONDS))
+            .maxSize(maxPoolSize)
+            .build()
         return ConnectionPool(config)
     }
 }

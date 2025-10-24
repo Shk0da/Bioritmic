@@ -40,11 +40,11 @@ class AuthController(val userService: UserService, val authService: AuthService)
             if (userService.isUserExists(userModel.email)) throw ApiException(USER_EXISTS)
         }
         return userService.createNewUser(userModel)
-                .map { UserModel.of(it) }
-                .map {
-                    log.debug("Created new {}", it)
-                    ResponseEntity.status(HttpStatus.CREATED).body(it)
-                }
+            .map { UserModel.of(it) }
+            .map {
+                log.debug("Created new {}", it)
+                ResponseEntity.status(HttpStatus.CREATED).body(it)
+            }
     }
 
     // POST /recovery/ {email} -> send email with code
@@ -56,46 +56,50 @@ class AuthController(val userService: UserService, val authService: AuthService)
             throw ApiException(USER_WITH_EMAIL_NOT_FOUND, mapOf(Pair(PARAMETER_VALUE, recoveryModel.email)))
         }
         return authService.sendRecoveryEmail(user)
-                .map {
-                    log.debug("Recovery User: {}", user)
-                    ResponseEntity.status(HttpStatus.OK).build()
-                }
+            .map {
+                log.debug("Recovery User: {}", user)
+                ResponseEntity.status(HttpStatus.OK).build()
+            }
     }
 
     // GET /recovery/ ?{code} <- validate code and reset password
     @ResponseStatus(HttpStatus.OK)
     @GetMapping(value = ["/reset-password"], produces = [APPLICATION_JSON_VALUE])
-    @ApiImplicitParams(value = [
-        ApiImplicitParam(name = "code", dataType = "java.lang.String", paramType = "query")
-    ])
+    @ApiImplicitParams(
+        value = [
+            ApiImplicitParam(name = "code", dataType = "java.lang.String", paramType = "query")
+        ]
+    )
     fun resetPassword(@RequestParam @Valid @NotEmpty code: String): Mono<ResponseEntity<Any>> {
         val user = authService.findUserByRecoveryCode(code) ?: throw ApiException(INVALID_RECOVERY_CODE)
         if (null == user.recoveryCodeExpireTime && user.recoveryCodeExpireTime!!.time < System.currentTimeMillis()) {
             throw ApiException(INVALID_RECOVERY_CODE)
         }
         return authService.resetPasswordAndSendEmail(user)
-                .map {
-                    log.debug("Reset password for: {}", user)
-                    ResponseEntity.status(HttpStatus.OK).build()
-                }
+            .map {
+                log.debug("Reset password for: {}", user)
+                ResponseEntity.status(HttpStatus.OK).build()
+            }
     }
 
     // GET /update-email?code=$code&email=$newEmail
     @GetMapping(value = ["/update-email"], produces = [APPLICATION_JSON_VALUE])
-    @ApiImplicitParams(value = [
-        ApiImplicitParam(name = "code", dataType = "java.lang.String", paramType = "query"),
-        ApiImplicitParam(name = "email", dataType = "java.lang.String", paramType = "query")
-    ])
+    @ApiImplicitParams(
+        value = [
+            ApiImplicitParam(name = "code", dataType = "java.lang.String", paramType = "query"),
+            ApiImplicitParam(name = "email", dataType = "java.lang.String", paramType = "query")
+        ]
+    )
     fun updateEmail(@Valid @NotEmpty code: String, @Valid @NotEmpty email: String): Mono<ResponseEntity<Any>> {
         val user = authService.findUserByRecoveryCode(code) ?: throw ApiException(INVALID_RECOVERY_CODE)
         if (null == user.recoveryCodeExpireTime && user.recoveryCodeExpireTime!!.time < System.currentTimeMillis()) {
             throw ApiException(INVALID_RECOVERY_CODE)
         }
         return userService.updateEmail(user, email)
-                .map {
-                    log.debug("New email for: {}", user)
-                    ResponseEntity.status(HttpStatus.OK).build()
-                }
+            .map {
+                log.debug("New email for: {}", user)
+                ResponseEntity.status(HttpStatus.OK).build()
+            }
     }
 
     // POST /authorization/ {email, password} <- Oauth (JWT, refresh token)
@@ -110,11 +114,11 @@ class AuthController(val userService: UserService, val authService: AuthService)
             throw ApiException(INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "password")))
         }
         return authService.createNewAuth(user)
-                .map { UserToken.of(user, it) }
-                .map {
-                    log.debug("Created new {}", it)
-                    ResponseEntity.status(HttpStatus.OK).body(it)
-                }
+            .map { UserToken.of(user, it) }
+            .map {
+                log.debug("Created new {}", it)
+                ResponseEntity.status(HttpStatus.OK).body(it)
+            }
     }
 
     // POST /refresh-token/ <- {email, refreshToken} -> new accesToken
@@ -122,10 +126,10 @@ class AuthController(val userService: UserService, val authService: AuthService)
     @PostMapping(value = ["/refresh-token"], produces = [APPLICATION_JSON_VALUE])
     fun refreshToken(@RequestBody @Valid userToken: UserToken): Mono<ResponseEntity<UserToken>> {
         return authService.refreshToken(userToken)
-                .map {
-                    log.debug("Refreshed {}", it)
-                    ResponseEntity.status(HttpStatus.OK).body(it)
-                }
+            .map {
+                log.debug("Refreshed {}", it)
+                ResponseEntity.status(HttpStatus.OK).body(it)
+            }
     }
 
     // POST /logout -> clear token
@@ -134,9 +138,9 @@ class AuthController(val userService: UserService, val authService: AuthService)
     fun logout(): Mono<ResponseEntity<Void>> {
         val userId = getUserId()
         return authService.deleteAuthByUserId(userId)
-                .map {
-                    log.debug("Delete User with ID: {}", userId)
-                    ResponseEntity.status(HttpStatus.NO_CONTENT).build()
-                }
+            .map {
+                log.debug("Delete User with ID: {}", userId)
+                ResponseEntity.status(HttpStatus.NO_CONTENT).build()
+            }
     }
 }

@@ -11,17 +11,21 @@ object ValidateUtils {
 
     fun validate(ageMin: Int?, ageMax: Int?, distance: Double?) {
         if (null != ageMin && ageMin < 14) {
-            throw ApiException(ErrorCode.INVALID_PARAMETER_WITH_VALUE, mapOf(
+            throw ApiException(
+                ErrorCode.INVALID_PARAMETER_WITH_VALUE, mapOf(
                     Pair(PARAMETER_NAME, "ageMin"),
                     Pair(PARAMETER_VALUE, ageMin.toString())
-            ))
+                )
+            )
         }
 
         if (null != ageMax && ageMax > 100) {
-            throw ApiException(ErrorCode.INVALID_PARAMETER_WITH_VALUE, mapOf(
+            throw ApiException(
+                ErrorCode.INVALID_PARAMETER_WITH_VALUE, mapOf(
                     Pair(PARAMETER_NAME, "ageMax"),
                     Pair(PARAMETER_VALUE, ageMax.toString())
-            ))
+                )
+            )
         }
 
         if (null != ageMin && null != ageMax && (ageMin > ageMax)) {
@@ -29,20 +33,24 @@ object ValidateUtils {
         }
 
         if (null != distance && (distance < 0.05 || distance > 30.0)) {
-            throw ApiException(ErrorCode.INVALID_PARAMETER_WITH_VALUE, mapOf(
+            throw ApiException(
+                ErrorCode.INVALID_PARAMETER_WITH_VALUE, mapOf(
                     Pair(PARAMETER_NAME, "distance"),
                     Pair(PARAMETER_VALUE, distance.toString())
-            ))
+                )
+            )
         }
     }
 
     fun validate(message: String?) {
         if (StringUtils.isBlank(message) || message!!.length < 1 || message.length >= 1024) {
-            throw ApiException(ErrorCode.INVALID_PARAMETER_RANGE, mapOf(
+            throw ApiException(
+                ErrorCode.INVALID_PARAMETER_RANGE, mapOf(
                     Pair(PARAMETER_NAME, "message"),
                     Pair(PARAMETER_VALUE_START, "1"),
                     Pair(PARAMETER_VALUE_END, "1024")
-            ))
+                )
+            )
         }
     }
 

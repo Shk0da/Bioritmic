@@ -27,12 +27,12 @@ class SearchController(val userService: UserService, val searchService: SearchSe
     fun search(): Flux<UserInfo> {
         val userId = getUserId()
         return userService.findUserByIdWithSettings(userId)
-                .map { UserSearch.of(it) }
-                .map { search ->
-                    log.debug("User search: {}", search)
-                    searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
-                }
-                .flatMapMany { it }
+            .map { UserSearch.of(it) }
+            .map { search ->
+                log.debug("User search: {}", search)
+                searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
+            }
+            .flatMapMany { it }
     }
 
     // POST /search/ <- List of Users around with custom search
@@ -41,11 +41,11 @@ class SearchController(val userService: UserService, val searchService: SearchSe
         userSearch.validate()
         val userId = getUserId(principal)
         return userService.findUserById(userId)
-                .map { userSearch.withUser(it) }
-                .map { search ->
-                    log.debug("User search: {}", search)
-                    searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
-                }
-                .flatMapMany { it }
+            .map { userSearch.withUser(it) }
+            .map { search ->
+                log.debug("User search: {}", search)
+                searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
+            }
+            .flatMapMany { it }
     }
 }

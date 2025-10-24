@@ -21,21 +21,19 @@ class ApiErrorController : ErrorController {
 
     @ResponseBody
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    @RequestMapping(value = [ERROR_PATH], method = [
-        RequestMethod.GET,
-        RequestMethod.HEAD,
-        RequestMethod.POST,
-        RequestMethod.PUT,
-        RequestMethod.PATCH,
-        RequestMethod.DELETE,
-        RequestMethod.OPTIONS,
-        RequestMethod.TRACE
-    ], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @RequestMapping(
+        value = [ERROR_PATH], method = [
+            RequestMethod.GET,
+            RequestMethod.HEAD,
+            RequestMethod.POST,
+            RequestMethod.PUT,
+            RequestMethod.PATCH,
+            RequestMethod.DELETE,
+            RequestMethod.OPTIONS,
+            RequestMethod.TRACE
+        ], produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
     fun handleResourceNotFoundException(): Mono<ResponseEntity<ApiErrors>> {
         return just(ResponseEntity(ApiErrors(of(ErrorCode.INVALID_URI)), ErrorCode.INVALID_URI.httpCode))
-    }
-
-    override fun getErrorPath(): String? {
-        return null
     }
 }

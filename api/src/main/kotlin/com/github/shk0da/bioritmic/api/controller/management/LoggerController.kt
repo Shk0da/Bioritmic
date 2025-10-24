@@ -6,7 +6,12 @@ import ch.qos.logback.classic.LoggerContext
 import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestController
 import java.util.stream.Collectors
 
 @RestController
@@ -19,9 +24,9 @@ class LoggerController {
     fun logs(): List<LoggerVM> {
         val context = LoggerFactory.getILoggerFactory() as LoggerContext
         return context.loggerList
-                .stream()
-                .map { logger: Logger -> LoggerVM(logger.name, logger.effectiveLevel.toString()) }
-                .collect(Collectors.toList())
+            .stream()
+            .map { logger: Logger -> LoggerVM(logger.name, logger.effectiveLevel.toString()) }
+            .collect(Collectors.toList())
     }
 
     @PutMapping("/logs")

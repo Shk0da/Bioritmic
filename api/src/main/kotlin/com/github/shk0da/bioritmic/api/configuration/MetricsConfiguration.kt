@@ -17,13 +17,12 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
-import javax.annotation.PostConstruct
 
 
 @Configuration
 class MetricsConfiguration(
-        @Value("\${management.metrics.logs.enabled:false}") private val logsEnabled: Boolean,
-        @Value("\${management.metrics.logs.report-frequency:60}") private val logsReportFrequency: Int
+    @Value("\${management.metrics.logs.enabled:false}") private val logsEnabled: Boolean,
+    @Value("\${management.metrics.logs.report-frequency:60}") private val logsReportFrequency: Int
 ) {
 
     private val log = LoggerFactory.getLogger(MetricsConfiguration::class.java)
@@ -43,6 +42,24 @@ class MetricsConfiguration(
         private const val PROP_METRIC_REG_JVM_THREADS = "jvm.threads"
         private const val PROP_METRIC_REG_JVM_FILES = "jvm.files"
         private const val PROP_METRIC_REG_JVM_BUFFERS = "jvm.buffers"
+    }
+
+    init {
+        log.debug("Registering JVM gauges")
+        metricRegistry.register(PROP_METRIC_REG_JVM_MEMORY, MemoryUsageGaugeSet())
+        metricRegistry.register(PROP_METRIC_REG_JVM_GARBAGE, GarbageCollectorMetricSet())
+        metricRegistry.register(PROP_METRIC_REG_JVM_THREADS, ThreadStatesGaugeSet())
+        metricRegistry.register(PROP_METRIC_REG_JVM_FILES, FileDescriptorRatioGauge())
+        metricRegistry.register(PROP_METRIC_REG_JVM_BUFFERS, BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()))
+        if (logsEnabled) {
+            log.info("Initializing Metrics Log reporting")
+            val reporter = Slf4jReporter.forRegistry(metricRegistry)
+                .outputTo(LoggerFactory.getLogger("metrics"))
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .build()
+            reporter.start(logsReportFrequency.toLong(), TimeUnit.SECONDS)
+        }
     }
 
     @Bean
@@ -71,7 +88,8 @@ class MetricsConfiguration(
         customMetrics["non_heap"] = SimpleGauge({ memoryUsageNonHeapMxBean.max })
         customMetrics["free.physical.memory.size"] = SimpleGauge({ operatingSystemMxBean.freePhysicalMemorySize })
         customMetrics["total.physical.memory.size"] = SimpleGauge({ operatingSystemMxBean.totalPhysicalMemorySize })
-        customMetrics["free.physical.memory.percent"] = SimpleGauge({ getPercent(operatingSystemMxBean.totalPhysicalMemorySize, operatingSystemMxBean.freePhysicalMemorySize) })
+        customMetrics["free.physical.memory.percent"] =
+            SimpleGauge({ getPercent(operatingSystemMxBean.totalPhysicalMemorySize, operatingSystemMxBean.freePhysicalMemorySize) })
 
         customMetrics.forEach { (key, value) -> metricRegistry.gauge(key) { value } }
 
@@ -81,25 +99,6 @@ class MetricsConfiguration(
     @Bean
     fun healthCheckRegistry(): HealthCheckRegistry {
         return healthCheckRegistry
-    }
-
-    @PostConstruct
-    fun init() {
-        log.debug("Registering JVM gauges")
-        metricRegistry.register(PROP_METRIC_REG_JVM_MEMORY, MemoryUsageGaugeSet())
-        metricRegistry.register(PROP_METRIC_REG_JVM_GARBAGE, GarbageCollectorMetricSet())
-        metricRegistry.register(PROP_METRIC_REG_JVM_THREADS, ThreadStatesGaugeSet())
-        metricRegistry.register(PROP_METRIC_REG_JVM_FILES, FileDescriptorRatioGauge())
-        metricRegistry.register(PROP_METRIC_REG_JVM_BUFFERS, BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()))
-        if (logsEnabled) {
-            log.info("Initializing Metrics Log reporting")
-            val reporter = Slf4jReporter.forRegistry(metricRegistry)
-                    .outputTo(LoggerFactory.getLogger("metrics"))
-                    .convertRatesTo(TimeUnit.SECONDS)
-                    .convertDurationsTo(TimeUnit.MILLISECONDS)
-                    .build()
-            reporter.start(logsReportFrequency.toLong(), TimeUnit.SECONDS)
-        }
     }
 
     class SimpleGauge<T>(private val supplier: Supplier<T>) : Gauge<Any> {

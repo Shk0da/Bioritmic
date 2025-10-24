@@ -13,16 +13,19 @@ import org.springframework.http.ResponseEntity
 import springfox.documentation.builders.PathSelectors
 import springfox.documentation.builders.RequestHandlerSelectors
 import springfox.documentation.oas.annotations.EnableOpenApi
-import springfox.documentation.service.*
+import springfox.documentation.service.ApiInfo
+import springfox.documentation.service.ApiKey
+import springfox.documentation.service.AuthorizationScope
+import springfox.documentation.service.Contact
+import springfox.documentation.service.SecurityReference
+import springfox.documentation.service.SecurityScheme
 import springfox.documentation.spi.DocumentationType
 import springfox.documentation.spi.service.contexts.SecurityContext
 import springfox.documentation.spring.web.plugins.Docket
 import java.util.*
 
-
 @Configuration
 @EnableOpenApi
-@Profile(value = [ProfileConfigConstants.SPRING_PROFILE_SWAGGER])
 class SwaggerConfiguration {
 
     @Autowired
@@ -30,34 +33,39 @@ class SwaggerConfiguration {
 
     private val apiKey: SecurityScheme = ApiKey("Bearer", "Authorization", "header")
     private val defaultAuth = arrayListOf(
-            SecurityReference("Bearer", arrayOf(AuthorizationScope("global", "accessEverything")))
+        SecurityReference("Bearer", arrayOf(AuthorizationScope("global", "accessEverything")))
     )
     private val securityContext: SecurityContext = SecurityContext.builder().securityReferences(defaultAuth).build()
 
-    fun version(): String? = if (buildProperties.isPresent) "${buildProperties.get().version}/${buildProperties.get()["revision"]}" else null
+    fun version(): String? =
+        if (buildProperties.isPresent) "${buildProperties.get().version}/${buildProperties.get()["revision"]}" else null
 
     @Bean
-    fun api(@Value("\${spring.application.name}") applicationName: String?,
-            @Value("\${spring.application.description}") description: String?): Docket {
+    fun api(
+        @Value("\${spring.application.name}") applicationName: String?,
+        @Value("\${spring.application.description}") description: String?
+    ): Docket {
         return Docket(DocumentationType.SWAGGER_2)
-                .securitySchemes(arrayListOf(apiKey))
-                .securityContexts(arrayListOf(securityContext))
-                .useDefaultResponseMessages(false)
-                .directModelSubstitute(ResponseEntity::class.java, Void::class.java)
-                .ignoredParameterTypes(Pageable::class.java)
-                .apiInfo(ApiInfo(
-                        applicationName,
-                        description,
-                        Optional.ofNullable(version()).orElse("snapshot"),
-                        "",
-                        Contact("API Team", "", ""),
-                        "",
-                        "",
-                        ApiInfo.DEFAULT.vendorExtensions
-                ))
-                .select()
-                .apis(RequestHandlerSelectors.basePackage("com.github.shk0da.bioritmic.api.controller"))
-                .paths(PathSelectors.regex(ApiRoutes.API_WITH_VERSION_1 + "/.*"))
-                .build()
+            .securitySchemes(arrayListOf(apiKey))
+            .securityContexts(arrayListOf(securityContext))
+            .useDefaultResponseMessages(false)
+            .directModelSubstitute(ResponseEntity::class.java, Void::class.java)
+            .ignoredParameterTypes(Pageable::class.java)
+            .apiInfo(
+                ApiInfo(
+                    applicationName,
+                    description,
+                    Optional.ofNullable(version()).orElse("snapshot"),
+                    "",
+                    Contact("API Team", "", ""),
+                    "",
+                    "",
+                    ApiInfo.DEFAULT.vendorExtensions
+                )
+            )
+            .select()
+            .apis(RequestHandlerSelectors.basePackage("com.github.shk0da.bioritmic.api.controller"))
+            .paths(PathSelectors.regex(ApiRoutes.API_WITH_VERSION_1 + "/.*"))
+            .build()
     }
 }

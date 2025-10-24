@@ -28,42 +28,44 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
     private val log = LoggerFactory.getLogger(SecurityConfiguration::class.java)
 
     private val openRoutes = arrayOf(
-            "/swagger-ui/**",
-            "/swagger-resources/**",
-            "/v2/api-docs/**",
-            "$API_WITH_VERSION_1/registration",
-            "$API_WITH_VERSION_1/refresh-token",
-            "$API_WITH_VERSION_1/recovery",
-            "$API_WITH_VERSION_1/reset-password",
-            "$API_WITH_VERSION_1/authorization",
-            "$API_WITH_VERSION_1/update-email"
+        "/swagger-ui.html",
+        "/swagger-ui/**",
+        "/swagger-resources/**",
+        "/v2/api-docs/**",
+        "/v3/api-docs/**",
+        "$API_WITH_VERSION_1/registration",
+        "$API_WITH_VERSION_1/refresh-token",
+        "$API_WITH_VERSION_1/recovery",
+        "$API_WITH_VERSION_1/reset-password",
+        "$API_WITH_VERSION_1/authorization",
+        "$API_WITH_VERSION_1/update-email"
     )
 
     override fun addCorsMappings(registry: CorsRegistry) {
         registry
-                .addMapping("/**")
-                .allowedOrigins("*")
-                .allowedMethods("*")
-                .allowedHeaders("*")
+            .addMapping("/**")
+            .allowedOrigins("*")
+            .allowedMethods("*")
+            .allowedHeaders("*")
     }
 
     @Bean
     fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain? {
         http
-                    .csrf().disable()
-                    .formLogin().disable()
-                    .httpBasic().disable()
-                    .logout().disable()
-                    .headers().frameOptions().disable()
-                .and()
-                    .authorizeExchange()
-                    .pathMatchers(*openRoutes)
-                    .permitAll()
-                .and()
-                    .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION)
-                    .authorizeExchange()
-                    .anyExchange()
-                    .authenticated()
+            .csrf().disable()
+            .formLogin().disable()
+            .httpBasic().disable()
+            .logout().disable()
+            .headers().frameOptions().disable()
+            .and()
+            .authorizeExchange()
+            .pathMatchers(*openRoutes)
+            .permitAll()
+            .and()
+            .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION)
+            .authorizeExchange()
+            .anyExchange()
+            .authenticated()
         return http.build()
     }
 
@@ -73,25 +75,26 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
             setServerAuthenticationConverter {
                 val bearer = "Bearer "
                 Mono.justOrEmpty(it)
-                        .flatMap { exchange ->
-                            Mono.justOrEmpty(exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION))
-                        }
-                        .filter { token ->
-                            token.length > bearer.length
-                        }
-                        .flatMap { token ->
-                            Mono.justOrEmpty(token.substring(bearer.length))
-                        }
-                        .flatMap<Auth> { token ->
-                            authService.getAuthByAccessToken(token)
-                        }
-                        .filter { auth -> !auth.isExpired() }
-                        .map { auth ->
-                            PreAuthenticatedAuthenticationToken(
-                                    auth.userId,
-                                    auth.accessToken,
-                                    mutableListOf(SimpleGrantedAuthority(ROLE_USER)))
-                        }
+                    .flatMap { exchange ->
+                        Mono.justOrEmpty(exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION))
+                    }
+                    .filter { token ->
+                        token.length > bearer.length
+                    }
+                    .flatMap { token ->
+                        Mono.justOrEmpty(token.substring(bearer.length))
+                    }
+                    .flatMap<Auth> { token ->
+                        authService.getAuthByAccessToken(token)
+                    }
+                    .filter { auth -> !auth.isExpired() }
+                    .map { auth ->
+                        PreAuthenticatedAuthenticationToken(
+                            auth.userId,
+                            auth.accessToken,
+                            mutableListOf(SimpleGrantedAuthority(ROLE_USER))
+                        )
+                    }
             }
             setAuthenticationSuccessHandler { webFilterExchange, authentication ->
                 log.debug("authentication: {}", authentication)

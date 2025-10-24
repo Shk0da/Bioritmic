@@ -30,47 +30,47 @@ class MeetingsService(val meetingsR2dbcRepository: MeetingsR2dbcRepository) {
     fun createMeetings(userId: Long, meetings: Flux<UserMeeting>): Flux<Meeting> {
         val meetingList = meetings.filter { it.isFilledInput() }.cache()
         return meetingsR2dbcRepository.countByUserId(userId)
-                .map { currentElementsCount ->
-                    val meetingsCopy = Flux.from(meetingList)
-                    meetingsCopy.count().map { newElementsCount -> (currentElementsCount + newElementsCount).toInt() }
-                }
-                .flatMap { it }
-                .filter { totalCount -> checkSize(totalCount, maximumUserMeetingsSize, ErrorCode.MANY_MEETINGS) }
-                .map {
-                    meetingList
-                            .map { Meeting.of(userId, it) }
-                            .flatMap { meeting ->
-                                meetingsR2dbcRepository.insert(
-                                        meeting.userId!!, meeting.otherUserId!!,
-                                        meeting.otherUserLat, meeting.otherUserLon,
-                                        meeting.distance, meeting.timestamp
-                                ).map { userId }
-                            }
-                }
-                .flatMapMany { it }
-                .switchIfEmpty(Mono.just(userId))
-                .map { id ->
-                    meetingsR2dbcRepository.findAllByUserId(id, defaultPageable.pageSize, defaultPageable.offset)
-                }
-                .flatMap { it }
-                .doOnError {
-                    log.error("Failed save meetings for userId [{}]: {}", userId, it.message)
-                    Mono.error<Flux<Any>>(it)
-                }
+            .map { currentElementsCount ->
+                val meetingsCopy = Flux.from(meetingList)
+                meetingsCopy.count().map { newElementsCount -> (currentElementsCount + newElementsCount).toInt() }
+            }
+            .flatMap { it }
+            .filter { totalCount -> checkSize(totalCount, maximumUserMeetingsSize, ErrorCode.MANY_MEETINGS) }
+            .map {
+                meetingList
+                    .map { Meeting.of(userId, it) }
+                    .flatMap { meeting ->
+                        meetingsR2dbcRepository.insert(
+                            meeting.userId!!, meeting.otherUserId!!,
+                            meeting.otherUserLat, meeting.otherUserLon,
+                            meeting.distance, meeting.timestamp
+                        ).map { userId }
+                    }
+            }
+            .flatMapMany { it }
+            .switchIfEmpty(Mono.just(userId))
+            .map { id ->
+                meetingsR2dbcRepository.findAllByUserId(id, defaultPageable.pageSize, defaultPageable.offset)
+            }
+            .flatMap { it }
+            .doOnError {
+                log.error("Failed save meetings for userId [{}]: {}", userId, it.message)
+                Mono.error<Flux<Any>>(it)
+            }
     }
 
     @Transactional
     fun deleteMetingWithUserId(currentUserId: Long, userId: Long): Flux<Meeting> {
         return meetingsR2dbcRepository.deleteByUserIdAndOtherUserId(currentUserId, userId)
-                .map { userId }
-                .switchIfEmpty(Mono.just(userId))
-                .map { id ->
-                    meetingsR2dbcRepository.findAllByUserId(id, defaultPageable.pageSize, defaultPageable.offset)
-                }
-                .flatMapMany { it }
-                .doOnError {
-                    log.error("Failed delete meetings for userId [{}]: {}", userId, it.message)
-                    Mono.error<Flux<Any>>(it)
-                }
+            .map { userId }
+            .switchIfEmpty(Mono.just(userId))
+            .map { id ->
+                meetingsR2dbcRepository.findAllByUserId(id, defaultPageable.pageSize, defaultPageable.offset)
+            }
+            .flatMapMany { it }
+            .doOnError {
+                log.error("Failed delete meetings for userId [{}]: {}", userId, it.message)
+                Mono.error<Flux<Any>>(it)
+            }
     }
 }

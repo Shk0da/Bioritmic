@@ -8,9 +8,21 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
     JSON_CANT_BE_PARSED("API-400.1", "JSON can't be parsed.", HttpStatus.BAD_REQUEST),
     REQUIRED_PARAMETER("API-400.2", "Parameter [\${${Constants.PARAMETER_NAME}}] value is required.", HttpStatus.BAD_REQUEST),
     INVALID_PARAMETER("API-400.3", "Parameter [\${${Constants.PARAMETER_NAME}}] value is invalid.", HttpStatus.BAD_REQUEST),
-    INVALID_PARAMETER_WITH_VALUE("API-400.4", "Parameter [\${${Constants.PARAMETER_NAME}}] with requested value [\${${Constants.PARAMETER_VALUE}}] is invalid.", HttpStatus.BAD_REQUEST),
-    INVALID_PARAMETER_SIZE("API-400.5", "The parameter [\${${Constants.PARAMETER_NAME}}] cannot be longer than [\${${Constants.PARAMETER_VALUE_LENGTH}}] characters.", HttpStatus.BAD_REQUEST),
-    INVALID_PARAMETER_RANGE("API-400.6", "Parameter [\${${Constants.PARAMETER_NAME}}] value is invalid. Valid range of values: [\${${Constants.PARAMETER_VALUE_START}}-\${${Constants.PARAMETER_VALUE_END}}].", HttpStatus.BAD_REQUEST),
+    INVALID_PARAMETER_WITH_VALUE(
+        "API-400.4",
+        "Parameter [\${${Constants.PARAMETER_NAME}}] with requested value [\${${Constants.PARAMETER_VALUE}}] is invalid.",
+        HttpStatus.BAD_REQUEST
+    ),
+    INVALID_PARAMETER_SIZE(
+        "API-400.5",
+        "The parameter [\${${Constants.PARAMETER_NAME}}] cannot be longer than [\${${Constants.PARAMETER_VALUE_LENGTH}}] characters.",
+        HttpStatus.BAD_REQUEST
+    ),
+    INVALID_PARAMETER_RANGE(
+        "API-400.6",
+        "Parameter [\${${Constants.PARAMETER_NAME}}] value is invalid. Valid range of values: [\${${Constants.PARAMETER_VALUE_START}}-\${${Constants.PARAMETER_VALUE_END}}].",
+        HttpStatus.BAD_REQUEST
+    ),
     INVALID_RECOVERY_CODE("API-400.7", "Recovery code is invalid.", HttpStatus.BAD_REQUEST),
     MANY_BOOKMARKS("API-400.8", "User has to many bookmarks.", HttpStatus.BAD_REQUEST),
     MANY_MEETINGS("API-400.8", "User has to many meetings.", HttpStatus.BAD_REQUEST),
@@ -54,9 +66,9 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
 
     override fun toString(): String {
         return "ErrorCode{" +
-                "code='" + code + '\'' +
-                ", message='" + message + '\'' +
-                ", httpCode=" + httpCode +
-                '}'
+            "code='" + code + '\'' +
+            ", message='" + message + '\'' +
+            ", httpCode=" + httpCode +
+            '}'
     }
 }

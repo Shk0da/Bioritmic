@@ -23,10 +23,12 @@ class BookmarkController(val bookmarksService: BookmarksService) {
 
     // GET /bookmarks/
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    @ApiImplicitParams(value = [
-        ApiImplicitParam(name = "page", dataType = "java.lang.Integer", paramType = "query"),
-        ApiImplicitParam(name = "size", dataType = "java.lang.Integer", paramType = "query")
-    ])
+    @ApiImplicitParams(
+        value = [
+            ApiImplicitParam(name = "page", dataType = "java.lang.Integer", paramType = "query"),
+            ApiImplicitParam(name = "size", dataType = "java.lang.Integer", paramType = "query")
+        ]
+    )
     fun bookmarks(pageable: Pageable): Flux<UserInfo> {
         val userId = getUserId()
         return bookmarksService.findBookmarksByUserId(userId, of(pageable)).map { UserInfo.of(it) }

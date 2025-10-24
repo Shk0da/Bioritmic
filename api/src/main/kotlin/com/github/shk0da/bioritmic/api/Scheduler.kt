@@ -15,8 +15,10 @@ import javax.persistence.EntityManager
 
 @Component
 @EnableScheduling
-class Scheduler(val entityManager: EntityManager,
-                val schedulerLockCache: Cache<String, Boolean>) {
+class Scheduler(
+    val entityManager: EntityManager,
+    val schedulerLockCache: Cache<String, Boolean>
+) {
 
     private val log = LoggerFactory.getLogger(Scheduler::class.java)
 
@@ -29,9 +31,9 @@ class Scheduler(val entityManager: EntityManager,
         wrapWithLock("fireCleanOldGisData") {
             entityManager.joinTransaction()
             entityManager
-                    .createQuery("delete from GisData where timestamp <= :timestamp")
-                    .setParameter("timestamp", Timestamp(currentTimeMillis() - twoHoursInMillis))
-                    .executeUpdate()
+                .createQuery("delete from GisData where timestamp <= :timestamp")
+                .setParameter("timestamp", Timestamp(currentTimeMillis() - twoHoursInMillis))
+                .executeUpdate()
             entityManager.flush()
         }
     }
@@ -42,12 +44,14 @@ class Scheduler(val entityManager: EntityManager,
         wrapWithLock("fireCleanOldUsers") {
             entityManager.joinTransaction()
             entityManager
-                    .createQuery("delete from User where id in " +
-                            "(select u.id from User u " +
-                            "left join Auth a on u.id = a.userId " +
-                            "where u.registerDate < :timestamp and a.expireTime < :timestamp)")
-                    .setParameter("timestamp", Timestamp(currentTimeMillis() - yearInMillis))
-                    .executeUpdate()
+                .createQuery(
+                    "delete from User where id in " +
+                        "(select u.id from User u " +
+                        "left join Auth a on u.id = a.userId " +
+                        "where u.registerDate < :timestamp and a.expireTime < :timestamp)"
+                )
+                .setParameter("timestamp", Timestamp(currentTimeMillis() - yearInMillis))
+                .executeUpdate()
             entityManager.flush()
         }
     }

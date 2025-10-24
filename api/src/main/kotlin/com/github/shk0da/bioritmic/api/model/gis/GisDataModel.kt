@@ -7,10 +7,12 @@ import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import java.sql.Timestamp
 import javax.validation.constraints.NotNull
 
-data class GisDataModel(@JsonIgnore val userId: Long? = null,
-                        @field:NotNull val lat: Double?,
-                        @field:NotNull val lon: Double?,
-                        @JsonProperty(access = JsonProperty.Access.READ_ONLY) val timestamp: Timestamp? = null) : BasicPresentation {
+data class GisDataModel(
+    @JsonIgnore val userId: Long? = null,
+    @field:NotNull val lat: Double?,
+    @field:NotNull val lon: Double?,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY) val timestamp: Timestamp? = null
+) : BasicPresentation {
 
     companion object {
         fun of(gisData: GisData): GisDataModel {

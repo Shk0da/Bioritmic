@@ -22,22 +22,22 @@ class InfiniSpanConfiguration {
     @Bean
     fun schedulerLockCache(cacheManager: DefaultCacheManager, smallSizeCache: InfiniSpanConfiguration): Cache<String, Boolean> {
         return cacheManager.administration()
-                .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
-                .getOrCreateCache("schedulerLockCache", baseSizeCache())
+            .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
+            .getOrCreateCache("schedulerLockCache", baseSizeCache())
     }
 
     @Bean
     fun authTokenCache(cacheManager: DefaultCacheManager): Cache<String, Auth> {
         return cacheManager.administration()
-                .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
-                .getOrCreateCache("authTokenCache", customTimeCache(Auth.lifetimeInMinutes, TimeUnit.MINUTES))
+            .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
+            .getOrCreateCache("authTokenCache", customTimeCache(Auth.lifetimeInMinutes, TimeUnit.MINUTES))
     }
 
     @Bean
     fun cacheManager(): DefaultCacheManager {
         val global = GlobalConfigurationBuilder
-                .defaultClusteredBuilder()
-                .asyncThreadPoolName("taskExecutor")
+            .defaultClusteredBuilder()
+            .asyncThreadPoolName("taskExecutor")
         return DefaultCacheManager(global.build())
     }
 
@@ -51,39 +51,39 @@ class InfiniSpanConfiguration {
     @Bean
     fun baseSizeCache(): InfiniSpanConfiguration {
         return ConfigurationBuilder()
-                .clustering()
-                .cacheMode(CacheMode.DIST_ASYNC)
-                .statistics().enable()
-                .memory().maxCount(10_000L)
-                .build()
+            .clustering()
+            .cacheMode(CacheMode.DIST_ASYNC)
+            .statistics().enable()
+            .memory().maxCount(10_000L)
+            .build()
     }
 
     @Bean
     fun smallSizeCache(): InfiniSpanConfiguration {
         return ConfigurationBuilder()
-                .clustering()
-                .cacheMode(CacheMode.DIST_ASYNC)
-                .statistics().enable()
-                .memory().maxCount(100L)
-                .build()
+            .clustering()
+            .cacheMode(CacheMode.DIST_ASYNC)
+            .statistics().enable()
+            .memory().maxCount(100L)
+            .build()
     }
 
     @Bean
     fun baseTimeCache(): InfiniSpanConfiguration {
         return ConfigurationBuilder()
-                .clustering()
-                .cacheMode(CacheMode.DIST_ASYNC)
-                .statistics().enable()
-                .expiration().lifespan(10, TimeUnit.MINUTES)
-                .build()
+            .clustering()
+            .cacheMode(CacheMode.DIST_ASYNC)
+            .statistics().enable()
+            .expiration().lifespan(10, TimeUnit.MINUTES)
+            .build()
     }
 
     fun customTimeCache(time: Long, unit: TimeUnit): InfiniSpanConfiguration {
         return ConfigurationBuilder()
-                .clustering()
-                .cacheMode(CacheMode.DIST_ASYNC)
-                .statistics().enable()
-                .expiration().lifespan(time, unit)
-                .build()
+            .clustering()
+            .cacheMode(CacheMode.DIST_ASYNC)
+            .statistics().enable()
+            .expiration().lifespan(time, unit)
+            .build()
     }
 }

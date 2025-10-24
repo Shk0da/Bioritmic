@@ -35,12 +35,14 @@ import java.nio.file.Files.readAllBytes
 import java.sql.Timestamp
 
 @Service
-class UserService(val userJpaRepository: UserJpaRepository,
-                  val userR2dbcRepository: UserR2dbcRepository,
-                  val gisDataR2dbcRepository: GisDataR2dbcRepository,
-                  val userSettingsR2dbcRepository: UserSettingsR2dbcRepository,
-                  val userBlockR2dbcRepository: UserBlockR2dbcRepository,
-                  val emailService: EmailService) {
+class UserService(
+    val userJpaRepository: UserJpaRepository,
+    val userR2dbcRepository: UserR2dbcRepository,
+    val gisDataR2dbcRepository: GisDataR2dbcRepository,
+    val userSettingsR2dbcRepository: UserSettingsR2dbcRepository,
+    val userBlockR2dbcRepository: UserBlockR2dbcRepository,
+    val emailService: EmailService
+) {
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
 
@@ -62,47 +64,47 @@ class UserService(val userJpaRepository: UserJpaRepository,
     @Transactional
     fun blockedUsers(userId: Long, pageable: PageableRequest): Flux<User> {
         return userBlockR2dbcRepository.findAllByUserId(userId, pageable.pageSize, pageable.offset)
-                .map { it.otherUserId!! }
-                .collectList()
-                .flatMapMany {
-                    userR2dbcRepository.findAllById(it)
-                }
+            .map { it.otherUserId!! }
+            .collectList()
+            .flatMapMany {
+                userR2dbcRepository.findAllById(it)
+            }
     }
 
     @Transactional
     fun blockUser(userId: Long, otherUserId: Long): Mono<User> {
         return userR2dbcRepository.findById(otherUserId)
-                .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
-                .map {user ->
-                    userBlockR2dbcRepository
-                            .insert(userId, otherUserId, Timestamp(currentTimeMillis()))
-                            .map { user }
-                }.flatMap { it }
+            .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
+            .map { user ->
+                userBlockR2dbcRepository
+                    .insert(userId, otherUserId, Timestamp(currentTimeMillis()))
+                    .map { user }
+            }.flatMap { it }
     }
 
     @Transactional
     fun unblockUser(userId: Long, otherUserId: Long): Mono<User> {
         return userR2dbcRepository.findById(otherUserId)
-                .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
-                .map {user ->
-                    userBlockR2dbcRepository
-                            .delete(userId, otherUserId)
-                            .map { user }
-                }.flatMap { it }
+            .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
+            .map { user ->
+                userBlockR2dbcRepository
+                    .delete(userId, otherUserId)
+                    .map { user }
+            }.flatMap { it }
     }
 
     @Transactional(readOnly = true)
     fun findUserByIdWithSettings(id: Long): Mono<User> {
         return userR2dbcRepository.findById(id)
-                .map { user ->
-                    userSettingsR2dbcRepository.findById(user.id!!)
-                            .map {
-                                user.userSettings = it
-                                user
-                            }
-                            .switchIfEmpty(just(user))
-                }
-                .flatMap { it }
+            .map { user ->
+                userSettingsR2dbcRepository.findById(user.id!!)
+                    .map {
+                        user.userSettings = it
+                        user
+                    }
+                    .switchIfEmpty(just(user))
+            }
+            .flatMap { it }
     }
 
     @Transactional
@@ -113,23 +115,23 @@ class UserService(val userJpaRepository: UserJpaRepository,
     @Transactional
     fun updateUserById(userId: Long, userInfo: UserInfo): Mono<User> {
         return userR2dbcRepository.findById(userId)
-                .map { user ->
-                    with(userInfo) {
-                        if (isNotBlank(name)) {
-                            user.name = name
-                        }
-                        if (isNotBlank(email) && !user.email.equals(email)) {
-                            if (isUserExists(email!!)) throw ApiException(ErrorCode.USER_EXISTS)
-                            user.setRecoveryCode()
-                            emailService.sendConfirmationChangeEmail(user.email!!, email, user.recoveryCode!!)
-                        }
-                        if (null != birthday) {
-                            user.birthday = Timestamp(birthday.time)
-                        }
+            .map { user ->
+                with(userInfo) {
+                    if (isNotBlank(name)) {
+                        user.name = name
                     }
-                    userR2dbcRepository.save(user)
+                    if (isNotBlank(email) && !user.email.equals(email)) {
+                        if (isUserExists(email!!)) throw ApiException(ErrorCode.USER_EXISTS)
+                        user.setRecoveryCode()
+                        emailService.sendConfirmationChangeEmail(user.email!!, email, user.recoveryCode!!)
+                    }
+                    if (null != birthday) {
+                        user.birthday = Timestamp(birthday.time)
+                    }
                 }
-                .flatMap { it }
+                userR2dbcRepository.save(user)
+            }
+            .flatMap { it }
     }
 
     @Transactional
@@ -143,86 +145,86 @@ class UserService(val userJpaRepository: UserJpaRepository,
     @Transactional(readOnly = true)
     fun deleteUserById(userId: Long): Mono<Void> {
         return userR2dbcRepository.deleteById(userId)
-                .doOnSuccess {
-                    deleteUserImages(userId)
-                }
+            .doOnSuccess {
+                deleteUserImages(userId)
+            }
     }
 
     @Transactional(readOnly = true)
     fun getGis(userId: Long): Mono<GisData> {
         return gisDataR2dbcRepository.findById(userId)
-                .switchIfEmpty(Mono.error(ApiException(ErrorCode.COORDINATES_NOT_FOUND)))
+            .switchIfEmpty(Mono.error(ApiException(ErrorCode.COORDINATES_NOT_FOUND)))
     }
 
     @Transactional
     fun saveGis(userId: Long, gisDataModel: GisDataModel): Mono<GisDataModel> {
         val gisData = GisData.of(userId, gisDataModel)
         return gisDataR2dbcRepository.insert(
-                gisData.userId,
-                gisData.lat,
-                gisData.lon,
-                gisData.timestamp,
+            gisData.userId,
+            gisData.lat,
+            gisData.lon,
+            gisData.timestamp,
         ).map { GisDataModel.of(gisData) }
     }
 
     @Transactional
     fun getUserSettingsById(userId: Long): Mono<UserSettings> {
         return userSettingsR2dbcRepository.findById(userId)
-                .switchIfEmpty(Mono.error(ApiException(ErrorCode.SETTINGS_NOT_FOUND)))
+            .switchIfEmpty(Mono.error(ApiException(ErrorCode.SETTINGS_NOT_FOUND)))
     }
 
     @Transactional
     fun updateUserSettingsById(userId: Long, settings: UserSettingsModel): Mono<UserSettings> {
         return userSettingsR2dbcRepository.findById(userId)
-                .switchIfEmpty(just(UserSettings()))
-                .map { userSettings ->
-                    with(userSettings) {
-                        if (null == this.userId) {
-                            markAsNew()
-                        }
-                        this.userId = userId
-                        if (null != settings.gender) {
-                            gender = settings.gender.ordinal.toShort()
-                        }
-                        if (null != settings.ageMin) {
-                            ageMin = settings.ageMin
-                        }
-                        if (null != settings.ageMax) {
-                            ageMax = settings.ageMax
-                        }
-                        if (null != settings.distance) {
-                            distance = settings.distance
-                        }
+            .switchIfEmpty(just(UserSettings()))
+            .map { userSettings ->
+                with(userSettings) {
+                    if (null == this.userId) {
+                        markAsNew()
                     }
-                    userSettingsR2dbcRepository.save(userSettings)
+                    this.userId = userId
+                    if (null != settings.gender) {
+                        gender = settings.gender.ordinal.toShort()
+                    }
+                    if (null != settings.ageMin) {
+                        ageMin = settings.ageMin
+                    }
+                    if (null != settings.ageMax) {
+                        ageMax = settings.ageMax
+                    }
+                    if (null != settings.distance) {
+                        distance = settings.distance
+                    }
                 }
-                .flatMap { it }
+                userSettingsR2dbcRepository.save(userSettings)
+            }
+            .flatMap { it }
     }
 
     @Transactional
     fun getPhoto(userId: Long): Mono<ByteArray> {
         return userR2dbcRepository.existsById(userId)
-                .filter { it == true }
-                .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
-                .map { File(profileImagePath(userId)) }
-                .filter { it.exists() }
-                .switchIfEmpty(just(ImageUtils.noImageFile))
-                .map { readAllBytes(it.toPath()) }
-                .switchIfEmpty(Mono.error(ApiException(ErrorCode.IMAGE_NOT_FOUND)))
+            .filter { it == true }
+            .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
+            .map { File(profileImagePath(userId)) }
+            .filter { it.exists() }
+            .switchIfEmpty(just(ImageUtils.noImageFile))
+            .map { readAllBytes(it.toPath()) }
+            .switchIfEmpty(Mono.error(ApiException(ErrorCode.IMAGE_NOT_FOUND)))
     }
 
     fun updatePhoto(userId: Long, filePart: Mono<FilePart>): Mono<Void> {
         val originalFile = File(profileImagePath(userId, ImageTag.ORIGINAL))
         return filePart
-                .flatMap { it.transferTo(originalFile) }
-                .doOnSuccess {
-                    cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_100x100)
-                    cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_250x250)
-                }
-                .doOnError {
-                    log.error("Failed save photos for userId [{}]: {}", userId, it.message)
-                    Mono.error<Mono<Void>>(it)
-                }
+            .flatMap { it.transferTo(originalFile) }
+            .doOnSuccess {
+                cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_100x100)
+                cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_250x250)
+            }
+            .doOnError {
+                log.error("Failed save photos for userId [{}]: {}", userId, it.message)
+                Mono.error<Mono<Void>>(it)
+            }
     }
 
     fun deletePhoto(userId: Long): Mono<Any> {

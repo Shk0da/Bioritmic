@@ -22,10 +22,12 @@ class MeetingsController(val meetingsService: MeetingsService) {
 
     // GET /meetings/
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    @ApiImplicitParams(value = [
-        ApiImplicitParam(name = "page", dataType = "java.lang.Integer", paramType = "query"),
-        ApiImplicitParam(name = "size", dataType = "java.lang.Integer", paramType = "query")
-    ])
+    @ApiImplicitParams(
+        value = [
+            ApiImplicitParam(name = "page", dataType = "java.lang.Integer", paramType = "query"),
+            ApiImplicitParam(name = "size", dataType = "java.lang.Integer", paramType = "query")
+        ]
+    )
     fun meetings(pageable: Pageable): Flux<UserMeeting> {
         val userId = getUserId()
         return meetingsService.findAllMeetingsByUserId(userId, of(pageable)).map { UserMeeting.of(it) }

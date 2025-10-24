@@ -9,17 +9,19 @@ import javax.validation.constraints.DecimalMin
 import javax.validation.constraints.Max
 import javax.validation.constraints.Min
 
-data class UserSettingsModel(val gender: Gender? = null,
-                             @field:Min(14) @field:Max(100) val ageMin: Int? = null,
-                             @field:Min(14) @field:Max(100) val ageMax: Int? = null,
-                             @field:DecimalMin("0.05") @field:DecimalMax("30") val distance: Double? = null) : BasicPresentation {
+data class UserSettingsModel(
+    val gender: Gender? = null,
+    @field:Min(14) @field:Max(100) val ageMin: Int? = null,
+    @field:Min(14) @field:Max(100) val ageMax: Int? = null,
+    @field:DecimalMin("0.05") @field:DecimalMax("30") val distance: Double? = null
+) : BasicPresentation {
     companion object {
         fun of(settings: UserSettings): UserSettingsModel {
             return UserSettingsModel(
-                    gender = settings.getGender(),
-                    ageMin = settings.ageMin,
-                    ageMax = settings.ageMax,
-                    distance = settings.distance
+                gender = settings.getGender(),
+                ageMin = settings.ageMin,
+                ageMax = settings.ageMax,
+                distance = settings.distance
             )
         }
     }

@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping(path = ["/management"])
-class MetricsController(private val metricRegistry: MetricRegistry,
-                        private val meterRegistry: MeterRegistry,
-                        private val metricsEndpoint: MetricsEndpoint) {
+class MetricsController(
+    private val metricRegistry: MetricRegistry,
+    private val meterRegistry: MeterRegistry,
+    private val metricsEndpoint: MetricsEndpoint
+) {
 
     data class MetricsResponse(var metrics: Map<String, Metric>) : BasicPresentation
 

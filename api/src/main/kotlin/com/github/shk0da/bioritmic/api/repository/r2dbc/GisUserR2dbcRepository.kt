@@ -17,7 +17,6 @@ import java.math.BigInteger
 import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.util.*
-import kotlin.collections.HashMap
 
 @Repository
 @Transactional(transactionManager = r2dbcTransactionManager)
@@ -28,31 +27,35 @@ class GisUserR2dbcRepository(val slaveConnectionFactory: ConnectionFactory) {
     private val maxLimit = 500
 
     private val searchQuery = "SELECT usr.id, usr.name, usr.birthday, usr.gender, gis.lat, gis.lon, gis.distance " +
-            "FROM users AS usr, (SELECT *, (point(lat, lon) <@> point($2, $3)) AS distance FROM gis_data ORDER BY distance) AS gis " +
-            "WHERE gis.user_id <> $1 AND gis.distance <= $4 AND usr.id = gis.user_id AND gis.timestamp >= $5 order by gis.distance limit 100"
+        "FROM users AS usr, (SELECT *, (point(lat, lon) <@> point($2, $3)) AS distance FROM gis_data ORDER BY distance) AS gis " +
+        "WHERE gis.user_id <> $1 AND gis.distance <= $4 AND usr.id = gis.user_id AND gis.timestamp >= $5 order by gis.distance limit 100"
 
-    fun findNearest(userId: Long,
-                    lat: Double, lon: Double,
-                    distanceInKilometers: Double, timestamp: Timestamp,
-                    gender: Gender? = null, ageMin: Int? = null, ageMax: Int? = null): Flux<GisUser> {
+    fun findNearest(
+        userId: Long,
+        lat: Double, lon: Double,
+        distanceInKilometers: Double, timestamp: Timestamp,
+        gender: Gender? = null, ageMin: Int? = null, ageMax: Int? = null
+    ): Flux<GisUser> {
         return Flux.from(slaveConnectionFactory.create())
-                .flatMap { connection ->
-                    val statement = createSearchStatement(
-                            connection,
-                            userId, lat, lon,
-                            distanceInKilometers, timestamp,
-                            gender, ageMin, ageMax
-                    )
-                    Flux.from(statement.execute()).doFinally { connection.close() }
-                }
-                .map { result -> result.map { row, _ -> mapGisUser(row) } }
-                .flatMap { it }
+            .flatMap { connection ->
+                val statement = createSearchStatement(
+                    connection,
+                    userId, lat, lon,
+                    distanceInKilometers, timestamp,
+                    gender, ageMin, ageMax
+                )
+                Flux.from(statement.execute()).doFinally { connection.close() }
+            }
+            .map { result -> result.map { row, _ -> mapGisUser(row) } }
+            .flatMap { it }
     }
 
-    private fun createSearchStatement(connection: Connection,
-                                      userId: Long, lat: Double, lon: Double,
-                                      distanceInKilometers: Double, timestamp: Timestamp,
-                                      gender: Gender?, ageMin: Int?, ageMax: Int?): Statement {
+    private fun createSearchStatement(
+        connection: Connection,
+        userId: Long, lat: Double, lon: Double,
+        distanceInKilometers: Double, timestamp: Timestamp,
+        gender: Gender?, ageMin: Int?, ageMax: Int?
+    ): Statement {
         var conditional = ""
         var conditionalIndex = 6
         val conditionalMap: HashMap<String, String> = HashMap(3)
@@ -76,11 +79,11 @@ class GisUserR2dbcRepository(val slaveConnectionFactory: ConnectionFactory) {
         val sql = "$searchQuery$conditional$limit"
         var debugMsg = "Executing SQL statement [$sql], [$userId, $lat, $lon, $distanceInKilometers, $timestamp"
         val statement = connection.createStatement(sql)
-                .bind("$1", userId)
-                .bind("$2", lat)
-                .bind("$3", lon)
-                .bind("$4", distanceInKilometers)
-                .bind("$5", timestamp)
+            .bind("$1", userId)
+            .bind("$2", lat)
+            .bind("$3", lon)
+            .bind("$4", distanceInKilometers)
+            .bind("$5", timestamp)
         if (null != gender) {
             val bindGender = gender.ordinal
             statement.bind(conditionalMap["gender"]!!, bindGender)

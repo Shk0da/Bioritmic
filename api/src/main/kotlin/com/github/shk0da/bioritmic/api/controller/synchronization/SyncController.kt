@@ -29,11 +29,11 @@ class SyncController(val userService: UserService, val searchService: SearchServ
     fun sync(@RequestParam("timestamp") timestamp: Long): Flux<UserInfo> {
         val userId = getUserId()
         return userService.findUserByIdWithSettings(userId)
-                .map { UserSearch.of(it).withTimestamp(Timestamp(timestamp)) }
-                .map { search ->
-                    log.debug("Sync: {}", search)
-                    searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
-                }
-                .flatMapMany { it }
+            .map { UserSearch.of(it).withTimestamp(Timestamp(timestamp)) }
+            .map { search ->
+                log.debug("Sync: {}", search)
+                searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
+            }
+            .flatMapMany { it }
     }
 }

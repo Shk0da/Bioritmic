@@ -62,16 +62,18 @@ class UserController(val userService: UserService) {
     fun user(@PathVariable id: Long): Mono<UserInfo> {
         val userId = valueOf(id)
         return userService.findUserById(userId)
-                .map { UserInfo.of(it) }
-                .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
+            .map { UserInfo.of(it) }
+            .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
     }
 
     // GET /blocked <- UserInfo
     @GetMapping(value = ["/blocked"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    @ApiImplicitParams(value = [
-        ApiImplicitParam(name = "page", dataType = "java.lang.Integer", paramType = "query"),
-        ApiImplicitParam(name = "size", dataType = "java.lang.Integer", paramType = "query")
-    ])
+    @ApiImplicitParams(
+        value = [
+            ApiImplicitParam(name = "page", dataType = "java.lang.Integer", paramType = "query"),
+            ApiImplicitParam(name = "size", dataType = "java.lang.Integer", paramType = "query")
+        ]
+    )
     fun blockedUsers(pageable: Pageable): Flux<UserInfo> {
         val userId = getUserId()
         return userService.blockedUsers(userId, of(pageable)).map { UserInfo.of(it) }
@@ -96,11 +98,11 @@ class UserController(val userService: UserService) {
     fun meGis(): Mono<ResponseEntity<GisDataModel>> {
         val userId = getUserId()
         return userService.getGis(userId)
-                .map { GisDataModel.of(it) }
-                .map {
-                    log.debug("User gisData: {}", it)
-                    ResponseEntity.status(HttpStatus.OK).body(it)
-                }
+            .map { GisDataModel.of(it) }
+            .map {
+                log.debug("User gisData: {}", it)
+                ResponseEntity.status(HttpStatus.OK).body(it)
+            }
     }
 
     // POST /me/gis -> UpdateGIS (+ anti SPAM in radius 100km[param] in hour)
@@ -108,10 +110,10 @@ class UserController(val userService: UserService) {
     fun meSaveGis(@RequestBody @Valid gisData: GisDataModel, principal: Principal): Mono<ResponseEntity<GisDataModel>> {
         val userId = getUserId(principal)
         return userService.saveGis(userId, gisData)
-                .map {
-                    log.debug("New gisData: {}", it)
-                    ResponseEntity.status(HttpStatus.OK).body(it)
-                }
+            .map {
+                log.debug("New gisData: {}", it)
+                ResponseEntity.status(HttpStatus.OK).body(it)
+            }
     }
 
     // GET /{id}/photo <- UserInfo
@@ -133,13 +135,13 @@ class UserController(val userService: UserService) {
     fun uploadPhoto(@RequestPart("file") file: Mono<@Valid @NotNull FilePart>, principal: Principal): Mono<ResponseEntity<Void>> {
         val userId = getUserId(principal)
         val checkedFilePart = file
-                .filter { checkNotEmpty(it.filename(), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file"))) }
-                .filter { checkFileExtension(it.filename(), arrayListOf("png", "jpg"), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file"))) }
+            .filter { checkNotEmpty(it.filename(), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file"))) }
+            .filter { checkFileExtension(it.filename(), arrayListOf("png", "jpg"), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file"))) }
         return userService.updatePhoto(userId, checkedFilePart)
-                .map {
-                    log.debug("Update photo: {}", userId)
-                    ResponseEntity.status(HttpStatus.ACCEPTED).build()
-                }
+            .map {
+                log.debug("Update photo: {}", userId)
+                ResponseEntity.status(HttpStatus.ACCEPTED).build()
+            }
     }
 
     // DELETE /me/photo
@@ -147,9 +149,9 @@ class UserController(val userService: UserService) {
     fun deletePhoto(): Mono<ResponseEntity<Void>> {
         val userId = getUserId()
         return userService.deletePhoto(userId)
-                .map {
-                    log.debug("Deleted all photo for userId: {}", userId)
-                    ResponseEntity.status(HttpStatus.NO_CONTENT).build()
-                }
+            .map {
+                log.debug("Deleted all photo for userId: {}", userId)
+                ResponseEntity.status(HttpStatus.NO_CONTENT).build()
+            }
     }
 }

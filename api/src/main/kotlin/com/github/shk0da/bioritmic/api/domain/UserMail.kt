@@ -2,7 +2,12 @@ package com.github.shk0da.bioritmic.api.domain
 
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
 import java.sql.Timestamp
-import javax.persistence.*
+import javax.persistence.Column
+import javax.persistence.Entity
+import javax.persistence.GeneratedValue
+import javax.persistence.GenerationType
+import javax.persistence.Id
+import javax.persistence.Table
 
 @Entity
 @Table(name = "mailbox")

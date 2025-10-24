@@ -8,9 +8,11 @@ import java.util.*
 import javax.persistence.*
 
 @Entity
-@Table(name = "authorizations", uniqueConstraints = [
-    UniqueConstraint(name = "uq_authorizations_user_id", columnNames = ["user_id"])
-])
+@Table(
+    name = "authorizations", uniqueConstraints = [
+        UniqueConstraint(name = "uq_authorizations_user_id", columnNames = ["user_id"])
+    ]
+)
 @org.springframework.data.relational.core.mapping.Table("authorizations")
 class Auth : Serializable {
 

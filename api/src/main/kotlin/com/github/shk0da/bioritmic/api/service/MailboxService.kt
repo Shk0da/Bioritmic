@@ -17,9 +17,11 @@ import reactor.core.publisher.Mono
 import reactor.core.publisher.Mono.just
 
 @Service
-class MailboxService(val userService: UserService,
-                     val mailboxR2dbcRepository: MailboxR2dbcRepository,
-                     val userBlockR2dbcRepository: UserBlockR2dbcRepository) {
+class MailboxService(
+    val userService: UserService,
+    val mailboxR2dbcRepository: MailboxR2dbcRepository,
+    val userBlockR2dbcRepository: UserBlockR2dbcRepository
+) {
 
     private val defaultPageable = PageableRequest(1, 10, by(Sort.Direction.DESC, "timestamp"))
 
@@ -31,28 +33,28 @@ class MailboxService(val userService: UserService,
     @Transactional
     fun sendUserMail(userId: Long, userMailModel: UserMailModel): Flux<UserMail> {
         return userService.findUserById(userMailModel.to!!)
-                .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
-                .map {user ->
-                    userBlockR2dbcRepository
-                            .findByUserIdAndOtherUserId(user.id!!, userId)
-                            .map {block ->
-                                if (null != block) {
-                                    throw ApiException(ErrorCode.USER_IS_BLOCKED)
-                                }
-                                user
-                            }.switchIfEmpty(just(user))
-                }
-                .flatMap { it }
-                .map { to ->
-                    userMailModel.from = userId
-                    val userMail = UserMail.of(userMailModel)
-                    mailboxR2dbcRepository.save(userMail)
-                            .map {
-                                mailboxR2dbcRepository.findAllByFromUserIdAndToUserId(
-                                        userMail.fromUserId!!, userMail.toUserId!!, defaultPageable
-                                )
-                            }.flatMapMany { it }
-                }.flatMapMany { it }
+            .switchIfEmpty(Mono.error(ApiException(ErrorCode.USER_NOT_FOUND)))
+            .map { user ->
+                userBlockR2dbcRepository
+                    .findByUserIdAndOtherUserId(user.id!!, userId)
+                    .map { block ->
+                        if (null != block) {
+                            throw ApiException(ErrorCode.USER_IS_BLOCKED)
+                        }
+                        user
+                    }.switchIfEmpty(just(user))
+            }
+            .flatMap { it }
+            .map { to ->
+                userMailModel.from = userId
+                val userMail = UserMail.of(userMailModel)
+                mailboxR2dbcRepository.save(userMail)
+                    .map {
+                        mailboxR2dbcRepository.findAllByFromUserIdAndToUserId(
+                            userMail.fromUserId!!, userMail.toUserId!!, defaultPageable
+                        )
+                    }.flatMapMany { it }
+            }.flatMapMany { it }
     }
 
     @Transactional

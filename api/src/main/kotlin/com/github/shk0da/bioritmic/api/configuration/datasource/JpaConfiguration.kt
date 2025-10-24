@@ -40,9 +40,11 @@ import javax.sql.DataSource
 @EnableTransactionManagement
 @EnableJpaRepositories("com.github.shk0da.bioritmic.api.repository.jpa")
 @Conditional(value = [DefaultDataSourceProfileCondition::class])
-class JpaConfiguration(private val environment: Environment,
-                       private val metricRegistry: MetricRegistry?,
-                       private val healthCheckRegistry: HealthCheckRegistry?) : DataSourceConfiguration {
+class JpaConfiguration(
+    private val environment: Environment,
+    private val metricRegistry: MetricRegistry?,
+    private val healthCheckRegistry: HealthCheckRegistry?
+) : DataSourceConfiguration {
 
     private val log = LoggerFactory.getLogger(JpaConfiguration::class.java)
 
@@ -125,8 +127,8 @@ class JpaConfiguration(private val environment: Environment,
             val primaryDataSource = masterDataSource()
             val replicaDataSource = slaveDataSource()
             val targetDataSources: Map<Any, Any> = mapOf(
-                    Pair(RoutingDataSource.Route.MASTER, primaryDataSource),
-                    Pair(RoutingDataSource.Route.SLAVE, replicaDataSource)
+                Pair(RoutingDataSource.Route.MASTER, primaryDataSource),
+                Pair(RoutingDataSource.Route.SLAVE, replicaDataSource)
             )
             routingDataSource = RoutingDataSource()
             routingDataSource.setTargetDataSources(targetDataSources)

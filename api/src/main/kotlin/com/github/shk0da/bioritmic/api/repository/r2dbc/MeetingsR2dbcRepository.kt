@@ -28,10 +28,19 @@ interface MeetingsR2dbcRepository : R2dbcRepository<Meeting, Meeting.PrimaryKey>
     fun deleteByUserIdAndOtherUserId(userId: Long, otherUserId: Long): Mono<Void>
 
     @Modifying
-    @Query("insert into meetings(user_id, other_user_id, other_user_lat, other_user_lon, distance, timestamp) " +
+    @Query(
+        "insert into meetings(user_id, other_user_id, other_user_lat, other_user_lon, distance, timestamp) " +
             "values (:userId, :otherUserId, :otherUserLat, :otherUserLon, :distance, :timestamp) " +
             "on conflict (user_id, other_user_id) do update " +
             "set other_user_lat = excluded.other_user_lat, other_user_lon = excluded.other_user_lon, " +
-            "distance = excluded.distance, timestamp = excluded.timestamp")
-    fun insert(userId: Long, otherUserId: Long, otherUserLat: Double?, otherUserLon: Double?, distance: Double?, timestamp: Timestamp?): Mono<Int>
+            "distance = excluded.distance, timestamp = excluded.timestamp"
+    )
+    fun insert(
+        userId: Long,
+        otherUserId: Long,
+        otherUserLat: Double?,
+        otherUserLon: Double?,
+        distance: Double?,
+        timestamp: Timestamp?
+    ): Mono<Int>
 }

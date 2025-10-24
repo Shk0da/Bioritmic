@@ -127,42 +127,51 @@ class ApiExceptionHandler {
                     parameter = parameterNames.stream().collect(joining(", "))
                 }
             }
+
             is InvalidFormatException -> {
                 parameter = throwable.path
                     .stream()
                     .map { it.fieldName }
                     .collect(joining(", "))
             }
+
             is JsonMappingException -> {
                 parameter = throwable.path
                     .stream()
                     .map { it.fieldName }
                     .collect(joining(", "))
             }
+
             is MismatchedInputException -> {
                 parameter = throwable.path
                     .stream()
                     .map { it.fieldName }
                     .collect(joining(", "))
             }
+
             is WebExchangeBindException -> {
                 parameter = throwable.fieldErrors
                     .stream()
                     .map { it.field }
                     .collect(joining(", "))
             }
+
             is IllegalArgumentException -> {
                 parameter = throwable.message as String
             }
+
             is TypeMismatchException -> {
                 parameter = throwable.value as String
             }
+
             is ServerWebInputException -> {
                 parameter = throwable.methodParameter?.parameterName
             }
+
             is NumberFormatException -> {
                 throw RuntimeException(error)
             }
+
             is JsonParseException -> {
                 return handleApiException(ApiException(ErrorCode.JSON_CANT_BE_PARSED))
             }
@@ -238,9 +247,11 @@ class ApiExceptionHandler {
                 }
                 logWithErrorCode(ERROR, errorCode, "{}", message)
             }
+
             is IOException -> {
                 logWithErrorCode(ERROR, "IOException", "{}", getRootCauseMessage(ex), ex)
             }
+
             else -> {
                 logWithErrorCode(ERROR, "Exception", "{}", getRootCauseMessage(ex), ex)
             }

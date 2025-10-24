@@ -2,7 +2,13 @@ package com.github.shk0da.bioritmic.api.domain
 
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import java.sql.Timestamp
-import javax.persistence.*
+import javax.persistence.Column
+import javax.persistence.Entity
+import javax.persistence.GeneratedValue
+import javax.persistence.GenerationType
+import javax.persistence.Id
+import javax.persistence.Table
+import javax.persistence.Transient
 
 @Entity
 @Table(name = "gis_data")
@@ -10,7 +16,7 @@ import javax.persistence.*
 class GisData {
 
     @Id
-    @Column("user_id")
+    @Column(name = "user_id")
     @org.springframework.data.annotation.Id
     @org.springframework.data.relational.core.mapping.Column("user_id")
     @GeneratedValue(strategy = GenerationType.TABLE)

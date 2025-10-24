@@ -7,22 +7,23 @@ import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import java.sql.Timestamp
 import javax.validation.constraints.NotNull
 
-data class UserMeeting(@field:NotNull val userId: Long?,
-                       @field:NotNull val lat: Double?,
-                       @field:NotNull val lon: Double?,
-                       @field:NotNull val distance: Double?,
-                       @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-                       var timestamp: Timestamp? = null
+data class UserMeeting(
+    @field:NotNull val userId: Long?,
+    @field:NotNull val lat: Double?,
+    @field:NotNull val lon: Double?,
+    @field:NotNull val distance: Double?,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    var timestamp: Timestamp? = null
 ) : BasicPresentation {
 
     companion object {
         fun of(meeting: Meeting): UserMeeting {
             return UserMeeting(
-                    userId = meeting.otherUserId,
-                    lat = meeting.otherUserLat,
-                    lon = meeting.otherUserLon,
-                    distance = meeting.distance,
-                    timestamp = meeting.timestamp,
+                userId = meeting.otherUserId,
+                lat = meeting.otherUserLat,
+                lon = meeting.otherUserLon,
+                distance = meeting.distance,
+                timestamp = meeting.timestamp,
             )
         }
     }

@@ -12,15 +12,17 @@ import javax.validation.constraints.DecimalMin
 import javax.validation.constraints.Max
 import javax.validation.constraints.Min
 
-data class UserSearch(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
-                      var userId: Long? = null,
-                      @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-                      var birthdate: Date? = null,
-                      val gender: Gender? = null,
-                      @field:Min(14) @field:Max(100) val ageMin: Int? = null,
-                      @field:Min(14) @field:Max(100) val ageMax: Int? = null,
-                      @field:DecimalMin("0.05") @field:DecimalMax("30") val distance: Double = defaultDistance,
-                      var timestamp: Timestamp = hourAgo()) : BasicPresentation {
+data class UserSearch(
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    var userId: Long? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    var birthdate: Date? = null,
+    val gender: Gender? = null,
+    @field:Min(14) @field:Max(100) val ageMin: Int? = null,
+    @field:Min(14) @field:Max(100) val ageMax: Int? = null,
+    @field:DecimalMin("0.05") @field:DecimalMax("30") val distance: Double = defaultDistance,
+    var timestamp: Timestamp = hourAgo()
+) : BasicPresentation {
 
     companion object {
 
@@ -31,12 +33,12 @@ data class UserSearch(@JsonProperty(access = JsonProperty.Access.READ_ONLY)
         fun of(user: User): UserSearch {
             val settings = user.userSettings
             return UserSearch(
-                    userId = user.id!!,
-                    birthdate = user.birthday!!,
-                    gender = settings?.getGender(),
-                    ageMin = settings?.ageMin,
-                    ageMax = settings?.ageMax,
-                    distance = settings?.distance ?: defaultDistance
+                userId = user.id!!,
+                birthdate = user.birthday!!,
+                gender = settings?.getGender(),
+                ageMin = settings?.ageMin,
+                ageMax = settings?.ageMax,
+                distance = settings?.distance ?: defaultDistance
             )
         }
     }

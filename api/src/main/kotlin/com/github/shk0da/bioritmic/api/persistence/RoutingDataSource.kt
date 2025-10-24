@@ -14,6 +14,7 @@ class RoutingDataSource : AbstractRoutingDataSource() {
 
     companion object {
         private val ctx = ThreadLocal<Route>()
+
         @JvmStatic
         fun clearReplicaRoute() {
             ctx.remove()

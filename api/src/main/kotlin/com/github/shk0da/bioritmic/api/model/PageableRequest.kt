@@ -10,7 +10,8 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.data.domain.Sort.unsorted
 
-class PageableRequest @JvmOverloads constructor(page: Int = 1, size: Int = 100, sort: Sort? = unsorted()) : PageRequest(page - 1, size, sort!!), Pageable {
+class PageableRequest @JvmOverloads constructor(page: Int = 1, size: Int = 100, sort: Sort? = unsorted()) :
+    PageRequest(page - 1, size, sort!!), Pageable {
 
     companion object {
         fun of(pageable: Pageable?): PageableRequest {
@@ -23,12 +24,13 @@ class PageableRequest @JvmOverloads constructor(page: Int = 1, size: Int = 100, 
 
             if (pageable.pageSize <= 0 || pageable.pageSize > 100) {
                 throw ApiException(
-                        ErrorCode.INVALID_PARAMETER_RANGE,
-                        mapOf(
-                                Pair(PARAMETER_NAME, "size"),
-                                Pair(PARAMETER_VALUE_START, "0"),
-                                Pair(PARAMETER_VALUE_END, "100")
-                        ))
+                    ErrorCode.INVALID_PARAMETER_RANGE,
+                    mapOf(
+                        Pair(PARAMETER_NAME, "size"),
+                        Pair(PARAMETER_VALUE_START, "0"),
+                        Pair(PARAMETER_VALUE_END, "100")
+                    )
+                )
             }
 
             return PageableRequest(pageNumber, pageable.pageSize, pageable.sort)

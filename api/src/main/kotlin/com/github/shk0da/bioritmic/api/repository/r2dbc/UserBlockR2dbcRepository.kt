@@ -21,10 +21,12 @@ interface UserBlockR2dbcRepository : R2dbcRepository<UserBlock, UserBlock.Primar
     fun findAllByUserId(userId: Long, limit: Int, offset: Long): Flux<UserBlock>
 
     @Modifying
-    @Query("insert into user_blocks(user_id, other_user_id, timestamp) " +
+    @Query(
+        "insert into user_blocks(user_id, other_user_id, timestamp) " +
             "values (:userId, :otherUserId, :timestamp) " +
             "on conflict (user_id, other_user_id) do update " +
-            "set timestamp = excluded.timestamp")
+            "set timestamp = excluded.timestamp"
+    )
     fun insert(userId: Long, otherUserId: Long, timestamp: Timestamp?): Mono<Int>
 
     @Modifying

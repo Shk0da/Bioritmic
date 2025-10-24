@@ -15,9 +15,11 @@ import java.sql.Timestamp
 interface GisDataR2dbcRepository : R2dbcRepository<GisData, Long> {
 
     @Modifying
-    @Query("insert into gis_data(user_id, lat, lon, timestamp) " +
+    @Query(
+        "insert into gis_data(user_id, lat, lon, timestamp) " +
             "values (:userId, :lat, :lon, :timestamp) " +
             "on conflict (user_id) do update " +
-            "set lat = excluded.lat, lon = excluded.lon, timestamp = excluded.timestamp")
+            "set lat = excluded.lat, lon = excluded.lon, timestamp = excluded.timestamp"
+    )
     fun insert(userId: Long?, lat: Double?, lon: Double?, timestamp: Timestamp?): Mono<Int>
 }

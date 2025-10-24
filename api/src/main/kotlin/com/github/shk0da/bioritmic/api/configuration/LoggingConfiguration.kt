@@ -19,14 +19,16 @@ import org.springframework.context.annotation.Configuration
 import java.net.InetSocketAddress
 
 @Configuration
-class LoggingConfiguration(@Value("\${spring.application.name}") private val appName: String,
-                           @Value("\${server.port}") private val serverPort: String,
-                           @Value("\${info.project.version:}") private val version: String,
-                           @Value("\${management.logging.logstash.enabled:false}") logstashEnabled: Boolean,
-                           @Value("\${management.logging.logstash.host:localhost}") private val logstashHost: String,
-                           @Value("\${management.logging.logstash.port:5000}") private val logstashPort: Int,
-                           @Value("\${management.logging.logstash.queue-size:512}") private val logstashQueueSize: Int,
-                           @Value("\${management.metrics.logs.enabled:false}") logsEnabled: Boolean) {
+class LoggingConfiguration(
+    @Value("\${spring.application.name}") private val appName: String,
+    @Value("\${server.port}") private val serverPort: String,
+    @Value("\${info.project.version:}") private val version: String,
+    @Value("\${management.logging.logstash.enabled:false}") logstashEnabled: Boolean,
+    @Value("\${management.logging.logstash.host:localhost}") private val logstashHost: String,
+    @Value("\${management.logging.logstash.port:5000}") private val logstashPort: Int,
+    @Value("\${management.logging.logstash.queue-size:512}") private val logstashQueueSize: Int,
+    @Value("\${management.metrics.logs.enabled:false}") logsEnabled: Boolean
+) {
 
     private val log = LoggerFactory.getLogger(LoggingConfiguration::class.java)
     private val context = LoggerFactory.getILoggerFactory() as LoggerContext
@@ -59,7 +61,7 @@ class LoggingConfiguration(@Value("\${spring.application.name}") private val app
         logstashAppender.context = context
         val optionalFields = ""
         val customFields =
-                "{\"app_name\":\"" + appName + "\"," +
+            "{\"app_name\":\"" + appName + "\"," +
                 "\"app_port\":\"" + serverPort + "\"," +
                 optionalFields +
                 "\"version\":\"" + version + "\"}"
@@ -70,7 +72,7 @@ class LoggingConfiguration(@Value("\${spring.application.name}") private val app
         logstashEncoder.customFields = customFields
         // Set the Logstash appender config from IPC Cloud Config properties
         logstashAppender.addDestinations(
-                InetSocketAddress(logstashHost, logstashPort)
+            InetSocketAddress(logstashHost, logstashPort)
         )
         val throwableConverter = ShortenedThrowableConverter()
         throwableConverter.isRootCauseFirst = true

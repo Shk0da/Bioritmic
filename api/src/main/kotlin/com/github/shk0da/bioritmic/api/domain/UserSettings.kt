@@ -43,7 +43,7 @@ class UserSettings : Persistable<Long> {
 
     @Transient
     override fun isNew(): Boolean {
-       return isNew
+        return isNew
     }
 
     fun markAsNew() {

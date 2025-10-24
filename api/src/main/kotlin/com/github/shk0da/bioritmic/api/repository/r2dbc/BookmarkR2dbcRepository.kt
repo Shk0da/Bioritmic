@@ -28,9 +28,11 @@ interface BookmarkR2dbcRepository : R2dbcRepository<Bookmark, Bookmark.PrimaryKe
     fun deleteByUserIdAndOtherUserId(userId: Long, otherUserId: Long): Mono<Void>
 
     @Modifying
-    @Query("insert into bookmarks(user_id, other_user_id, timestamp) " +
+    @Query(
+        "insert into bookmarks(user_id, other_user_id, timestamp) " +
             "values (:userId, :otherUserId, :timestamp) " +
             "on conflict (user_id, other_user_id) do update " +
-            "set timestamp = excluded.timestamp")
+            "set timestamp = excluded.timestamp"
+    )
     fun insert(userId: Long, otherUserId: Long, timestamp: Timestamp?): Mono<Int>
 }

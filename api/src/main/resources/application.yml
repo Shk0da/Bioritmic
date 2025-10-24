@@ -29,6 +29,7 @@ spring:
     basic-name: Bioritmic
     name: ${spring.application.basic-name}
     description: Bitoritmic app
+  main.allow-bean-definition-overriding: true
   devtools.add-properties: false
   datasource:
     master:
@@ -40,7 +41,7 @@ spring:
       driver: postgresql
       driver-class-name: org.postgresql.Driver
       username: postgres
-      password: postgres
+      password:
       max-connections: 25
     slave:
       host: ${spring.datasource.master.host}
@@ -61,9 +62,11 @@ spring:
     host: email-smtp.us-west-2.amazonaws.com
     username: <login user to smtp server>
     password: <login password to smtp server>
-    properties:
-      #mail.transport.protocol: smtp
-      #mail.smtp.port: 25
-      #mail.smtp.auth: true
-      #mail.smtp.starttls.enable: true
-      #mail.smtp.starttls.required: true
+    mail:
+      host: smtp.bioritmic.com
+      username: admin@bioritmic.com
+      password: admin
+      properties:
+        mail.smtp.port: 25
+        mail.smtp.auth: true
+        mail.smtp.starttls.enable: false
