@@ -1,6 +1,7 @@
 pluginManagement {
     repositories {
         mavenCentral()
+        gradlePluginPortal()
     }
 }
 
@@ -11,5 +12,6 @@ buildscript {
 }
 
 rootProject.name = "bioritmic"
- 
+
 include(":api")
+include(":ui")

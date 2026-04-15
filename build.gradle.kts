@@ -21,3 +21,17 @@ dependencies {
     // kotlin
     implementation(kotlin("stdlib-jdk8"))
 }
+
+// Задача для запуска UI сервера разработки
+tasks.register("startUi") {
+    group = "ui"
+    description = "Запуск Angular UI сервера разработки"
+    dependsOn(":ui:serveUi")
+}
+
+// Задача для сборки UI
+tasks.register("buildUi") {
+    group = "ui"
+    description = "Сборка Angular UI приложения"
+    dependsOn(":ui:buildUi")
+}

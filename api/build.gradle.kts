@@ -57,8 +57,8 @@ dependencies {
     // postgres
     implementation("org.liquibase:liquibase-core")
     implementation("javax.persistence:javax.persistence-api:2.2")
-    runtimeOnly("org.postgresql:postgresql:42.7.8")
-    runtimeOnly("org.postgresql:r2dbc-postgresql:1.0.7.RELEASE")
+    implementation("org.postgresql:postgresql:42.7.10")
+    implementation("org.postgresql:r2dbc-postgresql:1.1.1.RELEASE")
 
     // cache
     implementation("org.infinispan:infinispan-spring-boot-starter-embedded:2.3.4.Final")
@@ -70,9 +70,9 @@ dependencies {
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.springframework.batch:spring-batch-test")
     testImplementation("org.springframework.security:spring-security-test")
-    testImplementation("org.testcontainers:jdbc:1.15.1")
-    testImplementation("org.testcontainers:r2dbc:1.15.1")
-    testImplementation("org.testcontainers:postgresql:1.15.1")
+    testImplementation("org.testcontainers:jdbc:1.21.4")
+    testImplementation("org.testcontainers:r2dbc:1.21.4")
+    testImplementation("org.testcontainers:postgresql:1.21.4")
 }
 
 kotlin {

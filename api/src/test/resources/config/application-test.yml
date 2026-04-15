@@ -1,6 +1,5 @@
 # Develop mode: -Dspring.profiles.active=test
 spring.application.name: ${spring.application.basic-name} (Testing mode)
-spring.profiles.include: default
 
 logging.level.com.github.shk0da.bioritmic: debug
 

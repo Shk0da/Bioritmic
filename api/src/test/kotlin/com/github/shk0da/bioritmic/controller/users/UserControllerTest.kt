@@ -1,0 +1,132 @@
+package com.github.shk0da.bioritmic.controller.users
+
+import com.github.shk0da.bioritmic.ApiApplicationTests
+import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
+import com.github.shk0da.bioritmic.api.model.AuthorizationModel
+import com.github.shk0da.bioritmic.api.model.user.UserInfo
+import com.github.shk0da.bioritmic.api.model.user.UserToken
+import com.github.shk0da.bioritmic.domain.UserModel
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
+import org.springframework.web.reactive.function.BodyInserters
+import java.util.Date
+
+@AutoConfigureWebTestClient(timeout = "36000")
+class UserControllerTest : ApiApplicationTests() {
+
+    private val defaultUserModel = UserModel(
+        name = "Test User",
+        email = "user_test@gmail.com",
+        password = "12345",
+        birthday = "14-01-1989"
+    )
+
+    private lateinit var authToken: String
+
+    @BeforeEach
+    fun setup() {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(defaultUserModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+
+        val authorizationModel = AuthorizationModel(
+            email = defaultUserModel.email!!,
+            password = defaultUserModel.password!!
+        )
+
+        val authResponse = webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(authorizationModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody(UserToken::class.java)
+            .returnResult()
+            .responseBody
+
+        authToken = "Bearer ${authResponse!!.accessToken}"
+    }
+
+    @Test
+    fun getMeTest() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.id").isNotEmpty
+            .jsonPath("$.name").isEqualTo(defaultUserModel.name)
+            .jsonPath("$.email").isEqualTo(defaultUserModel.email)
+    }
+
+    @Test
+    fun updateMeTest() {
+        val updatedInfo = UserInfo(
+            id = null,
+            name = "Updated Name",
+            email = defaultUserModel.email,
+            birthday = Date()
+        )
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(updatedInfo))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.name").isEqualTo(updatedInfo.name!!)
+    }
+
+    @Test
+    fun getMeGisTest() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me/gis")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+    }
+
+    @Test
+    fun getMePhotoTest() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me/photo")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.IMAGE_JPEG)
+            .exchange()
+            .expectStatus().isNoContent
+    }
+
+    @Test
+    fun getUserByIdTest() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/1")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isNotFound
+    }
+
+    @Test
+    fun getBlockedUsersTest() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/blocked?page=0&size=10")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+    }
+}
