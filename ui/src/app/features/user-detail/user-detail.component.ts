@@ -46,7 +46,7 @@ import { FormsModule } from '@angular/forms';
                   Предложить встречу
                 </button>
                 <button class="btn btn-outline-primary" (click)="toggleBookmark()">
-                  {{ isBookmarked ? 'Удалить из закладок' : 'В закладки' }}
+                  {{ isBookmarked ? 'Удалить из избранного' : 'В избранное' }}
                 </button>
                 <button class="btn btn-outline-secondary" (click)="showMessageForm = !showMessageForm">
                   Написать сообщение

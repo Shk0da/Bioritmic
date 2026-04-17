@@ -1,7 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { BookmarksService } from '../../core/services/bookmarks.service';
+import { UserService } from '../../core/services/user.service';
 import { UserInfo, PageableRequest } from '../../core/models/user.model';
+
+interface UserWithPhoto extends UserInfo {
+  photoDataUrl?: SafeUrl | null;
+}
 
 @Component({
   selector: 'app-bookmarks',
@@ -10,7 +16,7 @@ import { UserInfo, PageableRequest } from '../../core/models/user.model';
   template: `
     <div class="card">
       <div class="card-header">
-        <h5 class="mb-0">Закладки</h5>
+        <h5 class="mb-0">Избранное</h5>
       </div>
       <div class="card-body">
         @if (loading) {
@@ -21,7 +27,7 @@ import { UserInfo, PageableRequest } from '../../core/models/user.model';
           </div>
         } @else if (users.length === 0) {
           <div class="alert alert-info">
-            У вас пока нет закладок. Добавьте пользователей в закладки со страницы поиска.
+            У вас пока нет избранных. Добавьте пользователей в избранное со страницы поиска.
           </div>
         } @else {
           <div class="row">
@@ -29,13 +35,13 @@ import { UserInfo, PageableRequest } from '../../core/models/user.model';
               <div class="col-md-4 mb-4">
                 <div class="card h-100">
                   <img
-                    [src]="user.image || 'assets/default-avatar.png'"
+                    [src]="user.photoDataUrl || 'assets/default-avatar.png'"
                     class="card-img-top user-card-img"
                     [alt]="user.name">
                   <div class="card-body">
                     <h5 class="card-title">{{ user.name }}</h5>
                     <p class="card-text text-muted">
-                      {{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }} лет, {{ getGenderText(user.gender) }}
+                      Возраст: {{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }}, {{ getGenderText(user.gender) }}
                     </p>
                   </div>
                   <div class="card-footer bg-white">
@@ -56,11 +62,15 @@ import { UserInfo, PageableRequest } from '../../core/models/user.model';
   `
 })
 export class BookmarksComponent implements OnInit {
-  users: UserInfo[] = [];
+  users: UserWithPhoto[] = [];
   loading = false;
   pageable: PageableRequest = { page: 0, size: 20 };
 
-  constructor(private bookmarksService: BookmarksService) {}
+  constructor(
+    private bookmarksService: BookmarksService,
+    private userService: UserService,
+    private sanitizer: DomSanitizer
+  ) {}
 
   ngOnInit(): void {
     this.loadBookmarks();
@@ -71,12 +81,42 @@ export class BookmarksComponent implements OnInit {
     this.bookmarksService.getBookmarks(this.pageable).subscribe({
       next: (users) => {
         this.users = users;
+        this.loadPhotos();
         this.loading = false;
       },
       error: () => {
         this.loading = false;
       }
     });
+  }
+
+  private loadPhotos(): void {
+    this.users.forEach(user => {
+      if (user.id) {
+        this.userService.getPhoto(user.id).subscribe({
+          next: (bytes: Uint8Array) => {
+            user.photoDataUrl = this.bytesToDataUrl(bytes);
+          },
+          error: () => {
+            user.photoDataUrl = null;
+          }
+        });
+      }
+    });
+  }
+
+  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+    const base64 = this.uint8ArrayToBase64(bytes);
+    const dataUrl = `data:image/jpeg;base64,${base64}`;
+    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+  }
+
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   removeBookmark(userId: number | undefined): void {
@@ -86,7 +126,7 @@ export class BookmarksComponent implements OnInit {
         this.loadBookmarks();
       },
       error: () => {
-        alert('Ошибка удаления из закладок');
+        alert('Ошибка удаления из избранного');
       }
     });
   }

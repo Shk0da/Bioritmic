@@ -80,7 +80,7 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
             <div class="row text-center">
               <div class="col-4">
                 <h3 class="text-primary">0</h3>
-                <p class="text-muted small">Закладок</p>
+                <p class="text-muted small">Избранного</p>
               </div>
               <div class="col-4">
                 <h3 class="text-primary">0</h3>

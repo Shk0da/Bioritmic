@@ -20,7 +20,7 @@ import { UserInfo } from '../../core/models/user.model';
               <a class="nav-link" routerLink="/search" routerLinkActive="active">Поиск</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" routerLink="/bookmarks" routerLinkActive="active">Закладки</a>
+              <a class="nav-link" routerLink="/bookmarks" routerLinkActive="active">Избранное</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" routerLink="/mailbox" routerLinkActive="active">Сообщения</a>
