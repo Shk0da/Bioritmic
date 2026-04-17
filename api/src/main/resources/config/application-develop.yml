@@ -6,8 +6,8 @@ spring.jpa.properties.hibernate.use_sql_comments: false
 spring.jpa.properties.hibernate.format_sql: false
 spring.jpa.properties.hibernate.generate_statistics: false
 logging.level.ROOT: info
-logging.level.io.r2dbc.postgresql.QUERY: info
-logging.level.io.r2dbc.postgresql.PARAM: info
+logging.level.io.r2dbc.postgresql.QUERY: debug
+logging.level.io.r2dbc.postgresql.PARAM: debug
 logging.level.org.springframework.r2dbc.core.DefaultDatabaseClient: debug
 logging.level.org.springframework.r2dbc.connection.R2dbcTransactionManager: debug
 logging.level.com.github.shk0da.bioritmic.api: debug

@@ -3,47 +3,46 @@ package com.github.shk0da.bioritmic.api.domain
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
+import org.springframework.data.annotation.Id
+import org.springframework.data.annotation.Transient
+import org.springframework.data.relational.core.mapping.Column
+import org.springframework.data.relational.core.mapping.Table
 import java.lang.System.currentTimeMillis
 import java.sql.Timestamp
 import java.util.*
 import java.util.concurrent.TimeUnit
-import jakarta.persistence.*
 
-@Entity
 @Table(name = "users")
 class User {
 
     @Id
-    @org.springframework.data.annotation.Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 
-    @Column
+    @Column("name")
     var name: String? = null
 
-    @Column
+    @Column("email")
     var email: String? = null
 
-    @Column
+    @Column("password")
     var password: String? = null
 
-    @Column(name = "birthday")
+    @Column("birthday")
     var birthday: Timestamp? = null
 
-    @Column(name = "gender")
+    @Column("gender")
     var gender: Short? = null
 
-    @Column(name = "recovery_code")
+    @Column("recovery_code")
     var recoveryCode: String? = null
 
-    @Column(name = "recovery_code_expire_time")
+    @Column("recovery_code_expire_time")
     var recoveryCodeExpireTime: Timestamp? = null
 
-    @Column(name = "register_date")
+    @Column("register_date")
     var registerDate: Timestamp? = null
 
     @Transient
-    @org.springframework.data.annotation.Transient
     var userSettings: UserSettings? = null
 
     fun getGender(): Gender? {

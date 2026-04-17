@@ -1,35 +1,33 @@
 package com.github.shk0da.bioritmic.api.domain
 
 import com.github.shk0da.bioritmic.api.configuration.ApiConfiguration.Companion.defaultZone
+import org.springframework.data.annotation.Id
+import org.springframework.data.relational.core.mapping.Column
+import org.springframework.data.relational.core.mapping.Table
 import java.io.Serializable
 import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.util.*
-import jakarta.persistence.*
 
-@Entity
 @Table(
-    name = "authorizations", uniqueConstraints = [
-        UniqueConstraint(name = "uq_authorizations_user_id", columnNames = ["user_id"])
-    ]
+    name = "authorizations"
 )
 class Auth : Serializable {
 
     @Id
-    @org.springframework.data.annotation.Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column("id")
     var id: Long? = null
 
-    @Column(name = "user_id")
+    @Column("user_id")
     var userId: Long? = null
 
-    @Column(name = "access_token")
+    @Column("access_token")
     var accessToken: String? = null
 
-    @Column(name = "refresh_token")
+    @Column("refresh_token")
     var refreshToken: String? = null
 
-    @Column(name = "expire_time")
+    @Column("expire_time")
     var expireTime: Timestamp? = null
 
     companion object {

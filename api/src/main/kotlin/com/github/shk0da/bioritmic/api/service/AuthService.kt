@@ -1,64 +1,61 @@
 package com.github.shk0da.bioritmic.api.service
 
-import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.jpaTransactionManager
+import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager
 import com.github.shk0da.bioritmic.api.domain.Auth
 import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.user.UserToken
-import com.github.shk0da.bioritmic.api.repository.AuthJpaRepository
-import com.github.shk0da.bioritmic.api.repository.UserJpaRepository
+import com.github.shk0da.bioritmic.api.repository.AuthRepository
+import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.generateRandomPassword
 import org.infinispan.Cache
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class AuthService(
-    val authJpaRepository: AuthJpaRepository,
-    val userJpaRepository: UserJpaRepository,
+    val authRepository: AuthRepository,
+    val userRepository: UserRepository,
     val emailService: EmailService,
     val authTokenCache: Cache<String, Auth>
 ) {
 
-    private val log = LoggerFactory.getLogger(AuthService::class.java)
-
     @Transactional
     suspend fun deleteAuthByUserId(userId: Long) {
-        val auth = authJpaRepository.findByUserId(userId)
+        val auth = authRepository.findByUserId(userId)
         if (null != auth?.accessToken) {
             authTokenCache.remove(auth.accessToken)
         }
-        authJpaRepository.deleteByUserId(userId)
+        authRepository.deleteByUserId(userId)
     }
 
     @Transactional
-    fun createNewAuth(user: User): Auth {
+    suspend fun createNewAuth(user: User): Auth {
         val newAuth = Auth.createFrom(user)
-        val currentAuth = authJpaRepository.findByUserId(userId = user.id!!)
+        val currentAuth = authRepository.findByUserId(userId = user.id!!)
         if (null != currentAuth) {
             newAuth.id = currentAuth.id
             newAuth.refreshToken = newAuth.refreshToken
         }
         authTokenCache[newAuth.accessToken] = newAuth
-        return authJpaRepository.save(newAuth)
+        return authRepository.save(newAuth)
     }
 
     @Transactional
-    fun refreshToken(userToken: UserToken): UserToken {
-        val user = userJpaRepository.findByEmail(userToken.email) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        val auth = authJpaRepository.findByUserIdAndRefreshToken(user.id!!, userToken.refreshToken) ?: throw ApiException(ErrorCode.AUTH_NOT_FOUND)
+    suspend fun refreshToken(userToken: UserToken): UserToken {
+        val user = userRepository.findByEmail(userToken.email) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val auth = authRepository.findByUserIdAndRefreshToken(user.id!!, userToken.refreshToken) ?: throw ApiException(ErrorCode.AUTH_NOT_FOUND)
         val newAuth = auth.refresh()
         authTokenCache[auth.accessToken] = auth
-        authJpaRepository.save(newAuth)
+        authRepository.save(newAuth)
         return UserToken.of(user, auth)
     }
 
     @Transactional(readOnly = true)
-    fun getAuthByAccessToken(token: String): Auth? {
-        val auth = authTokenCache[token] ?: authJpaRepository.findByAccessToken(token)
+    suspend fun getAuthByAccessToken(token: String): Auth? {
+        val auth = authTokenCache[token] ?: authRepository.findByAccessToken(token)
         if (null != auth) {
             authTokenCache[auth.accessToken] = auth
         }
@@ -66,7 +63,7 @@ class AuthService(
     }
 
     @Transactional
-    fun sendRecoveryEmail(user: User) {
+    suspend fun sendRecoveryEmail(user: User) {
         if (null == user.id) {
             throw ApiException("Id was not be empty!")
         }
@@ -75,17 +72,17 @@ class AuthService(
         }
 
         user.setRecoveryCode()
-        userJpaRepository.save(user)
+        userRepository.save(user)
         emailService.sendRecoveryLink(user.email!!, user.recoveryCode!!)
     }
 
-    @Transactional(readOnly = true, transactionManager = jpaTransactionManager)
-    fun findUserByRecoveryCode(code: String): User? {
-        return userJpaRepository.findByRecoveryCode(code)
+    @Transactional(readOnly = true, transactionManager = transactionManager)
+    suspend fun findUserByRecoveryCode(code: String): User? {
+        return userRepository.findByRecoveryCode(code)
     }
 
     @Transactional
-    fun resetPasswordAndSendEmail(user: User) {
+    suspend fun resetPasswordAndSendEmail(user: User) {
         if (null == user.id) {
             throw ApiException("Id was not be empty!")
         }
@@ -95,10 +92,10 @@ class AuthService(
         user.resetRecoveryCode()
         val newPassword = generateRandomPassword(10)
         user.password = passwordEncoder.encode(newPassword)
-        userJpaRepository.save(user)
-        val auth = authJpaRepository.findByUserId(user.id!!)
+        userRepository.save(user)
+        val auth = authRepository.findByUserId(user.id!!)
         authTokenCache.remove(auth?.accessToken)
-        authJpaRepository.deleteByUserId(user.id!!)
+        authRepository.deleteByUserId(user.id!!)
         emailService.sendNewPassword(user.email!!, newPassword)
     }
 }

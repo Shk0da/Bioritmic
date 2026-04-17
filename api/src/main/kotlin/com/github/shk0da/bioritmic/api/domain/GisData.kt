@@ -1,32 +1,26 @@
 package com.github.shk0da.bioritmic.api.domain
 
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
+import org.springframework.data.annotation.Id
+import org.springframework.data.annotation.Transient
+import org.springframework.data.relational.core.mapping.Column
+import org.springframework.data.relational.core.mapping.Table
 import java.sql.Timestamp
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Table
-import jakarta.persistence.Transient
 
-@Entity
 @Table(name = "gis_data")
 class GisData {
 
     @Id
-    @Column(name = "user_id")
-    @org.springframework.data.annotation.Id
-    @GeneratedValue(strategy = GenerationType.TABLE)
+    @Column("user_id")
     var userId: Long? = null
 
-    @Column
+    @Column("lat")
     var lat: Double? = null
 
-    @Column
+    @Column("lon")
     var lon: Double? = null
 
-    @Column(name = "timestamp")
+    @Column("timestamp")
     var timestamp: Timestamp? = null
 
     @Transient

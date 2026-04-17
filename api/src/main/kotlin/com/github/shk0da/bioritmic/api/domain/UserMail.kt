@@ -1,33 +1,27 @@
 package com.github.shk0da.bioritmic.api.domain
 
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
+import org.springframework.data.annotation.Id
+import org.springframework.data.relational.core.mapping.Column
+import org.springframework.data.relational.core.mapping.Table
 import java.sql.Timestamp
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Table
 
-@Entity
 @Table(name = "mailbox")
 class UserMail {
 
     @Id
-    @org.springframework.data.annotation.Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 
-    @Column(name = "from_user_id")
+    @Column("from_user_id")
     var fromUserId: Long? = null
 
-    @Column(name = "to_user_id")
+    @Column("to_user_id")
     var toUserId: Long? = null
 
-    @Column(name = "message")
+    @Column("message")
     var message: String? = null
 
-    @Column(name = "timestamp")
+    @Column("timestamp")
     var timestamp: Timestamp? = null
 
     companion object {

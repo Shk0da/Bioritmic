@@ -2,8 +2,8 @@ package com.github.shk0da.bioritmic.api.configuration
 
 import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_USER
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
-import com.github.shk0da.bioritmic.api.domain.Auth
 import com.github.shk0da.bioritmic.api.service.AuthService
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -81,7 +81,11 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
                         Mono.justOrEmpty(token.substring(bearer.length))
                     }
                     .flatMap { token ->
-                        Mono.fromCallable { authService.getAuthByAccessToken(token) }
+                        Mono.fromCallable {
+                            runBlocking {
+                                authService.getAuthByAccessToken(token)
+                            }
+                        }
                     }
                     .filter { auth -> !auth.isExpired() }
                     .map { auth ->

@@ -26,7 +26,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-batch")
     implementation("org.springframework.boot:spring-boot-starter-cache")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -47,8 +47,9 @@ dependencies {
     implementation("net.logstash.logback:logstash-logback-encoder:6.4")
 
     // postgres
-    implementation("javax.persistence:javax.persistence-api:2.2")
     implementation("org.postgresql:postgresql:42.7.10")
+    implementation("io.r2dbc:r2dbc-pool:1.0.2.RELEASE")
+    implementation("org.postgresql:r2dbc-postgresql:1.1.1.RELEASE")
 
     // cache
     implementation("org.infinispan:infinispan-spring-boot4-starter-embedded:16.1.3")

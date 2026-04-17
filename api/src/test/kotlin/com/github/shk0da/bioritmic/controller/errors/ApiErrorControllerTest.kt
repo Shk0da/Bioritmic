@@ -3,10 +3,10 @@ package com.github.shk0da.bioritmic.controller.errors
 import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.ERROR_PATH
 import org.junit.jupiter.api.Test
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
+
 import org.springframework.http.MediaType
 
-@AutoConfigureWebTestClient(timeout = "36000")
+
 class ApiErrorControllerTest : ApiApplicationTests() {
 
     @Test

@@ -4,26 +4,25 @@ import com.github.shk0da.bioritmic.api.domain.GisUser
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.search.UserSearch
-import com.github.shk0da.bioritmic.api.repository.GisDataJpaRepository
-import com.github.shk0da.bioritmic.api.repository.GisUserJpaRepository
+import com.github.shk0da.bioritmic.api.repository.GisDataRepository
+import com.github.shk0da.bioritmic.api.repository.GisUserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import kotlin.jvm.optionals.getOrNull
 
 @Service
 class SearchService(
-    val gisDataJpaRepository: GisDataJpaRepository,
-    val gisUserJpaRepository: GisUserJpaRepository
+    val gisDataRepository: GisDataRepository,
+    val gisUserRepository: GisUserRepository
 ) {
 
     private val log = LoggerFactory.getLogger(SearchService::class.java)
 
     @Transactional(readOnly = true)
-    fun searchByFilter(search: UserSearch): List<GisUser> {
+    suspend fun searchByFilter(search: UserSearch): List<GisUser> {
         return try {
-            val gisUser = gisDataJpaRepository.findById(search.userId!!).getOrNull() ?: throw ApiException(ErrorCode.COORDINATES_NOT_FOUND)
-            gisUserJpaRepository.findNearest(
+            val gisUser = gisDataRepository.findById(search.userId!!) ?: throw ApiException(ErrorCode.COORDINATES_NOT_FOUND)
+            gisUserRepository.findNearest(
                 gisUser.userId!!,
                 gisUser.lat!!, gisUser.lon!!,
                 search.distance, search.timestamp,

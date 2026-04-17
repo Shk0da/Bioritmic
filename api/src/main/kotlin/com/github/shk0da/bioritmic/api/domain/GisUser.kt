@@ -1,34 +1,24 @@
 package com.github.shk0da.bioritmic.api.domain
 
 import com.github.shk0da.bioritmic.api.model.search.Gender
+import org.springframework.data.annotation.Id
 import java.sql.Timestamp
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.Id
 
-@Entity
 class GisUser {
 
     @Id
-    @org.springframework.data.annotation.Id
     var id: Long? = null
 
-    @Column
     var name: String? = null
 
-    @Column
     var birthday: Timestamp? = null
 
-    @Column
     var gender: Short? = null
 
-    @Column
     var lat: Double? = null
 
-    @Column
     var lon: Double? = null
 
-    @Column
     var distance: Double? = null
 
     fun getGender(): Gender? {

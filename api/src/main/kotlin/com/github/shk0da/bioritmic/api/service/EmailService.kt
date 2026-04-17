@@ -14,7 +14,7 @@ class EmailService(val mailSender: JavaMailSender) {
         const val DEFAULT_FROM = "admin@bioritmic.com"
     }
 
-    fun sendTextEmail(to: String, subject: String, text: String) {
+    suspend fun sendTextEmail(to: String, subject: String, text: String) {
         val message = SimpleMailMessage()
         message.setFrom(DEFAULT_FROM)
         message.setTo(to)
@@ -23,18 +23,18 @@ class EmailService(val mailSender: JavaMailSender) {
         mailSender.send(message)
     }
 
-    fun sendNewPassword(email: String, newPassword: String) {
+    suspend fun sendNewPassword(email: String, newPassword: String) {
         log.debug("Send new password: '{}' for {}", newPassword, email)
         sendTextEmail(email, "New password", newPassword)
     }
 
-    fun sendRecoveryLink(email: String, code: String) {
+    suspend fun sendRecoveryLink(email: String, code: String) {
         val link = "http://localhost:8080/api/v1/reset-password?code=$code"
         log.debug("Send recovery link: '{}' for {}", link, email)
         sendTextEmail(email, "Reset password", link)
     }
 
-    fun sendConfirmationChangeEmail(email: String, newEmail: String, code: String) {
+    suspend fun sendConfirmationChangeEmail(email: String, newEmail: String, code: String) {
         val link = "http://localhost:8080/api/v1/update-email?code=$code&email=$newEmail"
         log.debug("Send change email link: '{}' for {}", link, email)
         sendTextEmail(email, "Confirmation change email", link)

@@ -1,6 +1,6 @@
 package com.github.shk0da.bioritmic.api.service
 
-import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.jpaTransactionManager
+import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager
 import com.github.shk0da.bioritmic.api.domain.GisData
 import com.github.shk0da.bioritmic.api.domain.User
 import com.github.shk0da.bioritmic.api.domain.UserSettings
@@ -11,16 +11,17 @@ import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
-import com.github.shk0da.bioritmic.api.repository.GisDataJpaRepository
-import com.github.shk0da.bioritmic.api.repository.UserBlockJpaRepository
-import com.github.shk0da.bioritmic.api.repository.UserJpaRepository
-import com.github.shk0da.bioritmic.api.repository.UserSettingsJpaRepository
+import com.github.shk0da.bioritmic.api.repository.GisDataRepository
+import com.github.shk0da.bioritmic.api.repository.UserBlockRepository
+import com.github.shk0da.bioritmic.api.repository.UserRepository
+import com.github.shk0da.bioritmic.api.repository.UserSettingsRepository
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.ImageTag
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.cropAndSaveUserImage
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.deleteUserImages
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.profileImagePath
 import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
+import kotlinx.coroutines.flow.toList
 import org.slf4j.LoggerFactory
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
@@ -29,71 +30,69 @@ import java.io.File
 import java.lang.System.currentTimeMillis
 import java.nio.file.Files.readAllBytes
 import java.sql.Timestamp
-import kotlin.jvm.optionals.getOrNull
 
 @Service
 class UserService(
-    val userJpaRepository: UserJpaRepository,
-    val gisDataJpaRepository: GisDataJpaRepository,
-    val userSettingsJpaRepository: UserSettingsJpaRepository,
-    val userBlockJpaRepository: UserBlockJpaRepository,
+    val userRepository: UserRepository,
+    val gisDataRepository: GisDataRepository,
+    val userSettingsRepository: UserSettingsRepository,
+    val userBlockRepository: UserBlockRepository,
     val emailService: EmailService
 ) {
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
 
-    @Transactional(readOnly = true, transactionManager = jpaTransactionManager)
-    fun findUserByEmail(email: String): User? {
-        return userJpaRepository.findByEmail(email)
+    @Transactional(readOnly = true, transactionManager = transactionManager)
+    suspend fun findUserByEmail(email: String): User? {
+        return userRepository.findByEmail(email)
     }
 
-    @Transactional(readOnly = true, transactionManager = jpaTransactionManager)
-    fun isUserExists(email: String): Boolean {
-        return userJpaRepository.existsByEmail(email)
+    @Transactional(readOnly = true, transactionManager = transactionManager)
+    suspend fun isUserExists(email: String): Boolean {
+        return userRepository.existsByEmail(email)
     }
 
     @Transactional(readOnly = true)
-    fun findUserById(id: Long): User? {
-        return userJpaRepository.findById(id).getOrNull()
+    suspend fun findUserById(id: Long): User? {
+        return userRepository.findById(id)
     }
 
     @Transactional
-    fun blockedUsers(userId: Long, pageable: PageableRequest): List<User> {
-        val users = userBlockJpaRepository.findAllByUserId(userId, pageable.pageSize, pageable.offset)
+    suspend fun blockedUsers(userId: Long, pageable: PageableRequest): List<User> {
+        val users = userBlockRepository.findAllByUserId(userId, pageable.pageSize, pageable.offset)
         val ids = users.map { it.otherUserId!! }
-        return userJpaRepository.findAllById(ids)
+        return userRepository.findAllById(ids).toList()
     }
 
     @Transactional
-    fun blockUser(userId: Long, otherUserId: Long): User {
-        val user = userJpaRepository.findById(otherUserId).getOrNull() ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        userBlockJpaRepository.insert(userId, otherUserId, Timestamp(currentTimeMillis()))
+    suspend fun blockUser(userId: Long, otherUserId: Long): User {
+        val user = userRepository.findById(otherUserId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        userBlockRepository.insert(userId, otherUserId, Timestamp(currentTimeMillis()))
         return user
     }
 
     @Transactional
-    fun unblockUser(userId: Long, otherUserId: Long): User {
-        val user = userJpaRepository.findById(otherUserId).getOrNull() ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        userBlockJpaRepository.delete(userId, otherUserId)
+    suspend fun unblockUser(userId: Long, otherUserId: Long): User {
+        val user = userRepository.findById(otherUserId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        userBlockRepository.delete(userId, otherUserId)
         return user
     }
 
     @Transactional(readOnly = true)
     suspend fun findUserByIdWithSettings(id: Long): User {
-        val user = userJpaRepository.findById(id).getOrNull() ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        val settings = userSettingsJpaRepository.findById(user.id!!).getOrNull()
+        val user = userRepository.findById(id) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val settings = userSettingsRepository.findById(user.id!!)
         user.userSettings = settings
         return user
     }
 
-    @Transactional
-    fun createNewUser(userModel: UserModel): User {
-        return userJpaRepository.save(User.of(userModel))
+    suspend fun createNewUser(userModel: UserModel): User {
+        return userRepository.save(User.of(userModel))
     }
 
     @Transactional
-    fun updateUserById(userId: Long, userInfo: UserInfo): User {
-        val user = userJpaRepository.findById(userId).getOrNull() ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+    suspend fun updateUserById(userId: Long, userInfo: UserInfo): User {
+        val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         with(userInfo) {
             if (isNotBlank(name)) {
                 user.name = name
@@ -107,32 +106,32 @@ class UserService(
                 user.birthday = Timestamp(birthday.time)
             }
         }
-        return userJpaRepository.save(user)
+        return userRepository.save(user)
     }
 
     @Transactional
-    fun updateEmail(user: User, email: String): User {
+    suspend fun updateEmail(user: User, email: String): User {
         if (isUserExists(email)) throw ApiException(ErrorCode.USER_EXISTS)
         user.resetRecoveryCode()
         user.email = email
-        return userJpaRepository.save(user)
+        return userRepository.save(user)
     }
 
     @Transactional(readOnly = true)
-    fun deleteUserById(userId: Long) {
-        userJpaRepository.deleteById(userId)
+    suspend fun deleteUserById(userId: Long) {
+        userRepository.deleteById(userId)
         deleteUserImages(userId)
     }
 
     @Transactional(readOnly = true)
-    fun getGis(userId: Long): GisData {
-        return gisDataJpaRepository.findById(userId).getOrNull() ?: throw ApiException(ErrorCode.COORDINATES_NOT_FOUND)
+    suspend fun getGis(userId: Long): GisData {
+        return gisDataRepository.findById(userId) ?: throw ApiException(ErrorCode.COORDINATES_NOT_FOUND)
     }
 
     @Transactional
     suspend fun saveGis(userId: Long, gisDataModel: GisDataModel): GisDataModel {
         val gisData = GisData.of(userId, gisDataModel)
-        gisDataJpaRepository.insert(
+        gisDataRepository.insert(
             gisData.userId,
             gisData.lat,
             gisData.lon,
@@ -142,13 +141,13 @@ class UserService(
     }
 
     @Transactional
-    fun getUserSettingsById(userId: Long): UserSettings {
-        return userSettingsJpaRepository.findById(userId).getOrNull() ?: throw ApiException(ErrorCode.SETTINGS_NOT_FOUND)
+    suspend fun getUserSettingsById(userId: Long): UserSettings {
+        return userSettingsRepository.findById(userId) ?: throw ApiException(ErrorCode.SETTINGS_NOT_FOUND)
     }
 
     @Transactional
-    fun updateUserSettingsById(userId: Long, settings: UserSettingsModel): UserSettings {
-        val userSettings = userSettingsJpaRepository.findById(userId).getOrNull() ?: throw ApiException(ErrorCode.SETTINGS_NOT_FOUND)
+    suspend fun updateUserSettingsById(userId: Long, settings: UserSettingsModel): UserSettings {
+        val userSettings = userSettingsRepository.findById(userId) ?: throw ApiException(ErrorCode.SETTINGS_NOT_FOUND)
         with(userSettings) {
             if (null == this.userId) {
                 markAsNew()
@@ -167,12 +166,12 @@ class UserService(
                 distance = settings.distance
             }
         }
-        return userSettingsJpaRepository.save(userSettings)
+        return userSettingsRepository.save(userSettings)
     }
 
     @Transactional
-    fun getPhoto(userId: Long): ByteArray {
-        if (!userJpaRepository.existsById(userId)) {
+    suspend fun getPhoto(userId: Long): ByteArray {
+        if (!userRepository.existsById(userId)) {
             throw ApiException(ErrorCode.USER_NOT_FOUND)
         }
         val photo = File(profileImagePath(userId))
@@ -182,7 +181,7 @@ class UserService(
         return readAllBytes(photo.toPath())
     }
 
-    fun updatePhoto(userId: Long, filePart: FilePart) {
+    suspend fun updatePhoto(userId: Long, filePart: FilePart) {
         val originalFile = File(profileImagePath(userId, ImageTag.ORIGINAL))
         try {
             filePart.transferTo(originalFile)
@@ -193,7 +192,7 @@ class UserService(
         }
     }
 
-    fun deletePhoto(userId: Long) {
+    suspend fun deletePhoto(userId: Long) {
         deleteUserImages(userId)
     }
 }

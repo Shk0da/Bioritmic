@@ -2,10 +2,10 @@ package com.github.shk0da.bioritmic.controller.management
 
 import com.github.shk0da.bioritmic.ApiApplicationTests
 import org.junit.jupiter.api.Test
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
+
 import org.springframework.http.MediaType
 
-@AutoConfigureWebTestClient(timeout = "36000")
+
 class MetricsControllerTest : ApiApplicationTests() {
 
     @Test
