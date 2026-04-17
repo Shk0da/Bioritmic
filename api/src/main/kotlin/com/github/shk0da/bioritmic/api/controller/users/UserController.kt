@@ -69,11 +69,14 @@ class UserController(val userService: UserService) {
     // GET /user/{id} <- UserInfo. id - hash?? of real id
     @GetMapping(value = ["/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun user(@PathVariable id: Long): UserInfo {
+        val currentUserId = getUserId()
         val user = userService.findUserById(valueOf(id)) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        val currentUser = userService.findUserById(getUserId()) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        return currentUser.birthday?.let {
-            ofWithCompare(user, Date(it.toInstant().toEpochMilli()))
-        } ?: UserInfo.of(currentUser)
+        val currentUser = userService.findUserById(currentUserId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        return if (null != user.birthday && null != currentUser.birthday) {
+            ofWithCompare(user, Date(currentUser.birthday!!.toInstant().toEpochMilli()))
+        } else {
+            UserInfo.of(user)
+        }
     }
 
     // GET /blocked <- UserInfo
