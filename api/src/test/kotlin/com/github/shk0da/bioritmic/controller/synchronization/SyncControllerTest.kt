@@ -7,7 +7,7 @@ import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.domain.UserModel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters

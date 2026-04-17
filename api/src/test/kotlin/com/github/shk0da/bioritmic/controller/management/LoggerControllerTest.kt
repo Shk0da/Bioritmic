@@ -3,7 +3,7 @@ package com.github.shk0da.bioritmic.controller.management
 import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.management.LoggerController.LoggerVM
 import org.junit.jupiter.api.Test
-import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
 

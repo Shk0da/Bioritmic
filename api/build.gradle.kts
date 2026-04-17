@@ -32,6 +32,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("org.springframework.boot:spring-boot-starter-liquibase")
     implementation("org.springframework.retry:spring-retry")
 
     // swagger
@@ -46,7 +47,6 @@ dependencies {
     implementation("net.logstash.logback:logstash-logback-encoder:6.4")
 
     // postgres
-    implementation("org.liquibase:liquibase-core")
     implementation("javax.persistence:javax.persistence-api:2.2")
     implementation("org.postgresql:postgresql:42.7.10")
 
@@ -54,6 +54,8 @@ dependencies {
     implementation("org.infinispan:infinispan-spring-boot4-starter-embedded:16.1.3")
 
     // test
+    testImplementation("org.springframework.boot:spring-boot-webtestclient")
+    testImplementation("org.springframework.boot:spring-boot-webclient-test")
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
     }
