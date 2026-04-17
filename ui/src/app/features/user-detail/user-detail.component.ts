@@ -1,6 +1,6 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { NgClass } from '@angular/common';
+import { NgClass, NgStyle } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UserService } from '../../core/services/user.service';
 import { BookmarksService } from '../../core/services/bookmarks.service';
@@ -12,13 +12,18 @@ import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-user-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, NgClass],
+  imports: [RouterLink, FormsModule, NgClass, NgStyle],
   template: `
     @if (loading) {
       <div class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Загрузка...</span>
         </div>
+      </div>
+    } @else if (error) {
+      <div class="alert alert-danger" role="alert">
+        {{ error }}
+        <a routerLink="/search" class="alert-link ms-2">Вернуться к поиску</a>
       </div>
     } @else if (user) {
       <div class="row">
@@ -30,7 +35,7 @@ import { FormsModule } from '@angular/forms';
               [alt]="user.name">
             <div class="card-body text-center">
               <h4 class="card-title">{{ user.name }}</h4>
-              <p class="text-muted">{{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }} лет</p>
+              <p class="text-muted">Возраст: {{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }}</p>
             </div>
           </div>
 
@@ -69,6 +74,14 @@ import { FormsModule } from '@angular/forms';
                   <label class="text-muted small">Дата рождения</label>
                   <p>{{ getBirthday() }}</p>
                 </div>
+                <div class="col-md-6 mb-3">
+                  <label class="text-muted small">Знак зодиака</label>
+                  <p>{{ getZodiacSign() }}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="text-muted small">Возраст</label>
+                  <p>{{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }}</p>
+                </div>
               </div>
 
               <hr>
@@ -76,21 +89,63 @@ import { FormsModule } from '@angular/forms';
               @if (user.isBioCompatible !== undefined || user.isHoroCompatible !== undefined || user.isFullCompatible !== undefined) {
                 <div class="mb-3">
                   <label class="text-muted small">Совместимость</label>
-                  <div>
-                    @if (user.isBioCompatible !== undefined) {
-                      <span class="badge me-2" [ngClass]="user.isBioCompatible ? 'bg-success' : 'bg-danger'">
-                        Био: {{ user.isBioCompatible ? 'Да' : 'Нет' }}
-                      </span>
-                    }
-                    @if (user.isHoroCompatible !== undefined) {
-                      <span class="badge me-2" [ngClass]="user.isHoroCompatible ? 'bg-success' : 'bg-danger'">
-                        Гороскоп: {{ user.isHoroCompatible ? 'Да' : 'Нет' }}
-                      </span>
-                    }
-                    @if (user.isFullCompatible !== undefined) {
-                      <span class="badge" [ngClass]="user.isFullCompatible ? 'bg-success' : 'bg-danger'">
-                        Полная: {{ user.isFullCompatible ? 'Да' : 'Нет' }}
-                      </span>
+                  <div class="compatibility-section">
+                    <div class="row text-center mb-3">
+                      @if (user.isBioCompatible !== undefined) {
+                        <div class="col-4">
+                          <div class="compatibility-score">
+                            <div class="score-value" [class.text-success]="user.isBioCompatible" [class.text-danger]="!user.isBioCompatible">
+                              {{ user.isBioCompatible ? '✓' : '✗' }}
+                            </div>
+                            <div class="score-label small text-muted">Био</div>
+                          </div>
+                        </div>
+                      }
+                      @if (user.isHoroCompatible !== undefined) {
+                        <div class="col-4">
+                          <div class="compatibility-score">
+                            <div class="score-value" [class.text-success]="user.isHoroCompatible" [class.text-danger]="!user.isHoroCompatible">
+                              {{ user.isHoroCompatible ? '✓' : '✗' }}
+                            </div>
+                            <div class="score-label small text-muted">Гороскоп</div>
+                          </div>
+                        </div>
+                      }
+                      @if (user.isFullCompatible !== undefined) {
+                        <div class="col-4">
+                          <div class="compatibility-score">
+                            <div class="score-value" [class.text-success]="user.isFullCompatible" [class.text-danger]="!user.isFullCompatible">
+                              {{ user.isFullCompatible ? '✓' : '✗' }}
+                            </div>
+                            <div class="score-label small text-muted">Полная</div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                    
+                    @if (user.compare) {
+                      <div class="compatibility-details">
+                        <h6 class="small text-muted mb-2">Детальная совместимость</h6>
+                        @for (item of getCompareDetails(); track item.name) {
+                          <div class="compatibility-item mb-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <span class="small text-muted">{{ item.label }}</span>
+                              <span class="small fw-bold" [class.text-success]="item.value >= 70" [class.text-warning]="item.value >= 40 && item.value < 70" [class.text-danger]="item.value < 40">
+                                {{ item.value }}%
+                              </span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                              <div 
+                                class="progress-bar" 
+                                [class.bg-success]="item.value >= 70" 
+                                [class.bg-warning]="item.value >= 40 && item.value < 70" 
+                                [class.bg-danger]="item.value < 40"
+                                [ngStyle]="{ 'width.%': item.value }">
+                              </div>
+                            </div>
+                          </div>
+                        }
+                      </div>
                     }
                   </div>
                 </div>
@@ -137,6 +192,7 @@ export class UserDetailComponent implements OnInit {
   user: UserInfo | null = null;
   photoDataUrl: SafeUrl | null = null;
   loading = true;
+  error: string | null = null;
   isBookmarked = false;
   isBlocked = false;
   showMessageForm = false;
@@ -155,6 +211,9 @@ export class UserDetailComponent implements OnInit {
     const userId = this.route.snapshot.paramMap.get('id');
     if (userId) {
       this.loadUser(parseInt(userId, 10));
+    } else {
+      this.error = 'Пользователь не найден';
+      this.loading = false;
     }
   }
 
@@ -163,10 +222,36 @@ export class UserDetailComponent implements OnInit {
       next: (user) => {
         this.user = user;
         this.loadPhoto(userId);
+        this.loadBookmarkStatus(userId);
+        this.loadBlockStatus(userId);
         this.loading = false;
       },
-      error: () => {
+      error: (err) => {
+        console.error('Error loading user:', err);
+        this.error = 'Ошибка загрузки профиля пользователя';
         this.loading = false;
+      }
+    });
+  }
+
+  private loadBookmarkStatus(userId: number): void {
+    this.bookmarksService.getBookmarks({ page: 0, size: 100 }).subscribe({
+      next: (bookmarks: UserInfo[]) => {
+        this.isBookmarked = bookmarks.some(b => b.id === userId);
+      },
+      error: () => {
+        this.isBookmarked = false;
+      }
+    });
+  }
+
+  private loadBlockStatus(userId: number): void {
+    this.userService.getBlockedUsers({ page: 0, size: 100 }).subscribe({
+      next: (blockedUsers) => {
+        this.isBlocked = blockedUsers.some(u => u.id === userId);
+      },
+      error: () => {
+        this.isBlocked = false;
       }
     });
   }
@@ -212,8 +297,68 @@ export class UserDetailComponent implements OnInit {
     return new Date(this.user.birthday).toLocaleDateString('ru-RU');
   }
 
+  getZodiacSign(): string {
+    if (!this.user?.birthday) return '';
+    const date = new Date(this.user.birthday);
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    
+    // Границы знаков зодиака (день начала знака в каждом месяце)
+    const zodiacSigns: Record<string, { day: number; sign: string }> = {
+      '1': { day: 20, sign: 'Водолей' },   // 20 янв - 18 фев
+      '2': { day: 19, sign: 'Рыбы' },      // 19 фев - 20 мар
+      '3': { day: 21, sign: 'Овен' },      // 21 мар - 19 апр
+      '4': { day: 20, sign: 'Телец' },     // 20 апр - 20 май
+      '5': { day: 21, sign: 'Близнецы' },  // 21 май - 20 июн
+      '6': { day: 21, sign: 'Рак' },       // 21 июн - 22 июл
+      '7': { day: 23, sign: 'Лев' },       // 23 июл - 22 авг
+      '8': { day: 23, sign: 'Дева' },      // 23 авг - 22 сен
+      '9': { day: 23, sign: 'Весы' },      // 23 сен - 22 окт
+      '10': { day: 23, sign: 'Скорпион' }, // 23 окт - 21 ноя
+      '11': { day: 22, sign: 'Стрелец' },  // 22 ноя - 21 дек
+      '12': { day: 22, sign: 'Козерог' }   // 22 дек - 19 янв
+    };
+    
+    const sign = zodiacSigns[month.toString()];
+    if (day >= sign.day) {
+      return sign.sign;
+    } else {
+      // Если день меньше границы, то это предыдущий знак
+      const prevMonth = month === 1 ? 12 : month - 1;
+      return zodiacSigns[prevMonth.toString()]?.sign || '';
+    }
+  }
+
   getGenderText(): string {
     return this.user?.gender === Gender.MAN ? 'Мужской' : 'Женский';
+  }
+
+  getComparePercent(): number {
+    if (!this.user?.compare) return 0;
+    const values = Object.values(this.user.compare);
+    if (values.length === 0) return 0;
+    const sum = values.reduce((acc, val) => acc + val, 0);
+    return Math.round(sum / values.length * 100);
+  }
+
+  getCompareDetails(): Array<{ name: string; label: string; value: number }> {
+    if (!this.user?.compare) return [];
+    
+    const labels: Record<string, string> = {
+      'Creative': 'Креативность',
+      'Emotional': 'Эмоциональность',
+      'Heartfelt': 'Сердечность',
+      'HighestChakra': 'Высшая чакра',
+      'Intellectual': 'Интеллект',
+      'Intuitive': 'Интуиция',
+      'Physical': 'Физическая'
+    };
+    
+    return Object.entries(this.user.compare).map(([name, value]) => ({
+      name,
+      label: labels[name] || name,
+      value: Math.round(value)
+    }));
   }
 
   toggleBookmark(): void {

@@ -60,3 +60,42 @@ body {
   max-width: 400px;
   width: 100%;
 }
+
+.compatibility-score {
+  padding: 0.5rem;
+  
+  .score-value {
+    font-size: 1.5rem;
+    line-height: 1.2;
+  }
+  
+  .score-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+.compatibility-details {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dee2e6;
+  
+  .compatibility-item {
+    .progress {
+      background-color: #e9ecef;
+    }
+  }
+}
+
+.compatibility-details-compact {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #dee2e6;
+  
+  .compatibility-item-compact {
+    display: inline-block;
+    margin-right: 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+}

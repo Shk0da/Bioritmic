@@ -88,5 +88,24 @@ data class UserInfo(
                 image = ImageUtils.getProfileImageUri(gisUser.id!!)
             )
         }
+
+        fun ofWithCompare(user: User, meBirthday: Date): UserInfo {
+            val gisUserBirthday = Date(user.birthday!!.time)
+            val compare = biorhythmService.compare(gisUserBirthday, meBirthday)
+            val isBioCompatible = biorhythmService.boolCompare(compare)
+            val isHoroCompatible = biorhythmService.horoCompare(gisUserBirthday, meBirthday)
+            val isFullCompatible = isBioCompatible && isHoroCompatible
+            return UserInfo(
+                id = user.id,
+                name = user.name,
+                age = biorhythmService.calculateAge(Date(user.birthday!!.time)),
+                gender = user.getGender(),
+                compare = compare,
+                isBioCompatible = isBioCompatible,
+                isHoroCompatible = isHoroCompatible,
+                isFullCompatible = isFullCompatible,
+                image = ImageUtils.getProfileImageUri(user.id!!)
+            )
+        }
     }
 }

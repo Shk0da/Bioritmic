@@ -45,7 +45,7 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
               @if (user?.age) {
                 <div class="col-md-6 mb-3">
                   <label class="text-muted small">Возраст</label>
-                  <p>{{ user?.age }} лет</p>
+                  <p>{{ user?.age }}</p>
                 </div>
               }
             </div>

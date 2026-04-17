@@ -8,6 +8,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_PARAMETER
 import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
+import com.github.shk0da.bioritmic.api.model.user.UserInfo.Companion.ofWithCompare
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
 import java.lang.Long.valueOf
 import java.security.Principal
+import java.util.Date
 import javax.validation.Valid
 import javax.validation.constraints.NotNull
 
@@ -67,13 +69,16 @@ class UserController(val userService: UserService) {
     // GET /user/{id} <- UserInfo. id - hash?? of real id
     @GetMapping(value = ["/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun user(@PathVariable id: Long): UserInfo {
-        val userId = valueOf(id)
-        return UserInfo.of(userService.findUserById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND))
+        val user = userService.findUserById(valueOf(id)) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val currentUser = userService.findUserById(getUserId()) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        return currentUser.birthday?.let {
+            ofWithCompare(user, Date(it.toInstant().toEpochMilli()))
+        } ?: UserInfo.of(currentUser)
     }
 
     // GET /blocked <- UserInfo
     @GetMapping(value = ["/blocked"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun blockedUsers(@ParameterObject  pageable: Pageable): List<UserInfo> {
+    suspend fun blockedUsers(@ParameterObject pageable: Pageable): List<UserInfo> {
         val userId = getUserId()
         return userService.blockedUsers(userId, of(pageable)).map { UserInfo.of(it) }
     }

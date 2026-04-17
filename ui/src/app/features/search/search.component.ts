@@ -73,8 +73,27 @@ interface UserWithPhoto extends UserInfo {
                   <div class="card-body">
                     <h5 class="card-title">{{ user.name }}</h5>
                     <p class="card-text text-muted">
-                      {{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }} лет, {{ getGenderText(user.gender) }}
+                      Возраст: {{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }}, {{ getGenderText(user.gender) }}
                     </p>
+                    
+                    @if (user.compare || user.isBioCompatible !== undefined || user.isHoroCompatible !== undefined) {
+                      <hr class="my-3">
+                      <div class="compatibility-section">
+                        <h6 class="small text-muted mb-2">Совместимость</h6>
+                        @if (user.compare) {
+                          <div class="compatibility-details-compact">
+                            @for (item of getPhysicalAndIntellectCompatibility(user); track item.name) {
+                              <div class="compatibility-item-compact">
+                                <span class="small text-muted me-2">{{ item.label }}:</span>
+                                <span class="small fw-bold" [class.text-success]="item.value >= 70" [class.text-warning]="item.value >= 40 && item.value < 70" [class.text-danger]="item.value < 40">
+                                  {{ item.value }}%
+                                </span>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
                   </div>
                   <div class="card-footer bg-white">
                     <a [routerLink]="['/user', user.id]" class="btn btn-outline-primary btn-sm w-100">
@@ -169,5 +188,30 @@ export class SearchComponent implements OnInit {
 
   getGenderText(gender?: Gender): string {
     return gender === Gender.MAN ? 'М' : 'Ж';
+  }
+
+  getComparePercent(user: UserWithPhoto): number {
+    if (!user.compare) return 0;
+    const values = Object.values(user.compare);
+    if (values.length === 0) return 0;
+    const sum = values.reduce((acc, val) => acc + val, 0);
+    return Math.round(sum / values.length * 100);
+  }
+
+  getPhysicalAndIntellectCompatibility(user: UserWithPhoto): Array<{ name: string; label: string; value: number }> {
+    if (!user.compare) return [];
+    
+    const labels: Record<string, string> = {
+      'Physical': 'Физическая',
+      'Intellectual': 'Интеллект'
+    };
+    
+    return Object.entries(user.compare)
+      .filter(([name]) => name === 'Physical' || name === 'Intellectual')
+      .map(([name, value]) => ({
+        name,
+        label: labels[name] || name,
+        value: Math.round(value)
+      }));
   }
 }

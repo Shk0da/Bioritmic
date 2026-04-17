@@ -8,7 +8,7 @@ export const USER_DETAIL_ROUTES: Routes = [
     component: LayoutComponent,
     children: [
       {
-        path: ':id',
+        path: '',
         component: UserDetailComponent
       }
     ]
