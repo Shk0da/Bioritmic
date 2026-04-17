@@ -6,13 +6,11 @@ import com.github.shk0da.bioritmic.api.model.user.UserBookmark
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.service.BookmarksService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
-import io.swagger.annotations.ApiImplicitParam
-import io.swagger.annotations.ApiImplicitParams
+import org.springdoc.core.annotations.ParameterObject
 import org.springframework.data.domain.Pageable
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
-import reactor.core.publisher.Flux
 import java.security.Principal
 import javax.validation.Valid
 
@@ -23,26 +21,20 @@ class BookmarkController(val bookmarksService: BookmarksService) {
 
     // GET /bookmarks/
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    @ApiImplicitParams(
-        value = [
-            ApiImplicitParam(name = "page", dataType = "java.lang.Integer", paramType = "query"),
-            ApiImplicitParam(name = "size", dataType = "java.lang.Integer", paramType = "query")
-        ]
-    )
-    fun bookmarks(pageable: Pageable): Flux<UserInfo> {
+    suspend fun bookmarks(@ParameterObject pageable: Pageable): List<UserInfo> {
         val userId = getUserId()
         return bookmarksService.findBookmarksByUserId(userId, of(pageable)).map { UserInfo.of(it) }
     }
 
     // POST /bookmarks/
     @PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun saveBookmarks(@RequestBody @Valid bookmarks: Flux<UserBookmark>, principal: Principal): Flux<UserInfo> {
+    suspend fun saveBookmarks(@RequestBody @Valid bookmarks: List<UserBookmark>, principal: Principal): List<UserInfo> {
         val userId = getUserId(principal)
         return bookmarksService.saveBookmarks(userId, bookmarks).map { UserInfo.of(it) }
     }
 
     @DeleteMapping(value = ["/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun deleteBookmark(@PathVariable userId: Long): Flux<UserInfo> {
+    suspend fun deleteBookmark(@PathVariable userId: Long): List<UserInfo> {
         val currentUserId = getUserId()
         return bookmarksService.deleteBookmarks(currentUserId, userId).map { UserInfo.of(it) }
     }

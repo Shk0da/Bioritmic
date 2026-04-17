@@ -45,7 +45,7 @@ class ApiExceptionHandler {
     @ResponseBody
     @ExceptionHandler(Exception::class)
     @ResponseStatus(value = HttpStatus.INTERNAL_SERVER_ERROR)
-    fun handleException(ex: Exception): ResponseEntity<ApiErrors> {
+    suspend fun handleException(ex: Exception): ResponseEntity<ApiErrors> {
         logError(ex)
         return ResponseEntity(
             ApiErrors(ApiError.of(ErrorCode.API_INTERNAL_ERROR)),
@@ -63,7 +63,7 @@ class ApiExceptionHandler {
     @ResponseBody
     @ExceptionHandler(SQLException::class, IOException::class)
     @ResponseStatus(value = HttpStatus.SERVICE_UNAVAILABLE)
-    fun handleSQLException(ex: Exception): ResponseEntity<ApiErrors> {
+    suspend fun handleSQLException(ex: Exception): ResponseEntity<ApiErrors> {
         logError(ex)
         val headers: MultiValueMap<String, String> = object : LinkedMultiValueMap<String, String>() {
             init {
@@ -93,7 +93,7 @@ class ApiExceptionHandler {
         ConstraintViolationException::class
     )
     @ResponseStatus(value = HttpStatus.BAD_REQUEST)
-    fun handleIllegalArgumentException(ex: Exception): ResponseEntity<ApiErrors> {
+    suspend fun handleIllegalArgumentException(ex: Exception): ResponseEntity<ApiErrors> {
         logError(ex)
         var error = ex.message
         val throwable = getRootCause(ex)
@@ -185,7 +185,7 @@ class ApiExceptionHandler {
     @ResponseBody
     @ExceptionHandler(ApiException::class)
     @ResponseStatus(value = HttpStatus.BAD_REQUEST)
-    fun handleApiException(ex: ApiException): ResponseEntity<ApiErrors> {
+    suspend fun handleApiException(ex: ApiException): ResponseEntity<ApiErrors> {
         logError(ex)
         return if (ex.errorCode != null)
         // with ErrorCode

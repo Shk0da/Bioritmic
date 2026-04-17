@@ -5,13 +5,33 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE_END
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE_START
-import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.data.domain.Sort.unsorted
 
-class PageableRequest @JvmOverloads constructor(page: Int = 1, size: Int = 100, sort: Sort? = unsorted()) :
-    PageRequest(page - 1, size, sort!!), Pageable {
+class PageableRequest(
+    private val pageNumber: Int = 1,
+    private val pageSize: Int = 100,
+    private val sort: Sort = unsorted()
+) : Pageable {
+
+    override fun getPageNumber(): Int = pageNumber - 1
+
+    override fun getPageSize(): Int = pageSize
+
+    override fun getSort(): Sort = sort
+
+    override fun getOffset(): Long = pageNumber.toLong() * pageSize
+
+    override fun next(): Pageable = PageableRequest(pageNumber + 1, pageSize, sort)
+
+    override fun previousOrFirst(): Pageable = PageableRequest(if (pageNumber > 1) pageNumber - 1 else 1, pageSize, sort)
+
+    override fun first(): Pageable = PageableRequest(1, pageSize, sort)
+
+    override fun withPage(page: Int): Pageable = PageableRequest(page + 1, pageSize, sort)
+
+    override fun hasPrevious(): Boolean = pageNumber > 1
 
     companion object {
         fun of(pageable: Pageable?): PageableRequest {

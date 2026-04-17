@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import reactor.core.publisher.Flux
 import java.sql.Timestamp
 
 @Validated
@@ -26,14 +25,10 @@ class SyncController(val userService: UserService, val searchService: SearchServ
 
     // GET /synchronization -> timestamp
     @GetMapping(params = ["timestamp"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun sync(@RequestParam("timestamp") timestamp: Long): Flux<UserInfo> {
+    suspend fun sync(@RequestParam("timestamp") timestamp: Long): List<UserInfo> {
         val userId = getUserId()
-        return userService.findUserByIdWithSettings(userId)
-            .map { UserSearch.of(it).withTimestamp(Timestamp(timestamp)) }
-            .map { search ->
-                log.debug("Sync: {}", search)
-                searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
-            }
-            .flatMapMany { it }
+        val search = UserSearch.of(userService.findUserByIdWithSettings(userId)).withTimestamp(Timestamp(timestamp))
+        log.debug("Sync: {}", search)
+        return searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
     }
 }

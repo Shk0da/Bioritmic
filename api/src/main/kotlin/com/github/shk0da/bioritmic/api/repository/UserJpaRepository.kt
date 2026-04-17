@@ -1,6 +1,6 @@
-package com.github.shk0da.bioritmic.api.repository.jpa
+package com.github.shk0da.bioritmic.api.repository
 
-import com.github.shk0da.bioritmic.api.configuration.datasource.JpaConfiguration.Companion.jpaTransactionManager
+import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.jpaTransactionManager
 import com.github.shk0da.bioritmic.api.domain.User
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository

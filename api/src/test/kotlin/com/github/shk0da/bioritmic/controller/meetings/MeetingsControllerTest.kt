@@ -12,7 +12,6 @@ import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWeb
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
-import reactor.core.publisher.Flux
 
 @AutoConfigureWebTestClient(timeout = "36000")
 class MeetingsControllerTest : ApiApplicationTests() {

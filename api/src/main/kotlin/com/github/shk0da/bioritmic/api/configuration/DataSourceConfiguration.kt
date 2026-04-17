@@ -1,18 +1,10 @@
-package com.github.shk0da.bioritmic.api.configuration.datasource
+package com.github.shk0da.bioritmic.api.configuration
 
-import com.codahale.metrics.MetricRegistry
-import com.codahale.metrics.health.HealthCheckRegistry
-import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.MINIMUM_IDLE
-import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_DATASOURCE
-import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_DRIVER_CLASS_NAME
-import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_JPA_URL
-import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_MAX_CONNECTIONS
-import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_PASSWORD
-import com.github.shk0da.bioritmic.api.configuration.datasource.DataSourceConfiguration.Companion.PROPERTY_KEY_USERNAME
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants.Companion.SPRING_PROFILE_DEVELOPMENT
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants.DefaultDataSourceProfileCondition
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
@@ -30,6 +22,7 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter
 import org.springframework.transaction.annotation.EnableTransactionManagement
 import java.lang.Math.max
 import java.lang.Math.min
+import java.sql.SQLException
 import java.util.*
 import java.util.concurrent.TimeUnit.MINUTES
 import java.util.concurrent.TimeUnit.SECONDS
@@ -38,48 +31,35 @@ import javax.sql.DataSource
 
 @Configuration
 @EnableTransactionManagement
-@EnableJpaRepositories("com.github.shk0da.bioritmic.api.repository.jpa")
+@EnableJpaRepositories("com.github.shk0da.bioritmic.api.repository")
 @Conditional(value = [DefaultDataSourceProfileCondition::class])
-class JpaConfiguration(
+class DataSourceConfiguration(
     private val environment: Environment,
-    private val metricRegistry: MetricRegistry?,
-    private val healthCheckRegistry: HealthCheckRegistry?
-) : DataSourceConfiguration {
+    private val metricRegistry: MeterRegistry?,
+) {
 
-    private val log = LoggerFactory.getLogger(JpaConfiguration::class.java)
+    private val log = LoggerFactory.getLogger(DataSourceConfiguration::class.java)
 
     companion object {
-
-        /**
-         * Set the maximum number of milliseconds that a client will wait for a connection from the pool. If this
-         * time is exceeded without a connection becoming available, a SQLException will be thrown from
-         * [DataSource.getConnection].
-         */
         private val CONNECTION_TIMEOUT: Long = SECONDS.toMillis(10)
-
-        /**
-         * Sets the maximum number of milliseconds that the pool will wait for a connection to be validated as
-         * alive.
-         */
         private val VALIDATION_TIMEOUT: Long = SECONDS.toMillis(5)
-
-        /**
-         * This property controls the maximum amount of time (in milliseconds) that a connection is allowed to sit
-         * idle in the pool. Whether a connection is retired as idle or not is subject to a maximum variation of +30
-         * seconds, and average variation of +15 seconds. A connection will never be retired as idle before this timeout.
-         * A value of 0 means that idle connections are never removed from the pool.
-         */
         private val IDLE_TIMEOUT: Long = MINUTES.toMillis(5)
-
-        /**
-         * This property controls the maximum lifetime of a connection in the pool. When a connection reaches this
-         * timeout, even if recently used, it will be retired from the pool. An in-use connection will never be
-         * retired, only when it is idle will it be removed.
-         */
         private val MAX_LIFETIME: Long = MINUTES.toMillis(30)
+        const val MINIMUM_IDLE = 10
+        const val DB_RECONNECT_INTERVAL_IN_SECONDS = 1L
+        const val MAX_ATTEMPT = 10000
+        const val MASTER_ROUTING_KEY = "master"
+        const val SLAVE_ROUTING_KEY = "slave"
+        const val PROPERTY_KEY_DATASOURCE = "spring.datasource"
+        const val PROPERTY_KEY_JPA_URL = "jpa-url"
+        const val PROPERTY_KEY_DRIVER_CLASS_NAME = "driver-class-name"
+        const val PROPERTY_KEY_USERNAME = "username"
+        const val PROPERTY_KEY_PASSWORD = "password"
+        const val PROPERTY_KEY_MAX_CONNECTIONS = "max-connections"
 
         const val transactionManager = "transactionManager"
         const val jpaTransactionManager = "jpaTransactionManager"
+        const val readTransactionManager = "readTransactionManager"
     }
 
     @Bean(name = ["entityManagerFactory"])
@@ -118,38 +98,25 @@ class JpaConfiguration(
         return entityManagerFactoryBean
     }
 
-    @Bean
     @Primary
+    @Bean("dataSource", "masterDataSource")
     @Conditional(value = [DefaultDataSourceProfileCondition::class])
-    fun dataSource(): DataSource {
-        val routingDataSource: RoutingDataSource
-        try {
-            val primaryDataSource = masterDataSource()
-            val replicaDataSource = slaveDataSource()
-            val targetDataSources: Map<Any, Any> = mapOf(
-                Pair(RoutingDataSource.Route.MASTER, primaryDataSource),
-                Pair(RoutingDataSource.Route.SLAVE, replicaDataSource)
-            )
-            routingDataSource = RoutingDataSource()
-            routingDataSource.setTargetDataSources(targetDataSources)
-            routingDataSource.setDefaultTargetDataSource(primaryDataSource)
-        } catch (e: Exception) {
-            log.error("Fail to instantiate dataSources!", e)
-            throw IllegalStateException("Fail to instantiate dataSources!" + e.message, e)
-        }
-        return routingDataSource
+    fun masterDataSource(): DataSource {
+        return buildDataSource(MASTER_ROUTING_KEY)
     }
 
+    @Bean
+    @Conditional(value = [DefaultDataSourceProfileCondition::class])
+    fun slaveDataSource(): DataSource {
+        return buildDataSource(SLAVE_ROUTING_KEY)
+    }
+
+    @Primary
     @Bean(transactionManager, jpaTransactionManager)
-    fun transactionManager(dataSource: DataSource) = DataSourceTransactionManager(dataSource)
+    fun transactionManager(masterDataSource: DataSource) = DataSourceTransactionManager(masterDataSource)
 
-    private fun masterDataSource(): DataSource {
-        return buildDataSource(DataSourceConfiguration.MASTER_ROUTING_KEY)
-    }
-
-    private fun slaveDataSource(): DataSource {
-        return buildDataSource(DataSourceConfiguration.SLAVE_ROUTING_KEY)
-    }
+    @Bean(readTransactionManager)
+    fun readTransactionManager(slaveDataSource: DataSource) = DataSourceTransactionManager(slaveDataSource)
 
     private fun buildDataSource(dataSourcePrefix: String): HikariDataSource {
         val url = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_JPA_URL")!!
@@ -179,10 +146,30 @@ class JpaConfiguration(
         if (null != metricRegistry) {
             hikariConfig.metricRegistry = metricRegistry
         }
-        if (null != healthCheckRegistry) {
-            hikariConfig.healthCheckRegistry = healthCheckRegistry
-        }
 
         return HikariDataSource(hikariConfig)
+    }
+
+    private fun checkDataSource(dataSource: DriverManagerDataSource, currentAttempt: Int = 1) {
+        val start = System.currentTimeMillis()
+        if (currentAttempt > MAX_ATTEMPT) {
+            throw IllegalStateException("Fail connect to dataSource [{}]" + dataSource.url)
+        }
+        try {
+            dataSource.connection.createStatement().use { statement ->
+                statement.executeQuery("select 1")
+                log.info("Connection to the database is established. [{}]", dataSource.url)
+            }
+        } catch (_: SQLException) {
+            val failDuration = System.currentTimeMillis() - start
+            log.warn("No database connection [{}], currentAttempt={}, failDuration={}", dataSource.url, currentAttempt, failDuration)
+            try {
+                SECONDS.sleep(DB_RECONNECT_INTERVAL_IN_SECONDS)
+            } catch (_: InterruptedException) {
+                // nothing
+            }
+            log.warn("Attempt to re-establish the connection [{}].", dataSource.url)
+            checkDataSource(dataSource, currentAttempt + 1)
+        }
     }
 }

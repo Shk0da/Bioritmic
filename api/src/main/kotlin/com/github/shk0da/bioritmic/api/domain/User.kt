@@ -7,49 +7,39 @@ import java.lang.System.currentTimeMillis
 import java.sql.Timestamp
 import java.util.*
 import java.util.concurrent.TimeUnit
-import javax.persistence.*
+import jakarta.persistence.*
 
 @Entity
 @Table(name = "users")
-@org.springframework.data.relational.core.mapping.Table("users")
 class User {
 
     @Id
     @org.springframework.data.annotation.Id
-    @org.springframework.data.relational.core.mapping.Column("id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 
     @Column
-    @org.springframework.data.relational.core.mapping.Column
     var name: String? = null
 
     @Column
-    @org.springframework.data.relational.core.mapping.Column
     var email: String? = null
 
     @Column
-    @org.springframework.data.relational.core.mapping.Column
     var password: String? = null
 
     @Column(name = "birthday")
-    @org.springframework.data.relational.core.mapping.Column("birthday")
     var birthday: Timestamp? = null
 
     @Column(name = "gender")
-    @org.springframework.data.relational.core.mapping.Column
     var gender: Short? = null
 
     @Column(name = "recovery_code")
-    @org.springframework.data.relational.core.mapping.Column("recovery_code")
     var recoveryCode: String? = null
 
     @Column(name = "recovery_code_expire_time")
-    @org.springframework.data.relational.core.mapping.Column("recovery_code_expire_time")
     var recoveryCodeExpireTime: Timestamp? = null
 
     @Column(name = "register_date")
-    @org.springframework.data.relational.core.mapping.Column("register_date")
     var registerDate: Timestamp? = null
 
     @Transient

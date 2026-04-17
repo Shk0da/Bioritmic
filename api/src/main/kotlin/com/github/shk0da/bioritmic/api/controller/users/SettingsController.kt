@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
-import reactor.core.publisher.Mono
 import java.security.Principal
 import javax.validation.Valid
 
@@ -21,16 +20,16 @@ class SettingsController(val userService: UserService) {
 
     // GET /user/settings <- UserSettings
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun settings(): Mono<UserSettingsModel> {
+    suspend fun settings(): UserSettingsModel {
         val userId = getUserId()
-        return userService.getUserSettingsById(userId).map { UserSettingsModel.of(it) }
+        return UserSettingsModel.of(userService.getUserSettingsById(userId))
     }
 
     // POST/PUT/PATH /user/settings -> UserSettings
     @RequestMapping(method = [RequestMethod.POST, RequestMethod.PATCH, RequestMethod.PUT], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun updateSettings(@Valid @RequestBody settings: UserSettingsModel, principal: Principal): Mono<UserSettingsModel> {
+    suspend fun updateSettings(@Valid @RequestBody settings: UserSettingsModel, principal: Principal): UserSettingsModel {
         settings.validate()
         val userId = getUserId(principal)
-        return userService.updateUserSettingsById(userId, settings).map { UserSettingsModel.of(it) }
+        return UserSettingsModel.of(userService.updateUserSettingsById(userId, settings))
     }
 }

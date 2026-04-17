@@ -21,7 +21,7 @@ class LoggerController {
     data class LoggerVM(var name: String? = null, var level: String? = null) : BasicPresentation
 
     @GetMapping("/logs")
-    fun logs(): List<LoggerVM> {
+    suspend fun logs(): List<LoggerVM> {
         val context = LoggerFactory.getILoggerFactory() as LoggerContext
         return context.loggerList
             .stream()
@@ -31,7 +31,7 @@ class LoggerController {
 
     @PutMapping("/logs")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun changeLevel(@RequestBody jsonLogger: LoggerVM) {
+    suspend fun changeLevel(@RequestBody jsonLogger: LoggerVM) {
         val context = LoggerFactory.getILoggerFactory() as LoggerContext
         context.getLogger(jsonLogger.name).level = Level.valueOf(jsonLogger.level)
     }

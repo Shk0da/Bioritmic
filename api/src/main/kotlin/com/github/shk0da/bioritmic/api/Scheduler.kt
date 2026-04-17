@@ -1,6 +1,6 @@
 package com.github.shk0da.bioritmic.api
 
-import com.github.shk0da.bioritmic.api.configuration.datasource.JpaConfiguration.Companion.jpaTransactionManager
+import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.jpaTransactionManager
 import org.infinispan.Cache
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.EnableScheduling
@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.lang.System.currentTimeMillis
 import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
-import javax.persistence.EntityManager
+import jakarta.persistence.EntityManager
 
 @Component
 @EnableScheduling

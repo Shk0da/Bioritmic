@@ -1,7 +1,7 @@
 plugins {
-    kotlin("jvm") version "2.0.21"
-    kotlin("plugin.spring") version "2.0.21"
-    id("org.springframework.boot") version "2.7.0"
+    kotlin("jvm") version "2.1.10"
+    kotlin("plugin.spring") version "2.1.10"
+    id("org.springframework.boot") version "4.0.5"
     id("io.spring.dependency-management") version "1.1.7"
     id("io.gitlab.arturbosch.detekt") version "1.23.8"
 }
@@ -24,11 +24,9 @@ dependencies {
 
     // spring
     implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("org.springframework.boot:spring-boot-starter-aop")
     implementation("org.springframework.boot:spring-boot-starter-batch")
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -37,19 +35,12 @@ dependencies {
     implementation("org.springframework.retry:spring-retry")
 
     // swagger
-    implementation("io.springfox:springfox-boot-starter:3.0.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:3.0.3")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
 
     // metrics
     implementation("io.micrometer:micrometer-core")
-    implementation("io.dropwizard.metrics:metrics-core")
-    implementation("io.dropwizard.metrics:metrics-annotation")
-    implementation("io.dropwizard.metrics:metrics-json")
-    implementation("io.dropwizard.metrics:metrics-jvm")
-    implementation("io.dropwizard.metrics:metrics-servlet")
-    implementation("io.dropwizard.metrics:metrics-servlets")
-    implementation("org.springframework.plugin:spring-plugin-core")
 
     // logging
     implementation("net.logstash.logback:logstash-logback-encoder:6.4")
@@ -58,10 +49,9 @@ dependencies {
     implementation("org.liquibase:liquibase-core")
     implementation("javax.persistence:javax.persistence-api:2.2")
     implementation("org.postgresql:postgresql:42.7.10")
-    implementation("org.postgresql:r2dbc-postgresql:1.1.1.RELEASE")
 
     // cache
-    implementation("org.infinispan:infinispan-spring-boot-starter-embedded:2.3.4.Final")
+    implementation("org.infinispan:infinispan-spring-boot4-starter-embedded:16.1.3")
 
     // test
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
@@ -71,7 +61,6 @@ dependencies {
     testImplementation("org.springframework.batch:spring-batch-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.testcontainers:jdbc:1.21.4")
-    testImplementation("org.testcontainers:r2dbc:1.21.4")
     testImplementation("org.testcontainers:postgresql:1.21.4")
 }
 

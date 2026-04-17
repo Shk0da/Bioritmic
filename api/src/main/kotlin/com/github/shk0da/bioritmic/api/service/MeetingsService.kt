@@ -4,17 +4,15 @@ import com.github.shk0da.bioritmic.api.domain.Meeting
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
-import com.github.shk0da.bioritmic.api.repository.r2dbc.MeetingsR2dbcRepository
+import com.github.shk0da.bioritmic.api.repository.MeetingsJpaRepository
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 
 @Service
-class MeetingsService(val meetingsR2dbcRepository: MeetingsR2dbcRepository) {
+class MeetingsService(val meetingsJpaRepository: MeetingsJpaRepository) {
 
     private val log = LoggerFactory.getLogger(MeetingsService::class.java)
 
@@ -22,55 +20,39 @@ class MeetingsService(val meetingsR2dbcRepository: MeetingsR2dbcRepository) {
     private val defaultPageable = PageableRequest(1, maximumUserMeetingsSize, Sort.by(Sort.Direction.DESC, "timestamp"))
 
     @Transactional
-    fun findAllMeetingsByUserId(userId: Long, pageable: PageableRequest): Flux<Meeting> {
-        return meetingsR2dbcRepository.findAllByUserId(userId, pageable.pageSize, pageable.offset)
+    fun findAllMeetingsByUserId(userId: Long, pageable: PageableRequest): List<Meeting> {
+        return meetingsJpaRepository.findAllByUserId(userId, pageable.pageSize, pageable.offset)
     }
 
     @Transactional
-    fun createMeetings(userId: Long, meetings: Flux<UserMeeting>): Flux<Meeting> {
-        val meetingList = meetings.filter { it.isFilledInput() }.cache()
-        return meetingsR2dbcRepository.countByUserId(userId)
-            .map { currentElementsCount ->
-                val meetingsCopy = Flux.from(meetingList)
-                meetingsCopy.count().map { newElementsCount -> (currentElementsCount + newElementsCount).toInt() }
+    fun createMeetings(userId: Long, meetings: List<UserMeeting>): List<Meeting> {
+        val meetingList = meetings.filter { it.isFilledInput() }
+        val currentElementsCount = meetingsJpaRepository.countByUserId(userId)
+        val totalCount = (currentElementsCount + meetingList.count()).toInt()
+        if (checkSize(totalCount, maximumUserMeetingsSize, ErrorCode.MANY_MEETINGS)) {
+            try {
+                val meetings = meetingList.map { Meeting.of(userId, it) }
+                meetings.forEach { meeting ->
+                    meetingsJpaRepository.insert(
+                        meeting.userId!!, meeting.otherUserId!!,
+                        meeting.otherUserLat, meeting.otherUserLon,
+                        meeting.distance, meeting.timestamp
+                    )
+                }
+            } catch (ex: Exception) {
+                log.error("Failed save meetings for userId [{}]: {}", userId, ex.message)
             }
-            .flatMap { it }
-            .filter { totalCount -> checkSize(totalCount, maximumUserMeetingsSize, ErrorCode.MANY_MEETINGS) }
-            .map {
-                meetingList
-                    .map { Meeting.of(userId, it) }
-                    .flatMap { meeting ->
-                        meetingsR2dbcRepository.insert(
-                            meeting.userId!!, meeting.otherUserId!!,
-                            meeting.otherUserLat, meeting.otherUserLon,
-                            meeting.distance, meeting.timestamp
-                        ).map { userId }
-                    }
-            }
-            .flatMapMany { it }
-            .switchIfEmpty(Mono.just(userId))
-            .map { id ->
-                meetingsR2dbcRepository.findAllByUserId(id, defaultPageable.pageSize, defaultPageable.offset)
-            }
-            .flatMap { it }
-            .doOnError {
-                log.error("Failed save meetings for userId [{}]: {}", userId, it.message)
-                Mono.error<Flux<Any>>(it)
-            }
+        }
+        return meetingsJpaRepository.findAllByUserId(userId, defaultPageable.pageSize, defaultPageable.offset)
     }
 
     @Transactional
-    fun deleteMetingWithUserId(currentUserId: Long, userId: Long): Flux<Meeting> {
-        return meetingsR2dbcRepository.deleteByUserIdAndOtherUserId(currentUserId, userId)
-            .map { userId }
-            .switchIfEmpty(Mono.just(userId))
-            .map { id ->
-                meetingsR2dbcRepository.findAllByUserId(id, defaultPageable.pageSize, defaultPageable.offset)
-            }
-            .flatMapMany { it }
-            .doOnError {
-                log.error("Failed delete meetings for userId [{}]: {}", userId, it.message)
-                Mono.error<Flux<Any>>(it)
-            }
+    fun deleteMetingWithUserId(currentUserId: Long, userId: Long): List<Meeting> {
+        try {
+            meetingsJpaRepository.deleteByUserIdAndOtherUserId(currentUserId, userId)
+        } catch (ex: Exception) {
+            log.error("Failed delete meetings for userId [{}]: {}", userId, ex.message)
+        }
+        return meetingsJpaRepository.findAllByUserId(currentUserId, defaultPageable.pageSize, defaultPageable.offset)
     }
 }

@@ -52,20 +52,16 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
     @Bean
     fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain? {
         http
-            .csrf().disable()
-            .formLogin().disable()
-            .httpBasic().disable()
-            .logout().disable()
-            .headers().frameOptions().disable()
-            .and()
-            .authorizeExchange()
-            .pathMatchers(*openRoutes)
-            .permitAll()
-            .and()
+            .csrf { it.disable() }
+            .formLogin{ it.disable() }
+            .httpBasic{ it.disable() }
+            .logout{ it.disable() }
+            .headers{ it.frameOptions{ frame -> frame.disable() } }
+            .authorizeExchange {
+                it.pathMatchers(*openRoutes).permitAll()
+                it.anyExchange().authenticated()
+            }
             .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION)
-            .authorizeExchange()
-            .anyExchange()
-            .authenticated()
         return http.build()
     }
 
@@ -84,13 +80,13 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
                     .flatMap { token ->
                         Mono.justOrEmpty(token.substring(bearer.length))
                     }
-                    .flatMap<Auth> { token ->
-                        authService.getAuthByAccessToken(token)
+                    .flatMap { token ->
+                        Mono.fromCallable { authService.getAuthByAccessToken(token) }
                     }
                     .filter { auth -> !auth.isExpired() }
                     .map { auth ->
                         PreAuthenticatedAuthenticationToken(
-                            auth.userId,
+                            auth.userId as Any,
                             auth.accessToken,
                             mutableListOf(SimpleGrantedAuthority(ROLE_USER))
                         )
