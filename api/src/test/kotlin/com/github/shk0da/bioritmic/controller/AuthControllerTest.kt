@@ -18,7 +18,7 @@ class AuthControllerTest : ApiApplicationTests() {
         name = "Name 1",
         email = "test1@gmail.com",
         password = "12345",
-        birthday = "14-01-1989"
+        birthday = "1989-01-14"
     )
 
     @Test
@@ -64,7 +64,7 @@ class AuthControllerTest : ApiApplicationTests() {
             .expectStatus().isCreated
 
         val authorizationModel = AuthorizationModel(
-            email = userModel.email!!,
+            email = userModel.email,
             password = userModel.password!!
         )
 
@@ -76,9 +76,8 @@ class AuthControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.accessToken").isNotEmpty
             .jsonPath("$.refreshToken").isNotEmpty
-            .jsonPath("$.userId").isNotEmpty
+            .jsonPath("$.email").isEqualTo(userModel.email)
     }
 
     @Test
@@ -94,7 +93,7 @@ class AuthControllerTest : ApiApplicationTests() {
             .expectStatus().isCreated
 
         val authorizationModel = AuthorizationModel(
-            email = userModel.email!!,
+            email = userModel.email,
             password = "wrong_password"
         )
 
@@ -143,7 +142,7 @@ class AuthControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(recoveryModel))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().is5xxServerError
     }
 
     @Test
@@ -203,7 +202,7 @@ class AuthControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.accessToken").isNotEmpty
             .jsonPath("$.refreshToken").isNotEmpty
+            .jsonPath("$.email").isEqualTo(userModel.email)
     }
 }

@@ -15,9 +15,11 @@ export enum Gender {
 }
 
 export interface UserToken {
+  name: string;
+  email: string;
   accessToken: string;
   refreshToken: string;
-  user: User;
+  expireTime: number;
 }
 
 export interface AuthorizationModel {

@@ -7,7 +7,13 @@ export const authGuard = (): boolean | UrlTree => {
   const router = inject(Router);
 
   if (authService.isAuthenticated()) {
-    return true;
+    // Проверяем, есть ли текущий пользователь
+    const user = authService.getCurrentUser();
+    if (user) {
+      return true;
+    }
+    // Пользователь не загружен - возможно, он удалён с сервера
+    authService.clearAuth();
   }
 
   return router.createUrlTree(['/auth/login']);

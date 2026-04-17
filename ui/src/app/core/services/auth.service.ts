@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { User, UserToken, AuthorizationModel, Gender } from '../models/user.model';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { BehaviorSubject, Observable, tap, catchError, throwError } from 'rxjs';
+import { User, UserToken, AuthorizationModel, Gender, UserInfo } from '../models/user.model';
 
 const TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
@@ -12,7 +12,7 @@ const USER_KEY = 'current_user';
 })
 export class AuthService {
   private readonly apiUrl = '/api/v1';
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  private currentUserSubject = new BehaviorSubject<UserInfo | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {
@@ -21,8 +21,25 @@ export class AuthService {
 
   private loadUserFromStorage(): void {
     const userStr = localStorage.getItem(USER_KEY);
-    if (userStr) {
-      this.currentUserSubject.next(JSON.parse(userStr));
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (userStr && token) {
+      const user = JSON.parse(userStr);
+      this.currentUserSubject.next(user);
+      // Проверяем, действителен ли пользователь на сервере
+      this.http.get<UserInfo>(`${this.apiUrl}/user/me`).subscribe({
+        next: (user) => {
+          localStorage.setItem(USER_KEY, JSON.stringify(user));
+          this.currentUserSubject.next(user);
+        },
+        error: (error: HttpErrorResponse) => {
+          if (error.status === 404 || error.status === 401 || error.status === 403) {
+            this.clearAuth();
+          }
+        }
+      });
+    } else if (userStr) {
+      // Токена нет, но пользователь есть - очищаем
+      this.clearAuth();
     }
   }
 
@@ -60,21 +77,34 @@ export class AuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
-  getCurrentUser(): User | null {
+  getCurrentUser(): UserInfo | null {
     return this.currentUserSubject.value;
   }
 
-  private clearAuth(): void {
+  clearAuth(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     this.currentUserSubject.next(null);
   }
 
-  protected setAuth(token: UserToken): void {
+  setAuth(token: UserToken): void {
     localStorage.setItem(TOKEN_KEY, token.accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, token.refreshToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(token.user));
-    this.currentUserSubject.next(token.user);
+  }
+
+  loadCurrentUser(): Observable<UserInfo> {
+    return this.http.get<UserInfo>(`${this.apiUrl}/user/me`).pipe(
+      tap(user => {
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        this.currentUserSubject.next(user);
+      }),
+      catchError((error: HttpErrorResponse) => {
+        if (error.status === 404 || error.status === 401 || error.status === 403) {
+          this.clearAuth();
+        }
+        return throwError(() => error);
+      })
+    );
   }
 }

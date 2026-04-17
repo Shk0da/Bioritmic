@@ -5,11 +5,9 @@ import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_V
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.model.search.UserSearch
-import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.domain.UserModel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
@@ -22,7 +20,7 @@ class SearchControllerTest : ApiApplicationTests() {
         name = "Search Test User",
         email = "search_test@gmail.com",
         password = "12345",
-        birthday = "14-01-1989"
+        birthday = "1989-01-14"
     )
 
     private lateinit var authToken: String
@@ -42,18 +40,17 @@ class SearchControllerTest : ApiApplicationTests() {
             password = defaultUserModel.password!!
         )
 
-        val authResponse = webTestClient.post()
+        webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
             .body(BodyInserters.fromValue(authorizationModel))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk
-            .expectBody(UserToken::class.java)
-            .returnResult()
-            .responseBody
 
-        authToken = "Bearer ${authResponse!!.accessToken}"
+        // Get accessToken from cache
+        val auth = authTokenCache.values.first()
+        authToken = "Bearer ${auth.accessToken}"
     }
 
     @Test
@@ -75,7 +72,7 @@ class SearchControllerTest : ApiApplicationTests() {
             gender = Gender.MAN,
             ageMin = 20,
             ageMax = 40,
-            distance = 50.0,
+            distance = 10.0,
             birthdate = birthdate
         )
 

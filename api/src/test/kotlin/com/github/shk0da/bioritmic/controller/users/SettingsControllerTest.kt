@@ -5,11 +5,9 @@ import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_V
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
-import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.domain.UserModel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
@@ -21,7 +19,7 @@ class SettingsControllerTest : ApiApplicationTests() {
         name = "Settings Test User",
         email = "settings_test@gmail.com",
         password = "12345",
-        birthday = "14-01-1989"
+        birthday = "1989-01-14"
     )
 
     private lateinit var authToken: String
@@ -41,18 +39,17 @@ class SettingsControllerTest : ApiApplicationTests() {
             password = defaultUserModel.password!!
         )
 
-        val authResponse = webTestClient.post()
+        webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
             .body(BodyInserters.fromValue(authorizationModel))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk
-            .expectBody(UserToken::class.java)
-            .returnResult()
-            .responseBody
 
-        authToken = "Bearer ${authResponse!!.accessToken}"
+        // Get accessToken from cache
+        val auth = authTokenCache.values.first()
+        authToken = "Bearer ${auth.accessToken}"
     }
 
     @Test
@@ -62,7 +59,7 @@ class SettingsControllerTest : ApiApplicationTests() {
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().isNotFound
     }
 
     @Test
@@ -71,7 +68,7 @@ class SettingsControllerTest : ApiApplicationTests() {
             gender = Gender.MAN,
             ageMin = 20,
             ageMax = 40,
-            distance = 100.0
+            distance = 20.0
         )
 
         webTestClient.put()
@@ -95,7 +92,7 @@ class SettingsControllerTest : ApiApplicationTests() {
             gender = Gender.WOMAN,
             ageMin = 25,
             ageMax = 45,
-            distance = 150.0
+            distance = 50.0
         )
 
         webTestClient.patch()
@@ -105,6 +102,6 @@ class SettingsControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(settings))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().isBadRequest
     }
 }

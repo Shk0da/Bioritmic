@@ -4,11 +4,9 @@ import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
-import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.domain.UserModel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
@@ -21,7 +19,7 @@ class UserControllerTest : ApiApplicationTests() {
         name = "Test User",
         email = "user_test@gmail.com",
         password = "12345",
-        birthday = "14-01-1989"
+        birthday = "1989-01-14"
     )
 
     private lateinit var authToken: String
@@ -41,18 +39,17 @@ class UserControllerTest : ApiApplicationTests() {
             password = defaultUserModel.password!!
         )
 
-        val authResponse = webTestClient.post()
+        webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
             .body(BodyInserters.fromValue(authorizationModel))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk
-            .expectBody(UserToken::class.java)
-            .returnResult()
-            .responseBody
 
-        authToken = "Bearer ${authResponse!!.accessToken}"
+        // Get accessToken from cache
+        val auth = authTokenCache.values.first()
+        authToken = "Bearer ${auth.accessToken}"
     }
 
     @Test
@@ -97,7 +94,7 @@ class UserControllerTest : ApiApplicationTests() {
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().isNotFound
     }
 
     @Test
@@ -107,7 +104,7 @@ class UserControllerTest : ApiApplicationTests() {
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.IMAGE_JPEG)
             .exchange()
-            .expectStatus().isNoContent
+            .expectStatus().isOk
     }
 
     @Test

@@ -21,8 +21,10 @@ data class UserSearch(
     @field:Min(14) @field:Max(100) val ageMin: Int? = null,
     @field:Min(14) @field:Max(100) val ageMax: Int? = null,
     @field:DecimalMin("0.05") @field:DecimalMax("30") val distance: Double = defaultDistance,
-    var timestamp: Timestamp = hourAgo()
 ) : BasicPresentation {
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    var timestamp: Timestamp = hourAgo()
 
     companion object {
 

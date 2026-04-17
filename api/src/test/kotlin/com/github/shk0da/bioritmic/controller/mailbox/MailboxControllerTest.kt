@@ -4,11 +4,9 @@ import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
-import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.domain.UserModel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
@@ -20,7 +18,7 @@ class MailboxControllerTest : ApiApplicationTests() {
         name = "Mailbox Test User",
         email = "mailbox_test@gmail.com",
         password = "12345",
-        birthday = "14-01-1989"
+        birthday = "1989-01-14"
     )
 
     private lateinit var authToken: String
@@ -40,18 +38,17 @@ class MailboxControllerTest : ApiApplicationTests() {
             password = defaultUserModel.password!!
         )
 
-        val authResponse = webTestClient.post()
+        webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
             .body(BodyInserters.fromValue(authorizationModel))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk
-            .expectBody(UserToken::class.java)
-            .returnResult()
-            .responseBody
 
-        authToken = "Bearer ${authResponse!!.accessToken}"
+        // Get accessToken from cache
+        val auth = authTokenCache.values.first()
+        authToken = "Bearer ${auth.accessToken}"
     }
 
     @Test
@@ -67,7 +64,7 @@ class MailboxControllerTest : ApiApplicationTests() {
     @Test
     fun sendMailTest() {
         val userMailModel = UserMailModel(
-            to = 2L,
+            to = 1L,
             message = "Test Message"
         )
 
@@ -84,7 +81,7 @@ class MailboxControllerTest : ApiApplicationTests() {
     @Test
     fun deleteMailboxTest() {
         webTestClient.delete()
-            .uri("$API_WITH_VERSION_1/mailbox/2")
+            .uri("$API_WITH_VERSION_1/mailbox/1")
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()

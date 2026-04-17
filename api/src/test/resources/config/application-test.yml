@@ -22,8 +22,8 @@ spring:
     driver: postgresql
     url: ${spring.datasource.jpa-url}
     driver-class-name: org.postgresql.Driver
-    username: postgres
-    password: postgres
+    username: bioritmic
+    password: bioritmic
   r2dbc:
     url: ${spring.datasource.r2dbc-url}
     name: ${spring.datasource.database}

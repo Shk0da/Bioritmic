@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { User } from '../../core/models/user.model';
+import { UserInfo } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-layout',
@@ -60,7 +60,7 @@ import { User } from '../../core/models/user.model';
   `
 })
 export class LayoutComponent implements OnInit {
-  currentUser: User | null = null;
+  currentUser: UserInfo | null = null;
 
   constructor(private authService: AuthService) {}
 
@@ -71,8 +71,16 @@ export class LayoutComponent implements OnInit {
   }
 
   logout(): void {
-    this.authService.logout().subscribe(() => {
-      window.location.reload();
+    this.authService.logout().subscribe({
+      next: () => {
+        this.authService.clearAuth();
+        window.location.reload();
+      },
+      error: () => {
+        // Если ошибка при logout на сервере, всё равно очищаем локально
+        this.authService.clearAuth();
+        window.location.reload();
+      }
     });
   }
 }

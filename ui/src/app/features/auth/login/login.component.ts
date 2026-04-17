@@ -73,8 +73,10 @@ export class LoginComponent {
   onSubmit(): void {
     this.authService.login(this.credentials).subscribe({
       next: (token) => {
-        // Auth service handles token storage
-        this.router.navigate(['/search']);
+        this.authService.setAuth(token);
+        this.authService.loadCurrentUser().subscribe(() => {
+          this.router.navigate(['/search']);
+        });
       },
       error: (error) => {
         console.error('Login failed', error);
