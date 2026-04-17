@@ -3,6 +3,7 @@ package com.github.shk0da.bioritmic
 import com.github.shk0da.bioritmic.api.ApiApplication
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants
 import com.github.shk0da.bioritmic.configuration.DataSourceTestConfiguration
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
@@ -30,6 +31,31 @@ class ApiApplicationTests {
 
     @Autowired
     lateinit var webTestClient: WebTestClient
+
+    @Autowired
+    lateinit var databaseClient: org.springframework.r2dbc.core.DatabaseClient
+
+    @AfterEach
+    fun clearDatabase() {
+        val tables = listOf(
+            "user_blocks",
+            "meetings",
+            "mailbox",
+            "bookmarks",
+            "gis_data",
+            "authorizations",
+            "user_settings",
+            "users"
+        )
+
+        tables.forEach { table ->
+            try {
+                databaseClient.sql("DELETE FROM $table").fetch().rowsUpdated().block()
+            } catch (_: Exception) {
+                // Ignore errors for tables that don't exist yet
+            }
+        }
+    }
 
     @Test
     fun contextLoads() {

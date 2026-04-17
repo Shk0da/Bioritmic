@@ -14,7 +14,7 @@ data class UserModel(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY) val id: Long? = null,
     @field:NotEmpty val name: String,
     @field:NotEmpty val email: String,
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy") val birthday: Date,
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd") val birthday: Date,
     val gender: Gender? = null,
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) val password: String? = null
 ) : BasicPresentation {

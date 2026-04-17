@@ -68,8 +68,8 @@ class SearchControllerTest : ApiApplicationTests() {
 
     @Test
     fun searchWithCustomFilterTest() {
-        val dateFormat = SimpleDateFormat("dd-MM-yyyy")
-        val birthdate = dateFormat.parse("14-01-1989")
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd")
+        val birthdate = dateFormat.parse("1989-01-14")
 
         val userSearch = UserSearch(
             gender = Gender.MAN,

@@ -15,7 +15,7 @@ data class UserInfo(
     val id: Long? = null,
     val name: String? = null,
     val email: String? = null,
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     val birthday: Date? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val age: Int? = null,
