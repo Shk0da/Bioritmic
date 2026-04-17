@@ -1,5 +1,6 @@
 package com.github.shk0da.bioritmic.api.repository
 
+import com.github.shk0da.bioritmic.api.configuration.ApiConfiguration.Companion.defaultZone
 import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.readTransactionManager
 import com.github.shk0da.bioritmic.api.domain.GisUser
 import com.github.shk0da.bioritmic.api.model.search.Gender
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
 import java.time.Instant
+import java.time.LocalDateTime
 
 @Repository
 @Transactional(transactionManager = readTransactionManager)
@@ -72,7 +74,7 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
                 GisUser().apply {
                     this.id = row["id"] as? Long
                     this.name = row["name"] as? String
-                    this.birthday = (row["birthday"] as? java.time.Instant)?.let { Timestamp.from(it) }
+                    this.birthday = (row["birthday"] as? LocalDateTime)?.let { Timestamp.from(it.toInstant(defaultZone)) }
                     this.gender = (row["gender"] as? Number)?.toShort()
                     this.lat = (row["lat"] as? Double) ?: (row["lat"] as? Number)?.toDouble()
                     this.lon = (row["lon"] as? Double) ?: (row["lon"] as? Number)?.toDouble()

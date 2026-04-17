@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { User, UserInfo, GisData, PageableRequest } from '../models/user.model';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +11,10 @@ import { User, UserInfo, GisData, PageableRequest } from '../models/user.model';
 export class UserService {
   private readonly apiUrl = '/api/v1/user';
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService
+  ) {}
 
   getCurrentUser(): Observable<UserInfo> {
     return this.http.get<UserInfo>(`${this.apiUrl}/me`);
@@ -50,18 +55,32 @@ export class UserService {
     return this.http.post<GisData>(`${this.apiUrl}/me/gis`, gisData);
   }
 
-  getPhoto(userId?: number): Observable<Blob> {
+  getPhoto(userId?: number): Observable<Uint8Array> {
     const url = userId ? `${this.apiUrl}/${userId}/photo` : `${this.apiUrl}/me/photo`;
-    return this.http.get(url, { responseType: 'blob' });
+    const token = this.authService.getToken();
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token || ''}`
+    });
+    return this.http.get(url, { headers, responseType: 'arraybuffer' }).pipe(
+      map((buffer: ArrayBuffer) => new Uint8Array(buffer))
+    );
   }
 
   uploadPhoto(file: File): Observable<void> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<void>(`${this.apiUrl}/me/photo`, formData);
+    const token = this.authService.getToken();
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token || ''}`
+    });
+    return this.http.post<void>(`${this.apiUrl}/me/photo`, formData, { headers });
   }
 
   deletePhoto(): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/me/photo`);
+    const token = this.authService.getToken();
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token || ''}`
+    });
+    return this.http.delete<void>(`${this.apiUrl}/me/photo`, { headers });
   }
 }

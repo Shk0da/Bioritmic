@@ -1,9 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { SearchService } from '../../core/services/search.service';
 import { UserService } from '../../core/services/user.service';
 import { UserInfo, Gender, UserSearch } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
+
+interface UserWithPhoto extends UserInfo {
+  photoDataUrl?: SafeUrl | null;
+}
 
 @Component({
   selector: 'app-search',
@@ -62,7 +67,7 @@ import { FormsModule } from '@angular/forms';
               <div class="col-md-4 mb-4">
                 <div class="card h-100">
                   <img
-                    [src]="user.image || 'assets/default-avatar.png'"
+                    [src]="user.photoDataUrl || 'assets/default-avatar.png'"
                     class="card-img-top user-card-img"
                     [alt]="user.name">
                   <div class="card-body">
@@ -86,7 +91,7 @@ import { FormsModule } from '@angular/forms';
   `
 })
 export class SearchComponent implements OnInit {
-  users: UserInfo[] = [];
+  users: UserWithPhoto[] = [];
   loading = false;
   Gender = Gender;
 
@@ -99,7 +104,8 @@ export class SearchComponent implements OnInit {
 
   constructor(
     private searchService: SearchService,
-    private userService: UserService
+    private userService: UserService,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -111,6 +117,7 @@ export class SearchComponent implements OnInit {
     this.searchService.searchByFilter(this.searchCriteria).subscribe({
       next: (users) => {
         this.users = users;
+        this.loadPhotos();
         this.loading = false;
       },
       error: () => {
@@ -118,6 +125,35 @@ export class SearchComponent implements OnInit {
         this.users = [];
       }
     });
+  }
+
+  loadPhotos(): void {
+    this.users.forEach(user => {
+      if (user.id) {
+        this.userService.getPhoto(user.id).subscribe({
+          next: (bytes: Uint8Array) => {
+            user.photoDataUrl = this.bytesToDataUrl(bytes);
+          },
+          error: () => {
+            user.photoDataUrl = null;
+          }
+        });
+      }
+    });
+  }
+
+  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+    const base64 = this.uint8ArrayToBase64(bytes);
+    const dataUrl = `data:image/jpeg;base64,${base64}`;
+    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+  }
+
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   getAge(birthday: string): number {

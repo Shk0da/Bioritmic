@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 
@@ -13,7 +14,7 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
       <div class="col-md-4">
         <div class="card">
           <img
-            [src]="photoUrl || user?.image || 'assets/default-avatar.png'"
+            [src]="photoDataUrl || user?.image || 'assets/default-avatar.png'"
             class="card-img-top profile-avatar mx-auto mt-3"
             [alt]="user?.name">
           <div class="card-body text-center">
@@ -98,9 +99,12 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
 })
 export class ProfileComponent implements OnInit {
   user: UserInfo | null = null;
-  photoUrl: string | null = null;
+  photoDataUrl: SafeUrl | null = null;
 
-  constructor(private userService: UserService) {}
+  constructor(
+    private userService: UserService,
+    private sanitizer: DomSanitizer
+  ) {}
 
   ngOnInit(): void {
     this.loadProfile();
@@ -117,13 +121,27 @@ export class ProfileComponent implements OnInit {
 
   private loadPhoto(): void {
     this.userService.getPhoto().subscribe({
-      next: (blob: Blob) => {
-        this.photoUrl = URL.createObjectURL(blob);
+      next: (bytes: Uint8Array) => {
+        this.photoDataUrl = this.bytesToDataUrl(bytes);
       },
       error: () => {
-        this.photoUrl = null;
+        this.photoDataUrl = null;
       }
     });
+  }
+
+  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+    const base64 = this.uint8ArrayToBase64(bytes);
+    const dataUrl = `data:image/jpeg;base64,${base64}`;
+    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+  }
+
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   getBirthday(): string {

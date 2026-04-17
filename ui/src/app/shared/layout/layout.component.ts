@@ -39,7 +39,7 @@ import { UserInfo } from '../../core/models/user.model';
                   <li><a class="dropdown-item" routerLink="/profile/me">Мой профиль</a></li>
                   <li><a class="dropdown-item" routerLink="/settings">Настройки</a></li>
                   <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="#" (click)="logout()">Выйти</a></li>
+                  <li><a class="dropdown-item" href="#" (click)="logout($event)">Выйти</a></li>
                 </ul>
               </li>
             }
@@ -70,7 +70,10 @@ export class LayoutComponent implements OnInit {
     });
   }
 
-  logout(): void {
+  logout(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+    }
     this.authService.logout().subscribe({
       next: () => {
         this.authService.clearAuth();
