@@ -3,6 +3,7 @@ package com.github.shk0da.bioritmic
 import com.github.shk0da.bioritmic.api.ApiApplication
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants
 import com.github.shk0da.bioritmic.configuration.DataSourceTestConfiguration
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -62,6 +63,12 @@ class ApiApplicationTests {
         }
 
         // Clear auth token cache
+        authTokenCache.clear()
+    }
+
+    @AfterEach
+    fun clearCache() {
+        // Clear auth token cache after each test
         authTokenCache.clear()
     }
 

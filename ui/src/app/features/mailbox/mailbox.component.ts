@@ -2,8 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { UserService } from '../../core/services/user.service';
-import { UserMail, PageableRequest } from '../../core/models/user.model';
+import { UserMail, PageableRequest, UserInfo } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+
+interface MessageWithUser extends UserMail {
+  userName?: string;
+  userPhotoUrl?: SafeUrl | null;
+}
 
 @Component({
   selector: 'app-mailbox',
@@ -69,16 +75,27 @@ import { FormsModule } from '@angular/forms';
           <div class="list-group">
             @for (message of messages; track message.id) {
               <div class="list-group-item mailbox-item">
-                <div class="d-flex w-100 justify-content-between">
-                  <h6 class="mb-1">
-                    Сообщение от пользователя #{{ message.from }}
-                  </h6>
-                  <small>{{ getMessageDate(message.timestamp) }}</small>
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                  <div class="d-flex align-items-center">
+                    <img
+                      [src]="message.userPhotoUrl || 'assets/default-avatar.png'"
+                      class="rounded-circle me-3"
+                      style="width: 50px; height: 50px; object-fit: cover;"
+                      [alt]="message.userName || 'User'">
+                    <div>
+                      <h6 class="mb-1">
+                        Сообщение от {{ message.userName || 'Пользователь #' + message.from }}
+                      </h6>
+                      <p class="mb-1">{{ message.message }}</p>
+                    </div>
+                  </div>
+                  <div class="text-end">
+                    <small class="text-muted d-block">{{ getMessageDate(message.timestamp) }}</small>
+                    <button class="btn btn-sm btn-outline-danger mt-2" (click)="deleteMessage(message.from!)">
+                      Удалить
+                    </button>
+                  </div>
                 </div>
-                <p class="mb-1">{{ message.message }}</p>
-                <button class="btn btn-sm btn-outline-danger" (click)="deleteMessage(message.from!)">
-                  Удалить
-                </button>
               </div>
             }
           </div>
@@ -88,7 +105,7 @@ import { FormsModule } from '@angular/forms';
   `
 })
 export class MailboxComponent implements OnInit {
-  messages: UserMail[] = [];
+  messages: MessageWithUser[] = [];
   loading = false;
   showNewMessageForm = false;
   pageable: PageableRequest = { page: 0, size: 20 };
@@ -100,7 +117,8 @@ export class MailboxComponent implements OnInit {
 
   constructor(
     private mailboxService: MailboxService,
-    private userService: UserService
+    private userService: UserService,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -112,12 +130,56 @@ export class MailboxComponent implements OnInit {
     this.mailboxService.getMailbox(this.pageable).subscribe({
       next: (messages) => {
         this.messages = messages;
+        this.loadUserData();
         this.loading = false;
       },
       error: () => {
         this.loading = false;
       }
     });
+  }
+
+  private loadUserData(): void {
+    this.messages.forEach(message => {
+      if (message.from) {
+        // Загружаем имя пользователя
+        this.userService.getUserById(message.from).subscribe({
+          next: (user: UserInfo) => {
+            message.userName = user.name;
+            // Загружаем фото
+            this.loadUserPhoto(message.from!, message);
+          },
+          error: () => {
+            message.userName = 'Пользователь #' + message.from;
+          }
+        });
+      }
+    });
+  }
+
+  private loadUserPhoto(userId: number, message: MessageWithUser): void {
+    this.userService.getPhoto(userId).subscribe({
+      next: (bytes: Uint8Array) => {
+        message.userPhotoUrl = this.bytesToDataUrl(bytes);
+      },
+      error: () => {
+        message.userPhotoUrl = null;
+      }
+    });
+  }
+
+  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+    const base64 = this.uint8ArrayToBase64(bytes);
+    const dataUrl = `data:image/jpeg;base64,${base64}`;
+    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+  }
+
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   sendNewMessage(): void {

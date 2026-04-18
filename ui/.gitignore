@@ -29,3 +29,4 @@ yarn-error.log*
 
 # Angular
 .angular/
+/package-lock.json

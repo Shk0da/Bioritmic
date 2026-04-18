@@ -26,6 +26,7 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
     INVALID_RECOVERY_CODE("API-400.7", "Recovery code is invalid.", HttpStatus.BAD_REQUEST),
     MANY_BOOKMARKS("API-400.8", "User has to many bookmarks.", HttpStatus.BAD_REQUEST),
     MANY_MEETINGS("API-400.8", "User has to many meetings.", HttpStatus.BAD_REQUEST),
+    BAD_PHOTO("API-400.9", "Photo must be jpg or png.", HttpStatus.BAD_REQUEST),
 
     USER_EXISTS("API-409", "The user with this email is already registered.", HttpStatus.CONFLICT),
 

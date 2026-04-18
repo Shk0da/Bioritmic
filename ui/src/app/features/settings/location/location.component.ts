@@ -1,13 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
 import { UserService } from '../../../core/services/user.service';
 import { GisData } from '../../../core/models/user.model';
 
 @Component({
   selector: 'app-location',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, DecimalPipe],
   template: `
     <div class="row">
       <div class="col-md-8 mx-auto">
@@ -28,9 +29,8 @@ import { GisData } from '../../../core/models/user.model';
               </div>
             } @else if (gisData) {
               <div class="alert alert-info">
-                <p><strong>Широта:</strong> {{ gisData.lat }}</p>
-                <p><strong>Долгота:</strong> {{ gisData.lon }}</p>
-                <p><strong>Точность:</strong> {{ gisData.accuracy || 'N/A' }} м</p>
+                <p><strong>Широта:</strong> {{ gisData.lat | number:'1.6-6' }}</p>
+                <p><strong>Долгота:</strong> {{ gisData.lon | number:'1.6-6' }}</p>
                 <p><strong>Обновлено:</strong> {{ getTimestamp() }}</p>
               </div>
             }
@@ -72,17 +72,6 @@ import { GisData } from '../../../core/models/user.model';
                   name="lon"
                   placeholder="Например: 37.6173">
               </div>
-            </div>
-
-            <div class="mb-3">
-              <label for="accuracy" class="form-label">Точность (метры)</label>
-              <input
-                type="number"
-                class="form-control"
-                id="accuracy"
-                [(ngModel)]="formData.accuracy"
-                name="accuracy"
-                placeholder="Например: 100">
             </div>
 
             <div class="alert alert-info">
@@ -139,8 +128,7 @@ export class LocationComponent implements OnInit {
         (position) => {
           this.formData = {
             lat: position.coords.latitude,
-            lon: position.coords.longitude,
-            accuracy: position.coords.accuracy
+            lon: position.coords.longitude
           };
         },
         (error) => {

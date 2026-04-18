@@ -64,7 +64,6 @@ export interface GisData {
   userId: number;
   lat: number;
   lon: number;
-  accuracy?: number;
   timestamp?: Date;
 }
 

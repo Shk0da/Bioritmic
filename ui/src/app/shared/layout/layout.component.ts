@@ -47,14 +47,14 @@ import { UserInfo } from '../../core/models/user.model';
         </div>
       </div>
     </nav>
-    
+
     <main class="container mt-4">
       <router-outlet></router-outlet>
     </main>
-    
+
     <footer class="bg-light mt-5 py-3">
       <div class="container text-center">
-        <p class="text-muted mb-0">&copy; 2026 Bioritmic. Сайт знакомств.</p>
+        <p class="text-muted mb-0">&copy; 2026 Bioritmic.</p>
       </div>
     </footer>
   `

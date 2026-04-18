@@ -9,21 +9,25 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
+import java.util.UUID
 
 
 class SyncControllerTest : ApiApplicationTests() {
 
-    private val defaultUserModel = UserModel(
-        name = "Sync Test User",
-        email = "sync_test@gmail.com",
-        password = "12345",
-        birthday = "1989-01-14"
-    )
-
+    private lateinit var defaultUserModel: UserModel
     private lateinit var authToken: String
+    private var userId: Long? = null
 
     @BeforeEach
     fun setup() {
+        val uniqueId = UUID.randomUUID().toString().substring(0, 8)
+        defaultUserModel = UserModel(
+            name = "Sync Test User",
+            email = "sync_test_${uniqueId}@gmail.com",
+            password = "12345",
+            birthday = "1989-01-14"
+        )
+
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
@@ -46,8 +50,9 @@ class SyncControllerTest : ApiApplicationTests() {
             .expectStatus().isOk
 
         // Get accessToken from cache
-        val auth = authTokenCache.values.first()
-        authToken = "Bearer ${auth.accessToken}"
+        val auth = authTokenCache.values.find { it.userId != null }
+        userId = auth?.userId
+        authToken = "Bearer ${auth?.accessToken}"
     }
 
     @Test

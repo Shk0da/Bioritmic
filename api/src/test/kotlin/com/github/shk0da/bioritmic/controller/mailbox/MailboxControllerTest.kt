@@ -10,21 +10,25 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
+import java.util.UUID
 
 
 class MailboxControllerTest : ApiApplicationTests() {
 
-    private val defaultUserModel = UserModel(
-        name = "Mailbox Test User",
-        email = "mailbox_test@gmail.com",
-        password = "12345",
-        birthday = "1989-01-14"
-    )
-
+    private lateinit var defaultUserModel: UserModel
     private lateinit var authToken: String
+    private var userId: Long? = null
 
     @BeforeEach
     fun setup() {
+        val uniqueId = UUID.randomUUID().toString().substring(0, 8)
+        defaultUserModel = UserModel(
+            name = "Mailbox Test User",
+            email = "mailbox_test_${uniqueId}@gmail.com",
+            password = "12345",
+            birthday = "1989-01-14"
+        )
+
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
@@ -47,8 +51,9 @@ class MailboxControllerTest : ApiApplicationTests() {
             .expectStatus().isOk
 
         // Get accessToken from cache
-        val auth = authTokenCache.values.first()
-        authToken = "Bearer ${auth.accessToken}"
+        val auth = authTokenCache.values.find { it.userId != null }
+        userId = auth?.userId
+        authToken = "Bearer ${auth?.accessToken}"
     }
 
     @Test
@@ -63,8 +68,9 @@ class MailboxControllerTest : ApiApplicationTests() {
 
     @Test
     fun sendMailTest() {
+        val currentUserId = userId ?: throw IllegalStateException("User ID is null")
         val userMailModel = UserMailModel(
-            to = 1L,
+            to = currentUserId,
             message = "Test Message"
         )
 

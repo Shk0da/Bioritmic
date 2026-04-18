@@ -10,21 +10,25 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
+import java.util.UUID
 
 
 class BookmarkControllerTest : ApiApplicationTests() {
 
-    private val defaultUserModel = UserModel(
-        name = "Bookmark Test User",
-        email = "bookmark_test@gmail.com",
-        password = "12345",
-        birthday = "1989-01-14"
-    )
-
+    private lateinit var defaultUserModel: UserModel
     private lateinit var authToken: String
+    private var userId: Long? = null
 
     @BeforeEach
     fun setup() {
+        val uniqueId = UUID.randomUUID().toString().substring(0, 8)
+        defaultUserModel = UserModel(
+            name = "Bookmark Test User",
+            email = "bookmark_test_${uniqueId}@gmail.com",
+            password = "12345",
+            birthday = "1989-01-14"
+        )
+
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
@@ -47,8 +51,9 @@ class BookmarkControllerTest : ApiApplicationTests() {
             .expectStatus().isOk
 
         // Get accessToken from cache
-        val auth = authTokenCache.values.first()
-        authToken = "Bearer ${auth.accessToken}"
+        val auth = authTokenCache.values.find { it.userId != null }
+        userId = auth?.userId
+        authToken = "Bearer ${auth?.accessToken}"
     }
 
     @Test
@@ -63,9 +68,10 @@ class BookmarkControllerTest : ApiApplicationTests() {
 
     @Test
     fun saveBookmarksTest() {
+        val currentUserId = userId ?: throw IllegalStateException("User ID is null")
         val bookmarks = listOf(
             UserBookmark(
-                userId = 1L,
+                userId = currentUserId,
                 timestamp = System.currentTimeMillis()
             )
         )

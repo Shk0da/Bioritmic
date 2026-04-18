@@ -2,8 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { UserService } from '../../core/services/user.service';
-import { UserMeeting, PageableRequest } from '../../core/models/user.model';
+import { UserMeeting, PageableRequest, UserInfo } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+
+interface MeetingWithUser extends UserMeeting {
+  userName?: string;
+  userPhotoUrl?: SafeUrl | null;
+}
 
 @Component({
   selector: 'app-meetings',
@@ -31,21 +37,27 @@ import { FormsModule } from '@angular/forms';
               <div class="col-md-6 mb-3">
                 <div class="card meeting-card">
                   <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <div>
-                        <h6 class="card-title">Пользователь #{{ meeting.userId }}</h6>
-                        <p class="card-text small text-muted">
+                    <div class="d-flex align-items-start">
+                      <img
+                        [src]="meeting.userPhotoUrl || 'assets/default-avatar.png'"
+                        class="rounded-circle me-3"
+                        style="width: 60px; height: 60px; object-fit: cover;"
+                        [alt]="meeting.userName || 'User'">
+                      <div class="flex-grow-1">
+                        <h6 class="card-title mb-2">
+                          {{ meeting.userName || 'Пользователь #' + meeting.userId }}
+                        </h6>
+                        <p class="card-text small text-muted mb-1">
                           Координаты: {{ meeting.lat }}, {{ meeting.lon }}
                         </p>
-                        <p class="card-text small text-muted">
+                        <p class="card-text small text-muted mb-2">
                           Расстояние: {{ meeting.distance }} км
                         </p>
+                        <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-primary btn-sm">
+                          Посмотреть профиль
+                        </a>
                       </div>
                     </div>
-
-                    <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-primary btn-sm mt-2">
-                      Посмотреть профиль
-                    </a>
                   </div>
                 </div>
               </div>
@@ -57,13 +69,14 @@ import { FormsModule } from '@angular/forms';
   `
 })
 export class MeetingsComponent implements OnInit {
-  meetings: UserMeeting[] = [];
+  meetings: MeetingWithUser[] = [];
   loading = false;
   pageable: PageableRequest = { page: 0, size: 20 };
 
   constructor(
     private meetingsService: MeetingsService,
-    private userService: UserService
+    private userService: UserService,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -75,12 +88,56 @@ export class MeetingsComponent implements OnInit {
     this.meetingsService.getMeetings(this.pageable).subscribe({
       next: (meetings) => {
         this.meetings = meetings;
+        this.loadUserData();
         this.loading = false;
       },
       error: () => {
         this.loading = false;
       }
     });
+  }
+
+  private loadUserData(): void {
+    this.meetings.forEach(meeting => {
+      if (meeting.userId) {
+        // Загружаем имя пользователя
+        this.userService.getUserById(meeting.userId).subscribe({
+          next: (user: UserInfo) => {
+            meeting.userName = user.name;
+            // Загружаем фото
+            this.loadUserPhoto(meeting.userId!, meeting);
+          },
+          error: () => {
+            meeting.userName = 'Пользователь #' + meeting.userId;
+          }
+        });
+      }
+    });
+  }
+
+  private loadUserPhoto(userId: number, meeting: MeetingWithUser): void {
+    this.userService.getPhoto(userId).subscribe({
+      next: (bytes: Uint8Array) => {
+        meeting.userPhotoUrl = this.bytesToDataUrl(bytes);
+      },
+      error: () => {
+        meeting.userPhotoUrl = null;
+      }
+    });
+  }
+
+  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+    const base64 = this.uint8ArrayToBase64(bytes);
+    const dataUrl = `data:image/jpeg;base64,${base64}`;
+    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+  }
+
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   deleteMeeting(userId: number): void {

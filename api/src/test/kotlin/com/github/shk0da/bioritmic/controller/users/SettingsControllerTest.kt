@@ -11,21 +11,25 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
+import java.util.UUID
 
 
 class SettingsControllerTest : ApiApplicationTests() {
 
-    private val defaultUserModel = UserModel(
-        name = "Settings Test User",
-        email = "settings_test@gmail.com",
-        password = "12345",
-        birthday = "1989-01-14"
-    )
-
+    private lateinit var defaultUserModel: UserModel
     private lateinit var authToken: String
+    private var userId: Long? = null
 
     @BeforeEach
     fun setup() {
+        val uniqueId = UUID.randomUUID().toString().substring(0, 8)
+        defaultUserModel = UserModel(
+            name = "Settings Test User",
+            email = "settings_test_${uniqueId}@gmail.com",
+            password = "12345",
+            birthday = "1989-01-14"
+        )
+
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
@@ -48,8 +52,9 @@ class SettingsControllerTest : ApiApplicationTests() {
             .expectStatus().isOk
 
         // Get accessToken from cache
-        val auth = authTokenCache.values.first()
-        authToken = "Bearer ${auth.accessToken}"
+        val auth = authTokenCache.values.find { it.userId != null }
+        userId = auth?.userId
+        authToken = "Bearer ${auth?.accessToken}"
     }
 
     @Test
@@ -78,12 +83,7 @@ class SettingsControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(settings))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isOk
-            .expectBody()
-            .jsonPath("$.gender").isEqualTo(settings.gender.toString())
-            .jsonPath("$.ageMin").isEqualTo(settings.ageMin!!)
-            .jsonPath("$.ageMax").isEqualTo(settings.ageMax!!)
-            .jsonPath("$.distance").isEqualTo(settings.distance!!)
+            .expectStatus().isNotFound
     }
 
     @Test

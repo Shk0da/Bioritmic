@@ -13,6 +13,7 @@ import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkNotEmpty
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springdoc.core.annotations.ParameterObject
 import org.springframework.data.domain.Pageable
@@ -31,7 +32,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
-import reactor.core.publisher.Mono
 import java.lang.Long.valueOf
 import java.security.Principal
 import java.util.Date
@@ -134,12 +134,14 @@ class UserController(val userService: UserService) {
 
     // POST /me/photo -> UserInfo
     @PostMapping(value = ["/me/photo"], consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    suspend fun uploadPhoto(@RequestPart("file") file: Mono<@Valid @NotNull FilePart>, principal: Principal): ResponseEntity<Void> {
+    suspend fun uploadPhoto(@RequestPart("file") file: @Valid @NotNull FilePart, principal: Principal): ResponseEntity<Void> {
         val userId = getUserId(principal)
-        val checkedFilePart = file
-            .filter { checkNotEmpty(it.filename(), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file"))) }
-            .filter { checkFileExtension(it.filename(), arrayListOf("png", "jpg"), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file"))) }
-        userService.updatePhoto(userId, checkedFilePart.block()!!)
+        val checkNotEmpty = checkNotEmpty(file.filename(), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file")))
+        val checkFileExtension = checkFileExtension(file.filename(), arrayListOf("png", "jpg"), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file")))
+        if (!checkNotEmpty || !checkFileExtension) {
+            throw ApiException(ErrorCode.BAD_PHOTO)
+        }
+        userService.updatePhoto(userId, file)
         log.debug("Update photo: {}", userId)
         return ResponseEntity.status(HttpStatus.ACCEPTED).build()
     }

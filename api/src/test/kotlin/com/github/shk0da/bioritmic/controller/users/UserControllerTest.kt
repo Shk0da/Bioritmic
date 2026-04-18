@@ -11,21 +11,25 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
 import java.util.Date
+import java.util.UUID
 
 
 class UserControllerTest : ApiApplicationTests() {
 
-    private val defaultUserModel = UserModel(
-        name = "Test User",
-        email = "user_test@gmail.com",
-        password = "12345",
-        birthday = "1989-01-14"
-    )
-
+    private lateinit var defaultUserModel: UserModel
     private lateinit var authToken: String
+    private var userId: Long? = null
 
     @BeforeEach
     fun setup() {
+        val uniqueId = UUID.randomUUID().toString().substring(0, 8)
+        defaultUserModel = UserModel(
+            name = "Test User",
+            email = "user_test_${uniqueId}@gmail.com",
+            password = "12345",
+            birthday = "1989-01-14"
+        )
+
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
@@ -33,6 +37,8 @@ class UserControllerTest : ApiApplicationTests() {
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isCreated
+            .expectBody()
+            .jsonPath("$.id").exists()
 
         val authorizationModel = AuthorizationModel(
             email = defaultUserModel.email!!,
@@ -47,9 +53,14 @@ class UserControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
 
-        // Get accessToken from cache
-        val auth = authTokenCache.values.first()
-        authToken = "Bearer ${auth.accessToken}"
+        // Get accessToken from cache - find by email
+        val auth = authTokenCache.entries.find { entry ->
+            val userAuth = entry.value
+            userAuth.userId != null
+        }?.value
+        
+        userId = auth?.userId
+        authToken = "Bearer ${auth?.accessToken}"
     }
 
     @Test

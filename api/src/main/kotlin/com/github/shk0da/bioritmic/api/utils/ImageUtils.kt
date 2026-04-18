@@ -1,5 +1,8 @@
 package com.github.shk0da.bioritmic.api.utils
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers.IO
 import org.slf4j.LoggerFactory
 import java.awt.Image
 import java.awt.image.BufferedImage
@@ -59,7 +62,7 @@ object ImageUtils {
     }
 
     fun deleteUserImages(userId: Long) {
-        ImageTag.values().iterator().forEachRemaining {
+        ImageTag.entries.iterator().forEachRemaining {
             val image = File(profileImagePath(userId, it))
             if (image.exists()) {
                 image.delete()

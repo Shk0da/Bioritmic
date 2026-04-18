@@ -22,6 +22,8 @@ import com.github.shk0da.bioritmic.api.utils.ImageUtils.deleteUserImages
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.profileImagePath
 import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.time.withTimeout
 import org.slf4j.LoggerFactory
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
@@ -30,6 +32,7 @@ import java.io.File
 import java.lang.System.currentTimeMillis
 import java.nio.file.Files.readAllBytes
 import java.sql.Timestamp
+import java.time.Duration
 
 @Service
 class UserService(
@@ -182,11 +185,15 @@ class UserService(
     }
 
     suspend fun updatePhoto(userId: Long, filePart: FilePart) {
-        val originalFile = File(profileImagePath(userId, ImageTag.ORIGINAL))
         try {
-            filePart.transferTo(originalFile)
-            cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_100x100)
-            cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_250x250)
+            val originalFile = File(profileImagePath(userId, ImageTag.ORIGINAL))
+            withTimeout(Duration.ofSeconds(3)) {
+                filePart.transferTo(originalFile).and {
+                    cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_100x100)
+                    cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_250x250)
+                }.awaitSingle()
+            }
+            log.info("Photo saved to : ${originalFile.toPath()}")
         } catch (ex: Exception) {
             log.error("Failed save photos for userId [{}]: {}", userId, ex.message)
         }
