@@ -29,4 +29,8 @@ export class MailboxService {
   deleteMail(userId: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${userId}`);
   }
+
+  getConversation(userId: number): Observable<UserMail[]> {
+    return this.http.get<UserMail[]>(`${this.apiUrl}/conversation/${userId}`);
+  }
 }

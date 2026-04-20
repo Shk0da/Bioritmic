@@ -25,7 +25,7 @@ class MailboxService(
 
     @Transactional
     suspend fun getUserMailbox(userId: Long, pageable: Pageable): List<UserMail> {
-        return mailboxRepository.findLatestMailsByUserId(userId, pageable.pageSize, pageable.offset)
+        return mailboxRepository.findAllMailsByUserId(userId, pageable.pageSize, pageable.offset)
     }
 
     @Transactional
@@ -47,5 +47,10 @@ class MailboxService(
     @Transactional
     suspend fun deleteMailboxes(currentUserId: Long, userId: Long) {
         mailboxRepository.deleteAllMailByBetweenTwoUserId(currentUserId, userId)
+    }
+
+    @Transactional
+    suspend fun getConversation(currentUserId: Long, otherUserId: Long): List<UserMail> {
+        return mailboxRepository.findConversationBetweenUsers(currentUserId, otherUserId)
     }
 }

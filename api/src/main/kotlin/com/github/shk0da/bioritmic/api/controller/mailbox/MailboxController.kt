@@ -44,4 +44,11 @@ class MailboxController(val mailboxService: MailboxService) {
         val currentUserId = getUserId()
         mailboxService.deleteMailboxes(currentUserId, userId)
     }
+
+    // GET /mailbox/conversation/{userId} <- Conversation
+    @GetMapping(value = ["/conversation/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun conversation(@PathVariable userId: Long): List<UserMailModel> {
+        val currentUserId = getUserId()
+        return mailboxService.getConversation(currentUserId, userId).map { UserMailModel.of(it) }
+    }
 }

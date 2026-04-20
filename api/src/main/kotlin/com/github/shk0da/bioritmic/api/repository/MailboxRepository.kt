@@ -14,14 +14,21 @@ import org.springframework.transaction.annotation.Transactional
 interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
 
     @Query(
-        "select * from (" +
-            "select row_number() over(partition by (case when from_user_id = :userId then to_user_id when to_user_id = :userId then from_user_id end) order by timestamp desc) as rn, " +
-            "id, from_user_id, to_user_id, message, timestamp " +
+        "select id, from_user_id, to_user_id, message, timestamp " +
             "from mailbox " +
-            "where from_user_id = :userId or to_user_id = :userId" +
-            ") t where rn = 1 order by timestamp desc limit :limit offset :offset"
+            "where from_user_id = :userId or to_user_id = :userId " +
+            "order by timestamp desc " +
+            "limit :limit offset :offset"
     )
-    suspend fun findLatestMailsByUserId(userId: Long, limit: Int, offset: Long): List<UserMail>
+    suspend fun findAllMailsByUserId(userId: Long, limit: Int, offset: Long): List<UserMail>
+
+    @Query(
+        "select id, from_user_id, to_user_id, message, timestamp " +
+            "from mailbox " +
+            "where (from_user_id = :userId1 and to_user_id = :userId2) or (from_user_id = :userId2 and to_user_id = :userId1) " +
+            "order by timestamp asc"
+    )
+    suspend fun findConversationBetweenUsers(userId1: Long, userId2: Long): List<UserMail>
 
     fun findAllByFromUserIdAndToUserId(from: Long, to: Long, pageable: Pageable?): Flow<UserMail>
 
