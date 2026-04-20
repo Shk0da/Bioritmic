@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { SearchService } from '../../core/services/search.service';
 import { UserService } from '../../core/services/user.service';
-import { UserInfo, Gender, UserSearch } from '../../core/models/user.model';
+import { UserInfo, Gender, UserSearch, UserSettings } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
 
 interface UserWithPhoto extends UserInfo {
@@ -67,7 +67,7 @@ interface UserWithPhoto extends UserInfo {
               <div class="col-md-4 mb-4">
                 <div class="card h-100">
                   <img
-                    [src]="user.photoDataUrl || 'assets/default-avatar.png'"
+                    [src]="user.photoDataUrl || ''"
                     class="card-img-top user-card-img"
                     [alt]="user.name">
                   <div class="card-body">
@@ -82,7 +82,7 @@ interface UserWithPhoto extends UserInfo {
                         <h6 class="small text-muted mb-2">Совместимость</h6>
                         @if (user.compare) {
                           <div class="compatibility-details-compact">
-                            @for (item of getPhysicalAndIntellectCompatibility(user); track item.name) {
+                            @for (item of getAllCompatibility(user); track item.name) {
                               <div class="compatibility-item-compact">
                                 <span class="small text-muted me-2">{{ item.label }}:</span>
                                 <span class="small fw-bold" [class.text-success]="item.value >= 70" [class.text-warning]="item.value >= 40 && item.value < 70" [class.text-danger]="item.value < 40">
@@ -117,8 +117,8 @@ export class SearchComponent implements OnInit {
   searchCriteria: UserSearch = {
     gender: Gender.WOMAN,
     ageMin: 18,
-    ageMax: 45,
-    distance: 10
+    ageMax: 65,
+    distance: 30
   };
 
   constructor(
@@ -128,7 +128,33 @@ export class SearchComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.search();
+    this.loadUserSettings();
+  }
+
+  private loadUserSettings(): void {
+    this.userService.getUserSettings().subscribe({
+      next: (settings: UserSettings) => {
+        // Применяем настройки пользователя к критериям поиска
+        if (settings.gender !== undefined) {
+          this.searchCriteria.gender = settings.gender;
+        }
+        if (settings.ageMin !== undefined) {
+          this.searchCriteria.ageMin = settings.ageMin;
+        }
+        if (settings.ageMax !== undefined) {
+          this.searchCriteria.ageMax = settings.ageMax;
+        }
+        if (settings.distance !== undefined) {
+          this.searchCriteria.distance = settings.distance;
+        }
+        // Выполняем поиск с загруженными настройками
+        this.search();
+      },
+      error: () => {
+        // Если настройки не загружены, выполняем поиск с настройками по умолчанию
+        this.search();
+      }
+    });
   }
 
   search(): void {
@@ -198,16 +224,20 @@ export class SearchComponent implements OnInit {
     return Math.round(sum / values.length * 100);
   }
 
-  getPhysicalAndIntellectCompatibility(user: UserWithPhoto): Array<{ name: string; label: string; value: number }> {
+  getAllCompatibility(user: UserWithPhoto): Array<{ name: string; label: string; value: number }> {
     if (!user.compare) return [];
-    
+
     const labels: Record<string, string> = {
       'Physical': 'Физическая',
-      'Intellectual': 'Интеллект'
+      'Intellectual': 'Интеллект',
+      'Heartfelt': 'Сердечная'
     };
-    
+
+    // Фильтруем только нужные типы совместимости
+    const neededTypes = ['Physical', 'Intellectual', 'Heartfelt'];
+
     return Object.entries(user.compare)
-      .filter(([name]) => name === 'Physical' || name === 'Intellectual')
+      .filter(([name]) => neededTypes.includes(name))
       .map(([name, value]) => ({
         name,
         label: labels[name] || name,

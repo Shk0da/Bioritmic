@@ -44,7 +44,7 @@ import { NgClass } from '@angular/common';
                         <td>
                           <div class="d-flex align-items-center">
                             <img
-                              [src]="user.image || 'assets/default-avatar.png'"
+                              [src]="user.image || ''"
                               class="rounded-circle me-3"
                               [alt]="user.name"
                               style="width: 50px; height: 50px; object-fit: cover;">

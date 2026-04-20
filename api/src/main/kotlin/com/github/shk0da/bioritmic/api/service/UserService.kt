@@ -150,7 +150,12 @@ class UserService(
 
     @Transactional
     suspend fun updateUserSettingsById(userId: Long, settings: UserSettingsModel): UserSettings {
-        val userSettings = userSettingsRepository.findById(userId) ?: throw ApiException(ErrorCode.SETTINGS_NOT_FOUND)
+        val userSettings = userSettingsRepository.findById(userId) ?: UserSettings().apply {
+            ageMin = 18
+            ageMax = 45
+            distance = 30.0
+            gender = 0
+        }
         with(userSettings) {
             if (null == this.userId) {
                 markAsNew()

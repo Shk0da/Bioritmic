@@ -1,18 +1,18 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgClass, NgStyle } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UserService } from '../../core/services/user.service';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { MeetingsService } from '../../core/services/meetings.service';
-import { UserInfo, Gender, UserMail, UserMeeting } from '../../core/models/user.model';
+import { UserInfo, Gender, UserMeeting } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-user-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, NgClass, NgStyle],
+  imports: [RouterLink, NgClass, NgStyle],
   template: `
     @if (loading) {
       <div class="text-center py-5">
@@ -30,7 +30,7 @@ import { FormsModule } from '@angular/forms';
         <div class="col-md-4">
           <div class="card">
             <img
-              [src]="photoDataUrl || user.image || 'assets/default-avatar.png'"
+              [src]="photoDataUrl || user.image || ''"
               class="card-img-top profile-avatar mx-auto mt-3"
               [alt]="user.name">
             <div class="card-body text-center">
@@ -48,7 +48,7 @@ import { FormsModule } from '@angular/forms';
                 <button class="btn btn-outline-primary" (click)="toggleBookmark()">
                   {{ isBookmarked ? 'Удалить из избранного' : 'В избранное' }}
                 </button>
-                <button class="btn btn-outline-secondary" (click)="showMessageForm = !showMessageForm">
+                <button class="btn btn-outline-secondary" (click)="openChat()">
                   Написать сообщение
                 </button>
                 <button class="btn" [ngClass]="isBlocked ? 'btn-outline-success' : 'btn-outline-danger'" (click)="toggleBlockUser()">
@@ -122,7 +122,7 @@ import { FormsModule } from '@angular/forms';
                         </div>
                       }
                     </div>
-                    
+
                     @if (user.compare) {
                       <div class="compatibility-details">
                         <h6 class="small text-muted mb-2">Детальная совместимость</h6>
@@ -135,10 +135,10 @@ import { FormsModule } from '@angular/forms';
                               </span>
                             </div>
                             <div class="progress" style="height: 8px;">
-                              <div 
-                                class="progress-bar" 
-                                [class.bg-success]="item.value >= 70" 
-                                [class.bg-warning]="item.value >= 40 && item.value < 70" 
+                              <div
+                                class="progress-bar"
+                                [class.bg-success]="item.value >= 70"
+                                [class.bg-warning]="item.value >= 40 && item.value < 70"
                                 [class.bg-danger]="item.value < 40"
                                 [ngStyle]="{ 'width.%': item.value }">
                               </div>
@@ -152,36 +152,6 @@ import { FormsModule } from '@angular/forms';
               }
             </div>
           </div>
-
-          @if (showMessageForm) {
-            <div class="card mt-3">
-              <div class="card-header">
-                <h5 class="mb-0">Написать сообщение</h5>
-              </div>
-              <div class="card-body">
-                <form (ngSubmit)="sendMessage()">
-                  <div class="mb-3">
-                    <label for="message" class="form-label">Сообщение</label>
-                    <textarea
-                      class="form-control"
-                      id="message"
-                      [(ngModel)]="messageText"
-                      name="message"
-                      rows="4"
-                      required></textarea>
-                  </div>
-                  <div class="d-flex justify-content-between">
-                    <button type="button" class="btn btn-outline-secondary" (click)="showMessageForm = false">
-                      Отмена
-                    </button>
-                    <button type="submit" class="btn btn-primary" [disabled]="!messageText">
-                      Отправить
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          }
         </div>
       </div>
     }
@@ -195,11 +165,10 @@ export class UserDetailComponent implements OnInit {
   error: string | null = null;
   isBookmarked = false;
   isBlocked = false;
-  showMessageForm = false;
-  messageText = '';
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private userService: UserService,
     private bookmarksService: BookmarksService,
     private mailboxService: MailboxService,
@@ -214,6 +183,12 @@ export class UserDetailComponent implements OnInit {
     } else {
       this.error = 'Пользователь не найден';
       this.loading = false;
+    }
+  }
+
+  openChat(): void {
+    if (this.user?.id) {
+      this.router.navigate(['/mailbox/conversation', this.user.id]);
     }
   }
 
@@ -395,26 +370,6 @@ export class UserDetailComponent implements OnInit {
       },
       error: () => {
         alert('Ошибка отправки предложения встречи');
-      }
-    });
-  }
-
-  sendMessage(): void {
-    if (!this.user?.id || !this.messageText) return;
-
-    const mail: UserMail = {
-      to: this.user.id,
-      message: this.messageText
-    };
-
-    this.mailboxService.sendMail(mail).subscribe({
-      next: () => {
-        alert('Сообщение отправлено!');
-        this.showMessageForm = false;
-        this.messageText = '';
-      },
-      error: () => {
-        alert('Ошибка отправки сообщения');
       }
     });
   }

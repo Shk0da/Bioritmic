@@ -39,7 +39,7 @@ interface MeetingWithUser extends UserMeeting {
                   <div class="card-body">
                     <div class="d-flex align-items-start">
                       <img
-                        [src]="meeting.userPhotoUrl || 'assets/default-avatar.png'"
+                        [src]="meeting.userPhotoUrl || ''"
                         class="rounded-circle me-3"
                         style="width: 60px; height: 60px; object-fit: cover;"
                         [alt]="meeting.userName || 'User'">

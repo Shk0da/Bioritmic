@@ -35,7 +35,7 @@ interface UserWithPhoto extends UserInfo {
               <div class="col-md-4 mb-4">
                 <div class="card h-100">
                   <img
-                    [src]="user.photoDataUrl || 'assets/default-avatar.png'"
+                    [src]="user.photoDataUrl || ''"
                     class="card-img-top user-card-img"
                     [alt]="user.name">
                   <div class="card-body">

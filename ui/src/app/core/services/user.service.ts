@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { User, UserInfo, GisData, PageableRequest } from '../models/user.model';
+import { User, UserInfo, GisData, PageableRequest, UserSettings } from '../models/user.model';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -82,5 +82,13 @@ export class UserService {
       'Authorization': `Bearer ${token || ''}`
     });
     return this.http.delete<void>(`${this.apiUrl}/me/photo`, { headers });
+  }
+
+  getUserSettings(): Observable<UserSettings> {
+    return this.http.get<UserSettings>(`${this.apiUrl}/settings`);
+  }
+
+  saveUserSettings(settings: UserSettings): Observable<UserSettings> {
+    return this.http.post<UserSettings>(`${this.apiUrl}/settings`, settings);
   }
 }

@@ -14,7 +14,7 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
       <div class="col-md-4">
         <div class="card">
           <img
-            [src]="photoDataUrl || user?.image || 'assets/default-avatar.png'"
+            [src]="photoDataUrl || user?.image || ''"
             class="card-img-top profile-avatar mx-auto mt-3"
             [alt]="user?.name">
           <div class="card-body text-center">

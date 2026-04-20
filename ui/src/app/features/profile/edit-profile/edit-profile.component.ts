@@ -21,7 +21,7 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
             <div class="text-center mb-4">
               <div class="position-relative d-inline-block">
                 <img
-                  [src]="photoDataUrl || 'assets/default-avatar.png'"
+                  [src]="photoDataUrl || ''"
                   class="profile-avatar rounded-circle"
                   style="width: 150px; height: 150px; object-fit: cover;">
                 <label for="photoUpload" class="btn btn-primary btn-sm position-absolute" style="bottom: 0; right: 0; border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;">
