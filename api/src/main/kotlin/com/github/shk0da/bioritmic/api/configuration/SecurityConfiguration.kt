@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
@@ -60,6 +61,14 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
             .authorizeExchange {
                 it.pathMatchers(*openRoutes).permitAll()
                 it.anyExchange().authenticated()
+            }
+            .exceptionHandling {
+                it.authenticationEntryPoint { exchange, _ ->
+                    Mono.fromRunnable {
+                        exchange.response.statusCode = HttpStatus.UNAUTHORIZED
+                        exchange.response.headers.remove(HttpHeaders.WWW_AUTHENTICATE)
+                    }
+                }
             }
             .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION)
         return http.build()
