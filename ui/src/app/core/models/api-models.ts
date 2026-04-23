@@ -56,6 +56,7 @@ export interface UserInfo {
   distance?: number;
   email?: string;
   gender?: Gender;
+  horo?: number; // порядковый номер знака зодиака (1-12)
   id?: number;
   image?: string;
   isBioCompatible?: boolean;
@@ -79,6 +80,7 @@ export interface UserInfoRes {
   distance?: number;
   email?: string;
   gender?: Gender;
+  horo?: number; // порядковый номер знака зодиака (1-12)
   id?: number;
   image?: string;
   isBioCompatible?: boolean;

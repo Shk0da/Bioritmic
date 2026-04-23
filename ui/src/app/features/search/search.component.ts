@@ -40,7 +40,7 @@ interface UserWithPhoto extends UserInfo {
 
           <div class="mb-3">
             <label class="form-label">Расстояние (км)</label>
-            <input type="range" class="form-range" [(ngModel)]="searchCriteria.distance" min="0.05" max="30" step="0.05">
+            <input type="range" class="form-range" [(ngModel)]="searchCriteria.distance" min="0.05" max="100" step="0.05">
             <span class="text-muted">{{ searchCriteria.distance }} км</span>
           </div>
 

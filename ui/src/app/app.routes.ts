@@ -4,12 +4,17 @@ import { authGuard } from './core/guards/auth.guard';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'search',
+    redirectTo: 'swipe',
     pathMatch: 'full'
   },
   {
     path: 'auth',
     loadChildren: () => import('./features/auth/auth.routes').then(m => m.AUTH_ROUTES)
+  },
+  {
+    path: 'swipe',
+    canActivate: [authGuard],
+    loadChildren: () => import('./features/swipe/swipe.routes').then(m => m.SWIPE_ROUTES)
   },
   {
     path: 'search',
@@ -48,6 +53,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'search'
+    redirectTo: 'swipe'
   }
 ];

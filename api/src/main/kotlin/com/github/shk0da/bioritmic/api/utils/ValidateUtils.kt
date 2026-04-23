@@ -32,7 +32,7 @@ object ValidateUtils {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "ageMin, ageMax")))
         }
 
-        if (null != distance && (distance < 0.05 || distance > 30.0)) {
+        if (null != distance && (distance < 0.05 || distance > 100.0)) {
             throw ApiException(
                 ErrorCode.INVALID_PARAMETER_WITH_VALUE, mapOf(
                     Pair(PARAMETER_NAME, "distance"),

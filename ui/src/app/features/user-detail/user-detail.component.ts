@@ -71,10 +71,6 @@ import { FormsModule } from '@angular/forms';
                   <p>{{ getGenderText() }}</p>
                 </div>
                 <div class="col-md-6 mb-3">
-                  <label class="text-muted small">Дата рождения</label>
-                  <p>{{ getBirthday() }}</p>
-                </div>
-                <div class="col-md-6 mb-3">
                   <label class="text-muted small">Знак зодиака</label>
                   <p>{{ getZodiacSign() }}</p>
                 </div>
@@ -273,11 +269,19 @@ export class UserDetailComponent implements OnInit {
   }
 
   getZodiacSign(): string {
+    // Если есть horo (порядковый номер знака), используем его
+    if (this.user?.horo && this.user.horo >= 1 && this.user.horo <= 12) {
+      const signs = ['Козерог', 'Водолей', 'Рыбы', 'Овен', 'Телец', 'Близнецы',
+                     'Рак', 'Лев', 'Дева', 'Весы', 'Скорпион', 'Стрелец'];
+      return signs[this.user.horo - 1];
+    }
+    
+    // Fallback: вычисляем по дате рождения
     if (!this.user?.birthday) return '';
     const date = new Date(this.user.birthday);
     const day = date.getDate();
     const month = date.getMonth() + 1;
-    
+
     // Границы знаков зодиака (день начала знака в каждом месяце)
     const zodiacSigns: Record<string, { day: number; sign: string }> = {
       '1': { day: 20, sign: 'Водолей' },   // 20 янв - 18 фев

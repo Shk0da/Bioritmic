@@ -34,14 +34,14 @@ export interface RecoveryModel {
 export interface UserSettings {
   ageMin?: number; // minimum: 14, maximum: 100
   ageMax?: number; // minimum: 14, maximum: 100
-  distance?: number; // minimum: 0.05, maximum: 30
+  distance?: number; // minimum: 0.05, maximum: 100
   gender?: Gender;
 }
 
 export interface UserSearch {
   ageMin?: number; // minimum: 14, maximum: 100
   ageMax?: number; // minimum: 14, maximum: 100
-  distance?: number; // minimum: 0.05, maximum: 30
+  distance?: number; // minimum: 0.05, maximum: 100
   gender?: Gender;
   timestamp?: Timestamp;
 }
@@ -95,6 +95,7 @@ export interface UserInfo {
   distance?: number;
   email?: string;
   gender?: Gender;
+  horo?: number; // порядковый номер знака зодиака (1-12)
   id?: number;
   image?: string;
   isBioCompatible?: boolean;
@@ -114,4 +115,18 @@ export interface ApiError {
   code: string;
   message: string;
   parameters?: Record<string, string>;
+}
+
+export enum SwipeDirection {
+  LEFT = 'left',
+  RIGHT = 'right',
+  UP = 'up',
+  NONE = 'none'
+}
+
+export interface SwipeCard {
+  user: UserInfo;
+  photoDataUrl?: string | null;
+  isLiked?: boolean;
+  isSuperLiked?: boolean;
 }

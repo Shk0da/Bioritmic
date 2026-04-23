@@ -22,6 +22,8 @@ data class UserInfo(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val gender: Gender? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val horo: Int? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val compare: HashMap<String, Double>? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val isBioCompatible: Boolean? = null,
@@ -50,6 +52,18 @@ data class UserInfo(
                 email = user.email,
                 birthday = Date(user.birthday!!.time),
                 gender = user.getGender(),
+                horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
+                image = ImageUtils.getProfileImageUri(user.id!!)
+            )
+        }
+
+        fun ofWithoutEmail(user: User): UserInfo {
+            return UserInfo(
+                id = user.id,
+                name = user.name,
+                birthday = Date(user.birthday!!.time),
+                gender = user.getGender(),
+                horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
                 image = ImageUtils.getProfileImageUri(user.id!!)
             )
         }
@@ -60,6 +74,7 @@ data class UserInfo(
                 name = gisUser.name,
                 age = biorhythmService.calculateAge(Date(gisUser.birthday!!.time)),
                 gender = gisUser.getGender(),
+                horo = biorhythmService.getNumZodiac(Date(gisUser.birthday!!.time)),
                 lat = gisUser.lat,
                 lon = gisUser.lon,
                 distance = gisUser.distance,
@@ -78,6 +93,7 @@ data class UserInfo(
                 name = gisUser.name,
                 age = biorhythmService.calculateAge(Date(gisUser.birthday!!.time)),
                 gender = gisUser.getGender(),
+                horo = biorhythmService.getNumZodiac(Date(gisUser.birthday!!.time)),
                 lat = gisUser.lat,
                 lon = gisUser.lon,
                 distance = gisUser.distance,
@@ -100,6 +116,7 @@ data class UserInfo(
                 name = user.name,
                 age = biorhythmService.calculateAge(Date(user.birthday!!.time)),
                 gender = user.getGender(),
+                horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
                 compare = compare,
                 isBioCompatible = isBioCompatible,
                 isHoroCompatible = isHoroCompatible,

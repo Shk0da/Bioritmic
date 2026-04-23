@@ -83,21 +83,21 @@ class UserController(val userService: UserService) {
     @GetMapping(value = ["/blocked"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun blockedUsers(@ParameterObject pageable: Pageable): List<UserInfo> {
         val userId = getUserId()
-        return userService.blockedUsers(userId, of(pageable)).map { UserInfo.of(it) }
+        return userService.blockedUsers(userId, of(pageable)).map { UserInfo.ofWithoutEmail(it) }
     }
 
     // PUT /user/{id}/block <- UserInfo
     @PutMapping(value = ["/{id}/block"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun blockUser(@PathVariable id: Long): UserInfo {
         val userId = getUserId()
-        return UserInfo.of(userService.blockUser(userId, id))
+        return UserInfo.ofWithoutEmail(userService.blockUser(userId, id))
     }
 
     // PUT /user/{id}/block <- unblock
     @PutMapping(value = ["/{id}/unblock"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun unblockUser(@PathVariable id: Long): UserInfo {
         val userId = getUserId()
-        return UserInfo.of(userService.unblockUser(userId, id))
+        return UserInfo.ofWithoutEmail(userService.unblockUser(userId, id))
     }
 
     // GET /me/gis <- GIS

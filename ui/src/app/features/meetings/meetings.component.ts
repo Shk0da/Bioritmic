@@ -3,7 +3,6 @@ import { RouterLink } from '@angular/router';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { UserService } from '../../core/services/user.service';
 import { UserMeeting, PageableRequest, UserInfo } from '../../core/models/user.model';
-import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 
 interface MeetingWithUser extends UserMeeting {
@@ -14,59 +13,111 @@ interface MeetingWithUser extends UserMeeting {
 @Component({
   selector: 'app-meetings',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink],
   template: `
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0">Встречи</h5>
+    <div class="page-header mb-4">
+      <h1 class="page-title">
+        <i class="bi bi-calendar-event me-2"></i>Встречи
+      </h1>
+      <p class="text-muted">Предложения встреч рядом с вами</p>
+    </div>
+
+    @if (loading) {
+      <div class="card">
+        <div class="card-body text-center py-5">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Загрузка...</span>
+          </div>
+        </div>
       </div>
-      <div class="card-body">
-        @if (loading) {
-          <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Загрузка...</span>
-            </div>
-          </div>
-        } @else if (meetings.length === 0) {
-          <div class="alert alert-info">
-            У вас пока нет предложений встреч
-          </div>
-        } @else {
-          <div class="row">
-            @for (meeting of meetings; track meeting.id) {
-              <div class="col-md-6 mb-3">
-                <div class="card meeting-card">
-                  <div class="card-body">
-                    <div class="d-flex align-items-start">
-                      <img
-                        [src]="meeting.userPhotoUrl || ''"
-                        class="rounded-circle me-3"
-                        style="width: 60px; height: 60px; object-fit: cover;"
-                        [alt]="meeting.userName || 'User'">
-                      <div class="flex-grow-1">
-                        <h6 class="card-title mb-2">
-                          {{ meeting.userName || 'Пользователь #' + meeting.userId }}
-                        </h6>
-                        <p class="card-text small text-muted mb-1">
-                          Координаты: {{ meeting.lat }}, {{ meeting.lon }}
-                        </p>
-                        <p class="card-text small text-muted mb-2">
-                          Расстояние: {{ meeting.distance }} км
-                        </p>
-                        <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-primary btn-sm">
-                          Посмотреть профиль
-                        </a>
-                      </div>
+    } @else if (meetings.length === 0) {
+      <div class="card empty-state">
+        <div class="card-body text-center py-5">
+          <i class="bi bi-calendar-x display-1 text-muted mb-3"></i>
+          <h4 class="text-muted">Пока нет встреч</h4>
+          <p class="text-muted">Предложения встреч появятся, когда кто-то предложит вам встречу</p>
+          <a routerLink="/swipe" class="btn btn-primary mt-3">
+            <i class="bi bi-people me-2"></i>К поиску
+          </a>
+        </div>
+      </div>
+    } @else {
+      <div class="row">
+        @for (meeting of meetings; track meeting.id) {
+          <div class="col-12 col-md-6 mb-4">
+            <div class="card meeting-card h-100">
+              <div class="card-body">
+                <div class="d-flex align-items-start">
+                  <img
+                    [src]="meeting.userPhotoUrl || ''"
+                    class="rounded-circle me-3 meeting-user-photo"
+                    [alt]="meeting.userName || 'User'">
+                  <div class="flex-grow-1">
+                    <h6 class="card-title mb-2">
+                      {{ meeting.userName || 'Пользователь #' + meeting.userId }}
+                    </h6>
+                    <div class="meeting-details mb-3">
+                      <p class="small text-muted mb-0">
+                        <i class="bi bi-signpost-2 me-1"></i>
+                        Расстояние: <strong>{{ meeting.distance.toFixed(1) }} км</strong>
+                      </p>
                     </div>
+                    <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-primary">
+                      <i class="bi bi-person me-2"></i>Профиль пользователя
+                    </a>
                   </div>
                 </div>
               </div>
-            }
+            </div>
           </div>
         }
       </div>
-    </div>
-  `
+    }
+  `,
+  styles: [`
+    .page-header {
+      padding: 1rem 0;
+    }
+
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .empty-state {
+      max-width: 500px;
+      margin: 2rem auto;
+    }
+
+    .meeting-card {
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    .meeting-user-photo {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .meeting-details {
+      background: rgba(253, 41, 123, 0.03);
+      padding: 0.75rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+  `]
 })
 export class MeetingsComponent implements OnInit {
   meetings: MeetingWithUser[] = [];
@@ -100,11 +151,9 @@ export class MeetingsComponent implements OnInit {
   private loadUserData(): void {
     this.meetings.forEach(meeting => {
       if (meeting.userId) {
-        // Загружаем имя пользователя
         this.userService.getUserById(meeting.userId).subscribe({
           next: (user: UserInfo) => {
             meeting.userName = user.name;
-            // Загружаем фото
             this.loadUserPhoto(meeting.userId!, meeting);
           },
           error: () => {

@@ -1,0 +1,873 @@
+.swipe-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 70px);
+  background: #f5f7fa;
+  overflow: hidden;
+}
+
+/* Кнопка фильтров (мобильная) */
+.mobile-filters-btn {
+  display: none;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+  
+  .btn-filter {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: white;
+    color: #fd297b;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+}
+
+/* Мобильная область карточек (Tinder) */
+.mobile-swipe-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+/* Десктопная область профилей (Badoo-стиль) */
+.desktop-profiles-container {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  background: #f0f2f5;
+
+  .profiles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .profile-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .profile-card-photo {
+      height: 320px;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      position: relative;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, transparent 40%, rgba(0, 0, 0, 0.8) 100%);
+      }
+
+      .online-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 12px;
+        height: 12px;
+        background: #4ade80;
+        border: 2px solid white;
+        border-radius: 50%;
+        z-index: 2;
+      }
+    }
+
+    .profile-card-body {
+      padding: 1rem;
+
+      .profile-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+
+        h5 {
+          margin: 0;
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #1f2937;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+
+          .zodiac-sign {
+            color: #f59e0b;
+            font-size: 0.9rem;
+          }
+        }
+
+        .distance-badge {
+          font-size: 0.8rem;
+          color: #6b7280;
+          background: #f3f4f6;
+          padding: 0.25rem 0.6rem;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          white-space: nowrap;
+        }
+      }
+
+        .compatibility-mini {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+          flex-wrap: wrap;
+
+          .compat-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+
+            .zodiac-sign {
+              color: #f59e0b;
+              font-size: 0.9rem;
+            }
+
+            &.high {
+              background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+              color: white;
+            }
+
+            &.bio {
+              background: #e0e7ff;
+              color: #6366f1;
+
+              &.compatible {
+                background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+                color: white;
+              }
+            }
+
+            &.horo {
+              background: #fef3c7;
+              color: #f59e0b;
+
+              &.compatible {
+                background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+                color: white;
+              }
+            }
+
+            &.heartfelt {
+              background: #fce7f3;
+              color: #ec4899;
+            }
+
+            &.physical {
+              background: #fee2e2;
+              color: #ef4444;
+            }
+
+            &.intellectual {
+              background: #dbeafe;
+              color: #3b82f6;
+            }
+          }
+        }
+      .profile-card-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e5e7eb;
+
+        .btn {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.35rem;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.85rem;
+          border-radius: 8px;
+          transition: all 0.2s ease;
+
+          &.btn-outline-danger {
+            &:hover {
+              background: #f87171;
+              border-color: #f87171;
+              color: white;
+            }
+          }
+
+          &.btn-outline-primary {
+            &:hover {
+              background: #3b82f6;
+              border-color: #3b82f6;
+              color: white;
+            }
+          }
+
+          &.btn-outline-success {
+            &:hover {
+              background: #4ade80;
+              border-color: #4ade80;
+              color: white;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .no-cards-desktop {
+    color: #4b5563;
+
+    .no-cards-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      color: #9ca3af;
+    }
+
+    h3 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #1f2937;
+    }
+
+    p {
+      color: #6b7280;
+    }
+  }
+}
+
+.no-cards {
+  text-align: center;
+  color: white;
+  padding: 2rem;
+
+  .no-cards-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    opacity: 0.8;
+  }
+}
+
+/* Карточка */
+.swipe-card {
+  position: absolute;
+  width: 100%;
+  max-width: 400px;
+  height: 600px;
+  max-height: 80vh;
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  cursor: grab;
+
+  &.top-card {
+    cursor: grabbing;
+  }
+
+  &.next-card {
+    transform: scale(0.95) translateY(-10px);
+    opacity: 0.5;
+  }
+
+  &.swipe-left {
+    animation: swipeLeft 0.5s ease forwards;
+  }
+
+  &.swipe-right {
+    animation: swipeRight 0.5s ease forwards;
+  }
+
+  @keyframes swipeLeft {
+    to {
+      transform: translateX(-150%) rotate(-30deg);
+      opacity: 0;
+    }
+  }
+
+  @keyframes swipeRight {
+    to {
+      transform: translateX(150%) rotate(30deg);
+      opacity: 0;
+    }
+  }
+
+  @keyframes swipeUp {
+    to {
+      transform: translateY(-150%) scale(1.1);
+      opacity: 0;
+    }
+  }
+}
+
+.card-photo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  .photo-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 50%,
+      rgba(0, 0, 0, 0.8) 100%
+    );
+  }
+}
+
+/* Индикаторы свайпа */
+.swipe-indicator {
+  position: absolute;
+  top: 2rem;
+  padding: 0.5rem 1.5rem;
+  border: 4px solid;
+  border-radius: 10px;
+  font-size: 2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+
+  &.visible {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  &.like {
+    left: 2rem;
+    color: #4ade80;
+    border-color: #4ade80;
+    transform: rotate(-15deg) scale(0.5);
+
+    &.visible {
+      transform: rotate(-15deg) scale(1);
+    }
+  }
+
+  &.nope {
+    right: 2rem;
+    color: #f87171;
+    border-color: #f87171;
+    transform: rotate(15deg) scale(0.5);
+
+    &.visible {
+      transform: rotate(15deg) scale(1);
+    }
+  }
+
+  span {
+    font-size: 1rem;
+    letter-spacing: 2px;
+  }
+}
+
+/* Информация на карточке */
+.card-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1.5rem;
+  color: white;
+  z-index: 10;
+}
+
+.info-main {
+  margin-bottom: 0.75rem;
+}
+
+.user-name {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+
+  .user-age {
+    font-size: 1.5rem;
+    font-weight: 400;
+  }
+
+  .user-zodiac {
+    font-size: 1.3rem;
+    color: #fbbf24;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.user-distance {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Бейджи совместимости */
+.compatibility-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(5px);
+
+  &.bio.compatible {
+    background: #10b981;
+  }
+
+  &.horo.compatible {
+    background: #8b5cf6;
+  }
+
+  &.high-match {
+    background: #f43f5e;
+  }
+
+  &.heartfelt {
+    background: #fce7f3;
+    color: #ec4899;
+  }
+
+  &.physical {
+    background: #fee2e2;
+    color: #ef4444;
+  }
+
+  &.intellectual {
+    background: #dbeafe;
+    color: #3b82f6;
+  }
+}
+
+/* Детали карточки */
+.card-details {
+  height: 30%;
+  overflow-y: auto;
+  background: white;
+}
+
+.details-content {
+  padding: 1.5rem;
+}
+
+.details-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.75rem;
+}
+
+/* Детальная совместимость */
+.compatibility-details {
+  margin-bottom: 1.5rem;
+}
+
+.compat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.compat-label {
+  font-size: 0.85rem;
+  color: #4b5563;
+  min-width: 100px;
+}
+
+.compat-bar {
+  flex: 1;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.compat-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+
+  &.high {
+    background: #10b981;
+  }
+
+  &.medium {
+    background: #f59e0b;
+  }
+
+  &.low {
+    background: #ef4444;
+  }
+}
+
+.compat-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1f2937;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Био */
+.user-bio {
+  margin-bottom: 1.5rem;
+}
+
+.bio-text {
+  font-size: 0.9rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.view-profile-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 25px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  }
+}
+
+/* Кнопки управления */
+.swipe-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  &:not(:disabled):hover {
+    transform: scale(1.15);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &.btn-dislike {
+    background: white;
+    color: #f87171;
+
+    &:hover {
+      background: #f87171;
+      color: white;
+    }
+  }
+
+  &.btn-like {
+    background: white;
+    color: #4ade80;
+
+    &:hover {
+      background: #4ade80;
+      color: white;
+    }
+  }
+}
+
+/* Нижняя навигация */
+.bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  color: #9ca3af;
+  text-decoration: none;
+  font-size: 0.75rem;
+  transition: all 0.3s ease;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+
+  i {
+    font-size: 1.5rem;
+  }
+
+  &:hover {
+    color: #667eea;
+  }
+
+  &.active {
+    color: #667eea;
+
+    i {
+      transform: scale(1.1);
+    }
+  }
+}
+
+/* Загрузка */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(102, 126, 234, 0.9);
+  z-index: 100;
+}
+
+/* Модальное окно фильтров */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.filters-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  padding: 1.5rem;
+  z-index: 1001;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  h5 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+}
+
+.filters-body {
+  margin-bottom: 1.5rem;
+}
+
+.filter-group {
+  margin-bottom: 1.5rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.filter-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+}
+
+.form-select,
+.form-range {
+  width: 100%;
+}
+
+.form-select {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+
+  &:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+}
+
+.form-range {
+  margin-bottom: 0.5rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.filters-footer {
+  display: flex;
+  gap: 0.75rem;
+
+  .btn {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .swipe-card {
+    max-width: 100%;
+    height: 70vh;
+  }
+
+  .user-name {
+    font-size: 1.5rem;
+
+    .user-age {
+      font-size: 1.25rem;
+    }
+  }
+
+  .control-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+}
+
+/* Десктопная версия: показываем профили, скрываем карточки */
+@media (min-width: 1025px) {
+  .mobile-swipe-container,
+  .swipe-controls {
+    display: none !important;
+  }
+
+  .desktop-profiles-container {
+    display: block !important;
+  }
+  
+  .header-right .icon-btn:first-child {
+    display: none !important;
+  }
+}
+
+/* Мобильная версия: скрываем десктопные элементы */
+@media (max-width: 1024px) {
+  .desktop-profiles-container {
+    display: none !important;
+  }
+  
+  .mobile-swipe-container,
+  .swipe-controls {
+    display: flex !important;
+  }
+  
+  .mobile-filters-btn {
+    display: block !important;
+  }
+}

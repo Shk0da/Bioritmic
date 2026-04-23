@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap, catchError, throwError } from 'rxjs';
 import { User, UserToken, AuthorizationModel, Gender, UserInfo } from '../models/user.model';
+import { CookieService } from './cookie.service';
 
 const TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
@@ -15,20 +16,23 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<UserInfo | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(private http: HttpClient) {
+  constructor(
+    private http: HttpClient,
+    private cookieService: CookieService
+  ) {
     this.loadUserFromStorage();
   }
 
   private loadUserFromStorage(): void {
-    const userStr = localStorage.getItem(USER_KEY);
-    const token = localStorage.getItem(TOKEN_KEY);
+    const userStr = this.cookieService.get(USER_KEY);
+    const token = this.cookieService.get(TOKEN_KEY);
     if (userStr && token) {
       const user = JSON.parse(userStr);
       this.currentUserSubject.next(user);
       // Проверяем, действителен ли пользователь на сервере
       this.http.get<UserInfo>(`${this.apiUrl}/user/me`).subscribe({
         next: (user) => {
-          localStorage.setItem(USER_KEY, JSON.stringify(user));
+          this.cookieService.set(USER_KEY, JSON.stringify(user), 7);
           this.currentUserSubject.next(user);
         },
         error: (error: HttpErrorResponse) => {
@@ -70,11 +74,11 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return !!localStorage.getItem(TOKEN_KEY);
+    return !!this.cookieService.get(TOKEN_KEY);
   }
 
   getToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
+    return this.cookieService.get(TOKEN_KEY);
   }
 
   getCurrentUser(): UserInfo | null {
@@ -82,21 +86,25 @@ export class AuthService {
   }
 
   clearAuth(): void {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    this.cookieService.remove(TOKEN_KEY);
+    this.cookieService.remove(REFRESH_TOKEN_KEY);
+    this.cookieService.remove(USER_KEY);
     this.currentUserSubject.next(null);
   }
 
   setAuth(token: UserToken): void {
-    localStorage.setItem(TOKEN_KEY, token.accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, token.refreshToken);
+    // Сохраняем токены и пользователя в cookies на 7 дней
+    this.cookieService.set(TOKEN_KEY, token.accessToken, 7);
+    this.cookieService.set(REFRESH_TOKEN_KEY, token.refreshToken, 7);
+    const user = { name: token.name, email: token.email };
+    this.cookieService.set(USER_KEY, JSON.stringify(user), 7);
+    this.currentUserSubject.next(user);
   }
 
   loadCurrentUser(): Observable<UserInfo> {
     return this.http.get<UserInfo>(`${this.apiUrl}/user/me`).pipe(
       tap(user => {
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        this.cookieService.set(USER_KEY, JSON.stringify(user), 7);
         this.currentUserSubject.next(user);
       }),
       catchError((error: HttpErrorResponse) => {

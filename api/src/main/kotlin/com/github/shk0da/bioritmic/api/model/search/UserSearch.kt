@@ -20,7 +20,7 @@ data class UserSearch(
     val gender: Gender? = null,
     @field:Min(14) @field:Max(100) val ageMin: Int? = null,
     @field:Min(14) @field:Max(100) val ageMax: Int? = null,
-    @field:DecimalMin("0.05") @field:DecimalMax("30") val distance: Double = defaultDistance,
+    @field:DecimalMin("0.05") @field:DecimalMax("100") val distance: Double = defaultDistance,
 ) : BasicPresentation {
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)

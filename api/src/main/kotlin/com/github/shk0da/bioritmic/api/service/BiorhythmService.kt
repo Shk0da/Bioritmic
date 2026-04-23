@@ -55,59 +55,82 @@ class BiorhythmService {
     }
 
     private val zodiak: Map<Int, Int> = with(HashMap<Int, Int>()) {
-        put(1, 21)
-        put(2, 20)
-        put(3, 20)
-        put(4, 20)
-        put(5, 20)
-        put(6, 20)
-        put(7, 21)
-        put(8, 22)
-        put(9, 23)
-        put(10, 23)
-        put(11, 23)
-        put(12, 23)
-        put(13, 21)
+        // День перехода к следующему знаку для каждого месяца (1=Янв, 12=Дек)
+        // 20 янв - Козерог→Водолей, 19 фев - Водолей→Рыбы, и т.д.
+        put(1, 20)  // 20 января - переход от Козерога к Водолею
+        put(2, 19)  // 19 февраля - переход от Водолея к Рыбам
+        put(3, 20)  // 20 марта - переход от Рыб к Овну
+        put(4, 20)  // 20 апреля - переход от Овна к Тельцу
+        put(5, 20)  // 20 мая - переход от Тельца к Близнецам
+        put(6, 20)  // 20 июня - переход от Близнецов к Раку
+        put(7, 22)  // 22 июля - переход от Рака ко Льву
+        put(8, 22)  // 22 августа - переход от Льва к Деве
+        put(9, 22)  // 22 сентября - переход от Девы к Весам
+        put(10, 22) // 22 октября - переход от Весов к Скорпиону
+        put(11, 21) // 21 ноября - переход от Скорпиона к Стрельцу
+        put(12, 21) // 21 декабря - переход от Стрельца к Козерогу
         this
     }
 
     private val horoRegister: HashMap<String, Boolean> = HashMap()
 
+    /**
+     * Возвращает порядковый номер знака зодиака (1-12)
+     * 1=Козерог, 2=Водолей, 3=Рыбы, 4=Овен, 5=Телец, 6=Близнецы,
+     * 7=Рак, 8=Лев, 9=Дева, 10=Весы, 11=Скорпион, 12=Стрелец
+     */
     fun getNumZodiac(birthDate: Date): Int {
         val calendar = with(Calendar.getInstance(TimeZone.getDefault())) {
             time = birthDate
             this
         }
-        val month = calendar[Calendar.MONTH]
+        val month = calendar[Calendar.MONTH] + 1 // 1-12
         val day = calendar[Calendar.DAY_OF_MONTH]
-        return if (day < zodiak[month + 1]!!) month - 1 else month % 12
+
+        // zodiak[month] = день перехода к СЛЕДУЮЩЕМУ знаку
+        // Если день >= дня перехода, то это следующий знак
+        // Если день < дня перехода, то это текущий знак месяца
+        
+        return if (day >= zodiak[month]!!) {
+            // День перехода или после - следующий знак
+            if (month == 12) 1 else month + 1
+        } else {
+            // До дня перехода - текущий знак месяца
+            month
+        }
     }
 
     fun horoCompare(zodiac1: Int, zodiac2: Int): Boolean {
-        val horoKey = "horo_{$zodiac1}_{$zodiac2}"
+        val horoKey = "horo_${zodiac1}_${zodiac2}"
         if (horoRegister.containsKey(horoKey)) {
             return horoRegister.getOrDefault(horoKey, false)
         }
 
         var isCompare = false
-        horo.forEach {
-            val zodiacs = it.value
+        
+        // Правило 1: знаки одинаковой стихии (но не одинаковые)
+        horo.forEach { (_, zodiacs) ->
             if (zodiac1 != zodiac2 && zodiacs.contains(zodiac1) && zodiacs.contains(zodiac2)) {
                 isCompare = true
             }
-            if (horo["earth"]!!.contains(zodiac1) && horo["water"]!!.contains(zodiac2)) {
-                isCompare = true
-            }
-            if (horo["earth"]!!.contains(zodiac2) && horo["water"]!!.contains(zodiac1)) {
-                isCompare = true
-            }
-            if (horo["fire"]!!.contains(zodiac1) && horo["air"]!!.contains(zodiac2)) {
-                isCompare = true
-            }
-            if (horo["fire"]!!.contains(zodiac2) && horo["air"]!!.contains(zodiac2)) {
-                isCompare = true
-            }
         }
+        
+        // Правило 2: Земля + Вода
+        if (horo["earth"]!!.contains(zodiac1) && horo["water"]!!.contains(zodiac2)) {
+            isCompare = true
+        }
+        if (horo["earth"]!!.contains(zodiac2) && horo["water"]!!.contains(zodiac1)) {
+            isCompare = true
+        }
+        
+        // Правило 3: Огонь + Воздух
+        if (horo["fire"]!!.contains(zodiac1) && horo["air"]!!.contains(zodiac2)) {
+            isCompare = true
+        }
+        if (horo["fire"]!!.contains(zodiac2) && horo["air"]!!.contains(zodiac1)) {
+            isCompare = true
+        }
+        
         horoRegister[horoKey] = isCompare
         return isCompare
     }
@@ -116,7 +139,11 @@ class BiorhythmService {
         val compare = HashMap<String, Double>()
         val diffInMillis: Long = abs(birthDate1.time - birthDate2.time)
         val livedDaysDiff = TimeUnit.DAYS.convert(diffInMillis, TimeUnit.MILLISECONDS)
-        biorhythms.forEach {
+        
+        // Только 3 типа совместимости: Сердечная, Физическая, Интеллект
+        val allowedBiorhythms = listOf("Heartfelt", "Physical", "Intellectual")
+        
+        biorhythms.filterKeys { it in allowedBiorhythms }.forEach {
             val relation = livedDaysDiff / it.value
             val rhythm = floor((relation - floor(relation)) * 100)
             compare[it.key] = if (rhythm > 50) ((rhythm - 50) * 2) else (-1) * ((rhythm - 50) * 2)

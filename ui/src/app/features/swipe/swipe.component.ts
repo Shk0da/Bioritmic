@@ -1,0 +1,638 @@
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { Subject, takeUntil } from 'rxjs';
+import { SearchService } from '../../core/services/search.service';
+import { UserService } from '../../core/services/user.service';
+import { BookmarksService } from '../../core/services/bookmarks.service';
+import { SwipeService, SwipeResult } from '../../core/services/swipe.service';
+import { UserInfo, Gender, UserSearch, UserSettings, SwipeDirection, SwipeCard } from '../../core/models/user.model';
+import { FormsModule } from '@angular/forms';
+import { NgClass, NgStyle } from '@angular/common';
+
+@Component({
+  selector: 'app-swipe',
+  standalone: true,
+  imports: [RouterLink, FormsModule, NgClass, NgStyle],
+  template: `
+    <div class="swipe-container">
+      <!-- Кнопка фильтров (мобильная) -->
+      <div class="mobile-filters-btn">
+        <button class="control-btn btn-filter" (click)="openFilters()">
+          <i class="bi bi-funnel"></i>
+        </button>
+      </div>
+
+      <!-- Мобильная версия: Tinder-карточки -->
+      <div class="mobile-swipe-container">
+        @if (cards.length === 0 && !loading) {
+          <div class="no-cards">
+            <div class="no-cards-icon">
+              <i class="bi bi-emoji-frown"></i>
+            </div>
+            <h3>Пользователи закончились</h3>
+            <p class="text-muted">Попробуйте расширить параметры поиска</p>
+            <button class="btn btn-primary mt-3" (click)="openFilters()">
+              <i class="bi bi-funnel"></i> Изменить фильтры
+            </button>
+          </div>
+        } @else {
+          @for (card of cards.slice(0, 2); track card.user.id; let i = $index) {
+            <div
+              class="swipe-card"
+              [class.top-card]="i === 0"
+              [class.next-card]="i === 1"
+              [class.swipe-left]="i === 0 && swipeDirection === SwipeDirection.LEFT"
+              [class.swipe-right]="i === 0 && swipeDirection === SwipeDirection.RIGHT"
+              [style.transform]="i === 0 ? cardTransform : ''"
+              [style.opacity]="i === 0 ? 1 : 0.95"
+              [style.z-index]="10 - i"
+              (mousedown)="onDragStart($event)"
+              (touchstart)="onDragStart($event)"
+            >
+              <!-- Фото пользователя -->
+              <div class="card-photo" [style.backgroundImage]="'url(' + (card.photoDataUrl || card.user.image || '') + ' '">
+                <div class="photo-overlay"></div>
+
+                <!-- Индикаторы свайпа -->
+                @if (i === 0) {
+                  <div class="swipe-indicator like" [class.visible]="swipeDirection === SwipeDirection.RIGHT">
+                    <i class="bi bi-heart-fill"></i>
+                    <span>LIKE</span>
+                  </div>
+                  <div class="swipe-indicator nope" [class.visible]="swipeDirection === SwipeDirection.LEFT">
+                    <i class="bi bi-x-lg"></i>
+                    <span>NOPE</span>
+                  </div>
+                }
+
+                <!-- Информация на карточке -->
+                <div class="card-info">
+                  <div class="info-main">
+                    <h2 class="user-name">
+                      {{ card.user.name }}
+                      <span class="user-age">{{ getAge(card.user.birthday, card.user.age) }}</span>
+                      <span class="user-zodiac">{{ getZodiacSign(card.user.birthday, card.user.horo) }}</span>
+                    </h2>
+                    @if (card.user.distance) {
+                      <p class="user-distance">
+                        <i class="bi bi-geo-alt"></i> {{ card.user.distance.toFixed(1) }} км
+                      </p>
+                    }
+                  </div>
+
+                  <!-- Совместимость -->
+                  @if (card.user.compare) {
+                    <div class="compatibility-badges">
+                      @for (item of getCompatibilityBadges(card.user); track item.name) {
+                        <span class="badge" [class.heartfelt]="item.name === 'Heartfelt'" [class.physical]="item.name === 'Physical'" [class.intellectual]="item.name === 'Intellectual'">
+                          {{ item.label }}: {{ item.value }}%
+                        </span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        }
+
+        <!-- Индикатор загрузки -->
+        @if (loading) {
+          <div class="loading-overlay">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Загрузка...</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Десктопная версия: Список профилей (Badoo-стиль) -->
+      <div class="desktop-profiles-container">
+        @if (loading) {
+          <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Загрузка...</span>
+            </div>
+          </div>
+        } @else if (cards.length === 0) {
+          <div class="no-cards-desktop text-center py-5">
+            <div class="no-cards-icon">
+              <i class="bi bi-emoji-frown"></i>
+            </div>
+            <h3>Пользователи закончились</h3>
+            <p class="text-muted">Попробуйте расширить параметры поиска</p>
+            <button class="btn btn-primary mt-3" (click)="openFilters()">
+              <i class="bi bi-funnel"></i> Изменить фильтры
+            </button>
+          </div>
+        } @else {
+          <div class="profiles-grid">
+            @for (card of cards; track card.user.id) {
+              <div class="profile-card">
+                <div class="profile-card-photo" [style.backgroundImage]="'url(' + (card.photoDataUrl || card.user.image || '') + ' '">
+                  <div class="online-badge"></div>
+                </div>
+                <div class="profile-card-body">
+                  <div class="profile-card-header">
+                    <h5>
+                      {{ card.user.name }}, {{ getAge(card.user.birthday, card.user.age) }}
+                      <span class="zodiac-sign">{{ getZodiacSign(card.user.birthday, card.user.horo) }}</span>
+                    </h5>
+                    @if (card.user.distance) {
+                      <span class="distance-badge">
+                        <i class="bi bi-geo-alt"></i> {{ card.user.distance.toFixed(1) }} км
+                      </span>
+                    }
+                  </div>
+
+                  @if (card.user.compare) {
+                    <div class="compatibility-mini">
+                      @for (item of getCompatibilityBadges(card.user); track item.name) {
+                        <span class="compat-badge" [class.heartfelt]="item.name === 'Heartfelt'" [class.physical]="item.name === 'Physical'" [class.intellectual]="item.name === 'Intellectual'">
+                          {{ item.label }}: {{ item.value }}%
+                        </span>
+                      }
+                    </div>
+                  }
+
+                  <div class="profile-card-actions">
+                    <button class="btn btn-outline-danger" (click)="removeCard(card)" title="Пропустить">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                    <a [routerLink]="['/user', card.user.id]" class="btn btn-outline-primary" title="Профиль">
+                      <i class="bi bi-person"></i>
+                    </a>
+                    <button class="btn btn-outline-success" (click)="likeProfile(card)" title="Нравится">
+                      <i class="bi bi-heart"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Кнопки управления (только мобильные) -->
+      <div class="swipe-controls">
+        <button class="control-btn btn-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="cards.length === 0">
+          <i class="bi bi-x-lg"></i>
+        </button>
+        <button class="control-btn btn-like" (click)="manualSwipe(SwipeDirection.RIGHT)" [disabled]="cards.length === 0">
+          <i class="bi bi-heart-fill"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Модальное окно фильтров -->
+    @if (showFilters) {
+      <div class="modal-backdrop" (click)="closeFilters()"></div>
+      <div class="filters-modal">
+        <div class="filters-header">
+          <h5>Параметры поиска</h5>
+          <button class="btn-close" (click)="closeFilters()"></button>
+        </div>
+        <div class="filters-body">
+          <div class="filter-group">
+            <label class="filter-label">Пол</label>
+            <select class="form-select" [(ngModel)]="searchCriteria.gender">
+              <option [value]="Gender.MAN">Мужской</option>
+              <option [value]="Gender.WOMAN">Женский</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">
+              Возраст: {{ searchCriteria.ageMin }} - {{ searchCriteria.ageMax }}
+            </label>
+            <input type="range" class="form-range" [(ngModel)]="searchCriteria.ageMin" min="14" max="100" (ngModelChange)="onAgeMinChange()">
+            <input type="range" class="form-range" [(ngModel)]="searchCriteria.ageMax" min="14" max="100">
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Расстояние: {{ searchCriteria.distance }} км</label>
+            <input type="range" class="form-range" [(ngModel)]="searchCriteria.distance" min="0.05" max="100" step="0.05">
+          </div>
+        </div>
+        <div class="filters-footer">
+          <button class="btn btn-secondary" (click)="closeFilters()">Отмена</button>
+          <button class="btn btn-primary" (click)="applyFilters()">Применить</button>
+        </div>
+      </div>
+    }
+  `,
+  styleUrls: ['./swipe.component.scss']
+})
+export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
+  @ViewChild('cardsContainer') cardsContainer!: ElementRef;
+
+  cards: SwipeCard[] = [];
+  loading = false;
+  showFilters = false;
+  SwipeDirection = SwipeDirection;
+  Gender = Gender;
+  Math = Math;
+
+  searchCriteria: UserSearch = {
+    gender: Gender.WOMAN,
+    ageMin: 18,
+    ageMax: 65,
+    distance: 50
+  };
+
+  // Для drag-and-drop
+  private isDragging = false;
+  private startX = 0;
+  private startY = 0;
+  private currentX = 0;
+  private currentY = 0;
+
+  cardTransform = '';
+  swipeDirection: SwipeDirection = SwipeDirection.NONE;
+  private destroy$ = new Subject<void>();
+
+  constructor(
+    private searchService: SearchService,
+    private userService: UserService,
+    private bookmarksService: BookmarksService,
+    private swipeService: SwipeService,
+    private sanitizer: DomSanitizer
+  ) {}
+
+  ngOnInit(): void {
+    this.loadUserSettings();
+
+    // Подписка на свайпы из сервиса
+    this.swipeService.onSwipe
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((result: SwipeResult) => {
+        this.handleSwipeResult(result);
+      });
+  }
+
+  ngAfterViewInit(): void {
+    // Добавляем обработчики для мыши и тача
+    document.addEventListener('mousemove', this.onDragMove.bind(this));
+    document.addEventListener('mouseup', this.onDragEnd.bind(this));
+    document.addEventListener('touchmove', this.onDragMove.bind(this));
+    document.addEventListener('touchend', this.onDragEnd.bind(this));
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    document.removeEventListener('mousemove', this.onDragMove.bind(this));
+    document.removeEventListener('mouseup', this.onDragEnd.bind(this));
+    document.removeEventListener('touchmove', this.onDragMove.bind(this));
+    document.removeEventListener('touchend', this.onDragEnd.bind(this));
+  }
+
+  private loadUserSettings(): void {
+    this.userService.getUserSettings().subscribe({
+      next: (settings: UserSettings) => {
+        if (settings.gender !== undefined) {
+          this.searchCriteria.gender = settings.gender;
+        }
+        if (settings.ageMin !== undefined) {
+          this.searchCriteria.ageMin = settings.ageMin;
+        }
+        if (settings.ageMax !== undefined) {
+          this.searchCriteria.ageMax = settings.ageMax;
+        }
+        if (settings.distance !== undefined) {
+          this.searchCriteria.distance = settings.distance;
+        }
+        this.search();
+      },
+      error: () => {
+        this.search();
+      }
+    });
+  }
+
+  private search(): void {
+    this.loading = true;
+    this.searchService.searchByFilter(this.searchCriteria).subscribe({
+      next: (users) => {
+        this.swipeService.setCards(users);
+        this.cards = this.swipeService.getCards();
+        // Загружаем фото только для первых двух карточек
+        this.loadVisiblePhotos();
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+        this.cards = [];
+      }
+    });
+  }
+
+  private loadVisiblePhotos(): void {
+    // Загружаем фото только для первых 2 видимых карточек
+    const visibleCards = this.cards.slice(0, 2);
+    visibleCards.forEach(card => {
+      if (card.user.id && !card.photoDataUrl) {
+        this.userService.getPhoto(card.user.id).subscribe({
+          next: (bytes: Uint8Array) => {
+            card.photoDataUrl = this.bytesToDataUrl(bytes);
+          },
+          error: () => {
+            // Если 401, пробуем использовать image из карточки
+            card.photoDataUrl = card.user.image || null;
+          }
+        });
+      }
+    });
+  }
+
+  // Вызывается при свайпе для загрузки следующей карточки
+  loadNextPhoto(): void {
+    const nextIndex = 2;
+    if (this.cards.length > nextIndex) {
+      const card = this.cards[nextIndex];
+      if (card.user.id && !card.photoDataUrl) {
+        this.userService.getPhoto(card.user.id).subscribe({
+          next: (bytes: Uint8Array) => {
+            card.photoDataUrl = this.bytesToDataUrl(bytes);
+          },
+          error: () => {
+            card.photoDataUrl = card.user.image || null;
+          }
+        });
+      }
+    }
+  }
+
+  private bytesToDataUrl(bytes: Uint8Array): string {
+    const base64 = this.uint8ArrayToBase64(bytes);
+    return `data:image/jpeg;base64,${base64}`;
+  }
+
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  getAge(birthday?: string, age?: number): number {
+    if (age !== undefined && age !== null) return age;
+    if (!birthday) return 0;
+    const today = new Date();
+    const birth = new Date(birthday);
+    let ageCalc = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      ageCalc--;
+    }
+    return ageCalc;
+  }
+
+  getZodiacSignByNumber(horo?: number): string {
+    if (!horo || horo < 1 || horo > 12) return '';
+    const signs = ['♑', '♒', '♓', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐'];
+    return signs[horo - 1] || '';
+  }
+
+  getZodiacSign(birthday?: string, horo?: number): string {
+    // Если есть horo (порядковый номер знака), используем его
+    if (horo && horo >= 1 && horo <= 12) {
+      return this.getZodiacSignByNumber(horo);
+    }
+
+    // Fallback: вычисляем по дате рождения
+    if (!birthday) return '';
+    const date = new Date(birthday);
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+
+    const zodiacSigns: Array<{ sign: string; startDay: number; endDay: number; month: number }> = [
+      { sign: '♑', startDay: 22, endDay: 31, month: 12 },
+      { sign: '♑', startDay: 1, endDay: 19, month: 1 },
+      { sign: '♒', startDay: 20, endDay: 31, month: 1 },
+      { sign: '♒', startDay: 1, endDay: 18, month: 2 },
+      { sign: '♓', startDay: 19, endDay: 29, month: 2 },
+      { sign: '♓', startDay: 1, endDay: 20, month: 3 },
+      { sign: '♈', startDay: 21, endDay: 31, month: 3 },
+      { sign: '♈', startDay: 1, endDay: 19, month: 4 },
+      { sign: '♉', startDay: 20, endDay: 30, month: 4 },
+      { sign: '♉', startDay: 1, endDay: 20, month: 5 },
+      { sign: '♊', startDay: 21, endDay: 31, month: 5 },
+      { sign: '♊', startDay: 1, endDay: 20, month: 6 },
+      { sign: '♋', startDay: 21, endDay: 30, month: 6 },
+      { sign: '♋', startDay: 1, endDay: 22, month: 7 },
+      { sign: '♌', startDay: 23, endDay: 31, month: 7 },
+      { sign: '♌', startDay: 1, endDay: 22, month: 8 },
+      { sign: '♍', startDay: 23, endDay: 31, month: 8 },
+      { sign: '♍', startDay: 1, endDay: 22, month: 9 },
+      { sign: '♎', startDay: 23, endDay: 30, month: 9 },
+      { sign: '♎', startDay: 1, endDay: 22, month: 10 },
+      { sign: '♏', startDay: 23, endDay: 31, month: 10 },
+      { sign: '♏', startDay: 1, endDay: 21, month: 11 },
+      { sign: '♐', startDay: 22, endDay: 30, month: 11 },
+      { sign: '♐', startDay: 1, endDay: 21, month: 12 },
+      { sign: '♑', startDay: 22, endDay: 31, month: 12 }
+    ];
+
+    for (const z of zodiacSigns) {
+      if (month === z.month && day >= z.startDay && day <= z.endDay) {
+        return z.sign;
+      }
+    }
+    return '';
+  }
+
+  getCompatibilityPercent(user: UserInfo): number {
+    if (!user.compare) return 0;
+    const values = Object.values(user.compare);
+    if (values.length === 0) return 0;
+    const sum = values.reduce((acc, val) => acc + val, 0);
+    return Math.round(sum / values.length);
+  }
+
+  getCompatibilityDetails(user: UserInfo): Array<{ name: string; label: string; value: number }> {
+    if (!user.compare) return [];
+
+    const labels: Record<string, string> = {
+      'Physical': 'Физическая',
+      'Intellectual': 'Интеллект',
+      'Heartfelt': 'Сердечная'
+    };
+
+    const allowedTypes = ['Heartfelt', 'Physical', 'Intellectual'];
+
+    return Object.entries(user.compare)
+      .filter(([name]) => allowedTypes.includes(name))
+      .map(([name, value]) => ({
+        name,
+        label: labels[name] || name,
+        value: Math.round(value)
+      }));
+  }
+
+  getCompatibilityBadges(user: UserInfo): Array<{ name: string; label: string; value: number }> {
+    return this.getCompatibilityDetails(user);
+  }
+
+  // Методы для десктопной версии
+  removeCard(card: SwipeCard): void {
+    const index = this.cards.indexOf(card);
+    if (index >= 0) {
+      this.cards.splice(index, 1);
+      this.cards = [...this.cards];
+    }
+  }
+
+  likeProfile(card: SwipeCard): void {
+    this.swipeService.swipe(SwipeDirection.RIGHT);
+  }
+
+  // Drag and Drop логика
+  onDragStart(event: MouseEvent | TouchEvent): void {
+    if (this.cards.length === 0 || this.loading) return;
+
+    this.isDragging = true;
+    this.startX = this.getClientX(event);
+    this.startY = this.getClientY(event);
+    this.currentX = 0;
+    this.currentY = 0;
+    this.swipeDirection = SwipeDirection.NONE;
+  }
+
+  onDragMove(event: MouseEvent | TouchEvent): void {
+    if (!this.isDragging || this.cards.length === 0) return;
+
+    const clientX = this.getClientX(event);
+    const clientY = this.getClientY(event);
+
+    this.currentX = clientX - this.startX;
+    this.currentY = clientY - this.startY;
+
+    // Определяем направление свайпа (только горизонтальный)
+    if (this.currentX > 50) {
+      this.swipeDirection = SwipeDirection.RIGHT;
+    } else if (this.currentX < -50) {
+      this.swipeDirection = SwipeDirection.LEFT;
+    } else {
+      this.swipeDirection = SwipeDirection.NONE;
+    }
+
+    // Вычисляем трансформацию
+    const rotate = this.currentX * 0.1;
+    this.cardTransform = `translate(${this.currentX}px, ${this.currentY}px) rotate(${rotate}deg)`;
+  }
+
+  onDragEnd(event: MouseEvent | TouchEvent): void {
+    if (!this.isDragging) return;
+
+    this.isDragging = false;
+
+    const threshold = 100;
+
+    if (this.swipeDirection === SwipeDirection.RIGHT && this.currentX > threshold) {
+      this.completeSwipe(SwipeDirection.RIGHT);
+    } else if (this.swipeDirection === SwipeDirection.LEFT && this.currentX < -threshold) {
+      this.completeSwipe(SwipeDirection.LEFT);
+    } else {
+      // Возвращаем карточку на место
+      this.resetCard();
+    }
+  }
+
+  private completeSwipe(direction: SwipeDirection): void {
+    const card = this.swipeService.swipe(direction);
+    if (card) {
+      this.handleSwipeResult({ direction, card });
+
+      // Добавляем/убираем из избранного при свайпе
+      if (card.user.id) {
+        if (direction === SwipeDirection.RIGHT) {
+          // Свайп вправо - добавляем в избранное
+          this.bookmarksService.addBookmark({
+            userId: card.user.id
+          }).subscribe();
+        } else if (direction === SwipeDirection.LEFT) {
+          // Свайп влево - убираем из избранного
+          this.bookmarksService.deleteBookmark(card.user.id).subscribe();
+        }
+      }
+    }
+    this.resetCard();
+  }
+
+  private resetCard(): void {
+    this.cardTransform = 'translate(0, 0) rotate(0)';
+    this.swipeDirection = SwipeDirection.NONE;
+    this.currentX = 0;
+    this.currentY = 0;
+  }
+
+  manualSwipe(direction: SwipeDirection): void {
+    if (this.cards.length === 0) return;
+
+    const card = this.swipeService.swipe(direction);
+    if (card) {
+      this.handleSwipeResult({ direction, card });
+    }
+  }
+
+  private handleSwipeResult(result: SwipeResult): void {
+    // Здесь можно отправить результат на сервер
+    console.log('Swipe result:', result);
+
+    // Сохраняем в избранное при лайке
+    if (result.direction === SwipeDirection.RIGHT || result.direction === SwipeDirection.UP) {
+      if (result.card.user.id) {
+        this.bookmarksService.addBookmark({ userId: result.card.user.id }).subscribe({
+          next: () => console.log('Добавлено в избранное'),
+          error: () => console.error('Ошибка добавления в избранное')
+        });
+      }
+    }
+
+    // Обновляем список карточек
+    setTimeout(() => {
+      this.cards = this.swipeService.getCards().slice(this.swipeService.getCurrentIndex());
+      this.resetCard();
+      // Загружаем фото для следующей карточки
+      this.loadNextPhoto();
+    }, 300);
+  }
+
+  private getClientX(event: MouseEvent | TouchEvent): number {
+    if (event instanceof MouseEvent) {
+      return event.clientX;
+    }
+    return (event as TouchEvent).touches[0].clientX;
+  }
+
+  private getClientY(event: MouseEvent | TouchEvent): number {
+    if (event instanceof MouseEvent) {
+      return event.clientY;
+    }
+    return (event as TouchEvent).touches[0].clientY;
+  }
+
+  openFilters(): void {
+    this.showFilters = true;
+  }
+
+  closeFilters(): void {
+    this.showFilters = false;
+  }
+
+  applyFilters(): void {
+    this.search();
+    this.closeFilters();
+  }
+
+  onAgeMinChange(): void {
+    if (this.searchCriteria.ageMin !== undefined &&
+        this.searchCriteria.ageMax !== undefined &&
+        this.searchCriteria.ageMin >= this.searchCriteria.ageMax) {
+      this.searchCriteria.ageMax = this.searchCriteria.ageMin + 1;
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { User, UserInfo, GisData, PageableRequest, UserSettings } from '../models/user.model';
@@ -57,11 +57,7 @@ export class UserService {
 
   getPhoto(userId?: number): Observable<Uint8Array> {
     const url = userId ? `${this.apiUrl}/${userId}/photo` : `${this.apiUrl}/me/photo`;
-    const token = this.authService.getToken();
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token || ''}`
-    });
-    return this.http.get(url, { headers, responseType: 'arraybuffer' }).pipe(
+    return this.http.get(url, { responseType: 'arraybuffer' }).pipe(
       map((buffer: ArrayBuffer) => new Uint8Array(buffer))
     );
   }
@@ -69,19 +65,11 @@ export class UserService {
   uploadPhoto(file: File): Observable<void> {
     const formData = new FormData();
     formData.append('file', file);
-    const token = this.authService.getToken();
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token || ''}`
-    });
-    return this.http.post<void>(`${this.apiUrl}/me/photo`, formData, { headers });
+    return this.http.post<void>(`${this.apiUrl}/me/photo`, formData);
   }
 
   deletePhoto(): Observable<void> {
-    const token = this.authService.getToken();
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token || ''}`
-    });
-    return this.http.delete<void>(`${this.apiUrl}/me/photo`, { headers });
+    return this.http.delete<void>(`${this.apiUrl}/me/photo`);
   }
 
   getUserSettings(): Observable<UserSettings> {

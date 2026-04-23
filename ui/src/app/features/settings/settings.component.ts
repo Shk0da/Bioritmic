@@ -10,22 +10,29 @@ import { UserSettings, Gender } from '../../core/models/user.model';
   standalone: true,
   imports: [FormsModule, RouterLink],
   template: `
+    <div class="page-header mb-4">
+      <h1 class="page-title">
+        <i class="bi bi-gear me-2"></i>Настройки
+      </h1>
+      <p class="text-muted">Параметры поиска и приложения</p>
+    </div>
+
     <div class="row">
-      <div class="col-md-8 mx-auto">
-        <div class="card">
+      <div class="col-12 col-lg-8 mx-auto">
+        <div class="card mb-4">
           <div class="card-header">
-            <h5 class="mb-0">Настройки поиска</h5>
+            <h6 class="mb-0"><i class="bi bi-funnel me-2"></i>Параметры поиска</h6>
           </div>
           <div class="card-body">
             @if (loading) {
-              <div class="text-center py-5">
-                <div class="spinner-border text-primary" role="status">
+              <div class="text-center py-4">
+                <div class="spinner-border" role="status">
                   <span class="visually-hidden">Загрузка...</span>
                 </div>
               </div>
             } @else {
               <form (ngSubmit)="save()">
-                <div class="mb-3">
+                <div class="mb-4">
                   <label for="gender" class="form-label">Кого ищем</label>
                   <select
                     class="form-select"
@@ -37,8 +44,8 @@ import { UserSettings, Gender } from '../../core/models/user.model';
                   </select>
                 </div>
 
-                <div class="row">
-                  <div class="col-md-6 mb-3">
+                <div class="row mb-4">
+                  <div class="col-6">
                     <label for="ageMin" class="form-label">Возраст от</label>
                     <input
                       type="number"
@@ -49,8 +56,7 @@ import { UserSettings, Gender } from '../../core/models/user.model';
                       min="14"
                       max="100">
                   </div>
-
-                  <div class="col-md-6 mb-3">
+                  <div class="col-6">
                     <label for="ageMax" class="form-label">Возраст до</label>
                     <input
                       type="number"
@@ -63,8 +69,10 @@ import { UserSettings, Gender } from '../../core/models/user.model';
                   </div>
                 </div>
 
-                <div class="mb-3">
-                  <label for="distance" class="form-label">Расстояние (км)</label>
+                <div class="mb-4">
+                  <label for="distance" class="form-label">
+                    Расстояние: <strong class="text-primary">{{ settings.distance }} км</strong>
+                  </label>
                   <input
                     type="range"
                     class="form-range"
@@ -72,14 +80,17 @@ import { UserSettings, Gender } from '../../core/models/user.model';
                     [(ngModel)]="settings.distance"
                     name="distance"
                     min="0.05"
-                    max="30"
+                    max="100"
                     step="0.05">
-                  <span class="text-muted">{{ settings.distance }} км</span>
+                  <div class="d-flex justify-content-between small text-muted mt-1">
+                    <span>0.05 км</span>
+                    <span>100 км</span>
+                  </div>
                 </div>
 
-                <div class="d-flex justify-content-end">
-                  <button type="submit" class="btn btn-primary">
-                    Сохранить настройки
+                <div class="d-grid">
+                  <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-check-lg me-2"></i>Сохранить настройки
                   </button>
                 </div>
               </form>
@@ -87,43 +98,54 @@ import { UserSettings, Gender } from '../../core/models/user.model';
           </div>
         </div>
 
-        <div class="card mt-3">
+        <div class="card">
           <div class="card-header">
-            <h5 class="mb-0">Дополнительно</h5>
+            <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Дополнительно</h6>
           </div>
-          <div class="card-body">
-            <div class="list-group">
-              <a routerLink="/settings/location" class="list-group-item list-group-item-action">
-                <div class="d-flex w-100 justify-content-between">
-                  <h6 class="mb-1">Моё местоположение</h6>
-                  <small class="text-muted">GIS</small>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              <a routerLink="/settings/location" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                  <i class="bi bi-geo-alt me-2"></i>Моё местоположение
+                  <p class="small text-muted mb-0 mt-1">Укажите местоположение для поиска рядом</p>
                 </div>
-                <p class="mb-1 small text-muted">
-                  Укажите ваше местоположение для поиска людей рядом
-                </p>
+                <i class="bi bi-chevron-right text-muted small"></i>
               </a>
-              <a routerLink="/settings/blocked" class="list-group-item list-group-item-action">
-                <div class="d-flex w-100 justify-content-between">
-                  <h6 class="mb-1">Заблокированные пользователи</h6>
-                  <small class="text-muted">{{ blockedCount }}</small>
+              <a routerLink="/settings/blocked" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                  <i class="bi bi-slash-circle me-2"></i>Заблокированные пользователи
+                  <p class="small text-muted mb-0 mt-1">Управление чёрным списком</p>
                 </div>
-                <p class="mb-1 small text-muted">
-                  Управление списком заблокированных пользователей
-                </p>
+                <span class="badge bg-secondary">{{ blockedCount }}</span>
               </a>
             </div>
           </div>
         </div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    .page-header {
+      padding: 1rem 0;
+    }
+
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  `]
 })
 export class SettingsComponent implements OnInit {
   settings: UserSettings = {
     gender: Gender.WOMAN,
     ageMin: 18,
     ageMax: 45,
-    distance: 10
+    distance: 50
   };
   loading = false;
   blockedCount = 0;
@@ -142,9 +164,7 @@ export class SettingsComponent implements OnInit {
 
   private loadBlockedCount(): void {
     this.userService.getBlockedUsers({ page: 0, size: 1 }).subscribe({
-      next: (users) => {
-        this.blockedCount = users.length;
-      },
+      next: () => {},
       error: () => {
         this.blockedCount = 0;
       }
@@ -169,8 +189,7 @@ export class SettingsComponent implements OnInit {
       next: () => {
         alert('Настройки сохранены!');
       },
-      error: (error) => {
-        console.error('Failed to save settings', error);
+      error: () => {
         alert('Ошибка сохранения настроек');
       }
     });

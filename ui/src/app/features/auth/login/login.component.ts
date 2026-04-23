@@ -11,53 +11,94 @@ import { AuthorizationModel } from '../../../core/models/user.model';
   template: `
     <div class="auth-container">
       <div class="auth-card card">
-        <div class="card-body p-4">
-          <h2 class="text-center mb-4">Вход</h2>
-          
+        <div class="card-body">
+          <div class="text-center mb-4">
+            <div class="logo-large mb-3">
+              <div class="logo-couple">
+                <i class="bi bi-person-heart"></i>
+                <i class="bi bi-person-hearts"></i>
+              </div>
+            </div>
+            <h2 class="gradient-text mb-2">Bioritmic</h2>
+            <p class="text-muted">Найди свою половинку</p>
+          </div>
+
           <form (ngSubmit)="onSubmit()">
             <div class="mb-3">
-              <label for="email" class="form-label">Email</label>
-              <input 
-                type="email" 
-                class="form-control" 
-                id="email" 
-                [(ngModel)]="credentials.email" 
+              <label for="email" class="form-label">
+                <i class="bi bi-envelope me-2"></i>Email
+              </label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                [(ngModel)]="credentials.email"
                 name="email"
                 required
                 placeholder="Введите email">
             </div>
-            
+
             <div class="mb-3">
-              <label for="password" class="form-label">Пароль</label>
-              <input 
-                type="password" 
-                class="form-control" 
-                id="password" 
-                [(ngModel)]="credentials.password" 
+              <label for="password" class="form-label">
+                <i class="bi bi-lock me-2"></i>Пароль
+              </label>
+              <input
+                type="password"
+                class="form-control"
+                id="password"
+                [(ngModel)]="credentials.password"
                 name="password"
                 required
                 placeholder="Введите пароль">
             </div>
-            
+
             <div class="d-grid gap-2">
-              <button type="submit" class="btn btn-primary" [disabled]="!credentials.email || !credentials.password">
-                Войти
+              <button type="submit" class="btn btn-primary btn-lg" [disabled]="!credentials.email || !credentials.password">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Войти
               </button>
             </div>
           </form>
-          
-          <div class="text-center mt-3">
-            <a routerLink="/auth/recovery" class="text-decoration-none">Забыли пароль?</a>
+
+          <div class="text-center mt-4">
+            <a routerLink="/auth/recovery" class="text-muted text-decoration-none small">
+              Забыли пароль?
+            </a>
           </div>
-          
+
           <div class="text-center mt-3">
-            <span>Нет аккаунта?</span>
-            <a routerLink="/auth/registration" class="text-decoration-none ms-1">Зарегистрироваться</a>
+            <span class="text-muted">Нет аккаунта?</span>
+            <a routerLink="/auth/registration" class="text-decoration-none fw-bold ms-1" style="color: #fd297b;">
+              Зарегистрироваться
+            </a>
           </div>
         </div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    .logo-large {
+      .logo-couple {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        font-size: 4rem;
+        
+        i {
+          color: #fd297b;
+          filter: drop-shadow(0 4px 12px rgba(253, 41, 123, 0.4));
+          
+          &:first-child {
+            transform: rotate(-10deg);
+          }
+          
+          &:last-child {
+            transform: rotate(10deg);
+          }
+        }
+      }
+    }
+  `]
 })
 export class LoginComponent {
   credentials: AuthorizationModel = {
@@ -75,7 +116,7 @@ export class LoginComponent {
       next: (token) => {
         this.authService.setAuth(token);
         this.authService.loadCurrentUser().subscribe(() => {
-          this.router.navigate(['/search']);
+          this.router.navigate(['/swipe']);
         });
       },
       error: (error) => {

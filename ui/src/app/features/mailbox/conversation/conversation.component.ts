@@ -5,7 +5,8 @@ import { UserService } from '../../../core/services/user.service';
 import { UserMail, UserInfo } from '../../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
-import { Location, NgIf } from '@angular/common';
+import { Location, NgIf, NgFor, DatePipe } from '@angular/common';
+import { ModalService } from '../../../core/services/modal.service';
 
 interface MessageWithUser extends UserMail {
   userName?: string;
@@ -16,25 +17,29 @@ interface MessageWithUser extends UserMail {
 @Component({
   selector: 'app-conversation',
   standalone: true,
-  imports: [RouterLink, FormsModule, NgIf],
+  imports: [RouterLink, FormsModule, NgIf, NgFor, DatePipe],
   template: `
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center">
-          <button class="btn btn-link btn-sm me-2 p-0" (click)="goBack()">
-            <i class="bi bi-arrow-left"></i> Назад
+    <div class="telegram-chat">
+      <!-- Header -->
+      <div class="chat-header">
+        <div class="header-left">
+          <button class="back-btn" (click)="goBack()">
+            <i class="bi bi-arrow-left"></i>
           </button>
-          <div class="d-flex align-items-center">
+          <div class="user-info">
             <img
-              [src]="otherUserPhotoUrl || ''"
-              class="rounded-circle me-2"
-              style="width: 40px; height: 40px; object-fit: cover;"
+              [src]="otherUserPhotoUrl || 'assets/img/default-avatar.png'"
+              class="user-avatar"
               [alt]="otherUserName || 'User'">
-            <h5 class="mb-0">{{ otherUserName || 'Пользователь #' + otherUserId }}</h5>
+            <div class="user-details">
+              <h5 class="user-name">{{ otherUserName || 'Пользователь #' + otherUserId }}</h5>
+            </div>
           </div>
         </div>
       </div>
-      <div class="card-body">
+
+      <!-- Messages -->
+      <div #scrollContainer class="messages-container">
         @if (loading) {
           <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status">
@@ -42,55 +47,363 @@ interface MessageWithUser extends UserMail {
             </div>
           </div>
         } @else if (messages.length === 0) {
-          <div class="alert alert-info">
-            Нет сообщений для отображения
+          <div class="empty-chat">
+            <i class="bi bi-chat-text"></i>
+            <p>Здесь будут ваши сообщения</p>
+            <span>Напишите первое сообщение!</span>
           </div>
         } @else {
-          <div #scrollContainer class="conversation-container" style="max-height: 500px; overflow-y: auto; padding: 10px;">
-            @for (message of messages; track message.id) {
-              <div class="message-bubble {{ message.isCurrentUser ? 'outgoing' : 'incoming' }}"
-                   style="margin-bottom: 10px; padding: 10px; border-radius: 10px; max-width: 70%;">
-                <p class="mb-1">{{ message.message }}</p>
-                <small class="text-muted" style="font-size: 0.75rem;">
-                  {{ getMessageTime(message.timestamp) }}
-                </small>
+          @for (message of messages; track message.id) {
+            <div class="message-wrapper {{ message.isCurrentUser ? 'outgoing' : 'incoming' }}">
+              @if (!message.isCurrentUser) {
+                <img
+                  [src]="otherUserPhotoUrl || 'assets/img/default-avatar.png'"
+                  class="message-avatar"
+                  [alt]="otherUserName || 'User'">
+              }
+              <div class="message-bubble {{ message.isCurrentUser ? 'outgoing' : 'incoming' }}">
+                @if (!message.isCurrentUser && message.userName) {
+                  <div class="message-sender">{{ message.userName }}</div>
+                }
+                <div class="message-text">{{ message.message }}</div>
+                <div class="message-meta">
+                  <span class="message-time">{{ getMessageTime(message.timestamp) }}</span>
+                  @if (message.isCurrentUser) {
+                    <span class="message-status">
+                      <i class="bi bi-check-all"></i>
+                    </span>
+                  }
+                </div>
               </div>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Input -->
+      <div class="message-input-container">
+        <div class="input-wrapper">
+          <input
+            type="text"
+            class="message-input"
+            placeholder="Написать сообщение..."
+            [(ngModel)]="newMessage"
+            name="newMessage"
+            [disabled]="sending"
+            (keydown.enter)="sendMessage()">
+          <button class="emoji-btn" title="Смайлы" (click)="toggleEmojiPicker()">
+            <i class="bi bi-emoji-smile"></i>
+          </button>
+        </div>
+        <button
+          class="send-btn"
+          [disabled]="!newMessage.trim() || sending"
+          (click)="sendMessage()">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </div>
+
+      <!-- Emoji Picker -->
+      @if (showEmojiPicker) {
+        <div class="emoji-picker">
+          <div class="emoji-grid">
+            @for (emoji of emojis; track emoji) {
+              <button class="emoji-btn-picker" (click)="addEmoji(emoji)">
+                {{ emoji }}
+              </button>
             }
           </div>
-        }
-
-        <div class="mt-3">
-          <form (ngSubmit)="sendMessage()" class="d-flex gap-2">
-            <input
-              type="text"
-              class="form-control"
-              placeholder="Введите сообщение..."
-              [(ngModel)]="newMessage"
-              name="newMessage"
-              [disabled]="sending">
-            <button
-              type="submit"
-              class="btn btn-primary"
-              [disabled]="!newMessage.trim() || sending">
-              {{ sending ? 'Отправка...' : 'Отправить' }}
-            </button>
-          </form>
         </div>
-      </div>
+      }
     </div>
   `,
   styles: [`
-    .message-bubble.incoming {
-      background-color: #f1f1f1;
-      margin-right: auto;
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 70px);
+      background: #f5f7fa;
     }
-    .message-bubble.outgoing {
-      background-color: #007bff;
+
+    /* Header */
+    .chat-header {
+      display: flex;
+      align-items: center;
+      padding: 12px 15px;
+      background: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
       color: white;
-      margin-left: auto;
+      box-shadow: 0 2px 8px rgba(253, 41, 123, 0.3);
     }
-    .message-bubble.outgoing .text-muted {
-      color: rgba(255, 255, 255, 0.8) !important;
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+
+      &:hover {
+        transform: translateX(-3px);
+      }
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .user-details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .user-name {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    /* Messages */
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #f5f7fa;
+    }
+
+    .message-wrapper {
+      display: flex;
+      gap: 8px;
+      max-width: 70%;
+    }
+
+    .message-wrapper.incoming {
+      align-self: flex-start;
+    }
+
+    .message-wrapper.outgoing {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      align-self: flex-end;
+    }
+
+    .message-bubble {
+      padding: 10px 14px;
+      border-radius: 16px;
+      position: relative;
+      max-width: 100%;
+      word-wrap: break-word;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .message-bubble.incoming {
+      background: white;
+      border-bottom-left-radius: 4px;
+      color: #1f2937;
+    }
+
+    .message-bubble.outgoing {
+      background: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
+      border-bottom-right-radius: 4px;
+      color: white;
+    }
+
+    .message-sender {
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #fd297b;
+    }
+
+    .message-text {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    .message-meta {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .message-time {
+      font-size: 0.7rem;
+      opacity: 0.7;
+    }
+
+    .message-status {
+      font-size: 0.8rem;
+    }
+
+    .empty-chat {
+      text-align: center;
+      color: #6b7280;
+      margin-top: 100px;
+      font-size: 1.1rem;
+    }
+
+    .empty-chat i {
+      font-size: 4rem;
+      opacity: 0.3;
+      display: block;
+      margin-bottom: 1rem;
+    }
+
+    /* Input */
+    .message-input-container {
+      display: flex;
+      gap: 10px;
+      padding: 12px 15px;
+      background: white;
+      align-items: center;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: #f3f4f6;
+      border-radius: 24px;
+      padding: 8px 15px;
+    }
+
+    .message-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 1rem;
+      outline: none;
+      padding: 0;
+      color: #1f2937;
+    }
+
+    .emoji-btn {
+      background: none;
+      border: none;
+      color: #6b7280;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 5px;
+      transition: color 0.2s;
+
+      &:hover {
+        color: #fd297b;
+      }
+    }
+
+    .send-btn {
+      background: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
+      border: none;
+      color: white;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover:not(:disabled) {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(253, 41, 123, 0.4);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    /* Emoji Picker */
+    .emoji-picker {
+      background: white;
+      border-top: 1px solid #e5e7eb;
+      padding: 15px;
+      animation: slideUp 0.2s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .emoji-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .emoji-btn-picker {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 8px;
+      transition: background 0.2s;
+
+      &:hover {
+        background: #f3f4f6;
+      }
+    }
+
+    /* Scrollbar */
+    .messages-container::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .messages-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .messages-container::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px;
     }
   `]
 })
@@ -105,13 +418,28 @@ export class ConversationComponent implements OnInit, AfterViewChecked {
   newMessage = '';
   currentUserId?: number;
   private shouldScroll = false;
+  showEmojiPicker = false;
+
+  emojis = [
+    '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
+    '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗',
+    '😇', '🤗', '🤩', '🤔', '🤨', '😐', '😑', '😶',
+    '🙄', '😏', '😣', '😥', '😮', '🤐', '😯', '😪',
+    '😫', '😴', '😌', '😛', '😜', '😝', '🤤', '😒',
+    '😓', '😔', '😕', '🙃', '🤑', '😲', '☹️', '🙁',
+    '😖', '😞', '😟', '😤', '😢', '😭', '😦', '😧',
+    '😨', '😩', '🤯', '😬', '😰', '😱', '🥵', '🥶',
+    '❤️', '💕', '💖', '💗', '💓', '💞', '💘', '💝',
+    '👍', '👎', '👏', '🙌', '👋', '🤟', '🤙', '✌️'
+  ];
 
   constructor(
     private route: ActivatedRoute,
     private mailboxService: MailboxService,
     private userService: UserService,
     private sanitizer: DomSanitizer,
-    private location: Location
+    private location: Location,
+    private modalService: ModalService
   ) {}
 
   ngOnInit(): void {
@@ -143,7 +471,7 @@ export class ConversationComponent implements OnInit, AfterViewChecked {
             ...m,
             isCurrentUser: m.from === this.currentUserId
           }));
-        
+
         this.loading = false;
         this.shouldScroll = true;
         setTimeout(() => this.scrollToBottom(), 100);
@@ -209,7 +537,7 @@ export class ConversationComponent implements OnInit, AfterViewChecked {
         this.shouldScroll = true;
       },
       error: () => {
-        alert('Ошибка отправки сообщения');
+        this.modalService.alert('Ошибка отправки сообщения', 'Ошибка');
         this.sending = false;
       }
     });
@@ -245,5 +573,13 @@ export class ConversationComponent implements OnInit, AfterViewChecked {
     } catch (err) {
       // ignore
     }
+  }
+
+  toggleEmojiPicker(): void {
+    this.showEmojiPicker = !this.showEmojiPicker;
+  }
+
+  addEmoji(emoji: string): void {
+    this.newMessage += emoji;
   }
 }

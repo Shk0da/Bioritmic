@@ -13,7 +13,7 @@ data class UserSettingsModel(
     val gender: Gender? = null,
     @field:Min(14) @field:Max(100) val ageMin: Int? = null,
     @field:Min(14) @field:Max(100) val ageMax: Int? = null,
-    @field:DecimalMin("0.05") @field:DecimalMax("30") val distance: Double? = null
+    @field:DecimalMin("0.05") @field:DecimalMax("100") val distance: Double? = null
 ) : BasicPresentation {
     companion object {
         fun of(settings: UserSettings): UserSettingsModel {

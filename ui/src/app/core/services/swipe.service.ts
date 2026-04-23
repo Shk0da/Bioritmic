@@ -1,0 +1,78 @@
+import { Injectable } from '@angular/core';
+import { Observable, Subject } from 'rxjs';
+import { SwipeDirection, SwipeCard, UserInfo } from '../models/user.model';
+
+export interface SwipeResult {
+  direction: SwipeDirection;
+  card: SwipeCard;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class SwipeService {
+  private swipeSubject = new Subject<SwipeResult>();
+  private cards: SwipeCard[] = [];
+  private currentIndex = 0;
+
+  get onSwipe(): Observable<SwipeResult> {
+    return this.swipeSubject.asObservable();
+  }
+
+  setCards(users: UserInfo[]): void {
+    this.cards = users.map(user => ({
+      user,
+      photoDataUrl: null,
+      isLiked: false,
+      isSuperLiked: false
+    }));
+    this.currentIndex = 0;
+  }
+
+  getCards(): SwipeCard[] {
+    return this.cards;
+  }
+
+  getCurrentCard(): SwipeCard | null {
+    if (this.currentIndex < this.cards.length) {
+      return this.cards[this.currentIndex];
+    }
+    return null;
+  }
+
+  getNextCard(): SwipeCard | null {
+    if (this.currentIndex + 1 < this.cards.length) {
+      return this.cards[this.currentIndex + 1];
+    }
+    return null;
+  }
+
+  hasMoreCards(): boolean {
+    return this.currentIndex < this.cards.length;
+  }
+
+  getCurrentIndex(): number {
+    return this.currentIndex;
+  }
+
+  swipe(direction: SwipeDirection): SwipeCard | null {
+    const card = this.getCurrentCard();
+    if (!card) return null;
+
+    card.isLiked = direction === SwipeDirection.RIGHT;
+    card.isSuperLiked = direction === SwipeDirection.UP;
+
+    this.swipeSubject.next({ direction, card });
+    this.currentIndex++;
+
+    return card;
+  }
+
+  reset(): void {
+    this.currentIndex = 0;
+  }
+
+  getLikedCards(): SwipeCard[] {
+    return this.cards.filter(card => card.isLiked || card.isSuperLiked);
+  }
+}

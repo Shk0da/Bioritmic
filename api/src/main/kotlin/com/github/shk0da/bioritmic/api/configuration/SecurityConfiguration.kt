@@ -18,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken
 import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter
+import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.reactive.config.CorsRegistry
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import reactor.core.publisher.Mono
@@ -53,6 +54,18 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
     @Bean
     fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain? {
         http
+            .cors { cors ->
+                cors.configurationSource {
+                    CorsConfiguration().apply {
+                        allowedOrigins = listOf("*")
+                        allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                        allowedHeaders = listOf("*")
+                        exposedHeaders = listOf("*")
+                        maxAge = 3600L
+                        allowCredentials = false
+                    }
+                }
+            }
             .csrf { it.disable() }
             .formLogin{ it.disable() }
             .httpBasic{ it.disable() }

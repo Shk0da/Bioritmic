@@ -8,6 +8,9 @@ import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
+import com.github.shk0da.bioritmic.api.model.search.Gender
+import com.github.shk0da.bioritmic.api.model.search.Gender.MAN
+import com.github.shk0da.bioritmic.api.model.search.Gender.WOMAN
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
@@ -154,7 +157,7 @@ class UserService(
             ageMin = 18
             ageMax = 45
             distance = 30.0
-            gender = 0
+            gender = (if (MAN.ordinal.toShort() == userRepository.findById(userId)?.gender) WOMAN.ordinal else MAN.ordinal).toShort()
         }
         with(userSettings) {
             if (null == this.userId) {

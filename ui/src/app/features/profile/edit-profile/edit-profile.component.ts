@@ -73,12 +73,11 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
                 <div class="col-md-6 mb-3">
                   <label for="birthday" class="form-label">Дата рождения</label>
                   <input
-                    type="text"
+                    type="date"
                     class="form-control"
                     id="birthday"
                     [(ngModel)]="user.birthday"
                     name="birthday"
-                    placeholder="yyyy-MM-dd"
                     required>
                 </div>
 

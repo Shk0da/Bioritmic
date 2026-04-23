@@ -14,52 +14,156 @@ interface UserWithPhoto extends UserInfo {
   standalone: true,
   imports: [RouterLink],
   template: `
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0">Избранное</h5>
+    <div class="page-header mb-4">
+      <h1 class="page-title">
+        <i class="bi bi-bookmark-heart me-2"></i>Избранное
+      </h1>
+      <p class="text-muted">Сохранённые профили</p>
+    </div>
+
+    @if (loading) {
+      <div class="card">
+        <div class="card-body text-center py-5">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Загрузка...</span>
+          </div>
+        </div>
       </div>
-      <div class="card-body">
-        @if (loading) {
-          <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Загрузка...</span>
-            </div>
-          </div>
-        } @else if (users.length === 0) {
-          <div class="alert alert-info">
-            У вас пока нет избранных. Добавьте пользователей в избранное со страницы поиска.
-          </div>
-        } @else {
-          <div class="row">
-            @for (user of users; track user.id) {
-              <div class="col-md-4 mb-4">
-                <div class="card h-100">
-                  <img
-                    [src]="user.photoDataUrl || ''"
-                    class="card-img-top user-card-img"
-                    [alt]="user.name">
-                  <div class="card-body">
-                    <h5 class="card-title">{{ user.name }}</h5>
-                    <p class="card-text text-muted">
-                      Возраст: {{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }}, {{ getGenderText(user.gender) }}
-                    </p>
-                  </div>
-                  <div class="card-footer bg-white">
-                    <a [routerLink]="['/user', user.id]" class="btn btn-outline-primary btn-sm w-100 me-2">
-                      Посмотреть профиль
-                    </a>
-                    <button class="btn btn-outline-danger btn-sm mt-2 w-100" (click)="removeBookmark(user.id)">
-                      Удалить
-                    </button>
-                  </div>
+    } @else if (users.length === 0) {
+      <div class="card empty-state">
+        <div class="card-body text-center py-5">
+          <i class="bi bi-bookmark display-1 text-muted mb-3"></i>
+          <h4 class="text-muted">Пока пусто</h4>
+          <p class="text-muted">Добавляйте пользователей в избранное со страницы поиска</p>
+          <a routerLink="/swipe" class="btn btn-primary mt-3">
+            <i class="bi bi-people me-2"></i>К поиску
+          </a>
+        </div>
+      </div>
+    } @else {
+      <div class="row">
+        @for (user of users; track user.id) {
+          <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card user-card h-100">
+              <div class="user-card-image-wrapper">
+                <img
+                  [src]="user.photoDataUrl || ''"
+                  class="card-img-top user-card-img"
+                  [alt]="user.name">
+                <div class="user-card-overlay">
+                  <button class="btn-remove" (click)="removeBookmark(user.id)" title="Удалить">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
                 </div>
               </div>
-            }
+              <div class="card-body">
+                <h5 class="user-card-name">{{ user.name }}</h5>
+                <p class="user-card-info text-muted">
+                  {{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }} лет,
+                  {{ getGenderText(user.gender) }}
+                </p>
+                @if (user.distance) {
+                  <p class="user-card-distance small text-muted">
+                    <i class="bi bi-geo-alt me-1"></i>{{ user.distance.toFixed(1) }} км
+                  </p>
+                }
+              </div>
+              <div class="card-footer">
+                <a [routerLink]="['/user', user.id]" class="btn btn-outline-primary w-100">
+                  <i class="bi bi-person me-2"></i>Профиль
+                </a>
+              </div>
+            </div>
           </div>
         }
       </div>
-    </div>
-  `
+    }
+  `,
+  styles: [`
+    .page-header {
+      padding: 1rem 0;
+    }
+
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .empty-state {
+      max-width: 500px;
+      margin: 2rem auto;
+    }
+
+    .user-card {
+      transition: all 0.3s ease;
+      overflow: hidden;
+
+      &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(253, 41, 123, 0.2);
+      }
+    }
+
+    .user-card-image-wrapper {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .user-card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.7) 100%);
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: 0.75rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .user-card:hover .user-card-overlay {
+      opacity: 1;
+    }
+
+    .btn-remove {
+      background: rgba(239, 68, 68, 0.9);
+      color: white;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #dc3545;
+        transform: scale(1.1);
+      }
+    }
+
+    .user-card-name {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #1f2937;
+    }
+
+    .user-card-info {
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .user-card-distance {
+      margin-bottom: 0;
+    }
+  `]
 })
 export class BookmarksComponent implements OnInit {
   users: UserWithPhoto[] = [];
