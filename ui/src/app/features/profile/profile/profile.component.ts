@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { Subject, takeUntil } from 'rxjs';
 import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
+import { BoostService, BoostInfo } from '../../../core/services/boost.service';
 
 @Component({
   selector: 'app-profile',
@@ -79,6 +81,35 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
         </div>
 
         <div class="card mt-3">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Профиль Boost</h6>
+          </div>
+          <div class="card-body">
+            @if (activeBoost) {
+              <div class="boost-active">
+                <div class="boost-timer">
+                  <i class="bi bi-lightning-charge-fill text-warning"></i>
+                  <span class="boost-countdown">{{ getBoostCountdown() }}</span>
+                </div>
+                <p class="text-muted small mb-2">Ваш профиль выделен и показывается выше в поиске</p>
+              </div>
+            } @else if (user?.isPro) {
+              <p class="mb-3">Активируйте Boost, чтобы ваш профиль показывался выше в поиске на 24 часа.</p>
+              <button class="btn btn-warning" (click)="activateBoost()" [disabled]="boostActivating">
+                @if (boostActivating) {
+                  <span class="spinner-border spinner-border-sm me-2"></span>
+                } @else {
+                  <i class="bi bi-lightning-charge me-2"></i>
+                }
+                Boost на 24 часа
+              </button>
+            } @else {
+              <p class="text-muted mb-0">Обновите до Pro чтобы использовать Boost</p>
+            }
+          </div>
+        </div>
+
+        <div class="card mt-3">
           <div class="card-header">
             <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Настройки</h6>
           </div>
@@ -134,26 +165,64 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
       margin-top: 0.25rem;
       font-size: 0.75rem;
     }
+
+    .boost-active {
+      text-align: center;
+      padding: 0.5rem 0;
+    }
+
+    .boost-timer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f59e0b;
+      margin-bottom: 0.5rem;
+
+      i {
+        font-size: 1.75rem;
+      }
+    }
   `]
 })
-export class ProfileComponent implements OnInit {
+export class ProfileComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  private destroyRef = inject(DestroyRef);
   user: UserInfo | null = null;
   photoDataUrl: SafeUrl | null = null;
   blockedCount = 0;
+  activeBoost: BoostInfo | null = null;
+  boostActivating = false;
+  private boostCountdownInterval: any = null;
 
   constructor(
     private userService: UserService,
-    private sanitizer: DomSanitizer
-  ) {}
+    private sanitizer: DomSanitizer,
+    private boostService: BoostService
+  ) {
+    this.destroyRef.onDestroy(() => {
+      this.destroy$.next();
+      if (this.boostCountdownInterval) {
+        clearInterval(this.boostCountdownInterval);
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.loadProfile();
     this.loadBlockedCount();
+    this.loadActiveBoost();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private loadBlockedCount(): void {
-    // Загружаем всех заблокированных пользователей для подсчёта
-    this.userService.getBlockedUsers({ page: 0, size: 100 }).subscribe({
+    this.userService.getBlockedUsers({ page: 0, size: 100 }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (users) => {
         this.blockedCount = users.length;
       },
@@ -164,7 +233,7 @@ export class ProfileComponent implements OnInit {
   }
 
   private loadProfile(): void {
-    this.userService.getCurrentUser().subscribe({
+    this.userService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe({
       next: (user: UserInfo) => {
         this.user = user;
         this.loadPhoto();
@@ -173,7 +242,7 @@ export class ProfileComponent implements OnInit {
   }
 
   private loadPhoto(): void {
-    this.userService.getPhoto().subscribe({
+    this.userService.getPhoto().pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
         this.photoDataUrl = this.bytesToDataUrl(bytes);
       },
@@ -204,5 +273,58 @@ export class ProfileComponent implements OnInit {
 
   getGenderText(): string {
     return this.user?.gender === Gender.MAN ? 'Мужской' : 'Женский';
+  }
+
+  private loadActiveBoost(): void {
+    this.boostService.getCurrentBoost().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (boost) => {
+        this.activeBoost = boost;
+        if (boost) {
+          this.startBoostCountdown();
+        }
+      },
+      error: () => {
+        this.activeBoost = null;
+      }
+    });
+  }
+
+  activateBoost(): void {
+    this.boostActivating = true;
+    this.boostService.activateBoost().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        this.boostActivating = false;
+        if (response.success) {
+          this.loadActiveBoost();
+        }
+      },
+      error: () => {
+        this.boostActivating = false;
+      }
+    });
+  }
+
+  getBoostCountdown(): string {
+    if (!this.activeBoost) return '';
+    const now = Date.now();
+    const remaining = this.activeBoost.expiresAt - now;
+    if (remaining <= 0) return 'Закончился';
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    return `${hours}ч ${minutes}м ${seconds}с`;
+  }
+
+  private startBoostCountdown(): void {
+    if (this.boostCountdownInterval) {
+      clearInterval(this.boostCountdownInterval);
+    }
+    this.boostCountdownInterval = setInterval(() => {
+      if (this.activeBoost && Date.now() >= this.activeBoost.expiresAt) {
+        this.activeBoost = null;
+        clearInterval(this.boostCountdownInterval);
+        this.boostCountdownInterval = null;
+      }
+    }, 1000);
   }
 }

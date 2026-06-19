@@ -28,6 +28,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
@@ -54,6 +55,12 @@ dependencies {
     // cache
     implementation("org.infinispan:infinispan-spring-boot4-starter-embedded:16.1.3")
 
+    // S3 (MinIO)
+    implementation("software.amazon.awssdk:s3:2.31.1")
+
+    // Firebase Admin SDK
+    implementation("com.google.firebase:firebase-admin:9.2.0")
+
     // test
     testImplementation("org.springframework.boot:spring-boot-webtestclient")
     testImplementation("org.springframework.boot:spring-boot-webclient-test")
@@ -65,6 +72,7 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.testcontainers:jdbc:1.21.4")
     testImplementation("org.testcontainers:postgresql:1.21.4")
+    testImplementation("org.testcontainers:r2dbc:1.21.4")
 }
 
 kotlin {

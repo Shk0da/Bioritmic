@@ -6,7 +6,6 @@ import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils
 import java.sql.Timestamp
 import java.util.Date
-import java.util.concurrent.TimeUnit
 import javax.validation.constraints.DecimalMax
 import javax.validation.constraints.DecimalMin
 import javax.validation.constraints.Max
@@ -24,13 +23,11 @@ data class UserSearch(
 ) : BasicPresentation {
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    var timestamp: Timestamp = hourAgo()
+    var timestamp: Timestamp = Timestamp(0)
 
     companion object {
 
         val defaultDistance = 1.0
-
-        private fun hourAgo(): Timestamp = Timestamp(System.currentTimeMillis() - TimeUnit.HOURS.toMillis(1))
 
         fun of(user: User): UserSearch {
             val settings = user.userSettings
@@ -52,7 +49,7 @@ data class UserSearch(
     }
 
     fun withTimestamp(timestamp: Timestamp): UserSearch {
-        this.timestamp = if (timestamp.time > hourAgo().time) timestamp else hourAgo()
+        this.timestamp = timestamp
         return this
     }
 

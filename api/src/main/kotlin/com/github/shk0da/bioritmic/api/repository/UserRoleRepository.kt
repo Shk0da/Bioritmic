@@ -1,0 +1,28 @@
+package com.github.shk0da.bioritmic.api.repository
+
+import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager
+import com.github.shk0da.bioritmic.api.domain.UserRole
+import org.springframework.data.r2dbc.repository.Modifying
+import org.springframework.data.r2dbc.repository.Query
+import org.springframework.data.repository.kotlin.CoroutineCrudRepository
+import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
+
+@Repository
+@Transactional(transactionManager = transactionManager)
+interface UserRoleRepository : CoroutineCrudRepository<UserRole, Long> {
+
+    @Query("SELECT * FROM user_roles WHERE user_id = :userId")
+    suspend fun findAllByUserId(userId: Long): List<UserRole>
+
+    @Query("SELECT * FROM user_roles WHERE user_id = :userId AND role = :role")
+    suspend fun findByUserIdAndRole(userId: Long, role: String): UserRole?
+
+    @Modifying
+    @Query("INSERT INTO user_roles (user_id, role) VALUES (:userId, :role) ON CONFLICT (user_id, role) DO NOTHING")
+    suspend fun addRole(userId: Long, role: String)
+
+    @Modifying
+    @Query("DELETE FROM user_roles WHERE user_id = :userId AND role = :role")
+    suspend fun removeRole(userId: Long, role: String)
+}

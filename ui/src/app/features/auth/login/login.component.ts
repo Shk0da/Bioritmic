@@ -59,6 +59,19 @@ import { AuthorizationModel } from '../../../core/models/user.model';
             </div>
           </form>
 
+          <div class="text-center mt-3">
+            <span class="text-muted small">или</span>
+          </div>
+
+          <div class="d-grid gap-2 mt-3">
+            <button type="button" class="btn btn-outline-danger btn-lg" (click)="loginWithGoogle()">
+              <i class="bi bi-google me-2"></i>Войти через Google
+            </button>
+            <button type="button" class="btn btn-outline-dark btn-lg" (click)="loginWithApple()">
+              <i class="bi bi-apple me-2"></i>Войти через Apple
+            </button>
+          </div>
+
           <div class="text-center mt-4">
             <a routerLink="/auth/recovery" class="text-muted text-decoration-none small">
               Забыли пароль?
@@ -122,6 +135,38 @@ export class LoginComponent {
       error: (error) => {
         console.error('Login failed', error);
         alert('Неверный email или пароль');
+      }
+    });
+  }
+
+  loginWithGoogle(): void {
+    const mockToken = 'mock-google-token-' + Date.now();
+    this.authService.googleLogin(mockToken).subscribe({
+      next: (token) => {
+        this.authService.setAuth(token);
+        this.authService.loadCurrentUser().subscribe(() => {
+          this.router.navigate(['/swipe']);
+        });
+      },
+      error: (error) => {
+        console.error('Google login failed', error);
+        alert('Ошибка входа через Google');
+      }
+    });
+  }
+
+  loginWithApple(): void {
+    const mockToken = 'mock-apple-token-' + Date.now();
+    this.authService.appleLogin(mockToken).subscribe({
+      next: (token) => {
+        this.authService.setAuth(token);
+        this.authService.loadCurrentUser().subscribe(() => {
+          this.router.navigate(['/swipe']);
+        });
+      },
+      error: (error) => {
+        console.error('Apple login failed', error);
+        alert('Ошибка входа через Apple');
       }
     });
   }

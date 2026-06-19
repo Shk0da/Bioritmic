@@ -8,11 +8,12 @@ import { MailboxService } from '../../core/services/mailbox.service';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { UserInfo, Gender, UserMeeting } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
+import { BiorhythmDetailComponent } from '../../shared/components/biorhythm-detail/biorhythm-detail.component';
 
 @Component({
   selector: 'app-user-detail',
   standalone: true,
-  imports: [RouterLink, NgClass, NgStyle],
+  imports: [RouterLink, NgClass, NgStyle, FormsModule, BiorhythmDetailComponent],
   template: `
     @if (loading) {
       <div class="text-center py-5">
@@ -144,6 +145,14 @@ import { FormsModule } from '@angular/forms';
                       </div>
                     }
                   </div>
+                </div>
+              }
+
+              @if (user.id) {
+                <hr>
+                <div class="mb-3">
+                  <label class="text-muted small">Биоритмическая совместимость</label>
+                  <app-biorhythm-detail [userId]="user.id"></app-biorhythm-detail>
                 </div>
               }
             </div>

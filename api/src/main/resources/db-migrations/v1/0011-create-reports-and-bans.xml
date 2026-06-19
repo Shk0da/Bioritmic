@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0011-create-reports" author="bioritmic">
+        <createTable tableName="reports">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="reporter_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reported_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+        </createTable>
+        <createIndex tableName="reports" indexName="idx_reports_reporter_id">
+            <column name="reporter_id"/>
+        </createIndex>
+        <createIndex tableName="reports" indexName="idx_reports_reported_id">
+            <column name="reported_id"/>
+        </createIndex>
+        <createIndex tableName="reports" indexName="idx_reports_status">
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="0011-create-bans" author="bioritmic">
+        <createTable tableName="bans">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="VARCHAR(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="banned_until" type="TIMESTAMP"/>
+            <column name="permanent" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+        </createTable>
+        <createIndex tableName="bans" indexName="idx_bans_user_id">
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

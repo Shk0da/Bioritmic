@@ -26,21 +26,20 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
     suspend fun findNearest(
         userId: Long,
         lat: Double, lon: Double,
-        distanceInKilometers: Double, timestamp: Timestamp,
+        distanceInKilometers: Double,
         gender: Gender? = null, ageMin: Int? = null, ageMax: Int? = null
     ): List<GisUser> {
         var sql = """
             SELECT usr.id, usr.name, usr.birthday, usr.gender, gis.lat, gis.lon, gis.distance
             FROM users AS usr, (SELECT *, (point(lat, lon) <@> point(:lat, :lon)) AS distance FROM gis_data ORDER BY distance) AS gis
-            WHERE gis.user_id <> :userId AND gis.distance <= :distance AND usr.id = gis.user_id AND gis.timestamp >= :timestamp
+            WHERE gis.user_id <> :userId AND gis.distance <= :distance AND usr.id = gis.user_id
         """.trimIndent()
 
         val params = mutableMapOf<String, Any>(
             "userId" to userId,
             "lat" to lat,
             "lon" to lon,
-            "distance" to distanceInKilometers,
-            "timestamp" to timestamp.toInstant()
+            "distance" to distanceInKilometers
         )
 
         if (gender != null) {

@@ -6,6 +6,7 @@ import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.sin
 
 class BiorhythmService {
 
@@ -181,4 +182,60 @@ class BiorhythmService {
             age
         }
     }
+
+    fun calculateBiorhythmValue(birthDate: Date, period: Double): Double {
+        val now = System.currentTimeMillis()
+        val birthTime = birthDate.time
+        val daysSinceBirth = TimeUnit.DAYS.convert(now - birthTime, TimeUnit.MILLISECONDS)
+        val dayInCycle = daysSinceBirth % period
+        return sin(2.0 * Math.PI * dayInCycle / period)
+    }
+
+    fun detailCompare(birthDate1: Date, birthDate2: Date): BiorhythmDetail {
+        val cycles = listOf(
+            BiorhythmCycle("Physical", 23),
+            BiorhythmCycle("Emotional", 28),
+            BiorhythmCycle("Intellectual", 33),
+            BiorhythmCycle("Heartfelt", 38),
+            BiorhythmCycle("Creative", 43),
+            BiorhythmCycle("Intuitive", 47),
+            BiorhythmCycle("HighestChakra", 52),
+            BiorhythmCycle("Spiritual", 53)
+        )
+
+        var totalCompatibility = 0.0
+        val cycleResults = cycles.map { cycle ->
+            val selfValue = calculateBiorhythmValue(birthDate1, cycle.period.toDouble())
+            val otherValue = calculateBiorhythmValue(birthDate2, cycle.period.toDouble())
+            val compatibility = 1.0 - abs(selfValue - otherValue) / 2.0
+            totalCompatibility += compatibility
+            BiorhythmCycleResult(
+                name = cycle.name,
+                period = cycle.period,
+                selfValue = selfValue,
+                otherValue = otherValue,
+                compatibility = compatibility
+            )
+        }
+
+        return BiorhythmDetail(
+            cycles = cycleResults,
+            overallCompatibility = totalCompatibility / cycles.size
+        )
+    }
 }
+
+data class BiorhythmCycle(val name: String, val period: Int)
+
+data class BiorhythmCycleResult(
+    val name: String,
+    val period: Int,
+    val selfValue: Double,
+    val otherValue: Double,
+    val compatibility: Double
+)
+
+data class BiorhythmDetail(
+    val cycles: List<BiorhythmCycleResult>,
+    val overallCompatibility: Double
+)

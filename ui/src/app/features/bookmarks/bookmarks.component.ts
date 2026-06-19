@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { UserService } from '../../core/services/user.service';
+import { MatchService, MatchesResponse } from '../../core/services/match.service';
 import { UserInfo, PageableRequest } from '../../core/models/user.model';
 
 interface UserWithPhoto extends UserInfo {
@@ -20,6 +21,73 @@ interface UserWithPhoto extends UserInfo {
       </h1>
       <p class="text-muted">Сохранённые профили</p>
     </div>
+
+    @if (matchesLoading) {
+      <div class="card mb-4">
+        <div class="card-body text-center py-4">
+          <div class="spinner-border spinner-border-sm" role="status">
+            <span class="visually-hidden">Загрузка...</span>
+          </div>
+        </div>
+      </div>
+    } @else if (matchesCount > 0) {
+      <div class="matches-section mb-4">
+        <h5 class="matches-title">
+          <i class="bi bi-heart-fill text-danger me-2"></i>Совпадения
+          <span class="badge bg-danger ms-2">{{ matchesCount }}</span>
+        </h5>
+        @if (matchesBlurred) {
+          <div class="matches-blurred">
+            <div class="blurred-cards">
+              @for (i of getPlaceholderArray(matchesCount); track i) {
+                <div class="blurred-card">
+                  <div class="blurred-card-inner">
+                    <div class="blurred-avatar">
+                      <i class="bi bi-person-fill"></i>
+                    </div>
+                    <div class="blurred-lock">
+                      <i class="bi bi-lock-fill"></i>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+            <div class="blurred-overlay">
+              <i class="bi bi-lock-fill"></i>
+              <p>Обновите до Pro чтобы увидеть кто вас лайкнул</p>
+              <a routerLink="/subscription" class="btn btn-pro-sm">
+                <i class="bi bi-star-fill me-1"></i> Bioritmic Pro
+              </a>
+            </div>
+          </div>
+        } @else {
+          <div class="row">
+            @for (user of matches; track user.id) {
+              <div class="col-6 col-md-4 col-lg-3 mb-3">
+                <div class="card match-card h-100">
+                  <div class="match-card-image-wrapper">
+                    <img
+                      [src]="user.photoDataUrl || ''"
+                      class="card-img-top match-card-img"
+                      [alt]="user.name">
+                  </div>
+                  <div class="card-body p-2 text-center">
+                    <h6 class="match-card-name mb-1">{{ user.name }}</h6>
+                    <a [routerLink]="['/user', user.id]" class="btn btn-outline-primary btn-sm w-100">
+                      <i class="bi bi-person me-1"></i>Профиль
+                    </a>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <h5 class="section-title mb-3">
+      <i class="bi bi-bookmark me-2"></i>Избранное
+    </h5>
 
     @if (loading) {
       <div class="card">
@@ -94,6 +162,12 @@ interface UserWithPhoto extends UserInfo {
       background-clip: text;
     }
 
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
     .empty-state {
       max-width: 500px;
       margin: 2rem auto;
@@ -163,21 +237,202 @@ interface UserWithPhoto extends UserInfo {
     .user-card-distance {
       margin-bottom: 0;
     }
+
+    /* Matches section */
+    .matches-section {
+      background: white;
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .matches-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .matches-blurred {
+      position: relative;
+    }
+
+    .blurred-cards {
+      display: flex;
+      gap: 0.75rem;
+      filter: blur(10px);
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    .blurred-card {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #e5e7eb;
+    }
+
+    .blurred-card-inner {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    }
+
+    .blurred-avatar {
+      font-size: 2rem;
+      color: #94a3b8;
+    }
+
+    .blurred-lock {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.15);
+      color: #475569;
+      font-size: 1.25rem;
+    }
+
+    .blurred-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 8px;
+
+      i {
+        font-size: 1.5rem;
+        color: #6b7280;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #4b5563;
+        font-weight: 500;
+        text-align: center;
+        max-width: 250px;
+      }
+    }
+
+    .btn-pro-sm {
+      background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+      color: white;
+      border: none;
+      padding: 0.35rem 1rem;
+      border-radius: 16px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-decoration: none;
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(245, 158, 11, 0.4);
+        color: white;
+      }
+    }
+
+    .match-card {
+      transition: all 0.3s ease;
+      overflow: hidden;
+      border-radius: 10px;
+
+      &:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+      }
+    }
+
+    .match-card-image-wrapper {
+      height: 140px;
+      overflow: hidden;
+    }
+
+    .match-card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .match-card-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #1f2937;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   `]
 })
 export class BookmarksComponent implements OnInit {
   users: UserWithPhoto[] = [];
+  matches: UserWithPhoto[] = [];
+  matchesCount = 0;
+  matchesBlurred = false;
+  matchesLoading = false;
   loading = false;
   pageable: PageableRequest = { page: 0, size: 20 };
 
   constructor(
     private bookmarksService: BookmarksService,
     private userService: UserService,
+    private matchService: MatchService,
     private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
+    this.loadMatches();
     this.loadBookmarks();
+  }
+
+  private loadMatches(): void {
+    this.matchesLoading = true;
+    this.matchService.getMatches().subscribe({
+      next: (response: MatchesResponse) => {
+        this.matchesCount = response.count;
+        this.matchesBlurred = response.blurred;
+        if (!response.blurred && response.matches.length > 0) {
+          this.matches = response.matches.map(m => ({ ...m, photoDataUrl: null }));
+          this.loadMatchPhotos();
+        }
+        this.matchesLoading = false;
+      },
+      error: () => {
+        this.matchesLoading = false;
+      }
+    });
+  }
+
+  private loadMatchPhotos(): void {
+    this.matches.forEach(user => {
+      if (user.id) {
+        this.userService.getPhoto(user.id).subscribe({
+          next: (bytes: Uint8Array) => {
+            user.photoDataUrl = this.bytesToDataUrl(bytes);
+          },
+          error: () => {
+            user.photoDataUrl = null;
+          }
+        });
+      }
+    });
+  }
+
+  getPlaceholderArray(count: number): number[] {
+    return Array.from({ length: Math.min(count, 6) }, (_, i) => i);
   }
 
   private loadBookmarks(): void {

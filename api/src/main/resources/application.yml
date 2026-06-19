@@ -70,3 +70,16 @@ spring:
         mail.smtp.port: 25
         mail.smtp.auth: true
         mail.smtp.starttls.enable: false
+
+s3:
+  endpoint: http://localhost:9340
+  access-key: bioritmic
+  secret-key: bioritmic
+  bucket: bioritmic
+  region: us-east-1
+
+firebase:
+  enabled: false
+
+rate-limit:
+  enabled: true

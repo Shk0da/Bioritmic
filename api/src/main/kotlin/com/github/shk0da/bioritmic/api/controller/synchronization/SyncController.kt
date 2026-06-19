@@ -23,12 +23,12 @@ class SyncController(val userService: UserService, val searchService: SearchServ
 
     private val log = LoggerFactory.getLogger(SyncController::class.java)
 
-    // GET /synchronization -> timestamp
     @GetMapping(params = ["timestamp"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun sync(@RequestParam("timestamp") timestamp: Long): List<UserInfo> {
         val userId = getUserId()
         val search = UserSearch.of(userService.findUserByIdWithSettings(userId)).withTimestamp(Timestamp(timestamp))
         log.debug("Sync: {}", search)
-        return searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
+        val result = searchService.searchByFilter(search)
+        return result.map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
     }
 }

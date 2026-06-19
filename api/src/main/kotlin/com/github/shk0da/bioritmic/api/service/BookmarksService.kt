@@ -66,4 +66,22 @@ class BookmarksService(
             .map { item -> item.otherUserId!! }
         return userRepository.findAllById(usersByBookmarks).toList()
     }
+
+    @Transactional
+    suspend fun findMatches(userId: Long): List<User> {
+        val mutualIds = bookmarkRepository.findMutualBookmarkUserIds(userId)
+        if (mutualIds.isEmpty()) return emptyList()
+        return userRepository.findAllById(mutualIds.toSet()).toList()
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun countMatches(userId: Long): Int {
+        return bookmarkRepository.findMutualBookmarkUserIds(userId).size
+    }
+
+    @Transactional
+    suspend fun isMatch(userId: Long, otherUserId: Long): Boolean {
+        return bookmarkRepository.existsByUserIdAndOtherUserId(userId, otherUserId) &&
+            bookmarkRepository.existsByUserIdAndOtherUserId(otherUserId, userId)
+    }
 }

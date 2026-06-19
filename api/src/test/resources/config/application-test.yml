@@ -29,3 +29,17 @@ spring:
     name: ${spring.datasource.database}
     username: ${spring.datasource.username}
     password: ${spring.datasource.password}
+
+s3:
+  enabled: false
+  endpoint: http://localhost:9340
+  access-key: bioritmic
+  secret-key: bioritmic
+  bucket: bioritmic
+  region: us-east-1
+
+firebase:
+  enabled: false
+
+rate-limit:
+  enabled: false

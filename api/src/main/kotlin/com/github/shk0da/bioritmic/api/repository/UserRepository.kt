@@ -2,6 +2,8 @@ package com.github.shk0da.bioritmic.api.repository
 
 import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager
 import com.github.shk0da.bioritmic.api.domain.User
+import org.springframework.data.r2dbc.repository.Modifying
+import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
@@ -18,4 +20,15 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 
     @Transactional(readOnly = true)
     suspend fun findByRecoveryCode(code: String): User?
+
+    @Query("SELECT * FROM users WHERE is_verified = false")
+    suspend fun findUnverifiedUsers(): List<User>
+
+    @Modifying
+    @Query("UPDATE users SET is_verified = :verified WHERE id = :userId")
+    suspend fun setVerified(userId: Long, verified: Boolean)
+
+    @Modifying
+    @Query("UPDATE users SET last_active_at = :lastActiveAt WHERE id = :userId")
+    suspend fun updateLastActiveAt(userId: Long, lastActiveAt: java.sql.Timestamp)
 }

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0018-create-stories" author="bioritmic">
+        <createTable tableName="stories">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="media_url" type="VARCHAR(500)"/>
+            <column name="caption" type="VARCHAR(500)"/>
+            <column name="expires_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+        </createTable>
+        <createIndex tableName="stories" indexName="idx_stories_user_id">
+            <column name="user_id"/>
+        </createIndex>
+        <createIndex tableName="stories" indexName="idx_stories_expires_at">
+            <column name="expires_at"/>
+        </createIndex>
+
+        <createTable tableName="story_views">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="story_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="viewer_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="viewed_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+        </createTable>
+        <createIndex tableName="story_views" indexName="idx_story_views_story_id">
+            <column name="story_id"/>
+        </createIndex>
+        <createIndex tableName="story_views" indexName="idx_story_views_viewer_id">
+            <column name="viewer_id"/>
+        </createIndex>
+        <addUniqueConstraint tableName="story_views" columnNames="story_id, viewer_id" constraintName="uq_story_views_story_viewer"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -33,4 +33,14 @@ interface BookmarkRepository : CoroutineCrudRepository<Bookmark, Bookmark.Primar
             "set timestamp = excluded.timestamp"
     )
     suspend fun insert(userId: Long, otherUserId: Long, timestamp: Timestamp?): Int
+
+    @Query(
+        "SELECT b2.other_user_id FROM bookmarks b1 " +
+            "JOIN bookmarks b2 ON b1.other_user_id = b2.user_id AND b2.other_user_id = b1.user_id " +
+            "WHERE b1.user_id = :userId"
+    )
+    suspend fun findMutualBookmarkUserIds(userId: Long): List<Long>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM bookmarks WHERE user_id = :userId AND other_user_id = :otherUserId)")
+    suspend fun existsByUserIdAndOtherUserId(userId: Long, otherUserId: Long): Boolean
 }

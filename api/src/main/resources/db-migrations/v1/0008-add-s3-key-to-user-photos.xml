@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0008-add-s3-key-to-user-photos" author="bioritmic">
+        <addColumn tableName="user_photos">
+            <column name="s3_key" type="VARCHAR(500)"/>
+        </addColumn>
+        <createIndex tableName="user_photos" indexName="idx_user_photos_s3_key">
+            <column name="s3_key"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

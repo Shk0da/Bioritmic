@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0013-create-prompts" author="bioritmic">
+        <createTable tableName="prompts">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="0013-create-user-prompt-answers" author="bioritmic">
+        <createTable tableName="user_prompt_answers">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="prompt_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="answer" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+        </createTable>
+        <createIndex tableName="user_prompt_answers" indexName="idx_user_prompt_answers_user_id">
+            <column name="user_id"/>
+        </createIndex>
+        <addForeignKeyConstraint baseTableName="user_prompt_answers" baseColumnNames="prompt_id"
+                                 referencedTableName="prompts" referencedColumnNames="id"
+                                 constraintName="fk_user_prompt_answers_prompt"/>
+    </changeSet>
+
+    <changeSet id="0013-seed-prompts" author="bioritmic">
+        <insert tableName="prompts">
+            <column name="text" value="Лучший совет, который вам давали?"/>
+            <column name="category" value="general"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Мой идеальный выходной выглядит так..."/>
+            <column name="category" value="lifestyle"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Три вещи, которые я не могу отпустить..."/>
+            <column name="category" value="general"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Я ищу кого-то, кто..."/>
+            <column name="category" value="dating"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Мой суперсила — это..."/>
+            <column name="category" value="fun"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Последний фильм/сериал, который я досмотрел(а)..."/>
+            <column name="category" value="entertainment"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Я готов(а) на всё ради..."/>
+            <column name="category" value="adventure"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Моя любимая еда — это..."/>
+            <column name="category" value="food"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Если бы я мог(ла) съесть только одно блюдо до конца жизни..."/>
+            <column name="category" value="food"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Музыка, которая описывает мою жизнь — это..."/>
+            <column name="category" value="music"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Я хочу быть рядом с кем-то, кто..."/>
+            <column name="category" value="dating"/>
+        </insert>
+        <insert tableName="prompts">
+            <column name="text" value="Мой знак зодиака объясняет, почему я..."/>
+            <column name="category" value="fun"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

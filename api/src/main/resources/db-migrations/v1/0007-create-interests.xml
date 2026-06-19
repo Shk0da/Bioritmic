@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0007-create-interests" author="bioritmic">
+        <createTable tableName="interests">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="icon" type="VARCHAR(50)"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="interests" indexName="idx_interests_category">
+            <column name="category"/>
+        </createIndex>
+        <createIndex tableName="interests" indexName="idx_interests_name_unique" unique="true">
+            <column name="name"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="0007-create-user-interests" author="bioritmic">
+        <createTable tableName="user_interests">
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="interest_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="user_interests" columnNames="user_id, interest_id"/>
+        <createIndex tableName="user_interests" indexName="idx_user_interests_user_id">
+            <column name="user_id"/>
+        </createIndex>
+        <createIndex tableName="user_interests" indexName="idx_user_interests_interest_id">
+            <column name="interest_id"/>
+        </createIndex>
+        <addForeignKeyConstraint baseTableName="user_interests" baseColumnNames="interest_id"
+                                 referencedTableName="interests" referencedColumnNames="id"
+                                 constraintName="fk_user_interests_interest"/>
+    </changeSet>
+
+    <changeSet id="0007-seed-interests" author="bioritmic">
+        <insert tableName="interests">
+            <column name="name" value="Спорт"/>
+            <column name="category" value="Активность"/>
+            <column name="icon" value="bi-trophy"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Фитнес"/>
+            <column name="category" value="Активность"/>
+            <column name="icon" value="bi-heart-pulse"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Бег"/>
+            <column name="category" value="Активность"/>
+            <column name="icon" value="bi-lightning"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Плавание"/>
+            <column name="category" value="Активность"/>
+            <column name="icon" value="bi-water"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Йога"/>
+            <column name="category" value="Активность"/>
+            <column name="icon" value="bi-circle"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Музыка"/>
+            <column name="category" value="Творчество"/>
+            <column name="icon" value="bi-music-note"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Путешествия"/>
+            <column name="category" value="Хобби"/>
+            <column name="icon" value="bi-airplane"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Кино"/>
+            <column name="category" value="Развлечения"/>
+            <column name="icon" value="bi-film"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Книги"/>
+            <column name="category" value="Образование"/>
+            <column name="icon" value="bi-book"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Кулинария"/>
+            <column name="category" value="Хобби"/>
+            <column name="icon" value="bi-cup-hot"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Гейминг"/>
+            <column name="category" value="Развлечения"/>
+            <column name="icon" value="bi-controller"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Фотография"/>
+            <column name="category" value="Творчество"/>
+            <column name="icon" value="bi-camera"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Танцы"/>
+            <column name="category" value="Творчество"/>
+            <column name="icon" value="bi-music-note-beamed"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Коты"/>
+            <column name="category" value="Животные"/>
+            <column name="icon" value="bi-emoji-laughing"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Собаки"/>
+            <column name="category" value="Животные"/>
+            <column name="icon" value="bi-emoji-laughing"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Кофе"/>
+            <column name="category" value="Лайфстайл"/>
+            <column name="icon" value="bi-cup"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Вино"/>
+            <column name="category" value="Лайфстайл"/>
+            <column name="icon" value="bi-cup-straw"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Наука"/>
+            <column name="category" value="Образование"/>
+            <column name="icon" value="bi-lightbulb"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Технологии"/>
+            <column name="category" value="Образование"/>
+            <column name="icon" value="bi-laptop"/>
+        </insert>
+        <insert tableName="interests">
+            <column name="name" value="Искусство"/>
+            <column name="category" value="Творчество"/>
+            <column name="icon" value="bi-palette"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

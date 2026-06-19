@@ -3,6 +3,7 @@ package com.github.shk0da.bioritmic
 import com.github.shk0da.bioritmic.api.ApiApplication
 import com.github.shk0da.bioritmic.api.constants.ProfileConfigConstants
 import com.github.shk0da.bioritmic.configuration.DataSourceTestConfiguration
+import com.github.shk0da.bioritmic.configuration.S3TestConfiguration
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -23,6 +24,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 @ContextConfiguration(
     classes = [
         DataSourceTestConfiguration::class,
+        S3TestConfiguration::class,
         ApiApplication::class,
     ]
 )

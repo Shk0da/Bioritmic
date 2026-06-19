@@ -42,6 +42,15 @@ class User {
     @Column("register_date")
     var registerDate: Timestamp? = null
 
+    @Column("bio")
+    var bio: String? = null
+
+    @Column("last_active_at")
+    var lastActiveAt: Timestamp? = null
+
+    @Column("is_verified")
+    var isVerified: Boolean = false
+
     @Transient
     var userSettings: UserSettings? = null
 

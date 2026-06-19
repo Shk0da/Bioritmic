@@ -6,9 +6,11 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.RecoveryModel
+import com.github.shk0da.bioritmic.api.model.SocialLoginRequest
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.api.service.AuthService
+import com.github.shk0da.bioritmic.api.service.SocialAuthService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
@@ -24,7 +26,7 @@ import javax.validation.constraints.NotEmpty
 @Validated
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1)
-class AuthController(val userService: UserService, val authService: AuthService) {
+class AuthController(val userService: UserService, val authService: AuthService, val socialAuthService: SocialAuthService) {
 
     private val log = LoggerFactory.getLogger(AuthController::class.java)
 
@@ -98,6 +100,22 @@ class AuthController(val userService: UserService, val authService: AuthService)
     suspend fun refreshToken(@RequestBody @Valid userToken: UserToken): UserToken {
         log.debug("Refreshed {}", userToken)
         return authService.refreshToken(userToken)
+    }
+
+    // POST /auth/google <- {idToken} -> UserToken
+    @ResponseStatus(HttpStatus.OK)
+    @PostMapping(value = ["/auth/google"], produces = [APPLICATION_JSON_VALUE])
+    suspend fun googleLogin(@RequestBody @Valid request: SocialLoginRequest): UserToken {
+        log.debug("Google social login")
+        return socialAuthService.handleGoogleLogin(request.idToken)
+    }
+
+    // POST /auth/apple <- {idToken} -> UserToken
+    @ResponseStatus(HttpStatus.OK)
+    @PostMapping(value = ["/auth/apple"], produces = [APPLICATION_JSON_VALUE])
+    suspend fun appleLogin(@RequestBody @Valid request: SocialLoginRequest): UserToken {
+        log.debug("Apple social login")
+        return socialAuthService.handleAppleLogin(request.idToken)
     }
 
     // POST /logout -> clear token

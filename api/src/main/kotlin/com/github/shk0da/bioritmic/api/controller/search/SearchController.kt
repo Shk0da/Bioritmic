@@ -27,22 +27,26 @@ class SearchController(val userService: UserService, val searchService: SearchSe
 
     private val log = LoggerFactory.getLogger(SearchController::class.java)
 
-    // GET /search/ <- List of Users of user settings search
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun search(): List<UserInfo> {
         val userId = getUserId()
         val search = UserSearch.of(userService.findUserByIdWithSettings(userId))
         log.debug("User search: {}", search)
-        return searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
+        val result = searchService.searchByFilter(search)
+        return result.map { gisUser ->
+            ofWithCompare(gisUser, search.birthdate!!)
+        }
     }
 
-    // POST /search/ <- List of Users around with custom search
     @PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun search(@RequestBody @Valid userSearch: UserSearch, principal: Principal): List<UserInfo> {
         userSearch.validate()
         val userId = getUserId(principal)
         val search = userSearch.withUser(userService.findUserById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND))
         log.debug("User search: {}", search)
-        return searchService.searchByFilter(search).map { gisUser -> ofWithCompare(gisUser, search.birthdate!!) }
+        val result = searchService.searchByFilter(search)
+        return result.map { gisUser ->
+            ofWithCompare(gisUser, search.birthdate!!)
+        }
     }
 }

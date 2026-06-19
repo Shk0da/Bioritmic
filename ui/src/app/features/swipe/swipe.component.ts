@@ -6,6 +6,8 @@ import { SearchService } from '../../core/services/search.service';
 import { UserService } from '../../core/services/user.service';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { SwipeService, SwipeResult } from '../../core/services/swipe.service';
+import { MatchService } from '../../core/services/match.service';
+import { SubscriptionService } from '../../core/services/subscription.service';
 import { UserInfo, Gender, UserSearch, UserSettings, SwipeDirection, SwipeCard } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
 import { NgClass, NgStyle } from '@angular/common';
@@ -176,13 +178,29 @@ import { NgClass, NgStyle } from '@angular/common';
 
       <!-- Кнопки управления (только мобильные) -->
       <div class="swipe-controls">
-        <button class="control-btn btn-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="cards.length === 0">
+        <button class="control-btn btn-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)">
           <i class="bi bi-x-lg"></i>
         </button>
-        <button class="control-btn btn-like" (click)="manualSwipe(SwipeDirection.RIGHT)" [disabled]="cards.length === 0">
+        <button class="control-btn btn-like" (click)="manualSwipe(SwipeDirection.RIGHT)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)">
           <i class="bi bi-heart-fill"></i>
         </button>
       </div>
+
+      <!-- Счётчик свайпов и CTA -->
+      @if (!isPro && swipeLimit > 0) {
+        <div class="swipe-limit-bar">
+          @if (swipeRemaining > 0) {
+            <span class="swipe-limit-text">{{ swipeRemaining }}/{{ swipeLimit }} свайпов</span>
+          } @else {
+            <div class="swipe-limit-cta">
+              <p class="cta-text">Обновите до Pro для неограниченных свайпов</p>
+              <a routerLink="/subscription" class="btn btn-pro">
+                <i class="bi bi-star-fill me-1"></i> Bioritmic Pro
+              </a>
+            </div>
+          }
+        </div>
+      }
     </div>
 
     <!-- Модальное окно фильтров -->
@@ -252,16 +270,24 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   swipeDirection: SwipeDirection = SwipeDirection.NONE;
   private destroy$ = new Subject<void>();
 
+  // Swipe limit state
+  swipeLimit = -1;
+  swipeRemaining = -1;
+  isPro = false;
+
   constructor(
     private searchService: SearchService,
     private userService: UserService,
     private bookmarksService: BookmarksService,
     private swipeService: SwipeService,
+    private matchService: MatchService,
+    private subscriptionService: SubscriptionService,
     private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
     this.loadUserSettings();
+    this.loadSwipeLimit();
 
     // Подписка на свайпы из сервиса
     this.swipeService.onSwipe
@@ -308,6 +334,17 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
       error: () => {
         this.search();
       }
+    });
+  }
+
+  private loadSwipeLimit(): void {
+    this.subscriptionService.getSwipeLimit().subscribe({
+      next: (limit: any) => {
+        this.swipeLimit = limit.limit;
+        this.swipeRemaining = limit.remaining;
+        this.isPro = limit.isPro;
+      },
+      error: () => {}
     });
   }
 
@@ -544,6 +581,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   private completeSwipe(direction: SwipeDirection): void {
     const card = this.swipeService.swipe(direction);
     if (card) {
+      this.decrementSwipeLimit();
       this.handleSwipeResult({ direction, card });
 
       // Добавляем/убираем из избранного при свайпе
@@ -574,7 +612,14 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
     const card = this.swipeService.swipe(direction);
     if (card) {
+      this.decrementSwipeLimit();
       this.handleSwipeResult({ direction, card });
+    }
+  }
+
+  private decrementSwipeLimit(): void {
+    if (!this.isPro && this.swipeRemaining > 0) {
+      this.swipeRemaining--;
     }
   }
 

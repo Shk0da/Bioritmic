@@ -44,6 +44,7 @@ export interface UserSearch {
   distance?: number; // minimum: 0.05, maximum: 100
   gender?: Gender;
   timestamp?: Timestamp;
+  interestIds?: number[];
 }
 
 export interface Timestamp {
@@ -104,6 +105,13 @@ export interface UserInfo {
   lat?: number;
   lon?: number;
   name?: string;
+  bio?: string;
+  interests?: Interest[];
+  isOnline?: boolean;
+  lastActiveAt?: string;
+  isVerified?: boolean;
+  isPro?: boolean;
+  role?: string;
 }
 
 export interface PageableRequest {
@@ -124,9 +132,27 @@ export enum SwipeDirection {
   NONE = 'none'
 }
 
+export interface UserPhoto {
+  id?: number;
+  photoOrder: number;
+  contentType?: string;
+  photoBytes?: number[];
+  s3Key?: string;
+  dataUrl?: string | null;
+}
+
 export interface SwipeCard {
   user: UserInfo;
   photoDataUrl?: string | null;
+  photos?: UserPhoto[];
   isLiked?: boolean;
   isSuperLiked?: boolean;
+  promptAnswers?: Array<{ promptText?: string; answer?: string }>;
+}
+
+export interface Interest {
+  id?: number;
+  name?: string;
+  category?: string;
+  icon?: string;
 }

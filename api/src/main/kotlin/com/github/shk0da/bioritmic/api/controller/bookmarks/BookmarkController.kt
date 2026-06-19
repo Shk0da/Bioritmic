@@ -2,9 +2,11 @@ package com.github.shk0da.bioritmic.api.controller.bookmarks
 
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes
 import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
+import com.github.shk0da.bioritmic.api.model.user.MatchesResponse
 import com.github.shk0da.bioritmic.api.model.user.UserBookmark
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.service.BookmarksService
+import com.github.shk0da.bioritmic.api.service.SubscriptionService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.springdoc.core.annotations.ParameterObject
 import org.springframework.data.domain.Pageable
@@ -23,7 +25,10 @@ import javax.validation.Valid
 @Validated
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/bookmarks")
-class BookmarkController(val bookmarksService: BookmarksService) {
+class BookmarkController(
+    val bookmarksService: BookmarksService,
+    val subscriptionService: SubscriptionService
+) {
 
     // GET /bookmarks/
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -43,5 +48,24 @@ class BookmarkController(val bookmarksService: BookmarksService) {
     suspend fun deleteBookmark(@PathVariable userId: Long): List<UserInfo> {
         val currentUserId = getUserId()
         return bookmarksService.deleteBookmarks(currentUserId, userId).map { UserInfo.of(it) }
+    }
+
+    @GetMapping(value = ["/matches"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun getMatches(): MatchesResponse {
+        val userId = getUserId()
+        val isPro = subscriptionService.isProUser(userId)
+        if (!isPro) {
+            val count = bookmarksService.countMatches(userId)
+            return MatchesResponse(count = count, blurred = true)
+        }
+        val matches = bookmarksService.findMatches(userId).map { user -> UserInfo.of(user) }
+        return MatchesResponse(matches = matches, count = matches.size, blurred = false)
+    }
+
+    @GetMapping(value = ["/matches/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun checkMatch(@PathVariable userId: Long): Map<String, Boolean> {
+        val currentUserId = getUserId()
+        val isMatch = bookmarksService.isMatch(currentUserId, userId)
+        return mapOf("isMatch" to isMatch)
     }
 }
