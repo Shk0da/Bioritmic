@@ -1,5 +1,6 @@
 package com.github.shk0da.bioritmic.api.configuration
 
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -8,6 +9,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.core.exception.SdkException
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest
 import java.net.URI
@@ -15,6 +17,8 @@ import java.net.URI
 @Configuration
 @ConditionalOnProperty(name = ["s3.enabled"], havingValue = "true", matchIfMissing = true)
 class S3Configuration {
+
+    private val log = LoggerFactory.getLogger(S3Configuration::class.java)
 
     @Value("\${s3.endpoint}")
     private lateinit var endpoint: String
@@ -50,7 +54,8 @@ class S3Configuration {
     private fun ensureBucketExists(s3Client: S3Client) {
         try {
             s3Client.headBucket(HeadBucketRequest.builder().bucket(bucket).build())
-        } catch (e: Exception) {
+        } catch (@Suppress("SwallowedException") e: SdkException) {
+            log.debug("Bucket '{}' does not exist, creating...", bucket)
             s3Client.createBucket(CreateBucketRequest.builder().bucket(bucket).build())
         }
     }

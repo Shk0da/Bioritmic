@@ -36,16 +36,12 @@ class AsyncConfiguration {
     @Primary
     @Bean("taskExecutor")
     fun taskExecutor(): TaskExecutor {
-        val taskExecutor = ConcurrentTaskExecutor()
-        taskExecutor.setConcurrentExecutor(Executors.newWorkStealingPool(AVAILABLE_TASK_THREADS))
-        return taskExecutor
+        return ConcurrentTaskExecutor(Executors.newWorkStealingPool(AVAILABLE_TASK_THREADS))
     }
 
     @Bean("cachedThreadPoolExecutor")
     fun cachedThreadPoolExecutor(): TaskExecutor {
-        val taskExecutor = ConcurrentTaskExecutor()
-        taskExecutor.setConcurrentExecutor(Executors.newCachedThreadPool(Executors.defaultThreadFactory()))
-        return taskExecutor
+        return ConcurrentTaskExecutor(Executors.newCachedThreadPool(Executors.defaultThreadFactory()))
     }
 
     @Bean("taskScheduler")

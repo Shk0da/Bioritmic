@@ -20,4 +20,8 @@ class ProfileBoost : Serializable {
 
     @Column("expires_at")
     var expiresAt: Timestamp? = null
+
+    companion object {
+        private const val serialVersionUID = 1L
+    }
 }

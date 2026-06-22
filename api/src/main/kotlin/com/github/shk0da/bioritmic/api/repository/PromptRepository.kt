@@ -21,7 +21,11 @@ interface PromptRepository : CoroutineCrudRepository<Prompt, Long> {
 @Transactional(transactionManager = transactionManager)
 interface UserPromptAnswerRepository : CoroutineCrudRepository<UserPromptAnswer, Long> {
 
-    @Query("SELECT upa.*, p.text as prompt_text, p.category as prompt_category FROM user_prompt_answers upa JOIN prompts p ON upa.prompt_id = p.id WHERE upa.user_id = :userId")
+    @Query(
+        "SELECT upa.*, p.text as prompt_text, p.category as prompt_category " +
+            "FROM user_prompt_answers upa JOIN prompts p ON upa.prompt_id = p.id " +
+            "WHERE upa.user_id = :userId"
+    )
     suspend fun findAnswersByUserId(userId: Long): List<UserPromptAnswer>
 
     @Query("SELECT * FROM user_prompt_answers WHERE user_id = :userId AND prompt_id = :promptId")

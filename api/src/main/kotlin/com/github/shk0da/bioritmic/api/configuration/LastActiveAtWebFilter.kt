@@ -18,30 +18,27 @@ class LastActiveAtWebFilter(
     private val userRepository: UserRepository
 ) : WebFilter {
 
+    companion object {
+        private const val BEARER_PREFIX = "Bearer "
+    }
+
     private val log = LoggerFactory.getLogger(LastActiveAtWebFilter::class.java)
 
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
         val request = exchange.request
 
-        if (isPublicEndpoint(request)) {
-            return chain.filter(exchange)
-        }
-
         val token = extractBearerToken(request)
-        if (token == null) {
-            return chain.filter(exchange)
-        }
-
-        // Fire-and-forget update of last_active_at
-        Mono.fromCallable {
-            runBlocking {
-                try {
-                    updateLastActive(token)
-                } catch (e: Exception) {
-                    log.debug("Failed to update last_active_at: {}", e.message)
+        if (!isPublicEndpoint(request) && token != null) {
+            Mono.fromCallable {
+                runBlocking {
+                    try {
+                        updateLastActive(token)
+                    } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+                        log.debug("Failed to update last_active_at: {}", e.message)
+                    }
                 }
-            }
-        }.subscribe()
+            }.subscribe()
+        }
 
         return chain.filter(exchange)
     }
@@ -60,9 +57,9 @@ class LastActiveAtWebFilter(
     }
 
     private fun extractBearerToken(request: ServerHttpRequest): String? {
-        val authHeader = request.headers.getFirst("Authorization") ?: return null
-        if (!authHeader.startsWith("Bearer ")) return null
-        return authHeader.substring(7)
+        return request.headers.getFirst("Authorization")
+            ?.takeIf { it.startsWith(BEARER_PREFIX) }
+            ?.substring(BEARER_PREFIX.length)
     }
 
     private suspend fun updateLastActive(accessToken: String) {

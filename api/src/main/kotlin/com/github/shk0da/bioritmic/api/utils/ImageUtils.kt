@@ -14,12 +14,16 @@ import javax.imageio.ImageIO
 
 object ImageUtils {
 
+    private const val STORAGE_DIR = "storage"
+    private const val USERS_IMAGE_SUBDIR = "image/users"
+
     private val log = LoggerFactory.getLogger(ImageUtils::class.java)
 
     private val classLoader = javaClass.classLoader
-    private val storage = File("storage").absolutePath
-    private val usersImageStorage = File("$storage${File.separatorChar}image${File.separatorChar}users").absolutePath
+    private val storage = File(STORAGE_DIR).absolutePath
+    private val usersImageStorage = File("$storage${File.separatorChar}$USERS_IMAGE_SUBDIR").absolutePath
 
+    @Suppress("MagicNumber")
     enum class ImageTag(val width: Int, val height: Int) {
         ORIGINAL(0, 0),
         CROPP_500x500(500, 500),

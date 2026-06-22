@@ -37,7 +37,7 @@ class FirebaseConfiguration {
 
             FirebaseApp.initializeApp(options)
             log.info("Firebase initialized successfully")
-        } catch (e: Exception) {
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             log.error("Failed to initialize Firebase: {}", e.message)
         }
     }

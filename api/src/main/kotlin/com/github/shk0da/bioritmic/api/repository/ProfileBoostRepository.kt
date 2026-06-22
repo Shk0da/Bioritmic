@@ -12,7 +12,10 @@ import java.sql.Timestamp
 @Transactional(transactionManager = transactionManager)
 interface ProfileBoostRepository : CoroutineCrudRepository<ProfileBoost, Long> {
 
-    @Query("SELECT * FROM profile_boosts WHERE user_id = :userId AND expires_at > NOW() ORDER BY expires_at DESC LIMIT 1")
+    @Query(
+        "SELECT * FROM profile_boosts WHERE user_id = :userId " +
+            "AND expires_at > NOW() ORDER BY expires_at DESC LIMIT 1"
+    )
     suspend fun findActiveByUserId(userId: Long): ProfileBoost?
 
     @Query("DELETE FROM profile_boosts WHERE expires_at <= :now")

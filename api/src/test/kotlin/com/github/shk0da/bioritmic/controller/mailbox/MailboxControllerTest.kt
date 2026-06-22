@@ -38,7 +38,7 @@ class MailboxControllerTest : ApiApplicationTests() {
             .expectStatus().isCreated
 
         val authorizationModel = AuthorizationModel(
-            email = defaultUserModel.email!!,
+            email = defaultUserModel.email,
             password = defaultUserModel.password!!
         )
 

@@ -110,12 +110,13 @@ import { StoryService } from '../../../core/services/story.service';
       align-items: center;
       justify-content: space-between;
       padding: 16px 20px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--border-color, #eee);
     }
 
     .creator-header h5 {
       margin: 0;
       font-weight: 600;
+      color: var(--text-primary);
     }
 
     .creator-body {
@@ -123,7 +124,7 @@ import { StoryService } from '../../../core/services/story.service';
     }
 
     .file-upload {
-      border: 2px dashed #ddd;
+      border: 2px dashed var(--border-color, #ddd);
       border-radius: 12px;
       padding: 40px;
       text-align: center;
@@ -132,19 +133,19 @@ import { StoryService } from '../../../core/services/story.service';
     }
 
     .file-upload:hover {
-      border-color: #4a90d9;
-      background: #f8f9fa;
+      border-color: var(--accent-blue, #4a90d9);
+      background: var(--bg-secondary, #f8f9fa);
     }
 
     .file-upload i {
       font-size: 3rem;
-      color: #ccc;
+      color: var(--text-muted, #ccc);
       margin-bottom: 12px;
     }
 
     .file-upload p {
       margin: 0 0 4px;
-      color: #666;
+      color: var(--text-secondary, #666);
     }
 
     .preview-container {
@@ -158,7 +159,7 @@ import { StoryService } from '../../../core/services/story.service';
       width: 100%;
       max-height: 300px;
       object-fit: contain;
-      background: #f0f0f0;
+      background: var(--bg-secondary, #f0f0f0);
     }
 
     .remove-preview {
@@ -191,7 +192,7 @@ import { StoryService } from '../../../core/services/story.service';
       display: flex;
       gap: 12px;
       padding: 16px 20px;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--border-color, #eee);
     }
 
     .creator-footer .btn {

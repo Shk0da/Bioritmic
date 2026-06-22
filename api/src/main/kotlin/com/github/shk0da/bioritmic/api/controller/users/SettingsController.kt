@@ -30,8 +30,13 @@ class SettingsController(val userService: UserService) {
     }
 
     // POST/PUT/PATH /user/settings -> UserSettings
-    @RequestMapping(method = [RequestMethod.POST, RequestMethod.PATCH, RequestMethod.PUT], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun updateSettings(@Valid @RequestBody settings: UserSettingsModel, principal: Principal): UserSettingsModel {
+    @RequestMapping(
+        method = [RequestMethod.POST, RequestMethod.PATCH, RequestMethod.PUT],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    suspend fun updateSettings(
+        @Valid @RequestBody settings: UserSettingsModel, principal: Principal
+    ): UserSettingsModel {
         settings.validate()
         val userId = getUserId(principal)
         return UserSettingsModel.of(userService.updateUserSettingsById(userId, settings))

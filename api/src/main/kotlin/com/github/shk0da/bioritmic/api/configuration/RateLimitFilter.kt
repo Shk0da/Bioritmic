@@ -21,9 +21,11 @@ class RateLimitFilter {
     companion object {
         private const val MAX_REQUESTS = 10
         private const val WINDOW_MS = 60_000L
+        private const val CLEANUP_INTERVAL_MS = 300_000L
     }
 
     private val requestCounts = ConcurrentHashMap<String, MutableList<Long>>()
+    private val lastCleanup = ConcurrentHashMap<String, Long>()
 
     @Bean
     fun rateLimitWebFilter(): WebFilter {
@@ -38,6 +40,8 @@ class RateLimitFilter {
             val clientIp = getClientIp(request)
             val key = "$clientIp:$path"
             val now = System.currentTimeMillis()
+
+            maybeCleanup(now)
 
             val timestamps = requestCounts.computeIfAbsent(key) { mutableListOf() }
 
@@ -56,6 +60,19 @@ class RateLimitFilter {
         }
     }
 
+    private fun maybeCleanup(now: Long) {
+        if (now - (lastCleanup["global"] ?: 0L) > CLEANUP_INTERVAL_MS) {
+            lastCleanup["global"] = now
+            val expiredKeys = requestCounts.entries.filter { (_, timestamps) ->
+                synchronized(timestamps) {
+                    timestamps.removeAll { it < now - WINDOW_MS }
+                    timestamps.isEmpty()
+                }
+            }.map { it.key }
+            expiredKeys.forEach { requestCounts.remove(it) }
+        }
+    }
+
     private fun isRateLimitedEndpoint(path: String): Boolean {
         return path.startsWith("/api/v1/registration") ||
                 path.startsWith("/api/v1/authorization") ||
@@ -63,14 +80,11 @@ class RateLimitFilter {
     }
 
     private fun getClientIp(request: ServerHttpRequest): String {
-        val xForwardedFor = request.headers.getFirst("X-Forwarded-For")
-        if (!xForwardedFor.isNullOrBlank()) {
-            return xForwardedFor.split(",")[0].trim()
-        }
-        val xRealIp = request.headers.getFirst("X-Real-IP")
-        if (!xRealIp.isNullOrBlank()) {
-            return xRealIp
-        }
-        return request.remoteAddress?.address?.hostAddress ?: "unknown"
+        return request.headers.getFirst("X-Forwarded-For")
+            ?.takeIf { it.isNotBlank() }
+            ?.split(",")?.get(0)?.trim()
+            ?: request.headers.getFirst("X-Real-IP")?.takeIf { it.isNotBlank() }
+            ?: request.remoteAddress?.address?.hostAddress
+            ?: "unknown"
     }
 }

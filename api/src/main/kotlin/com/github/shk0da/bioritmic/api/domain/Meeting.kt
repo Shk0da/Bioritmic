@@ -9,7 +9,11 @@ import java.sql.Timestamp
 @Table(name = "meetings")
 class Meeting : Serializable {
 
-    data class PrimaryKey(var userId: Long? = null, var otherUserId: Long? = null) : Serializable
+    data class PrimaryKey(var userId: Long? = null, var otherUserId: Long? = null) : Serializable {
+        companion object {
+            private const val serialVersionUID = 1L
+        }
+    }
 
     @Column("user_id")
     var userId: Long? = null
@@ -30,6 +34,8 @@ class Meeting : Serializable {
     var timestamp: Timestamp? = null
 
     companion object {
+        private const val serialVersionUID = 1L
+
         fun of(userId: Long, userMeeting: UserMeeting): Meeting {
             val meeting = Meeting()
             meeting.userId = userId
@@ -43,6 +49,8 @@ class Meeting : Serializable {
     }
 
     override fun toString(): String {
-        return "Meeting(userId=$userId, otherUserId=$otherUserId, otherUserLat=$otherUserLat, lotherUserLon=$otherUserLon, distance=$distance, timestamp=$timestamp)"
+        return "Meeting(userId=$userId, otherUserId=$otherUserId, " +
+            "otherUserLat=$otherUserLat, lotherUserLon=$otherUserLon, " +
+            "distance=$distance, timestamp=$timestamp)"
     }
 }

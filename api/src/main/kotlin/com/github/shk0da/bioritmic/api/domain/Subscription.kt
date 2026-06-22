@@ -28,6 +28,8 @@ class Subscription : Serializable {
     var createdAt: Timestamp? = null
 
     companion object {
+        private const val serialVersionUID = 1L
+
         const val PLAN_FREE = "FREE"
         const val PLAN_PRO = "PRO"
         const val STATUS_ACTIVE = "ACTIVE"

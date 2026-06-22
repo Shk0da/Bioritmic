@@ -6,7 +6,9 @@ import com.github.shk0da.bioritmic.api.model.PageableRequest
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import com.github.shk0da.bioritmic.api.repository.MeetingsRepository
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
+import kotlinx.coroutines.flow.toList
 import org.slf4j.LoggerFactory
+import org.springframework.dao.DataAccessException
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -39,7 +41,7 @@ class MeetingsService(val meetingsRepository: MeetingsRepository) {
                         meeting.distance, meeting.timestamp
                     )
                 }
-            } catch (ex: Exception) {
+            } catch (ex: DataAccessException) {
                 log.error("Failed save meetings for userId [{}]: {}", userId, ex.message)
             }
         }
@@ -50,7 +52,7 @@ class MeetingsService(val meetingsRepository: MeetingsRepository) {
     suspend fun deleteMetingWithUserId(currentUserId: Long, userId: Long): List<Meeting> {
         try {
             meetingsRepository.deleteByUserIdAndOtherUserId(currentUserId, userId)
-        } catch (ex: Exception) {
+        } catch (ex: DataAccessException) {
             log.error("Failed delete meetings for userId [{}]: {}", userId, ex.message)
         }
         return meetingsRepository.findAllByUserId(currentUserId, defaultPageable.pageSize, defaultPageable.offset)

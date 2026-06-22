@@ -57,12 +57,13 @@ class InterestService(
             return interestRepository.findById(interestId)
         }
 
-        val interest = interestRepository.findById(interestId) ?: return null
-
-        val userInterest = com.github.shk0da.bioritmic.api.domain.UserInterest()
-        userInterest.userId = userId
-        userInterest.interestId = interestId
-        userInterestRepository.save(userInterest)
+        val interest = interestRepository.findById(interestId)
+        if (interest != null) {
+            val userInterest = com.github.shk0da.bioritmic.api.domain.UserInterest()
+            userInterest.userId = userId
+            userInterest.interestId = interestId
+            userInterestRepository.save(userInterest)
+        }
 
         return interest
     }

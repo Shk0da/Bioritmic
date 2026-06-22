@@ -106,7 +106,7 @@ interface UserConversation {
     .conversation-item {
       padding: 1rem 1.25rem;
       border: none;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid var(--border-color, #e5e7eb);
       cursor: pointer;
       transition: all 0.2s ease;
 
@@ -130,11 +130,11 @@ interface UserConversation {
 
     .conversation-name {
       font-weight: 600;
-      color: #1f2937;
+      color: var(--text-primary, #1f2937);
     }
 
     .conversation-preview {
-      color: #6b7280;
+      color: var(--text-secondary, #6b7280);
       font-size: 0.9rem;
     }
 
@@ -142,12 +142,13 @@ interface UserConversation {
       font-size: 0.8rem;
       flex-shrink: 0;
       margin-left: 1rem;
+      color: var(--text-muted, #9ca3af);
     }
 
     .btn-delete {
       background: transparent;
       border: none;
-      color: #9ca3af;
+      color: var(--text-muted, #9ca3af);
       padding: 0.5rem;
       margin-left: 1rem;
       transition: all 0.2s ease;
@@ -180,6 +181,7 @@ export class MailboxComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadCurrentUserId();
+    localStorage.setItem('mailbox_last_read', Date.now().toString());
   }
 
   private loadCurrentUserId(): void {

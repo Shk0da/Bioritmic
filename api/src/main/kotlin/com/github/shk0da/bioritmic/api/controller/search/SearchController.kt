@@ -42,7 +42,9 @@ class SearchController(val userService: UserService, val searchService: SearchSe
     suspend fun search(@RequestBody @Valid userSearch: UserSearch, principal: Principal): List<UserInfo> {
         userSearch.validate()
         val userId = getUserId(principal)
-        val search = userSearch.withUser(userService.findUserById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND))
+        val search = userSearch.withUser(
+            userService.findUserById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        )
         log.debug("User search: {}", search)
         val result = searchService.searchByFilter(search)
         return result.map { gisUser ->

@@ -5,7 +5,10 @@ import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import java.sql.Timestamp
 
@@ -25,7 +28,8 @@ class BoostController(
         } catch (ex: IllegalArgumentException) {
             throw ResponseStatusException(
                 HttpStatus.FORBIDDEN,
-                "Only Pro users can activate profile boost."
+                "Only Pro users can activate profile boost.",
+                ex
             )
         }
         return mapOf(

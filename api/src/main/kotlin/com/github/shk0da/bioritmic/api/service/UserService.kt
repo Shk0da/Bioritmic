@@ -24,9 +24,12 @@ import com.github.shk0da.bioritmic.api.utils.ImageUtils.cropAndSaveUserImage
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.deleteUserImages
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.profileImagePath
 import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.time.withTimeout
+import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
@@ -37,6 +40,7 @@ import java.nio.file.Files.readAllBytes
 import java.sql.Timestamp
 import java.time.Duration
 
+@Suppress("TooManyFunctions")
 @Service
 class UserService(
     val userRepository: UserRepository,
@@ -45,6 +49,10 @@ class UserService(
     val userBlockRepository: UserBlockRepository,
     val emailService: EmailService
 ) {
+
+    companion object {
+        private const val UPDATE_PHOTO_TIMEOUT_SECONDS = 3L
+    }
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
 
@@ -61,6 +69,21 @@ class UserService(
     @Transactional(readOnly = true)
     suspend fun findUserById(id: Long): User? {
         return userRepository.findById(id)
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun getPhoto(userId: Long): ByteArray {
+        if (!userRepository.existsById(userId)) {
+            throw ApiException(ErrorCode.USER_NOT_FOUND)
+        }
+        return withContext(Dispatchers.IO) {
+            val photo = File(profileImagePath(userId))
+            if (!photo.exists()) {
+                readAllBytes(ImageUtils.noImageFile.toPath())
+            } else {
+                readAllBytes(photo.toPath())
+            }
+        }
     }
 
     @Transactional
@@ -157,7 +180,8 @@ class UserService(
             ageMin = 18
             ageMax = 45
             distance = 30.0
-            gender = (if (MAN.ordinal.toShort() == userRepository.findById(userId)?.gender) WOMAN.ordinal else MAN.ordinal).toShort()
+            gender = (if (MAN.ordinal.toShort() == userRepository.findById(userId)?.gender)
+                WOMAN.ordinal else MAN.ordinal).toShort()
         }
         with(userSettings) {
             if (null == this.userId) {
@@ -180,29 +204,17 @@ class UserService(
         return userSettingsRepository.save(userSettings)
     }
 
-    @Transactional
-    suspend fun getPhoto(userId: Long): ByteArray {
-        if (!userRepository.existsById(userId)) {
-            throw ApiException(ErrorCode.USER_NOT_FOUND)
-        }
-        val photo = File(profileImagePath(userId))
-        if (!photo.exists()) {
-            return readAllBytes(ImageUtils.noImageFile.toPath())
-        }
-        return readAllBytes(photo.toPath())
-    }
-
     suspend fun updatePhoto(userId: Long, filePart: FilePart) {
         try {
             val originalFile = File(profileImagePath(userId, ImageTag.ORIGINAL))
-            withTimeout(Duration.ofSeconds(3)) {
+            withTimeout(Duration.ofSeconds(UPDATE_PHOTO_TIMEOUT_SECONDS)) {
                 filePart.transferTo(originalFile).and {
                     cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_100x100)
                     cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_250x250)
                 }.awaitSingle()
             }
             log.info("Photo saved to : ${originalFile.toPath()}")
-        } catch (ex: Exception) {
+        } catch (ex: IOException) {
             log.error("Failed save photos for userId [{}]: {}", userId, ex.message)
         }
     }

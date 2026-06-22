@@ -1,6 +1,8 @@
 /* You can add global styles to this file, and also import other style files */
 
-// Глобальные переменные
+// ==========================================
+// CSS Variables — Light theme (default)
+// ==========================================
 :root {
   --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --tinder-gradient: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
@@ -11,65 +13,119 @@
   --shadow-md: 0 5px 20px rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.3);
   --header-height: 70px;
+
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f7fa;
+  --bg-tertiary: #f0f2f5;
+  --bg-input: #ffffff;
+  --bg-hover: rgba(253, 41, 123, 0.03);
+  --bg-table-stripe: #f9fafb;
+
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --text-on-dark: #ffffff;
+
+  --border-color: #e5e7eb;
+  --border-light: #f3f4f6;
+  --divider-color: #dee2e6;
+
+  --card-bg: #ffffff;
+  --card-bg-alt: #f9fafb;
+
+  --accent-pink: #fd297b;
+  --accent-red: #ef4444;
+  --accent-green: #22c55e;
+  --accent-blue: #3b82f6;
+  --accent-yellow: #f59e0b;
+  --accent-purple: #8b5cf6;
+  --accent-gray: #6c757d;
 }
 
+// ==========================================
+// CSS Variables — Dark theme
+// ==========================================
+[data-theme="dark"] {
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --bg-tertiary: #0f172a;
+  --bg-input: #1e293b;
+  --bg-hover: rgba(253, 41, 123, 0.08);
+  --bg-table-stripe: #1a2332;
+
+  --text-primary: #e5e7eb;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+
+  --border-color: #374151;
+  --border-light: #1e293b;
+  --divider-color: #374151;
+
+  --card-bg: #1e293b;
+  --card-bg-alt: #162032;
+
+  --tinder-gradient: linear-gradient(135deg, #c41e5e 0%, #cc4a48 100%);
+  --primary-gradient: linear-gradient(135deg, #4f5fcc 0%, #5a3d8a 100%);
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 5px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+// ==========================================
+// Base
+// ==========================================
 body {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+  color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
-// Скроллбар
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+// ==========================================
+// Scrollbar
+// ==========================================
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--tinder-gradient); border-radius: 4px; }
 
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--tinder-gradient);
-  border-radius: 4px;
-}
-
-// Карточки
+// ==========================================
+// Cards
+// ==========================================
 .card {
   box-shadow: var(--shadow-md);
   border: none;
   border-radius: 16px;
   overflow: hidden;
-  background: white;
+  background: var(--card-bg);
   transition: all 0.3s ease;
 
-  &:hover {
-    box-shadow: var(--shadow-lg);
-  }
+  &:hover { box-shadow: var(--shadow-lg); }
 
   .card-header {
     background: linear-gradient(135deg, rgba(253, 41, 123, 0.05) 0%, rgba(255, 101, 91, 0.05) 100%);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid var(--border-color);
     padding: 1.25rem 1.5rem;
     font-weight: 600;
     font-size: 1.1rem;
+    color: var(--text-primary);
   }
 
-  .card-body {
-    padding: 1.5rem;
-  }
+  .card-body { padding: 1.5rem; color: var(--text-primary); }
 
   .card-footer {
-    background: rgba(0, 0, 0, 0.02);
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    background: var(--card-bg-alt);
+    border-top: 1px solid var(--border-color);
     padding: 1rem 1.5rem;
   }
 }
 
-// Кнопки
+// ==========================================
+// Buttons
+// ==========================================
 .btn {
   border-radius: 12px;
   padding: 0.7rem 1.5rem;
@@ -78,245 +134,182 @@ body {
   border: none;
   font-size: 0.95rem;
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  &.btn-sm {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-  }
+  &:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); }
+  &:active { transform: translateY(0); }
+  &.btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; }
 }
 
 .btn-primary {
   background: var(--tinder-gradient);
   border: none;
-
-  &:hover {
-    opacity: 0.95;
-    box-shadow: 0 8px 20px rgba(253, 41, 123, 0.4);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+  &:hover { opacity: 0.95; box-shadow: 0 8px 20px rgba(253, 41, 123, 0.4); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
 }
 
-.btn-outline-primary {
-  color: #fd297b;
-  border: 2px solid #fd297b;
-  background: transparent;
-
-  &:hover {
-    background: var(--tinder-gradient);
-    border-color: transparent;
-    color: white;
-  }
+.btn-outline-primary { color: #fd297b; border: 2px solid #fd297b; background: transparent;
+  &:hover { background: var(--tinder-gradient); border-color: transparent; color: white; }
+}
+.btn-outline-secondary { color: #6c757d; border: 2px solid #6c757d; background: transparent;
+  &:hover { background: #6c757d; border-color: #6c757d; color: white; }
+}
+.btn-outline-danger { color: #dc3545; border: 2px solid #dc3545; background: transparent;
+  &:hover { background: #dc3545; border-color: #dc3545; color: white; }
+}
+.btn-outline-warning { color: #f59e0b; border: 2px solid #f59e0b; background: transparent;
+  &:hover { background: #f59e0b; border-color: #f59e0b; color: white; }
+}
+.btn-outline-success { color: #22c55e; border: 2px solid #22c55e; background: transparent;
+  &:hover { background: #22c55e; border-color: #22c55e; color: white; }
 }
 
-.btn-outline-secondary {
-  color: #6c757d;
-  border: 2px solid #6c757d;
-  background: transparent;
-
-  &:hover {
-    background: #6c757d;
-    border-color: #6c757d;
-    color: white;
-  }
-}
-
-.btn-outline-danger {
-  color: #dc3545;
-  border: 2px solid #dc3545;
-  background: transparent;
-
-  &:hover {
-    background: #dc3545;
-    border-color: #dc3545;
-    color: white;
-  }
-}
-
-// Формы
-.form-control,
-.form-select {
+// ==========================================
+// Forms
+// ==========================================
+.form-control, .form-select {
   border-radius: 12px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-color);
   padding: 0.75rem 1rem;
   font-size: 1rem;
   transition: all 0.3s ease;
+  background: var(--bg-input);
+  color: var(--text-primary);
 
-  &:focus {
-    outline: none;
-    border-color: #fd297b;
-    box-shadow: 0 0 0 3px rgba(253, 41, 123, 0.1);
-  }
+  &:focus { outline: none; border-color: #fd297b; box-shadow: 0 0 0 3px rgba(253, 41, 123, 0.1); }
 }
 
-.form-label {
-  font-weight: 600;
-  color: #4b5563;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-}
+.form-label { font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 0.9rem; }
 
 .form-range {
-  &::-webkit-slider-thumb {
-    background: var(--tinder-gradient);
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-  }
-
-  &::-moz-range-thumb {
-    background: var(--tinder-gradient);
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: none;
-  }
+  &::-webkit-slider-thumb { background: var(--tinder-gradient); width: 20px; height: 20px; border-radius: 50%; }
+  &::-moz-range-thumb { background: var(--tinder-gradient); width: 20px; height: 20px; border-radius: 50%; border: none; }
 }
 
-// Аватары
-.profile-avatar {
-  width: 150px;
-  height: 150px;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 4px solid white;
-  box-shadow: var(--shadow-md);
-}
+textarea.form-control { background: var(--bg-input); color: var(--text-primary); }
+option { background: var(--card-bg); color: var(--text-primary); }
 
-.user-card-img {
-  width: 100%;
-  height: 250px;
-  object-fit: cover;
-}
-
-// Бейджи
-.badge {
-  padding: 0.5rem 0.875rem;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 0.8rem;
-}
-
-// Списки
+// ==========================================
+// Lists
+// ==========================================
 .list-group-item {
   border-radius: 12px !important;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   margin-bottom: 0.75rem;
   transition: all 0.3s ease;
+  background: var(--card-bg);
+  color: var(--text-primary);
 
   &:hover {
-    background: linear-gradient(135deg, rgba(253, 41, 123, 0.03) 0%, rgba(255, 101, 91, 0.03) 100%);
+    background: var(--bg-hover);
     border-color: #fd297b;
     transform: translateX(5px);
   }
 }
 
+// ==========================================
+// Tables
+// ==========================================
+.table {
+  color: var(--text-primary);
+  --bs-table-bg: transparent;
+  --bs-table-striped-bg: var(--bg-table-stripe);
+  --bs-table-hover-bg: var(--bg-hover);
+
+  thead th {
+    border-bottom-color: var(--border-color);
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  tbody td { border-top-color: var(--border-color); }
+  &.table-hover tbody tr:hover { background-color: var(--bg-hover); }
+  &.table-striped > tbody > tr:nth-of-type(odd) > * { background-color: var(--bg-table-stripe); }
+}
+
+// ==========================================
 // Alerts
+// ==========================================
 .alert {
   border-radius: 12px;
   border: none;
   padding: 1rem 1.25rem;
-
-  &.alert-info {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
-    color: #3b82f6;
-  }
-
-  &.alert-success {
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
-    color: #10b981;
-  }
-
-  &.alert-danger {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(244, 63, 94, 0.1) 100%);
-    color: #ef4444;
-  }
+  &.alert-info { background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%); color: #3b82f6; }
+  &.alert-success { background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%); color: #10b981; }
+  &.alert-danger { background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(244, 63, 94, 0.1) 100%); color: #ef4444; }
 }
 
+// ==========================================
 // Dropdown
+// ==========================================
 .dropdown-menu {
   border-radius: 12px;
   border: none;
   box-shadow: var(--shadow-lg);
   padding: 0.5rem;
+  background: var(--card-bg);
 
   .dropdown-item {
     border-radius: 8px;
     padding: 0.6rem 1rem;
     transition: all 0.2s ease;
-
-    &:hover {
-      background: linear-gradient(135deg, rgba(253, 41, 123, 0.1) 0%, rgba(255, 101, 91, 0.1) 100%);
-      color: #fd297b;
-    }
+    color: var(--text-primary);
+    &:hover { background: var(--bg-hover); color: #fd297b; }
   }
 }
 
+// ==========================================
 // Progress
+// ==========================================
 .progress {
   border-radius: 10px;
-  background: #e5e7eb;
+  background: var(--border-color);
   overflow: hidden;
+  .progress-bar { background: var(--tinder-gradient); }
+}
 
-  .progress-bar {
-    background: var(--tinder-gradient);
+// ==========================================
+// Avatars
+// ==========================================
+.profile-avatar {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 4px solid var(--card-bg);
+  box-shadow: var(--shadow-md);
+}
+
+.user-card-img { width: 100%; height: 250px; object-fit: cover; }
+
+// ==========================================
+// Badges
+// ==========================================
+.badge { padding: 0.5rem 0.875rem; border-radius: 20px; font-weight: 600; font-size: 0.8rem; }
+
+// ==========================================
+// Nav Tabs
+// ==========================================
+.nav-tabs {
+  border-bottom-color: var(--border-color);
+  .nav-link {
+    color: var(--text-secondary);
+    border-color: transparent;
+    &:hover { border-color: var(--border-color) var(--border-color) transparent; color: var(--text-primary); background: var(--bg-hover); }
+    &.active { color: #fd297b; border-color: var(--border-color) var(--border-color) var(--card-bg); background: var(--card-bg); }
   }
 }
 
-// Анимации
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-}
+// ==========================================
+// Animations
+// ==========================================
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes slideInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes flame { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.1) rotate(-5deg); } }
+@keyframes pulse-notification { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.8; } }
 
-@keyframes slideInUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes flame {
-  0%, 100% {
-    transform: scale(1) rotate(0deg);
-  }
-  50% {
-    transform: scale(1.1) rotate(-5deg);
-  }
-}
-
-@keyframes pulse-notification {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 0.8;
-  }
-}
-
-// Утилиты
+// ==========================================
+// Utilities
+// ==========================================
 .gradient-text {
   background: var(--tinder-gradient);
   -webkit-background-clip: text;
@@ -324,7 +317,9 @@ body {
   background-clip: text;
 }
 
-// Авторизация
+// ==========================================
+// Auth
+// ==========================================
 .auth-container {
   min-height: 100vh;
   display: flex;
@@ -351,48 +346,33 @@ body {
     position: relative;
     z-index: 1;
     animation: slideInUp 0.6s ease;
+    background: var(--card-bg);
   }
 }
 
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
+@keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-// Совместимость
+// ==========================================
+// Compatibility
+// ==========================================
 .compatibility-score {
   padding: 0.5rem;
-
-  .score-value {
-    font-size: 1.5rem;
-    line-height: 1.2;
-  }
-
-  .score-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
+  .score-value { font-size: 1.5rem; line-height: 1.2; }
+  .score-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
 }
 
 .compatibility-details {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #dee2e6;
-
-  .compatibility-item {
-    .progress {
-      background-color: #e9ecef;
-      border-radius: 10px;
-
-      .progress-bar {
-        background: var(--tinder-gradient);
-      }
-    }
+  border-top: 1px solid var(--divider-color);
+  .compatibility-item .progress { background-color: var(--border-color); border-radius: 10px;
+    .progress-bar { background: var(--tinder-gradient); }
   }
 }
 
-// Адаптивность
+// ==========================================
+// Header
+// ==========================================
 .site-header {
   background: var(--tinder-gradient);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -401,150 +381,178 @@ body {
   top: 0;
   z-index: 1000;
 
-  .header-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-  }
+  .header-content { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 
   .header-logo {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: white;
-    font-weight: 700;
-    font-size: 1.5rem;
-    text-decoration: none;
+    display: flex; align-items: center; gap: 0.75rem; color: white; font-weight: 700; font-size: 1.5rem; text-decoration: none;
     transition: opacity 0.2s ease;
-
-    &:hover {
-      opacity: 0.9;
-    }
-
+    &:hover { opacity: 0.9; }
     .logo-couple {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      font-size: 1.5rem;
-      
-      i {
-        color: white;
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-      }
-      
-      i:first-child {
-        transform: rotate(-5deg);
-      }
-      
-      i:last-child {
-        transform: rotate(5deg);
-      }
+      display: flex; align-items: center; gap: 2px; font-size: 1.5rem;
+      i { color: white; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)); }
+      i:first-child { transform: rotate(-5deg); }
+      i:last-child { transform: rotate(5deg); }
     }
   }
 
-  .header-nav {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-
+  .header-nav, .user-menu {
+    display: flex; align-items: center; gap: 0.5rem;
     .nav-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 1.25rem;
-      text-decoration: none;
-      transition: all 0.2s ease;
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.15);
-        color: white;
-      }
-
-      &.active {
-        background: rgba(255, 255, 255, 0.25);
-        color: white;
-      }
-    }
-  }
-
-  .user-menu {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-
-    .nav-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 1.25rem;
-      text-decoration: none;
-      transition: all 0.2s ease;
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.15);
-        color: white;
-      }
+      display: flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+      border-radius: 12px; color: rgba(255, 255, 255, 0.8); font-size: 1.25rem; text-decoration: none;
+      transition: all 0.2s ease; background: none; border: none; cursor: pointer;
+      &:hover { background: rgba(255, 255, 255, 0.15); color: white; }
+      &.active { background: rgba(255, 255, 255, 0.25); color: white; }
     }
   }
 }
 
-.main-container {
-  padding: 1.5rem;
-  background: transparent;
+.main-container { padding: 1.5rem; background: transparent; }
+
+// ==========================================
+// Page headers
+// ==========================================
+.page-header { padding: 1rem 0; }
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  background: var(--tinder-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
+// ==========================================
+// Empty states
+// ==========================================
+.empty-state { max-width: 500px; margin: 2rem auto; }
+
+// ==========================================
+// MODAL — Dark mode
+// ==========================================
+.modal-content {
+  background: var(--card-bg);
+  color: var(--text-primary);
+}
+
+// ==========================================
+// GLOBAL DARK MODE OVERRIDES
+// ==========================================
+[data-theme="dark"] {
+
+  // Header — darker gradient for dark mode
+  .site-header {
+    background: var(--tinder-gradient);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  }
+
+  // General text
+  h1, h2, h3, h4, h5, h6, p, span, label, a, td, th, li, div {
+    &:not([class*="text-"]):not(.gradient-text):not(.match-title):not(.match-subtitle) {
+      color: var(--text-primary);
+    }
+  }
+
+  // Override specific text colors
+  .text-muted { color: var(--text-muted) !important; }
+  .text-primary { color: var(--accent-pink) !important; }
+  .text-secondary { color: var(--text-secondary) !important; }
+
+  // Buttons keep their accent colors
+  .btn-outline-primary { color: var(--accent-pink); border-color: var(--accent-pink); }
+
+  // Card-body overrides (fix hardcoded colors in components)
+  .card-body, .card-header, .card-footer {
+    color: var(--text-primary);
+  }
+
+  // Auth pages
+  .auth-card {
+    background: var(--card-bg);
+    .form-control, .form-select { background: var(--bg-input); color: var(--text-primary); border-color: var(--border-color); }
+    .form-label { color: var(--text-secondary); }
+  }
+
+  // Tables inside cards
+  .card table {
+    color: var(--text-primary);
+    --bs-table-bg: transparent;
+    --bs-table-hover-bg: var(--bg-hover);
+    tbody td { color: var(--text-primary); border-top-color: var(--border-color); }
+  }
+
+  // List group items
+  .list-group-item { color: var(--text-primary); background: var(--card-bg); border-color: var(--border-color); }
+
+  // Conversation/chat
+  .messages-container { background: var(--bg-secondary); }
+  .message-bubble.incoming { background: var(--card-bg); color: var(--text-primary); }
+  .message-input-container { background: var(--card-bg); border-top-color: var(--border-color); }
+  .message-input { color: var(--text-primary); }
+  .input-wrapper { background: var(--bg-secondary); }
+  .emoji-picker { background: var(--card-bg); border-top-color: var(--border-color); }
+
+  // User detail / profile
+  .hero-info { color: white; }
+  .section-label { color: var(--text-muted); }
+  .bio-text { color: var(--text-secondary); }
+  .interest-tag { background: rgba(253, 41, 123, 0.15); }
+  .action-btn { color: var(--text-secondary); border-color: var(--border-color); background: var(--card-bg); }
+
+  // Bookmarks / matches
+  .match-name { color: var(--text-primary); }
+  .user-card-name, .user-card-info { color: var(--text-primary); }
+
+  // Settings
+  .form-range::-webkit-slider-runnable-track { background: var(--border-color); }
+
+  // Subscription
+  .pro-card { border-color: var(--accent-yellow); }
+
+  // Swipe filters
+  .filters-modal { background: var(--card-bg); }
+  .filter-label { color: var(--text-secondary); }
+
+  // Blocked users / settings lists
+  .blocked-user-name, .list-item-name { color: var(--text-primary); }
+
+  // Admin panel
+  .stat-card { background: var(--card-bg); }
+  .stat-value { color: var(--text-primary); }
+  .stat-label { color: var(--text-secondary); }
+
+  // Modals (generic)
+  .modal-body p { color: var(--text-secondary); }
+  .modal-title { color: var(--text-primary); }
+  .btn-cancel { background: var(--bg-secondary); color: var(--text-secondary); }
+
+  // Toast / error messages
+  .error-toast { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border-color: rgba(239, 68, 68, 0.2); }
+
+  // Search page
+  .search-results { background: transparent; }
+
+  // Biorhythm detail
+  .biorhythm-chart { background: var(--card-bg); }
+
+  // Prompt answer
+  .prompt-card { background: var(--card-bg); }
+}
+
+// ==========================================
+// Responsive
+// ==========================================
 @media (max-width: 768px) {
   .site-header {
     padding: 0.5rem 1rem;
-
-    .header-logo {
-      font-size: 1.25rem;
-
-      i {
-        font-size: 1.5rem;
-      }
-    }
-
-    .nav-btn {
-      width: 40px;
-      height: 40px;
-      font-size: 1.1rem;
-    }
+    .header-logo { font-size: 1.25rem; i { font-size: 1.5rem; } }
+    .nav-btn { width: 40px; height: 40px; font-size: 1.1rem; }
   }
-
-  .main-container {
-    padding: 1rem;
-  }
-
-  .card {
-    .card-header {
-      padding: 1rem 1.25rem;
-      font-size: 1rem;
-    }
-
-    .card-body {
-      padding: 1.25rem;
-    }
-  }
+  .main-container { padding: 1rem; }
+  .card { .card-header { padding: 1rem 1.25rem; font-size: 1rem; } .card-body { padding: 1.25rem; } }
 }
 
 @media (max-width: 480px) {
-  .site-header {
-    .nav-btn {
-      width: 36px;
-      height: 36px;
-      font-size: 1rem;
-    }
-  }
+  .site-header .nav-btn { width: 36px; height: 36px; font-size: 1rem; }
 }

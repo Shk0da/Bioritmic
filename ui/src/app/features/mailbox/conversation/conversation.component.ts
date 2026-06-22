@@ -33,6 +33,9 @@ interface MessageWithUser extends UserMail {
               [alt]="otherUserName || 'User'">
             <div class="user-details">
               <h5 class="user-name">{{ otherUserName || 'Пользователь #' + otherUserId }}</h5>
+              @if (otherUserOnline) {
+                <span class="user-status">в сети</span>
+              }
             </div>
           </div>
         </div>
@@ -122,7 +125,7 @@ interface MessageWithUser extends UserMail {
       display: flex;
       flex-direction: column;
       height: calc(100vh - 70px);
-      background: #f5f7fa;
+      background: var(--bg-secondary, #f5f7fa);
     }
 
     /* Header */
@@ -184,6 +187,12 @@ interface MessageWithUser extends UserMail {
       color: white;
     }
 
+    .user-status {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.85);
+      font-weight: 400;
+    }
+
     /* Messages */
     .messages-container {
       flex: 1;
@@ -192,7 +201,7 @@ interface MessageWithUser extends UserMail {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      background: #f5f7fa;
+      background: var(--bg-secondary, #f5f7fa);
     }
 
     .message-wrapper {
@@ -228,9 +237,9 @@ interface MessageWithUser extends UserMail {
     }
 
     .message-bubble.incoming {
-      background: white;
+      background: var(--card-bg, white);
       border-bottom-left-radius: 4px;
-      color: #1f2937;
+      color: var(--text-primary, #1f2937);
     }
 
     .message-bubble.outgoing {
@@ -243,7 +252,7 @@ interface MessageWithUser extends UserMail {
       font-size: 0.8rem;
       font-weight: 600;
       margin-bottom: 4px;
-      color: #fd297b;
+      color: var(--accent-pink, #fd297b);
     }
 
     .message-text {
@@ -271,7 +280,7 @@ interface MessageWithUser extends UserMail {
 
     .empty-chat {
       text-align: center;
-      color: #6b7280;
+      color: var(--text-secondary, #6b7280);
       margin-top: 100px;
       font-size: 1.1rem;
     }
@@ -288,16 +297,16 @@ interface MessageWithUser extends UserMail {
       display: flex;
       gap: 10px;
       padding: 12px 15px;
-      background: white;
+      background: var(--card-bg, white);
       align-items: center;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid var(--border-color, #e5e7eb);
     }
 
     .input-wrapper {
       flex: 1;
       display: flex;
       align-items: center;
-      background: #f3f4f6;
+      background: var(--bg-secondary, #f3f4f6);
       border-radius: 24px;
       padding: 8px 15px;
     }
@@ -309,13 +318,13 @@ interface MessageWithUser extends UserMail {
       font-size: 1rem;
       outline: none;
       padding: 0;
-      color: #1f2937;
+      color: var(--text-primary, #1f2937);
     }
 
     .emoji-btn {
       background: none;
       border: none;
-      color: #6b7280;
+      color: var(--text-secondary, #6b7280);
       font-size: 1.3rem;
       cursor: pointer;
       padding: 5px;
@@ -353,8 +362,8 @@ interface MessageWithUser extends UserMail {
 
     /* Emoji Picker */
     .emoji-picker {
-      background: white;
-      border-top: 1px solid #e5e7eb;
+      background: var(--card-bg, white);
+      border-top: 1px solid var(--border-color, #e5e7eb);
       padding: 15px;
       animation: slideUp 0.2s ease;
     }
@@ -388,7 +397,7 @@ interface MessageWithUser extends UserMail {
       transition: background 0.2s;
 
       &:hover {
-        background: #f3f4f6;
+        background: var(--bg-hover, #f3f4f6);
       }
     }
 
@@ -402,7 +411,7 @@ interface MessageWithUser extends UserMail {
     }
 
     .messages-container::-webkit-scrollbar-thumb {
-      background: #d1d5db;
+      background: var(--border-color, #d1d5db);
       border-radius: 3px;
     }
   `]
@@ -415,6 +424,7 @@ export class ConversationComponent implements OnInit, AfterViewChecked {
   otherUserId!: number;
   otherUserName?: string;
   otherUserPhotoUrl?: SafeUrl | null;
+  otherUserOnline = false;
   newMessage = '';
   currentUserId?: number;
   private shouldScroll = false;
@@ -486,6 +496,7 @@ export class ConversationComponent implements OnInit, AfterViewChecked {
     this.userService.getUserById(this.otherUserId).subscribe({
       next: (user: UserInfo) => {
         this.otherUserName = user.name;
+        this.otherUserOnline = user.isOnline === true;
         this.loadOtherUserPhoto();
       },
       error: () => {

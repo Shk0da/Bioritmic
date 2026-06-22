@@ -69,7 +69,9 @@ class User {
     fun setRecoveryCode() {
         val code = UUID.randomUUID().toString()
         recoveryCode = code
-        recoveryCodeExpireTime = Timestamp(currentTimeMillis() + TimeUnit.SECONDS.toMillis(60))
+        recoveryCodeExpireTime = Timestamp(
+            currentTimeMillis() + TimeUnit.SECONDS.toMillis(RECOVERY_CODE_EXPIRY_SECONDS)
+        )
     }
 
     fun resetRecoveryCode() {
@@ -78,6 +80,8 @@ class User {
     }
 
     companion object {
+        private const val RECOVERY_CODE_EXPIRY_SECONDS = 60L
+
         fun of(userModel: UserModel): User {
             val user = User()
             user.name = userModel.name
@@ -91,6 +95,7 @@ class User {
     }
 
     override fun toString(): String {
-        return "User(id=$id, name=$name, email=$email, birthday=$birthday, gender=${getGender()}, registerDate=$registerDate)"
+        return "User(id=$id, name=$name, email=$email, birthday=$birthday, " +
+            "gender=${getGender()}, registerDate=$registerDate)"
     }
 }

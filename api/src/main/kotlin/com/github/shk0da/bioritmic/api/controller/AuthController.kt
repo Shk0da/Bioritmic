@@ -1,7 +1,10 @@
 package com.github.shk0da.bioritmic.api.controller
 
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
-import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.*
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_PARAMETER
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_RECOVERY_CODE
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.USER_EXISTS
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.USER_WITH_EMAIL_NOT_FOUND
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
@@ -12,6 +15,9 @@ import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.api.service.AuthService
 import com.github.shk0da.bioritmic.api.service.SocialAuthService
 import com.github.shk0da.bioritmic.api.service.UserService
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_ADMIN
+import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
+import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.slf4j.LoggerFactory
@@ -19,14 +25,27 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestController
 import javax.validation.Valid
 import javax.validation.constraints.NotEmpty
 
 @Validated
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1)
-class AuthController(val userService: UserService, val authService: AuthService, val socialAuthService: SocialAuthService) {
+class AuthController(
+    val userService: UserService,
+    val authService: AuthService,
+    val socialAuthService: SocialAuthService,
+    val userRoleRepository: UserRoleRepository,
+    val userRepository: UserRepository
+) {
 
     private val log = LoggerFactory.getLogger(AuthController::class.java)
 
@@ -39,6 +58,14 @@ class AuthController(val userService: UserService, val authService: AuthService,
             if (userService.isUserExists(userModel.email)) throw ApiException(USER_EXISTS)
         }
         val newUser = UserModel.of(userService.createNewUser(userModel))
+        val userId = newUser.id ?: throw ApiException(INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "user")))
+
+        val userCount = userRepository.countAll()
+        if (userCount <= 1) {
+            userRoleRepository.addRole(userId, ROLE_ADMIN)
+            log.info("User {} assigned ADMIN role (first user)", userId)
+        }
+
         log.debug("Created new {}", newUser)
         return ResponseEntity.status(HttpStatus.CREATED).body(newUser)
     }

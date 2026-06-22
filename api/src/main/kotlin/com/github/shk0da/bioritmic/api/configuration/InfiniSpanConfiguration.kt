@@ -19,8 +19,14 @@ import org.infinispan.configuration.cache.Configuration as InfiniSpanConfigurati
 @Configuration
 class InfiniSpanConfiguration {
 
+    companion object {
+        private const val BASE_CACHE_MAX_COUNT = 10_000L
+        private const val SMALL_CACHE_MAX_COUNT = 100L
+        private const val BASE_CACHE_LIFESPAN_MINUTES = 10L
+    }
+
     @Bean
-    fun schedulerLockCache(cacheManager: DefaultCacheManager, smallSizeCache: InfiniSpanConfiguration): Cache<String, Boolean> {
+    fun schedulerLockCache(cacheManager: DefaultCacheManager): Cache<String, Boolean> {
         return cacheManager.administration()
             .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
             .getOrCreateCache("schedulerLockCache", baseSizeCache())
@@ -54,7 +60,7 @@ class InfiniSpanConfiguration {
             .clustering()
             .cacheMode(CacheMode.DIST_ASYNC)
             .statistics().enable()
-            .memory().maxCount(10_000L)
+            .memory().maxCount(BASE_CACHE_MAX_COUNT)
             .build()
     }
 
@@ -64,7 +70,7 @@ class InfiniSpanConfiguration {
             .clustering()
             .cacheMode(CacheMode.DIST_ASYNC)
             .statistics().enable()
-            .memory().maxCount(100L)
+            .memory().maxCount(SMALL_CACHE_MAX_COUNT)
             .build()
     }
 
@@ -74,7 +80,7 @@ class InfiniSpanConfiguration {
             .clustering()
             .cacheMode(CacheMode.DIST_ASYNC)
             .statistics().enable()
-            .expiration().lifespan(10, TimeUnit.MINUTES)
+            .expiration().lifespan(BASE_CACHE_LIFESPAN_MINUTES, TimeUnit.MINUTES)
             .build()
     }
 

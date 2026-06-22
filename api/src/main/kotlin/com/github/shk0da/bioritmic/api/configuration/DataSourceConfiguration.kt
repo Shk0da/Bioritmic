@@ -72,12 +72,16 @@ class DataSourceConfiguration(
 
     @Primary
     @Bean(transactionManager)
-    fun transactionManager(@Qualifier("connectionFactory") connectionFactory: ConnectionFactory): ReactiveTransactionManager {
+    fun transactionManager(
+        @Qualifier("connectionFactory") connectionFactory: ConnectionFactory
+    ): ReactiveTransactionManager {
         return R2dbcTransactionManager(connectionFactory)
     }
 
     @Bean(readTransactionManager)
-    fun readTransactionManager(@Qualifier("slaveConnectionFactory") slaveConnectionFactory: ConnectionFactory): ReactiveTransactionManager {
+    fun readTransactionManager(
+        @Qualifier("slaveConnectionFactory") slaveConnectionFactory: ConnectionFactory
+    ): ReactiveTransactionManager {
         return R2dbcTransactionManager(slaveConnectionFactory)
     }
 
@@ -85,8 +89,12 @@ class DataSourceConfiguration(
         val url = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_R2DBC_URL")!!
         val username = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_USERNAME")!!
         val password = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_PASSWORD")!!
-        val driver = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_DRIVER_CLASS_NAME")!!
-        val maxPoolSize = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_MAX_CONNECTIONS")!!.toInt()
+        val driver = environment.getProperty(
+            "$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_DRIVER_CLASS_NAME"
+        )!!
+        val maxPoolSize = environment.getProperty(
+            "$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_MAX_CONNECTIONS"
+        )!!.toInt()
 
         val options = ConnectionFactoryOptions.builder()
             .option(ConnectionFactoryOptions.DRIVER, getR2dbcDriver(driver))

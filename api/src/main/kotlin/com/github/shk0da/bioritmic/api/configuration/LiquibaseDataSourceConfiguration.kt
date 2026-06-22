@@ -8,6 +8,7 @@ import com.github.shk0da.bioritmic.api.utils.DatabaseUtils.IDLE_TIMEOUT
 import com.github.shk0da.bioritmic.api.utils.DatabaseUtils.MASTER_ROUTING_KEY
 import com.github.shk0da.bioritmic.api.utils.DatabaseUtils.MAX_ATTEMPT
 import com.github.shk0da.bioritmic.api.utils.DatabaseUtils.MAX_LIFETIME
+import com.github.shk0da.bioritmic.api.utils.DatabaseUtils.MIN_IDLE_POOL_RATIO
 import com.github.shk0da.bioritmic.api.utils.DatabaseUtils.MINIMUM_IDLE
 import com.github.shk0da.bioritmic.api.utils.DatabaseUtils.PROPERTY_KEY_DATASOURCE
 import com.github.shk0da.bioritmic.api.utils.DatabaseUtils.PROPERTY_KEY_DRIVER_CLASS_NAME
@@ -53,13 +54,18 @@ class LiquibaseDataSourceConfiguration(
             checkDataSource(DriverManagerDataSource(url, username, password))
         }
 
-        val driver = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_DRIVER_CLASS_NAME")!!
-        val maxPoolSize = environment.getProperty("$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_MAX_CONNECTIONS")!!.toInt()
+        val driver = environment.getProperty(
+            "$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_DRIVER_CLASS_NAME"
+        )!!
+        val maxPoolSize = environment.getProperty(
+            "$PROPERTY_KEY_DATASOURCE.$dataSourcePrefix.$PROPERTY_KEY_MAX_CONNECTIONS"
+        )!!.toInt()
 
         val hikariConfig = HikariConfig()
         hikariConfig.poolName = dataSourcePrefix + "Jpa"
         hikariConfig.maximumPoolSize = maxPoolSize
-        hikariConfig.minimumIdle = MINIMUM_IDLE.coerceAtMost(maxPoolSize).coerceAtLeast(maxPoolSize / 5)
+        hikariConfig.minimumIdle = MINIMUM_IDLE.coerceAtMost(maxPoolSize)
+            .coerceAtLeast(maxPoolSize / MIN_IDLE_POOL_RATIO)
         hikariConfig.connectionTimeout = CONNECTION_TIMEOUT
         hikariConfig.validationTimeout = VALIDATION_TIMEOUT
         hikariConfig.idleTimeout = IDLE_TIMEOUT
@@ -84,7 +90,10 @@ class LiquibaseDataSourceConfiguration(
             }
         } catch (_: SQLException) {
             val failDuration = System.currentTimeMillis() - start
-            log.warn("No database connection [{}], currentAttempt={}, failDuration={}", dataSource.url, currentAttempt, failDuration)
+            log.warn(
+                "No database connection [{}], currentAttempt={}, failDuration={}",
+                dataSource.url, currentAttempt, failDuration
+            )
             try {
                 SECONDS.sleep(DB_RECONNECT_INTERVAL_IN_SECONDS)
             } catch (_: InterruptedException) {

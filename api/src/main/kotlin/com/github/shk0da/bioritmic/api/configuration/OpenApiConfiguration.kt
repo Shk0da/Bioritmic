@@ -24,8 +24,8 @@ class OpenApiConfiguration {
     @Autowired
     private lateinit var buildProperties: Optional<BuildProperties>
 
-    private fun version(): String =
-        if (buildProperties.isPresent) "${buildProperties.get().version}/${buildProperties.get()["revision"]}" else "snapshot"
+    private fun version(): String = if (buildProperties.isPresent)
+        "${buildProperties.get().version}/${buildProperties.get()["revision"]}" else "snapshot"
 
     @Bean
     fun customOpenAPI(

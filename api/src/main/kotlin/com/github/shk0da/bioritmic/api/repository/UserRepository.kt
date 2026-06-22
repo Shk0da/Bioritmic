@@ -31,4 +31,13 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
     @Modifying
     @Query("UPDATE users SET last_active_at = :lastActiveAt WHERE id = :userId")
     suspend fun updateLastActiveAt(userId: Long, lastActiveAt: java.sql.Timestamp)
+
+    @Query("SELECT COUNT(*) FROM users")
+    suspend fun countAll(): Long
+
+    @Query("SELECT COUNT(*) FROM users WHERE is_verified = true")
+    suspend fun countVerified(): Long
+
+    @Query("SELECT COUNT(*) FROM users WHERE is_verified = false")
+    suspend fun countUnverified(): Long
 }

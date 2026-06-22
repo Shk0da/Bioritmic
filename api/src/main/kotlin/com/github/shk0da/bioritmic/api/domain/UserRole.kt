@@ -22,6 +22,8 @@ class UserRole : Serializable {
     var createdAt: Timestamp? = null
 
     companion object {
+        private const val serialVersionUID = 1L
+
         const val ROLE_USER = "USER"
         const val ROLE_ADMIN = "ADMIN"
         const val ROLE_MODERATOR = "MODERATOR"

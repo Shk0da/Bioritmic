@@ -25,7 +25,7 @@ class RequestLoggingFilter {
         return WebFilter { exchange: ServerWebExchange, chain: WebFilterChain ->
             val request = exchange.request
             val requestId = UUID.randomUUID().toString()
-            val method = request.method?.name() ?: "UNKNOWN"
+            val method = request.method.name()
             val path = request.path.value()
 
             MDC.put(REQUEST_ID_KEY, requestId)

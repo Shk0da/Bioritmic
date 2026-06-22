@@ -1,7 +1,9 @@
 package com.github.shk0da.bioritmic.api.configuration
 
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants
 import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_USER
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
+import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.service.AuthService
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -25,7 +27,14 @@ import reactor.core.publisher.Mono
 
 @Configuration
 @EnableWebFluxSecurity
-class SecurityConfiguration(private val authService: AuthService) : WebFluxConfigurer {
+class SecurityConfiguration(
+    private val authService: AuthService,
+    private val userRoleRepository: UserRoleRepository
+) : WebFluxConfigurer {
+
+    companion object {
+        private const val CORS_MAX_AGE_SECONDS = 3600L
+    }
 
     private val log = LoggerFactory.getLogger(SecurityConfiguration::class.java)
 
@@ -63,7 +72,7 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
                         allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                         allowedHeaders = listOf("*")
                         exposedHeaders = listOf("*")
-                        maxAge = 3600L
+                        maxAge = CORS_MAX_AGE_SECONDS
                         allowCredentials = false
                     }
                 }
@@ -112,12 +121,22 @@ class SecurityConfiguration(private val authService: AuthService) : WebFluxConfi
                         }
                     }
                     .filter { auth -> !auth.isExpired() }
-                    .map { auth ->
-                        PreAuthenticatedAuthenticationToken(
-                            auth.userId as Any,
-                            auth.accessToken,
-                            mutableListOf(SimpleGrantedAuthority(ROLE_USER))
-                        )
+                    .flatMap { auth ->
+                        Mono.fromCallable {
+                            runBlocking {
+                                val userId = auth.userId ?: return@runBlocking mutableListOf(SimpleGrantedAuthority(ROLE_USER))
+                                val roles = userRoleRepository.findAllByUserId(userId)
+                                    .map { role -> SimpleGrantedAuthority("ROLE_${role.role}") }
+                                    .ifEmpty { mutableListOf(SimpleGrantedAuthority(ROLE_USER)) }
+                                roles
+                            }
+                        }.map { authorities ->
+                            PreAuthenticatedAuthenticationToken(
+                                auth.userId as Any,
+                                auth.accessToken,
+                                authorities
+                            )
+                        }
                     }
             }
             setAuthenticationSuccessHandler { webFilterExchange, authentication ->

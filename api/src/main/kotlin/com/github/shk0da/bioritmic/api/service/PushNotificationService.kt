@@ -4,6 +4,7 @@ import com.github.shk0da.bioritmic.api.domain.UserPushToken
 import com.github.shk0da.bioritmic.api.repository.UserPushTokenRepository
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.messaging.FirebaseMessagingException
 import com.google.firebase.messaging.Message
 import com.google.firebase.messaging.Notification
 import org.slf4j.LoggerFactory
@@ -43,7 +44,10 @@ class PushNotificationService(
         userPushTokenRepository.deleteByToken(token)
     }
 
-    suspend fun sendPushNotification(userId: Long, title: String, body: String, data: Map<String, String> = emptyMap()) {
+    suspend fun sendPushNotification(
+        userId: Long, title: String, body: String,
+        data: Map<String, String> = emptyMap()
+    ) {
         if (!isFirebaseInitialized()) {
             log.debug("Firebase not initialized, skipping push notification")
             return
@@ -68,7 +72,7 @@ class PushNotificationService(
 
                 FirebaseMessaging.getInstance().send(message)
                 log.debug("Push notification sent to userId: {} platform: {}", userId, pushToken.platform)
-            } catch (e: Exception) {
+            } catch (e: FirebaseMessagingException) {
                 log.error("Failed to send push notification to token: {} error: {}", pushToken.token, e.message)
                 if (e.message?.contains("InvalidRegistrationToken") == true ||
                     e.message?.contains("RegistrationTokenNotRegistered") == true) {
@@ -82,7 +86,7 @@ class PushNotificationService(
         return try {
             FirebaseApp.getInstance()
             true
-        } catch (e: Exception) {
+        } catch (@Suppress("SwallowedException") e: IllegalStateException) {
             false
         }
     }

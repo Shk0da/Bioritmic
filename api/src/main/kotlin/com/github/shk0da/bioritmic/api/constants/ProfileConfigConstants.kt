@@ -18,8 +18,12 @@ interface ProfileConfigConstants {
     }
 
     class DefaultDataSourceProfileCondition : SpringBootCondition() {
-        override fun getMatchOutcome(context: ConditionContext, metadata: AnnotatedTypeMetadata): ConditionOutcome {
-            return if (Arrays.stream(context.environment.activeProfiles).noneMatch { o: String? -> EMBEDDED_LIST.contains(o) })
+        override fun getMatchOutcome(
+            context: ConditionContext, metadata: AnnotatedTypeMetadata
+        ): ConditionOutcome {
+            return if (Arrays.stream(context.environment.activeProfiles)
+                    .noneMatch { o: String? -> EMBEDDED_LIST.contains(o) }
+            )
                 ConditionOutcome.match()
             else
                 ConditionOutcome.noMatch("Is embedded DataSource profile")

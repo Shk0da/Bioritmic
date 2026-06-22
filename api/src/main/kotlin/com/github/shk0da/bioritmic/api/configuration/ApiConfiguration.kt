@@ -5,6 +5,7 @@ import java.time.ZoneOffset
 import java.util.Locale
 import java.util.TimeZone
 
+@Suppress("UtilityClassWithPublicConstructor")
 @Configuration
 class ApiConfiguration {
 

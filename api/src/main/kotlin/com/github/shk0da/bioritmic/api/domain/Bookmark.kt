@@ -10,7 +10,11 @@ import java.sql.Timestamp
 @Table(name = "bookmarks")
 class Bookmark {
 
-    data class PrimaryKey(var userId: Long? = null, var otherUserId: Long? = null) : Serializable
+    data class PrimaryKey(var userId: Long? = null, var otherUserId: Long? = null) : Serializable {
+        companion object {
+            private const val serialVersionUID = 1L
+        }
+    }
 
     @Column("user_id")
     var userId: Long? = null

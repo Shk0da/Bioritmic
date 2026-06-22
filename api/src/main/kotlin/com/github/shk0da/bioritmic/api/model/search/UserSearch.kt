@@ -17,9 +17,9 @@ data class UserSearch(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     var birthdate: Date? = null,
     val gender: Gender? = null,
-    @field:Min(14) @field:Max(100) val ageMin: Int? = null,
-    @field:Min(14) @field:Max(100) val ageMax: Int? = null,
-    @field:DecimalMin("0.05") @field:DecimalMax("100") val distance: Double = defaultDistance,
+    @field:Min(MIN_AGE.toLong()) @field:Max(MAX_AGE.toLong()) val ageMin: Int? = null,
+    @field:Min(MIN_AGE.toLong()) @field:Max(MAX_AGE.toLong()) val ageMax: Int? = null,
+    @field:DecimalMin(MIN_DISTANCE) @field:DecimalMax(MAX_DISTANCE) val distance: Double = defaultDistance,
 ) : BasicPresentation {
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
@@ -27,7 +27,11 @@ data class UserSearch(
 
     companion object {
 
-        val defaultDistance = 1.0
+        private const val MIN_AGE = 14
+        private const val MAX_AGE = 100
+        private const val MIN_DISTANCE = "0.05"
+        private const val MAX_DISTANCE = "100"
+        const val defaultDistance = 1.0
 
         fun of(user: User): UserSearch {
             val settings = user.userSettings

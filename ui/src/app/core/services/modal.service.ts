@@ -115,7 +115,7 @@ export class ModalService {
     }
 
     .modal-content {
-      background: white;
+      background: var(--card-bg);
       border-radius: 20px;
       max-width: 400px;
       width: 100%;
@@ -149,13 +149,13 @@ export class ModalService {
       margin: 0;
       font-size: 1.25rem;
       font-weight: 700;
-      color: #1f2937;
+      color: var(--text-primary);
     }
 
     .modal-body {
       padding: 0 1.5rem 1.5rem;
       text-align: center;
-      color: #6b7280;
+      color: var(--text-secondary);
     }
 
     .modal-body p {
@@ -185,11 +185,11 @@ export class ModalService {
     }
 
     .btn-cancel {
-      background: #f3f4f6;
-      color: #6b7280;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
 
       &:hover {
-        background: #e5e7eb;
+        background: var(--border-color);
       }
     }
 

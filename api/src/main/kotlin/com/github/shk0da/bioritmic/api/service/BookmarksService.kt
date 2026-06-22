@@ -10,6 +10,7 @@ import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
 import kotlinx.coroutines.flow.toList
 import org.slf4j.LoggerFactory
+import org.springframework.dao.DataAccessException
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
@@ -44,7 +45,7 @@ class BookmarksService(
                 bookmarks.forEach { bookmark ->
                     bookmarkRepository.insert(bookmark.userId!!, bookmark.otherUserId!!, bookmark.timestamp)
                 }
-            } catch (ex: Exception) {
+            } catch (ex: DataAccessException) {
                 log.error("Failed save bookmarks for userId [{}]: {}", userId, ex.message)
             }
         }
@@ -58,7 +59,7 @@ class BookmarksService(
     suspend fun deleteBookmarks(userId: Long, otherUserId: Long): List<User> {
         try {
             bookmarkRepository.deleteByUserIdAndOtherUserId(userId, otherUserId)
-        } catch (ex: Exception) {
+        } catch (ex: DataAccessException) {
             log.error("Failed delete bookmarks for userId [{}]: {}", userId, ex.message)
         }
         val usersByBookmarks = bookmarkRepository

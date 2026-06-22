@@ -3,7 +3,12 @@ package com.github.shk0da.bioritmic.api.controller
 import com.github.shk0da.bioritmic.api.service.StoryService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping(ApiRoutes.API_WITH_VERSION_1 + "/stories")

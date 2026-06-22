@@ -9,12 +9,17 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.concurrent.TimeUnit
 
 @Service
 class ReportService(
     private val reportRepository: ReportRepository,
     private val banRepository: BanRepository
 ) {
+
+    companion object {
+        private const val BAN_DURATION_DAYS = 7L
+    }
 
     private val log = LoggerFactory.getLogger(ReportService::class.java)
 
@@ -51,7 +56,7 @@ class ReportService(
         ban.userId = userId
         ban.reason = reason
         ban.permanent = false
-        ban.bannedUntil = Timestamp(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        ban.bannedUntil = Timestamp(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(BAN_DURATION_DAYS))
         ban.createdAt = Timestamp(System.currentTimeMillis())
 
         banRepository.save(ban)

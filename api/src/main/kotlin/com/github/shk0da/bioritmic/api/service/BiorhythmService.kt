@@ -12,6 +12,12 @@ class BiorhythmService {
 
     companion object {
         val instance: BiorhythmService = BiorhythmService()
+
+        private const val ZODIAC_MONTHS = 12
+        private const val BIORHYTHM_PERCENTAGE = 100.0
+        private const val BIORHYTHM_MIDPOINT = 50.0
+        private const val BIORHYTHM_MULTIPLIER = 2.0
+        private const val COMPATIBILITY_THRESHOLD = 60.0
     }
 
     private val biorhythms: Map<String, Double> = with(HashMap<String, Double>()) {
@@ -41,7 +47,8 @@ class BiorhythmService {
           Земля — Телец, Дева, Козерог
           Вода — Рак, Скорпион, Рыба
        */
-        // 'Козерог', 'Водолей', 'Рыбы', 'Овен', 'Телец', 'Близнецы', 'Рак', 'Лев', 'Девы', 'Весы', 'Скорпион', 'Стрелец'
+        // 'Козерог', 'Водолей', 'Рыбы', 'Овен', 'Телец', 'Близнецы',
+        // 'Рак', 'Лев', 'Девы', 'Весы', 'Скорпион', 'Стрелец'
         /*
           3 правила совместимости знаков Зодиака:
             знаки не одинаковы и знаки принадлежат одной стихии
@@ -94,7 +101,7 @@ class BiorhythmService {
         
         return if (day >= zodiak[month]!!) {
             // День перехода или после - следующий знак
-            if (month == 12) 1 else month + 1
+            if (month == ZODIAC_MONTHS) 1 else month + 1
         } else {
             // До дня перехода - текущий знак месяца
             month
@@ -146,8 +153,12 @@ class BiorhythmService {
         
         biorhythms.filterKeys { it in allowedBiorhythms }.forEach {
             val relation = livedDaysDiff / it.value
-            val rhythm = floor((relation - floor(relation)) * 100)
-            compare[it.key] = if (rhythm > 50) ((rhythm - 50) * 2) else (-1) * ((rhythm - 50) * 2)
+            val rhythm = floor((relation - floor(relation)) * BIORHYTHM_PERCENTAGE)
+            compare[it.key] = if (rhythm > BIORHYTHM_MIDPOINT) {
+                (rhythm - BIORHYTHM_MIDPOINT) * BIORHYTHM_MULTIPLIER
+            } else {
+                (-1) * ((rhythm - BIORHYTHM_MIDPOINT) * BIORHYTHM_MULTIPLIER)
+            }
         }
         return compare
     }
@@ -159,13 +170,13 @@ class BiorhythmService {
     fun boolCompare(birthDate1: Date, birthDate2: Date): Boolean {
         val compare = compare(birthDate1, birthDate2).values
         val average = compare.sum() / compare.size
-        return average >= 60
+        return average >= COMPATIBILITY_THRESHOLD
     }
 
     fun boolCompare(compare: HashMap<String, Double>): Boolean {
         val values = compare.values
         val average = values.sum() / values.size
-        return average >= 60
+        return average >= COMPATIBILITY_THRESHOLD
     }
 
     fun fullCompare(birthDate1: Date, birthDate2: Date): Boolean {

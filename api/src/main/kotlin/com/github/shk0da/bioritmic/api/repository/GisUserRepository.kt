@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDateTime
+import kotlin.math.cos
 
 @Repository
 @Transactional(transactionManager = readTransactionManager)
@@ -29,9 +30,22 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
         distanceInKilometers: Double,
         gender: Gender? = null, ageMin: Int? = null, ageMax: Int? = null
     ): List<GisUser> {
+        val latRad = Math.toRadians(lat)
+        val latDelta = distanceInKilometers / 111.0
+        val lonDelta = distanceInKilometers / (111.0 * cos(latRad))
+        val latMin = lat - latDelta
+        val latMax = lat + latDelta
+        val lonMin = lon - lonDelta
+        val lonMax = lon + lonDelta
+
         var sql = """
             SELECT usr.id, usr.name, usr.birthday, usr.gender, gis.lat, gis.lon, gis.distance
-            FROM users AS usr, (SELECT *, (point(lat, lon) <@> point(:lat, :lon)) AS distance FROM gis_data ORDER BY distance) AS gis
+            FROM users AS usr, (
+                SELECT *, (point(lat, lon) <@> point(:lat, :lon)) AS distance
+                FROM gis_data
+                WHERE lat BETWEEN :latMin AND :latMax AND lon BETWEEN :lonMin AND :lonMax
+                ORDER BY distance
+            ) AS gis
             WHERE gis.user_id <> :userId AND gis.distance <= :distance AND usr.id = gis.user_id
         """.trimIndent()
 
@@ -39,7 +53,11 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
             "userId" to userId,
             "lat" to lat,
             "lon" to lon,
-            "distance" to distanceInKilometers
+            "distance" to distanceInKilometers,
+            "latMin" to latMin,
+            "latMax" to latMax,
+            "lonMin" to lonMin,
+            "lonMax" to lonMax
         )
 
         if (gender != null) {
@@ -73,7 +91,8 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
                 GisUser().apply {
                     this.id = row["id"] as? Long
                     this.name = row["name"] as? String
-                    this.birthday = (row["birthday"] as? LocalDateTime)?.let { Timestamp.from(it.toInstant(defaultZone)) }
+                    this.birthday = (row["birthday"] as? LocalDateTime)
+                        ?.let { Timestamp.from(it.toInstant(defaultZone)) }
                     this.gender = (row["gender"] as? Number)?.toShort()
                     this.lat = (row["lat"] as? Double) ?: (row["lat"] as? Number)?.toDouble()
                     this.lon = (row["lon"] as? Double) ?: (row["lon"] as? Number)?.toDouble()

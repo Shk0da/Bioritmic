@@ -1,5 +1,5 @@
 [versions]
-kotlinCoroutines = "1.10.2"
+kotlinCoroutines = "1.11.0"
 
 [libraries]
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinCoroutines" }

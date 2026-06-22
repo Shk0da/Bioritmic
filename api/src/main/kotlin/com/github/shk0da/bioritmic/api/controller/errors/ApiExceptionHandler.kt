@@ -17,12 +17,13 @@ import org.springframework.core.codec.DecodingException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.http.converter.HttpMessageNotReadableException
-import org.springframework.util.LinkedMultiValueMap
-import org.springframework.util.MultiValueMap
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.ControllerAdvice
+import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.ResponseBody
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.bind.support.WebExchangeBindException
 import org.springframework.web.server.ServerWebInputException
 import java.io.IOException
@@ -65,16 +66,9 @@ class ApiExceptionHandler {
     @ResponseStatus(value = HttpStatus.SERVICE_UNAVAILABLE)
     suspend fun handleSQLException(ex: Exception): ResponseEntity<ApiErrors> {
         logError(ex)
-        val headers: MultiValueMap<String, String> = object : LinkedMultiValueMap<String, String>() {
-            init {
-                add(HttpHeaders.RETRY_AFTER, SERVICE_UNAVAILABLE_RETRY_AFTER)
-            }
-        }
-        return ResponseEntity(
-            ApiErrors(ApiError.of(ErrorCode.API_SERVICE_UNAVAILABLE)),
-            headers,
-            ErrorCode.API_SERVICE_UNAVAILABLE.httpCode
-        )
+        return ResponseEntity.status(ErrorCode.API_SERVICE_UNAVAILABLE.httpCode)
+            .headers { it.add(HttpHeaders.RETRY_AFTER, SERVICE_UNAVAILABLE_RETRY_AFTER) }
+            .body(ApiErrors(ApiError.of(ErrorCode.API_SERVICE_UNAVAILABLE)))
     }
 
     @ResponseBody
@@ -86,7 +80,6 @@ class ApiExceptionHandler {
         UnexpectedTypeException::class,
         IllegalArgumentException::class,
         MethodArgumentNotValidException::class,
-        HttpMessageNotReadableException::class,
         MismatchedInputException::class,
         DecodingException::class,
         ServerWebInputException::class,
@@ -95,22 +88,36 @@ class ApiExceptionHandler {
     @ResponseStatus(value = HttpStatus.BAD_REQUEST)
     suspend fun handleIllegalArgumentException(ex: Exception): ResponseEntity<ApiErrors> {
         logError(ex)
-        var error = ex.message
         val throwable = getRootCause(ex)
+
         if (throwable is MethodArgumentNotValidException) {
-            val errors = throwable.bindingResult.fieldErrors
-            val parameterizedError = extractParameterizedError(errors)
-            if (parameterizedError.isPresent) return parameterizedError.get()
-            val parameters = errors.stream().collect(
-                Collectors.toMap({ obj: FieldError -> obj.field }, { obj: FieldError -> obj.defaultMessage })
-            )
-            val parameter = java.lang.String.join(", ", parameters.keys)
-            error = java.lang.String.join("; ", parameters.values)
-            return handleApiException(ApiException(parameter, error))
+            return handleValidationException(throwable)
         }
 
-        var parameter: String? = null
-        when (throwable) {
+        val parameter = extractParameterFromException(throwable)
+        return if (parameter != null)
+            handleApiException(ApiException(ErrorCode.INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, parameter))))
+        else
+            handleException(ex)
+    }
+
+    private suspend fun handleValidationException(
+        throwable: MethodArgumentNotValidException
+    ): ResponseEntity<ApiErrors> {
+        val errors = throwable.bindingResult.fieldErrors
+        val parameterizedError = extractParameterizedError(errors)
+        if (parameterizedError.isPresent) return parameterizedError.get()
+        val parameters = errors.stream().collect(
+            Collectors.toMap({ obj: FieldError -> obj.field }, { obj: FieldError -> obj.defaultMessage })
+        )
+        val parameter = java.lang.String.join(", ", parameters.keys)
+        val error = java.lang.String.join("; ", parameters.values)
+        return handleApiException(ApiException(parameter, error))
+    }
+
+    @Suppress("CyclomaticComplexMethod")
+    private fun extractParameterFromException(throwable: Throwable?): String? {
+        return when (throwable) {
             is ConstraintViolationException -> {
                 val parameterNames: ArrayList<String> = ArrayList()
                 throwable.constraintViolations.forEach { constraint ->
@@ -123,63 +130,41 @@ class ApiExceptionHandler {
                         parameterNames.add(item)
                     }
                 }
-                if (parameterNames.isNotEmpty()) {
-                    parameter = parameterNames.stream().collect(joining(", "))
-                }
+                if (parameterNames.isNotEmpty()) parameterNames.stream().collect(joining(", ")) else null
             }
 
-            is InvalidFormatException -> {
-                parameter = throwable.path
-                    .stream()
-                    .map { it.fieldName }
-                    .collect(joining(", "))
-            }
+            is InvalidFormatException -> throwable.path
+                .stream()
+                .map { it.fieldName }
+                .collect(joining(", "))
 
-            is JsonMappingException -> {
-                parameter = throwable.path
-                    .stream()
-                    .map { it.fieldName }
-                    .collect(joining(", "))
-            }
+            is JsonMappingException -> throwable.path
+                .stream()
+                .map { it.fieldName }
+                .collect(joining(", "))
 
-            is MismatchedInputException -> {
-                parameter = throwable.path
-                    .stream()
-                    .map { it.fieldName }
-                    .collect(joining(", "))
-            }
+            is MismatchedInputException -> throwable.path
+                .stream()
+                .map { it.fieldName }
+                .collect(joining(", "))
 
-            is WebExchangeBindException -> {
-                parameter = throwable.fieldErrors
-                    .stream()
-                    .map { it.field }
-                    .collect(joining(", "))
-            }
+            is WebExchangeBindException -> throwable.fieldErrors
+                .stream()
+                .map { it.field }
+                .collect(joining(", "))
 
-            is IllegalArgumentException -> {
-                parameter = throwable.message as String
-            }
+            is IllegalArgumentException -> throwable.message as String
 
-            is TypeMismatchException -> {
-                parameter = throwable.value as String
-            }
+            is TypeMismatchException -> throwable.value as String
 
-            is ServerWebInputException -> {
-                parameter = throwable.methodParameter?.parameterName
-            }
+            is ServerWebInputException -> throwable.methodParameter?.parameterName
 
-            is NumberFormatException -> {
-                throw RuntimeException(error)
-            }
+            is NumberFormatException -> throw ApiException(ErrorCode.INVALID_PARAMETER)
 
-            is JsonParseException -> {
-                return handleApiException(ApiException(ErrorCode.JSON_CANT_BE_PARSED))
-            }
+            is JsonParseException -> null
+
+            else -> null
         }
-        return if (null != parameter)
-            handleApiException(ApiException(ErrorCode.INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, parameter))))
-        else
-            handleException(ex)
     }
 
     @ResponseBody

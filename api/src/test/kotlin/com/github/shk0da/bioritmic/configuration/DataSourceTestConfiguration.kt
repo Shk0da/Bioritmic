@@ -75,7 +75,9 @@ class DataSourceTestConfiguration(
 
     @Primary
     @Bean(DataSourceConfiguration.transactionManager)
-    fun transactionManager(@Qualifier("connectionFactory") connectionFactory: ConnectionFactory): ReactiveTransactionManager {
+    fun transactionManager(
+        @Qualifier("connectionFactory") connectionFactory: ConnectionFactory
+    ): ReactiveTransactionManager {
         return R2dbcTransactionManager(connectionFactory)
     }
 

@@ -1,18 +1,19 @@
 import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
-import { AdminService, Report, Verification } from '../../core/services/admin.service';
+import { AdminService, AdminDashboard, Report, AdminUser } from '../../core/services/admin.service';
 import { ToastService } from '../../core/services/toast.service';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { NgClass } from '@angular/common';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
+  imports: [NgClass],
   template: `
     <div class="page-header mb-4">
       <h1 class="page-title">
         <i class="bi bi-shield-lock me-2"></i>Админ-панель
       </h1>
-      <p class="text-muted">Управление жалобами и верификациями</p>
+      <p class="text-muted">Управление системой и пользователями</p>
     </div>
 
     @if (accessDenied) {
@@ -20,7 +21,63 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
         <i class="bi bi-exclamation-triangle me-2"></i>Доступ запрещён. У вас нет прав администратора.
       </div>
     } @else {
+      <!-- Dashboard Stats -->
+      @if (dashboard) {
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                <i class="bi bi-people-fill"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value">{{ dashboard.totalUsers }}</span>
+                <span class="stat-label">Всего пользователей</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
+                <i class="bi bi-patch-check-fill"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value">{{ dashboard.verifiedUsers }}</span>
+                <span class="stat-label">Верифицированы</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                <i class="bi bi-clock-fill"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value">{{ dashboard.unverifiedUsers }}</span>
+                <span class="stat-label">Ожидают верификации</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                <i class="bi bi-flag-fill"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value">{{ dashboard.pendingReports }}</span>
+                <span class="stat-label">Жалоб на рассмотрении</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Tabs -->
       <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+          <button class="nav-link" [class.active]="activeTab === 'users'" (click)="activeTab = 'users'">
+            <i class="bi bi-people me-1"></i>Пользователи
+          </button>
+        </li>
         <li class="nav-item">
           <button class="nav-link" [class.active]="activeTab === 'reports'" (click)="activeTab = 'reports'">
             <i class="bi bi-flag me-1"></i>Жалобы
@@ -29,22 +86,70 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
             }
           </button>
         </li>
-        <li class="nav-item">
-          <button class="nav-link" [class.active]="activeTab === 'verifications'" (click)="activeTab = 'verifications'">
-            <i class="bi bi-person-check me-1"></i>Верификации
-            @if (verifications.length > 0) {
-              <span class="badge bg-warning ms-1">{{ verifications.length }}</span>
-            }
-          </button>
-        </li>
       </ul>
 
+      <!-- Users Tab -->
+      @if (activeTab === 'users') {
+        @if (loadingUsers) {
+          <div class="text-center py-4">
+            <div class="spinner-border" role="status"></div>
+          </div>
+        } @else {
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Имя</th>
+                  <th>Email</th>
+                  <th>Возраст</th>
+                  <th>Роль</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (user of users; track user.id) {
+                  <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.name || '—' }}</td>
+                    <td>{{ user.email || '—' }}</td>
+                    <td>{{ user.age || '—' }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="getRoleBadgeClass(user.role)">
+                        {{ user.role || 'USER' }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="btn-group btn-group-sm">
+                        @if (!user.role?.includes('ADMIN')) {
+                          @if (user.role?.includes('BANNED')) {
+                            <button class="btn btn-success" (click)="unbanUser(user.id!)" title="Разбанить">
+                              <i class="bi bi-shield-check"></i>
+                            </button>
+                          } @else {
+                            <button class="btn btn-warning" (click)="banUser(user.id!)" title="Забанить">
+                              <i class="bi bi-shield-slash"></i>
+                            </button>
+                          }
+                          <button class="btn btn-danger" (click)="deleteUser(user.id!)" title="Удалить">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+
+      <!-- Reports Tab -->
       @if (activeTab === 'reports') {
         @if (loadingReports) {
           <div class="text-center py-4">
-            <div class="spinner-border" role="status">
-              <span class="visually-hidden">Загрузка...</span>
-            </div>
+            <div class="spinner-border" role="status"></div>
           </div>
         } @else if (reports.length === 0) {
           <div class="text-center py-4 text-muted">
@@ -72,72 +177,12 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
                     <td>{{ report.targetName || 'User #' + report.targetId }}</td>
                     <td class="text-truncate" style="max-width: 200px;">{{ report.reason }}</td>
                     <td>
-                      <span class="badge" [class]="getStatusClass(report.status)">{{ report.status }}</span>
+                      <span class="badge" [ngClass]="getStatusClass(report.status)">{{ report.status }}</span>
                     </td>
                     <td>
-                      <div class="btn-group btn-group-sm">
-                        <button class="btn btn-success" (click)="approveReport(report.id)" title="Одобрить">
-                          <i class="bi bi-check-lg"></i>
-                        </button>
-                        <button class="btn btn-danger" (click)="rejectReport(report.id)" title="Отклонить">
-                          <i class="bi bi-x-lg"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
-      }
-
-      @if (activeTab === 'verifications') {
-        @if (loadingVerifications) {
-          <div class="text-center py-4">
-            <div class="spinner-border" role="status">
-              <span class="visually-hidden">Загрузка...</span>
-            </div>
-          </div>
-        } @else if (verifications.length === 0) {
-          <div class="text-center py-4 text-muted">
-            <i class="bi bi-check-circle fs-1 d-block mb-2"></i>
-            Нет ожидающих верификаций
-          </div>
-        } @else {
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Имя</th>
-                  <th>Email</th>
-                  <th>Фото</th>
-                  <th>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (v of verifications; track v.id) {
-                  <tr>
-                    <td>{{ v.id }}</td>
-                    <td>{{ v.userName || 'User #' + v.userId }}</td>
-                    <td>{{ v.userEmail }}</td>
-                    <td>
-                      @if (v.photoUrl) {
-                        <img [src]="v.photoUrl" class="verification-photo" alt="verification">
-                      } @else {
-                        <span class="text-muted">Нет фото</span>
-                      }
-                    </td>
-                    <td>
-                      <div class="btn-group btn-group-sm">
-                        <button class="btn btn-success" (click)="approveVerification(v.userId)" title="Одобрить">
-                          <i class="bi bi-check-lg"></i>
-                        </button>
-                        <button class="btn btn-danger" (click)="rejectVerification(v.userId)" title="Отклонить">
-                          <i class="bi bi-x-lg"></i>
-                        </button>
-                      </div>
+                      <button class="btn btn-sm btn-success" (click)="resolveReport(report.id)">
+                        <i class="bi bi-check-lg"></i> Решить
+                      </button>
                     </td>
                   </tr>
                 }
@@ -149,38 +194,38 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
     }
   `,
   styles: [`
-    .page-header {
-      padding: 1rem 0;
-    }
-
+    .page-header { padding: 1rem 0; }
     .page-title {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      background: var(--primary-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;
+      background: var(--tinder-gradient); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
     }
-
-    .verification-photo {
-      width: 48px;
-      height: 48px;
-      object-fit: cover;
-      border-radius: 8px;
+    .stat-card {
+      background: var(--card-bg, white); border-radius: 12px; padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 1rem;
+      transition: transform 0.2s ease;
     }
+    .stat-card:hover { transform: translateY(-2px); }
+    .stat-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+    }
+    .stat-info { display: flex; flex-direction: column; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary, #1f2937); }
+    .stat-label { font-size: 0.8rem; color: var(--text-secondary, #6b7280); }
   `]
 })
 export class AdminComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
 
-  activeTab: 'reports' | 'verifications' = 'reports';
+  activeTab: 'users' | 'reports' = 'users';
+  loadingUsers = false;
   loadingReports = false;
-  loadingVerifications = false;
   accessDenied = false;
+  dashboard: AdminDashboard | null = null;
+  users: AdminUser[] = [];
   reports: Report[] = [];
-  verifications: Verification[] = [];
 
   constructor(
     private adminService: AdminService,
@@ -190,8 +235,9 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.loadDashboard();
+    this.loadUsers();
     this.loadReports();
-    this.loadVerifications();
   }
 
   ngOnDestroy(): void {
@@ -199,82 +245,89 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  private loadReports(): void {
-    this.loadingReports = true;
-    this.adminService.getPendingReports().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (reports) => {
-        this.reports = reports;
-        this.loadingReports = false;
-      },
+  private loadDashboard(): void {
+    this.adminService.getDashboard().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (d) => this.dashboard = d,
       error: (err) => {
-        this.loadingReports = false;
-        if (err.status === 403) {
-          this.accessDenied = true;
-        }
+        if (err.status === 403) this.accessDenied = true;
       }
     });
   }
 
-  private loadVerifications(): void {
-    this.loadingVerifications = true;
-    this.adminService.getPendingVerifications().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (verifications) => {
-        this.verifications = verifications;
-        this.loadingVerifications = false;
-      },
+  private loadUsers(): void {
+    this.loadingUsers = true;
+    this.adminService.getUsers().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (users) => { this.users = users; this.loadingUsers = false; },
       error: (err) => {
-        this.loadingVerifications = false;
-        if (err.status === 403) {
-          this.accessDenied = true;
-        }
+        this.loadingUsers = false;
+        if (err.status === 403) this.accessDenied = true;
       }
     });
+  }
+
+  private loadReports(): void {
+    this.loadingReports = true;
+    this.adminService.getPendingReports().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (reports) => { this.reports = reports; this.loadingReports = false; },
+      error: (err) => {
+        this.loadingReports = false;
+        if (err.status === 403) this.accessDenied = true;
+      }
+    });
+  }
+
+  getRoleBadgeClass(role?: string): string {
+    if (!role) return 'bg-secondary';
+    if (role.includes('ADMIN')) return 'bg-danger';
+    if (role.includes('BANNED')) return 'bg-dark';
+    return 'bg-success';
   }
 
   getStatusClass(status: string): string {
     switch (status) {
       case 'PENDING': return 'bg-warning';
-      case 'APPROVED': return 'bg-success';
-      case 'REJECTED': return 'bg-danger';
+      case 'RESOLVED': return 'bg-success';
       default: return 'bg-secondary';
     }
   }
 
-  approveReport(id: number): void {
-    this.adminService.updateReport(id, 'APPROVED').pipe(takeUntil(this.destroy$)).subscribe({
+  banUser(userId: number): void {
+    this.adminService.banUser(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
-        this.reports = this.reports.filter(r => r.id !== id);
-        this.toastService.success('Жалоба одобрена');
+        this.toastService.success('Пользователь заблокирован');
+        this.loadUsers();
+      },
+      error: () => this.toastService.error('Ошибка блокировки')
+    });
+  }
+
+  unbanUser(userId: number): void {
+    this.adminService.unbanUser(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.toastService.success('Пользователь разблокирован');
+        this.loadUsers();
       },
       error: () => this.toastService.error('Ошибка')
     });
   }
 
-  rejectReport(id: number): void {
-    this.adminService.updateReport(id, 'REJECTED').pipe(takeUntil(this.destroy$)).subscribe({
+  deleteUser(userId: number): void {
+    this.adminService.deleteUser(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
-        this.reports = this.reports.filter(r => r.id !== id);
-        this.toastService.success('Жалоба отклонена');
+        this.toastService.success('Пользователь удалён');
+        this.loadUsers();
+        this.loadDashboard();
       },
-      error: () => this.toastService.error('Ошибка')
+      error: () => this.toastService.error('Ошибка удаления')
     });
   }
 
-  approveVerification(userId: number): void {
-    this.adminService.approveVerification(userId).pipe(takeUntil(this.destroy$)).subscribe({
+  resolveReport(reportId: number): void {
+    this.adminService.resolveReport(reportId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
-        this.verifications = this.verifications.filter(v => v.userId !== userId);
-        this.toastService.success('Верификация одобрена');
-      },
-      error: () => this.toastService.error('Ошибка')
-    });
-  }
-
-  rejectVerification(userId: number): void {
-    this.adminService.rejectVerification(userId).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => {
-        this.verifications = this.verifications.filter(v => v.userId !== userId);
-        this.toastService.success('Верификация отклонена');
+        this.reports = this.reports.filter(r => r.id !== reportId);
+        this.toastService.success('Жалоба решена');
+        this.loadDashboard();
       },
       error: () => this.toastService.error('Ошибка')
     });

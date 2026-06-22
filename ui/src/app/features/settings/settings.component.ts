@@ -133,7 +133,7 @@ import { UserSettings, Gender } from '../../core/models/user.model';
       font-size: 1.75rem;
       font-weight: 700;
       margin-bottom: 0.5rem;
-      background: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
+      background: var(--tinder-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;

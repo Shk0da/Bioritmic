@@ -46,7 +46,9 @@ class AuthService(
     @Transactional
     suspend fun refreshToken(userToken: UserToken): UserToken {
         val user = userRepository.findByEmail(userToken.email) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        val auth = authRepository.findByUserIdAndRefreshToken(user.id!!, userToken.refreshToken) ?: throw ApiException(ErrorCode.AUTH_NOT_FOUND)
+        val auth = authRepository.findByUserIdAndRefreshToken(
+            user.id!!, userToken.refreshToken
+        ) ?: throw ApiException(ErrorCode.AUTH_NOT_FOUND)
         val newAuth = auth.refresh()
         authTokenCache[auth.accessToken] = auth
         authRepository.save(newAuth)

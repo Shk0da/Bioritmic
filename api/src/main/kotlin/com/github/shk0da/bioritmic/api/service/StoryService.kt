@@ -4,6 +4,7 @@ import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Com
 import com.github.shk0da.bioritmic.api.domain.Story
 import com.github.shk0da.bioritmic.api.domain.StoryView
 import com.github.shk0da.bioritmic.api.repository.StoryRepository
+import com.github.shk0da.bioritmic.api.repository.StoryViewBatchRepository
 import com.github.shk0da.bioritmic.api.repository.StoryViewRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -13,10 +14,15 @@ import java.util.concurrent.TimeUnit
 
 @Service
 class StoryService(
-    val storyRepository: StoryRepository,
-    val storyViewRepository: StoryViewRepository,
-    val s3Service: S3Service
+
+    private val storyRepository: StoryRepository,
+    private val storyViewRepository: StoryViewRepository,
+    private val storyViewBatchRepository: StoryViewBatchRepository
 ) {
+
+    companion object {
+        private const val STORY_EXPIRY_HOURS = 24L
+    }
 
     private val log = LoggerFactory.getLogger(StoryService::class.java)
 
@@ -26,7 +32,7 @@ class StoryService(
         story.userId = userId
         story.mediaUrl = mediaUrl
         story.caption = caption
-        story.expiresAt = Timestamp(System.currentTimeMillis() + TimeUnit.HOURS.toMillis(24))
+        story.expiresAt = Timestamp(System.currentTimeMillis() + TimeUnit.HOURS.toMillis(STORY_EXPIRY_HOURS))
         story.createdAt = Timestamp(System.currentTimeMillis())
 
         return storyRepository.save(story)
@@ -35,9 +41,14 @@ class StoryService(
     @Transactional(readOnly = true, transactionManager = transactionManager)
     suspend fun getFeed(currentUserId: Long): List<Map<String, Any?>> {
         val stories = storyRepository.findAllActive()
+        if (stories.isEmpty()) return emptyList()
+
+        val storyIds = stories.mapNotNull { it.id }
+
+        val viewerCounts = storyViewBatchRepository.countViewersByStoryIds(storyIds)
+        val viewedByUser = storyViewBatchRepository.existsByStoryIdsAndViewerId(storyIds, currentUserId)
+
         return stories.map { story ->
-            val viewerCount = storyViewRepository.countViewersByStoryId(story.id!!)
-            val viewedByCurrentUser = storyViewRepository.existsByStoryIdAndViewerId(story.id!!, currentUserId)
             mapOf(
                 "id" to story.id,
                 "userId" to story.userId,
@@ -45,8 +56,8 @@ class StoryService(
                 "caption" to story.caption,
                 "expiresAt" to story.expiresAt?.time,
                 "createdAt" to story.createdAt?.time,
-                "viewerCount" to viewerCount,
-                "viewedByCurrentUser" to viewedByCurrentUser
+                "viewerCount" to (viewerCounts[story.id] ?: 0),
+                "viewedByCurrentUser" to (story.id in viewedByUser)
             )
         }
     }

@@ -8,6 +8,7 @@ import { BookmarksService } from '../../core/services/bookmarks.service';
 import { SwipeService, SwipeResult } from '../../core/services/swipe.service';
 import { MatchService } from '../../core/services/match.service';
 import { SubscriptionService } from '../../core/services/subscription.service';
+import { AuthService } from '../../core/services/auth.service';
 import { UserInfo, Gender, UserSearch, UserSettings, SwipeDirection, SwipeCard } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
 import { NgClass, NgStyle } from '@angular/common';
@@ -65,6 +66,10 @@ import { NgClass, NgStyle } from '@angular/common';
                   <div class="swipe-indicator nope" [class.visible]="swipeDirection === SwipeDirection.LEFT">
                     <i class="bi bi-x-lg"></i>
                     <span>NOPE</span>
+                  </div>
+                  <div class="swipe-indicator superlike" [class.visible]="swipeDirection === SwipeDirection.UP">
+                    <i class="bi bi-star-fill"></i>
+                    <span>SUPER</span>
                   </div>
                 }
 
@@ -162,6 +167,9 @@ import { NgClass, NgStyle } from '@angular/common';
                     <button class="btn btn-outline-danger" (click)="removeCard(card)" title="Пропустить">
                       <i class="bi bi-x-lg"></i>
                     </button>
+                    <button class="btn btn-outline-warning" (click)="superLikeProfile(card)" title="Супер-лайк">
+                      <i class="bi bi-star-fill"></i>
+                    </button>
                     <a [routerLink]="['/user', card.user.id]" class="btn btn-outline-primary" title="Профиль">
                       <i class="bi bi-person"></i>
                     </a>
@@ -178,8 +186,14 @@ import { NgClass, NgStyle } from '@angular/common';
 
       <!-- Кнопки управления (только мобильные) -->
       <div class="swipe-controls">
+        <button class="control-btn btn-undo" (click)="undoSwipe()" [disabled]="cards.length === 0 && !canUndo()" title="Отменить">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
         <button class="control-btn btn-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)">
           <i class="bi bi-x-lg"></i>
+        </button>
+        <button class="control-btn btn-superlike" (click)="manualSwipe(SwipeDirection.UP)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)" title="Супер-лайк">
+          <i class="bi bi-star-fill"></i>
         </button>
         <button class="control-btn btn-like" (click)="manualSwipe(SwipeDirection.RIGHT)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)">
           <i class="bi bi-heart-fill"></i>
@@ -274,6 +288,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   swipeLimit = -1;
   swipeRemaining = -1;
   isPro = false;
+  swipeHistory: Array<{ direction: SwipeDirection; card: SwipeCard }> = [];
 
   constructor(
     private searchService: SearchService,
@@ -282,6 +297,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     private swipeService: SwipeService,
     private matchService: MatchService,
     private subscriptionService: SubscriptionService,
+    private authService: AuthService,
     private sanitizer: DomSanitizer
   ) {}
 
@@ -289,20 +305,37 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.loadUserSettings();
     this.loadSwipeLimit();
 
-    // Подписка на свайпы из сервиса
+    this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
+      if (user?.isPro !== undefined) {
+        this.isPro = user.isPro;
+        if (this.isPro) {
+          this.swipeLimit = -1;
+          this.swipeRemaining = -1;
+        }
+      }
+    });
+
     this.swipeService.onSwipe
       .pipe(takeUntil(this.destroy$))
       .subscribe((result: SwipeResult) => {
         this.handleSwipeResult(result);
       });
+
+    this.swipeService.onUndo
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((card: SwipeCard) => {
+        this.cards = this.swipeService.getCards().slice(this.swipeService.getCurrentIndex());
+        this.loadVisiblePhotos();
+        this.resetCard();
+      });
   }
 
   ngAfterViewInit(): void {
-    // Добавляем обработчики для мыши и тача
     document.addEventListener('mousemove', this.onDragMove.bind(this));
     document.addEventListener('mouseup', this.onDragEnd.bind(this));
     document.addEventListener('touchmove', this.onDragMove.bind(this));
     document.addEventListener('touchend', this.onDragEnd.bind(this));
+    document.addEventListener('keydown', this.onKeyDown.bind(this));
   }
 
   ngOnDestroy(): void {
@@ -312,6 +345,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     document.removeEventListener('mouseup', this.onDragEnd.bind(this));
     document.removeEventListener('touchmove', this.onDragMove.bind(this));
     document.removeEventListener('touchend', this.onDragEnd.bind(this));
+    document.removeEventListener('keydown', this.onKeyDown.bind(this));
   }
 
   private loadUserSettings(): void {
@@ -338,6 +372,13 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private loadSwipeLimit(): void {
+    const user = this.authService.getCurrentUser();
+    if (user?.isPro) {
+      this.isPro = true;
+      this.swipeLimit = -1;
+      this.swipeRemaining = -1;
+      return;
+    }
     this.subscriptionService.getSwipeLimit().subscribe({
       next: (limit: any) => {
         this.swipeLimit = limit.limit;
@@ -526,6 +567,23 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.swipeService.swipe(SwipeDirection.RIGHT);
   }
 
+  superLikeProfile(card: SwipeCard): void {
+    this.swipeService.swipe(SwipeDirection.UP);
+  }
+
+  undoSwipe(): void {
+    const card = this.swipeService.undo();
+    if (card) {
+      if (!this.isPro && this.swipeRemaining < this.swipeLimit) {
+        this.swipeRemaining++;
+      }
+    }
+  }
+
+  canUndo(): boolean {
+    return this.swipeService.canUndo();
+  }
+
   // Drag and Drop логика
   onDragStart(event: MouseEvent | TouchEvent): void {
     if (this.cards.length === 0 || this.loading) return;
@@ -547,18 +605,23 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.currentX = clientX - this.startX;
     this.currentY = clientY - this.startY;
 
-    // Определяем направление свайпа (только горизонтальный)
     if (this.currentX > 50) {
       this.swipeDirection = SwipeDirection.RIGHT;
     } else if (this.currentX < -50) {
       this.swipeDirection = SwipeDirection.LEFT;
+    } else if (this.currentY < -80) {
+      this.swipeDirection = SwipeDirection.UP;
     } else {
       this.swipeDirection = SwipeDirection.NONE;
     }
 
-    // Вычисляем трансформацию
-    const rotate = this.currentX * 0.1;
-    this.cardTransform = `translate(${this.currentX}px, ${this.currentY}px) rotate(${rotate}deg)`;
+    if (this.currentY < -80) {
+      const scale = Math.max(0.8, 1 + (this.currentY + 80) * 0.002);
+      this.cardTransform = `translate(${this.currentX}px, ${this.currentY}px) scale(${scale})`;
+    } else {
+      const rotate = this.currentX * 0.1;
+      this.cardTransform = `translate(${this.currentX}px, ${this.currentY}px) rotate(${rotate}deg)`;
+    }
   }
 
   onDragEnd(event: MouseEvent | TouchEvent): void {
@@ -572,8 +635,9 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.completeSwipe(SwipeDirection.RIGHT);
     } else if (this.swipeDirection === SwipeDirection.LEFT && this.currentX < -threshold) {
       this.completeSwipe(SwipeDirection.LEFT);
+    } else if (this.swipeDirection === SwipeDirection.UP && this.currentY < -threshold) {
+      this.completeSwipe(SwipeDirection.UP);
     } else {
-      // Возвращаем карточку на место
       this.resetCard();
     }
   }
@@ -678,6 +742,32 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.searchCriteria.ageMax !== undefined &&
         this.searchCriteria.ageMin >= this.searchCriteria.ageMax) {
       this.searchCriteria.ageMax = this.searchCriteria.ageMin + 1;
+    }
+  }
+
+  private onKeyDown(event: KeyboardEvent): void {
+    if (this.showFilters || this.loading) return;
+    if (this.cards.length === 0) return;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        event.preventDefault();
+        this.manualSwipe(SwipeDirection.RIGHT);
+        break;
+      case 'ArrowLeft':
+        event.preventDefault();
+        this.manualSwipe(SwipeDirection.LEFT);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.manualSwipe(SwipeDirection.UP);
+        break;
+      case 'z':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          this.undoSwipe();
+        }
+        break;
     }
   }
 }

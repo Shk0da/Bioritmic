@@ -29,4 +29,8 @@ class Report : Serializable {
 
     @Column("created_at")
     var createdAt: Timestamp? = null
+
+    companion object {
+        private const val serialVersionUID = 1L
+    }
 }

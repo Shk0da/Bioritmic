@@ -38,7 +38,11 @@ data class UserInfo(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val lon: Double? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    val distance: Double? = null
+    val distance: Double? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val isPro: Boolean? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val role: String? = null
 ) : BasicPresentation {
 
     companion object {

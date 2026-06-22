@@ -82,32 +82,32 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
     }
 
     .story-avatar-wrapper.viewed {
-      background: #ccc;
+      background: var(--text-muted, #ccc);
     }
 
     .story-avatar {
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background-color: #e0e0e0;
+      background-color: var(--border-color, #e0e0e0);
       background-size: cover;
       background-position: center;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 3px solid white;
+      border: 3px solid var(--card-bg, white);
       overflow: hidden;
     }
 
     .story-avatar i {
       font-size: 1.5rem;
-      color: #999;
+      color: var(--text-muted, #999);
     }
 
     .avatar-initial {
       font-size: 1.5rem;
       font-weight: 600;
-      color: #666;
+      color: var(--text-secondary, #666);
     }
 
     .my-story .add-story-btn {
@@ -128,7 +128,7 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 
     .story-name {
       font-size: 0.7rem;
-      color: #666;
+      color: var(--text-secondary, #666);
       max-width: 64px;
       overflow: hidden;
       text-overflow: ellipsis;

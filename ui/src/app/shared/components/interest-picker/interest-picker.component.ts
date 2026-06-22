@@ -63,7 +63,7 @@ import { Interest } from '../../../core/models/user.model';
 
     .selected-count {
       font-size: 14px;
-      color: #6b7280;
+      color: var(--text-secondary, #6b7280);
     }
 
     .category-section {
@@ -73,7 +73,7 @@ import { Interest } from '../../../core/models/user.model';
     .category-title {
       font-size: 14px;
       font-weight: 500;
-      color: #374151;
+      color: var(--text-primary, #374151);
       margin-bottom: 10px;
       text-transform: capitalize;
     }
@@ -90,16 +90,17 @@ import { Interest } from '../../../core/models/user.model';
       gap: 6px;
       padding: 8px 14px;
       border-radius: 20px;
-      border: 1px solid #e5e7eb;
-      background: white;
+      border: 1px solid var(--border-color, #e5e7eb);
+      background: var(--card-bg, white);
+      color: var(--text-primary);
       font-size: 14px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
     .interest-chip:hover {
-      border-color: #ec4899;
-      background: #fdf2f8;
+      border-color: var(--accent-pink, #ec4899);
+      background: var(--bg-hover, #fdf2f8);
     }
 
     .interest-chip.selected {
@@ -118,7 +119,7 @@ import { Interest } from '../../../core/models/user.model';
       gap: 12px;
       margin-top: 24px;
       padding-top: 16px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid var(--border-color, #e5e7eb);
     }
   `]
 })

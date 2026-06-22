@@ -25,13 +25,18 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
     @Query(
         "select id, from_user_id, to_user_id, message, timestamp " +
             "from mailbox " +
-            "where (from_user_id = :userId1 and to_user_id = :userId2) or (from_user_id = :userId2 and to_user_id = :userId1) " +
+            "where (from_user_id = :userId1 and to_user_id = :userId2) " +
+                "or (from_user_id = :userId2 and to_user_id = :userId1) " +
             "order by timestamp asc"
     )
     suspend fun findConversationBetweenUsers(userId1: Long, userId2: Long): List<UserMail>
 
     fun findAllByFromUserIdAndToUserId(from: Long, to: Long, pageable: Pageable?): Flow<UserMail>
 
-    @Query("delete from mailbox m where (m.from_user_id = :userId and m.to_user_id = :currentUserId) or (m.to_user_id = :userId and m.from_user_id = :currentUserId)")
+    @Query(
+        "delete from mailbox m where " +
+            "(m.from_user_id = :userId and m.to_user_id = :currentUserId) or " +
+            "(m.to_user_id = :userId and m.from_user_id = :currentUserId)"
+    )
     suspend fun deleteAllMailByBetweenTwoUserId(currentUserId: Long, userId: Long)
 }

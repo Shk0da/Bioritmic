@@ -9,6 +9,7 @@ import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserInfo.Companion.ofWithCompare
+import com.github.shk0da.bioritmic.api.service.SubscriptionService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
@@ -38,10 +39,14 @@ import java.util.Date
 import javax.validation.Valid
 import javax.validation.constraints.NotNull
 
+@Suppress("TooManyFunctions")
 @Validated
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/user")
-class UserController(val userService: UserService) {
+class UserController(
+    val userService: UserService,
+    val subscriptionService: SubscriptionService
+) {
 
     private val log = LoggerFactory.getLogger(UserController::class.java)
 
@@ -49,11 +54,17 @@ class UserController(val userService: UserService) {
     @GetMapping(value = ["/me"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun me(): UserInfo {
         val userId = getUserId()
-        return UserInfo.of(userService.findUserById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND))
+        val user = userService.findUserById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val userInfo = UserInfo.of(user)
+        return userInfo.copy(isPro = subscriptionService.isProUser(userId))
     }
 
     // PUT/PATH /me -> UserInfo
-    @RequestMapping(value = ["/me"], method = [RequestMethod.PATCH, RequestMethod.PUT], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @RequestMapping(
+        value = ["/me"],
+        method = [RequestMethod.PATCH, RequestMethod.PUT],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
     suspend fun update(@RequestBody @Valid userInfo: UserInfo, principal: Principal): UserInfo {
         val userId = getUserId(principal)
         return UserInfo.of(userService.updateUserById(userId, userInfo))
@@ -134,10 +145,16 @@ class UserController(val userService: UserService) {
 
     // POST /me/photo -> UserInfo
     @PostMapping(value = ["/me/photo"], consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    suspend fun uploadPhoto(@RequestPart("file") file: @Valid @NotNull FilePart, principal: Principal): ResponseEntity<Void> {
+    suspend fun uploadPhoto(
+        @RequestPart("file") file: @Valid @NotNull FilePart,
+        principal: Principal
+    ): ResponseEntity<Void> {
         val userId = getUserId(principal)
         val checkNotEmpty = checkNotEmpty(file.filename(), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file")))
-        val checkFileExtension = checkFileExtension(file.filename(), arrayListOf("png", "jpg"), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file")))
+        val checkFileExtension = checkFileExtension(
+            file.filename(), arrayListOf("png", "jpg"),
+            INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file"))
+        )
         if (!checkNotEmpty || !checkFileExtension) {
             throw ApiException(ErrorCode.BAD_PHOTO)
         }

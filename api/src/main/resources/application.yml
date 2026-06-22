@@ -41,7 +41,7 @@ spring:
       driver: postgresql
       driver-class-name: org.postgresql.Driver
       username: postgres
-      password:
+      password: postgres
       max-connections: 25
     slave:
       host: ${spring.datasource.master.host}
@@ -83,3 +83,6 @@ firebase:
 
 rate-limit:
   enabled: true
+
+premium:
+  free-for-all: true

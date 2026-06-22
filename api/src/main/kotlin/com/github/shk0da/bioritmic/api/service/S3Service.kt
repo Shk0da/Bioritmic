@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.core.exception.SdkException
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
@@ -44,7 +45,7 @@ class S3Service(
 
             val response = s3Client.getObject(request)
             response.readAllBytes()
-        } catch (e: Exception) {
+        } catch (e: SdkException) {
             log.error("Failed to download photo from S3: {}/{}", bucket, key, e)
             null
         }
@@ -59,12 +60,13 @@ class S3Service(
 
             s3Client.deleteObject(request)
             log.debug("Deleted photo from S3: {}/{}", bucket, key)
-        } catch (e: Exception) {
+        } catch (e: SdkException) {
             log.error("Failed to delete photo from S3: {}/{}", bucket, key, e)
         }
     }
 
     suspend fun deletePhotos(keys: List<String>) {
+        if (keys.isEmpty()) return
         keys.forEach { deletePhoto(it) }
     }
 

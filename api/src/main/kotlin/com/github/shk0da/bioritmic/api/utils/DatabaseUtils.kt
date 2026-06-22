@@ -14,6 +14,8 @@ object DatabaseUtils {
     const val DB_RECONNECT_INTERVAL_IN_SECONDS = 1L
     const val MASTER_ROUTING_KEY = "master"
     const val SLAVE_ROUTING_KEY = "slave"
+    const val DEFAULT_POSTGRES_PORT = 5432
+    const val MIN_IDLE_POOL_RATIO = 5
     const val PROPERTY_KEY_DATASOURCE = "spring.datasource"
     const val PROPERTY_KEY_JPA_URL = "jpa-url"
     const val PROPERTY_KEY_R2DBC_URL = "r2dbc-url"
@@ -39,7 +41,7 @@ object DatabaseUtils {
 
     fun extractPort(url: String): Int {
         val regex = ".*:[^:]+://(?:[^@]+@)?[^:]+:(\\d+)".toRegex()
-        return regex.find(url)?.groupValues?.get(1)?.toInt() ?: 5432
+        return regex.find(url)?.groupValues?.get(1)?.toInt() ?: DEFAULT_POSTGRES_PORT
     }
 
     fun extractDatabase(url: String): String {

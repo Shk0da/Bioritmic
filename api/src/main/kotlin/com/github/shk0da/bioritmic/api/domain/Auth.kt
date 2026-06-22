@@ -32,6 +32,7 @@ class Auth : Serializable {
 
     companion object {
 
+        private const val serialVersionUID = 1L
         const val lifetimeInMinutes = 60L
 
         fun createFrom(user: User): Auth {

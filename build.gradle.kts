@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.1.10"
-    id("io.gitlab.arturbosch.detekt") version "1.23.8"
+    kotlin("jvm") version "2.4.0"
+    id("dev.detekt") version "2.0.0-alpha.5"
 }
 
 allprojects {
@@ -13,7 +13,7 @@ allprojects {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 

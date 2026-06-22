@@ -205,14 +205,14 @@ interface BlockedUser extends UserInfo {
       margin: 0 0 0.5rem 0;
       font-size: 1.1rem;
       font-weight: 600;
-      color: #1f2937;
+      color: var(--text-primary, #1f2937);
     }
 
     .user-age,
     .user-gender {
       margin: 0.25rem 0;
       font-size: 0.9rem;
-      color: #6b7280;
+      color: var(--text-secondary, #6b7280);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -286,13 +286,13 @@ interface BlockedUser extends UserInfo {
       margin: 0;
       font-size: 1.25rem;
       font-weight: 700;
-      color: #1f2937;
+      color: var(--text-primary, #1f2937);
     }
 
     .modal-body {
       padding: 0 1.5rem 1.5rem;
       text-align: center;
-      color: #6b7280;
+      color: var(--text-secondary, #6b7280);
     }
 
     .modal-footer {
@@ -319,11 +319,11 @@ interface BlockedUser extends UserInfo {
     }
 
     .btn-cancel {
-      background: #f3f4f6;
-      color: #6b7280;
+      background: var(--bg-secondary, #f3f4f6);
+      color: var(--text-secondary, #6b7280);
 
       &:hover {
-        background: #e5e7eb;
+        background: var(--border-color, #e5e7eb);
       }
     }
 

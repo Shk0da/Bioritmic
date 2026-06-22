@@ -61,23 +61,24 @@ interface UserWithPhoto extends UserInfo {
             </div>
           </div>
         } @else {
-          <div class="row">
-            @for (user of matches; track user.id) {
-              <div class="col-6 col-md-4 col-lg-3 mb-3">
-                <div class="card match-card h-100">
-                  <div class="match-card-image-wrapper">
+          <div class="matches-grid">
+            @for (user of matches; track user.id; let i = $index) {
+              <div class="match-item" [style.animation-delay]="i * 100 + 'ms'">
+                <a [routerLink]="['/user', user.id]" class="match-link">
+                  <div class="match-avatar-wrapper">
                     <img
                       [src]="user.photoDataUrl || ''"
-                      class="card-img-top match-card-img"
+                      class="match-avatar"
                       [alt]="user.name">
+                    @if (user.isOnline) {
+                      <span class="online-dot"></span>
+                    }
                   </div>
-                  <div class="card-body p-2 text-center">
-                    <h6 class="match-card-name mb-1">{{ user.name }}</h6>
-                    <a [routerLink]="['/user', user.id]" class="btn btn-outline-primary btn-sm w-100">
-                      <i class="bi bi-person me-1"></i>Профиль
-                    </a>
-                  </div>
-                </div>
+                  <span class="match-name">{{ user.name }}</span>
+                </a>
+                <a [routerLink]="['/mailbox', 'conversation', user.id]" class="match-message-btn" title="Написать">
+                  <i class="bi bi-chat-dots-fill"></i>
+                </a>
               </div>
             }
           </div>
@@ -165,7 +166,7 @@ interface UserWithPhoto extends UserInfo {
     .section-title {
       font-size: 1.1rem;
       font-weight: 600;
-      color: #374151;
+      color: var(--text-primary, #374151);
     }
 
     .empty-state {
@@ -226,7 +227,7 @@ interface UserWithPhoto extends UserInfo {
       font-size: 1.25rem;
       font-weight: 600;
       margin-bottom: 0.5rem;
-      color: #1f2937;
+      color: var(--text-primary, #1f2937);
     }
 
     .user-card-info {
@@ -314,13 +315,13 @@ interface UserWithPhoto extends UserInfo {
 
       i {
         font-size: 1.5rem;
-        color: #6b7280;
+        color: var(--text-secondary, #6b7280);
       }
 
       p {
         margin: 0;
         font-size: 0.85rem;
-        color: #4b5563;
+        color: var(--text-primary, #4b5563);
         font-weight: 500;
         text-align: center;
         max-width: 250px;
@@ -341,6 +342,106 @@ interface UserWithPhoto extends UserInfo {
       &:hover {
         transform: translateY(-1px);
         box-shadow: 0 3px 10px rgba(245, 158, 11, 0.4);
+        color: white;
+      }
+    }
+
+    /* Matches grid */
+    .matches-grid {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .match-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      animation: fadeInUp 0.5s ease forwards;
+      opacity: 0;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .match-link {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      color: #1f2937;
+      transition: transform 0.2s ease;
+
+      &:hover {
+        transform: translateY(-3px);
+        color: #1f2937;
+      }
+    }
+
+    .match-avatar-wrapper {
+      position: relative;
+    }
+
+    .match-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid #fd297b;
+      box-shadow: 0 4px 12px rgba(253, 41, 123, 0.3);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .online-dot {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 14px;
+      height: 14px;
+      background: #22c55e;
+      border: 2.5px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+    }
+
+    .match-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-primary, #374151);
+      max-width: 80px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .match-message-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(253, 41, 123, 0.3);
+
+      &:hover {
+        transform: scale(1.15);
+        box-shadow: 0 4px 12px rgba(253, 41, 123, 0.5);
         color: white;
       }
     }
@@ -370,7 +471,7 @@ interface UserWithPhoto extends UserInfo {
     .match-card-name {
       font-size: 0.95rem;
       font-weight: 600;
-      color: #1f2937;
+      color: var(--text-primary, #1f2937);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;

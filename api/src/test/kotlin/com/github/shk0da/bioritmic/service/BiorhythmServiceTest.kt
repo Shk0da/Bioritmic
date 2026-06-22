@@ -1,7 +1,10 @@
 package com.github.shk0da.bioritmic.service
 
 import com.github.shk0da.bioritmic.api.service.BiorhythmService
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.text.SimpleDateFormat
 import java.util.*
@@ -255,7 +258,7 @@ class BiorhythmServiceTest {
     @Test
     fun `test compare одинаковые даты`() {
         val date = dateFormat.parse("01.01.1990")
-        val result = service.compare(date!!, date!!)
+        val result = service.compare(date, date)
         
         // При одинаковых датах разница 0 дней, все значения должны быть 100 (максимальная совместимость)
         result.values.forEach { value ->
@@ -280,7 +283,7 @@ class BiorhythmServiceTest {
     @Test
     fun `test boolCompare одинаковые даты`() {
         val date = dateFormat.parse("01.01.1990")
-        assertTrue(service.boolCompare(date!!, date!!), "При одинаковых датах средняя совместимость 100 >= 60")
+        assertTrue(service.boolCompare(date, date), "При одинаковых датах средняя совместимость 100 >= 60")
     }
 
     // ===== Тесты для fullCompare =====

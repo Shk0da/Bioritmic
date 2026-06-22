@@ -9,41 +9,29 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_
 
 object ValidateUtils {
 
+    private const val MIN_AGE = 14
+    private const val MAX_AGE = 100
+    private const val MIN_DISTANCE = 0.05
+    private const val MAX_DISTANCE = 100.0
+    private const val MAX_MESSAGE_LENGTH = 1024
+
     fun validate(ageMin: Int?, ageMax: Int?, distance: Double?) {
-        if (null != ageMin && ageMin < 14) {
-            throw ApiException(
-                ErrorCode.INVALID_PARAMETER_WITH_VALUE, mapOf(
-                    Pair(PARAMETER_NAME, "ageMin"),
-                    Pair(PARAMETER_VALUE, ageMin.toString())
-                )
-            )
-        }
+        val errors = mutableListOf<String>()
 
-        if (null != ageMax && ageMax > 100) {
-            throw ApiException(
-                ErrorCode.INVALID_PARAMETER_WITH_VALUE, mapOf(
-                    Pair(PARAMETER_NAME, "ageMax"),
-                    Pair(PARAMETER_VALUE, ageMax.toString())
-                )
-            )
-        }
+        if (ageMin != null && ageMin < MIN_AGE) errors.add("ageMin")
+        if (ageMax != null && ageMax > MAX_AGE) errors.add("ageMax")
+        if (ageMin != null && ageMax != null && ageMin > ageMax) errors.add("ageMin, ageMax")
+        if (distance != null && (distance < MIN_DISTANCE || distance > MAX_DISTANCE)) errors.add("distance")
 
-        if (null != ageMin && null != ageMax && (ageMin > ageMax)) {
-            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "ageMin, ageMax")))
-        }
-
-        if (null != distance && (distance < 0.05 || distance > 100.0)) {
+        if (errors.isNotEmpty()) {
             throw ApiException(
-                ErrorCode.INVALID_PARAMETER_WITH_VALUE, mapOf(
-                    Pair(PARAMETER_NAME, "distance"),
-                    Pair(PARAMETER_VALUE, distance.toString())
-                )
+                ErrorCode.INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, errors.joinToString(", ")))
             )
         }
     }
 
     fun validate(message: String?) {
-        if (StringUtils.isBlank(message) || message!!.length < 1 || message.length >= 1024) {
+        if (StringUtils.isBlank(message) || message!!.length < 1 || message.length >= MAX_MESSAGE_LENGTH) {
             throw ApiException(
                 ErrorCode.INVALID_PARAMETER_RANGE, mapOf(
                     Pair(PARAMETER_NAME, "message"),
@@ -60,7 +48,10 @@ object ValidateUtils {
         return true
     }
 
-    fun checkFileExtension(fileName: String?, extensions: List<String>, errorCode: ErrorCode, parameters: Map<String, String>): Boolean {
+    fun checkFileExtension(
+        fileName: String?, extensions: List<String>,
+        errorCode: ErrorCode, parameters: Map<String, String>
+    ): Boolean {
         if (null == fileName || fileName.isEmpty()) throw ApiException(errorCode, parameters)
         val extension = fileName.substring(fileName.lastIndexOf(".") + 1)
         if (!extensions.contains(extension)) throw ApiException(errorCode, parameters)

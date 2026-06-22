@@ -74,7 +74,7 @@ interface PromptAnswer {
     }
 
     .prompt-card {
-      background: #f9fafb;
+      background: var(--card-bg-alt, #f9fafb);
       border-radius: 12px;
       padding: 16px;
       margin-bottom: 12px;
@@ -83,17 +83,18 @@ interface PromptAnswer {
     .prompt-text {
       font-weight: 500;
       margin-bottom: 10px;
-      color: #374151;
+      color: var(--text-primary, #374151);
     }
 
     .prompt-input {
       width: 100%;
-      border: 1px solid #e5e7eb;
+      border: 1px solid var(--border-color, #e5e7eb);
       border-radius: 8px;
       padding: 10px 12px;
       font-size: 14px;
       resize: none;
-      background: white;
+      background: var(--bg-input, white);
+      color: var(--text-primary);
     }
 
     .prompt-input:focus {
@@ -110,7 +111,7 @@ interface PromptAnswer {
 
     .char-count {
       font-size: 12px;
-      color: #9ca3af;
+      color: var(--text-muted, #9ca3af);
     }
 
     .prompt-actions {
@@ -119,7 +120,7 @@ interface PromptAnswer {
       gap: 12px;
       margin-top: 20px;
       padding-top: 16px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid var(--border-color, #e5e7eb);
     }
   `]
 })

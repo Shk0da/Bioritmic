@@ -11,11 +11,16 @@ import javax.validation.constraints.Min
 
 data class UserSettingsModel(
     val gender: Gender? = null,
-    @field:Min(14) @field:Max(100) val ageMin: Int? = null,
-    @field:Min(14) @field:Max(100) val ageMax: Int? = null,
-    @field:DecimalMin("0.05") @field:DecimalMax("100") val distance: Double? = null
+    @field:Min(MIN_AGE.toLong()) @field:Max(MAX_AGE.toLong()) val ageMin: Int? = null,
+    @field:Min(MIN_AGE.toLong()) @field:Max(MAX_AGE.toLong()) val ageMax: Int? = null,
+    @field:DecimalMin(MIN_DISTANCE) @field:DecimalMax(MAX_DISTANCE) val distance: Double? = null
 ) : BasicPresentation {
     companion object {
+        private const val MIN_AGE = 14
+        private const val MAX_AGE = 100
+        private const val MIN_DISTANCE = "0.05"
+        private const val MAX_DISTANCE = "100"
+
         fun of(settings: UserSettings): UserSettingsModel {
             return UserSettingsModel(
                 gender = settings.getGender(),

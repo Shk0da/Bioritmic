@@ -24,6 +24,7 @@
     <include file="v1/0017-add-voice-to-mailbox.xml" relativeToChangelogFile="true"/>
     <include file="v1/0018-create-stories.xml" relativeToChangelogFile="true"/>
     <include file="v1/0019-create-profile-boosts.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0020-add-performance-indexes.xml" relativeToChangelogFile="true"/>
     <!-- -->
 
     <!-- Indexes  -->

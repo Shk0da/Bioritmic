@@ -22,4 +22,8 @@ class Interest : Serializable {
 
     @Column("active")
     var active: Boolean = true
+
+    companion object {
+        private const val serialVersionUID = 1L
+    }
 }

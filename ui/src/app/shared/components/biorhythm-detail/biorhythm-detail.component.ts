@@ -68,7 +68,7 @@ import { UserService, BiorhythmDetail } from '../../../core/services/user.servic
       padding: 4px 0;
     }
     .progress {
-      background-color: #e9ecef;
+      background-color: var(--border-color, #e9ecef);
     }
   `]
 })

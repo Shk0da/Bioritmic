@@ -21,7 +21,10 @@ data class UserModel(
 
     companion object {
         fun of(user: User): UserModel {
-            return UserModel(id = user.id, name = user.name!!, email = user.email!!, birthday = user.birthday!!, gender = user.getGender())
+            return UserModel(
+                id = user.id, name = user.name!!, email = user.email!!,
+                birthday = user.birthday!!, gender = user.getGender()
+            )
         }
     }
 

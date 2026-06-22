@@ -27,7 +27,10 @@ interface InterestRepository : CoroutineCrudRepository<Interest, Long> {
 @Transactional(transactionManager = transactionManager)
 interface UserInterestRepository : CoroutineCrudRepository<UserInterest, Long> {
 
-    @Query("select ui.*, i.name, i.category, i.icon from user_interests ui join interests i on ui.interest_id = i.id where ui.user_id = :userId")
+    @Query(
+        "select ui.*, i.name, i.category, i.icon from user_interests ui " +
+            "join interests i on ui.interest_id = i.id where ui.user_id = :userId"
+    )
     suspend fun findInterestsByUserId(userId: Long): List<Interest>
 
     @Query("select * from user_interests where user_id = :userId")

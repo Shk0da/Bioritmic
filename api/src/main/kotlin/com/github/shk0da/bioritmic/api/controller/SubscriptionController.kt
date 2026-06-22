@@ -5,7 +5,11 @@ import com.github.shk0da.bioritmic.api.service.SubscriptionService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.util.*
@@ -16,13 +20,17 @@ class SubscriptionController(
     val subscriptionService: SubscriptionService
 ) {
 
+    companion object {
+        private const val SUBSCRIPTION_DURATION_DAYS = 30
+    }
+
     private val log = LoggerFactory.getLogger(SubscriptionController::class.java)
 
     @PostMapping(value = ["/verify"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun verifySubscription(@RequestBody request: SubscriptionVerifyRequest): SubscriptionResponse {
         val userId = getUserId()
         val calendar = Calendar.getInstance()
-        calendar.add(Calendar.DAY_OF_MONTH, 30)
+        calendar.add(Calendar.DAY_OF_MONTH, SUBSCRIPTION_DURATION_DAYS)
         val expiresAt = Timestamp(calendar.timeInMillis)
 
         subscriptionService.activatePro(userId, expiresAt)
@@ -38,6 +46,9 @@ class SubscriptionController(
     @GetMapping(value = ["/current"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun getCurrentSubscription(): SubscriptionResponse {
         val userId = getUserId()
+        if (subscriptionService.isFreeForAll()) {
+            return SubscriptionResponse(plan = "PRO", status = "ACTIVE", expiresAt = null)
+        }
         val subscription = subscriptionService.getActiveSubscription(userId)
         return if (subscription != null) {
             SubscriptionResponse(

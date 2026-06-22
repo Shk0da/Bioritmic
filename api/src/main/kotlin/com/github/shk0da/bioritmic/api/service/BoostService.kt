@@ -20,8 +20,20 @@ class BoostService(
     @Transactional(readOnly = true, transactionManager = transactionManager)
     suspend fun isBoosted(userId: Long): Boolean {
         val boost = profileBoostRepository.findActiveByUserId(userId) ?: return false
-        val expiresAt = boost.expiresAt ?: return false
-        return expiresAt.after(Timestamp.from(Instant.now()))
+        return boost.expiresAt?.after(Timestamp.from(Instant.now())) == true
+    }
+
+    suspend fun getBoostedUserIds(userIds: Set<Long>): Set<Long> {
+        if (userIds.isEmpty()) return emptySet()
+        val now = Timestamp.from(Instant.now())
+        val boosted = mutableSetOf<Long>()
+        for (userId in userIds) {
+            val boost = profileBoostRepository.findActiveByUserId(userId)
+            if (boost != null && boost.expiresAt?.after(now) == true) {
+                boosted.add(userId)
+            }
+        }
+        return boosted
     }
 
     @Transactional

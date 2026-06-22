@@ -26,9 +26,27 @@ echo -e "${CYAN}========================================${NC}"
 echo -e "${CYAN}  Bioritmic — Starting project${NC}"
 echo -e "${CYAN}========================================${NC}"
 
+# --- Infrastructure: PostgreSQL (Docker) ---
+echo ""
+echo -e "${YELLOW}[1/5] Starting PostgreSQL (Docker)...${NC}"
+cd "$ROOT_DIR"
+docker compose up -d postgres
+echo "  Waiting for PostgreSQL to be ready..."
+for i in $(seq 1 30); do
+    if docker compose exec -T postgres pg_isready -U postgres -d bioritmic > /dev/null 2>&1; then
+        echo -e "  ${GREEN}PostgreSQL is ready (port 5432)${NC}"
+        break
+    fi
+    if [ "$i" -eq 30 ]; then
+        echo -e "  ${RED}PostgreSQL failed to start${NC}"
+        exit 1
+    fi
+    sleep 1
+done
+
 # --- Infrastructure: MinIO ---
 echo ""
-echo -e "${YELLOW}[1/4] Checking MinIO (S3 storage)...${NC}"
+echo -e "${YELLOW}[2/5] Checking MinIO (S3 storage)...${NC}"
 if curl -sf http://localhost:9341 > /dev/null 2>&1; then
     echo -e "  ${GREEN}MinIO is already running (port 9341)${NC}"
 else
@@ -51,7 +69,7 @@ fi
 
 # --- Backend ---
 echo ""
-echo -e "${YELLOW}[2/4] Starting Backend (Kotlin/Spring Boot on :8080)...${NC}"
+echo -e "${YELLOW}[3/5] Starting Backend (Kotlin/Spring Boot on :8080)...${NC}"
 cd "$ROOT_DIR"
 ./gradlew :api:bootRun > /tmp/bioritmic-api.log 2>&1 &
 API_PID=$!
@@ -74,7 +92,7 @@ done
 
 # --- Frontend ---
 echo ""
-echo -e "${YELLOW}[3/4] Starting Frontend (Angular on :4200)...${NC}"
+echo -e "${YELLOW}[4/5] Starting Frontend (Angular on :4200)...${NC}"
 cd "$UI_DIR"
 npx ng serve --proxy-config proxy.conf.json --open > /tmp/bioritmic-ui.log 2>&1 &
 UI_PID=$!
@@ -99,6 +117,7 @@ echo ""
 echo -e "  Frontend:   ${GREEN}http://localhost:4200${NC}"
 echo -e "  Backend:    ${GREEN}http://localhost:8080${NC}"
 echo -e "  Swagger:    ${GREEN}http://localhost:8080/swagger-ui.html${NC}"
+echo -e "  PostgreSQL: ${GREEN}localhost:5432${NC}  (postgres/postgres)"
 echo -e "  MinIO:      ${GREEN}http://localhost:9341${NC}  (bioritmic/bioritmic)"
 echo -e "  Actuator:   ${GREEN}http://localhost:8080/management/actuator/health${NC}"
 echo ""

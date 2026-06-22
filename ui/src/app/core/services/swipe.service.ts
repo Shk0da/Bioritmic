@@ -12,11 +12,18 @@ export interface SwipeResult {
 })
 export class SwipeService {
   private swipeSubject = new Subject<SwipeResult>();
+  private undoSubject = new Subject<SwipeCard>();
   private cards: SwipeCard[] = [];
   private currentIndex = 0;
+  private history: Array<{ index: number; direction: SwipeDirection; card: SwipeCard }> = [];
+  private maxHistory = 10;
 
   get onSwipe(): Observable<SwipeResult> {
     return this.swipeSubject.asObservable();
+  }
+
+  get onUndo(): Observable<SwipeCard> {
+    return this.undoSubject.asObservable();
   }
 
   setCards(users: UserInfo[]): void {
@@ -27,6 +34,7 @@ export class SwipeService {
       isSuperLiked: false
     }));
     this.currentIndex = 0;
+    this.history = [];
   }
 
   getCards(): SwipeCard[] {
@@ -55,6 +63,10 @@ export class SwipeService {
     return this.currentIndex;
   }
 
+  canUndo(): boolean {
+    return this.history.length > 0;
+  }
+
   swipe(direction: SwipeDirection): SwipeCard | null {
     const card = this.getCurrentCard();
     if (!card) return null;
@@ -62,14 +74,33 @@ export class SwipeService {
     card.isLiked = direction === SwipeDirection.RIGHT;
     card.isSuperLiked = direction === SwipeDirection.UP;
 
+    this.history.push({ index: this.currentIndex, direction, card });
+    if (this.history.length > this.maxHistory) {
+      this.history.shift();
+    }
+
     this.swipeSubject.next({ direction, card });
     this.currentIndex++;
 
     return card;
   }
 
+  undo(): SwipeCard | null {
+    if (this.history.length === 0) return null;
+
+    const last = this.history.pop()!;
+    this.currentIndex = last.index;
+
+    last.card.isLiked = false;
+    last.card.isSuperLiked = false;
+
+    this.undoSubject.next(last.card);
+    return last.card;
+  }
+
   reset(): void {
     this.currentIndex = 0;
+    this.history = [];
   }
 
   getLikedCards(): SwipeCard[] {

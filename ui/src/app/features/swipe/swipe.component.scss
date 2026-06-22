@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - 70px);
-  background: #f5f7fa;
+  background: var(--bg-secondary);
   overflow: hidden;
 }
 
@@ -54,7 +54,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
-  background: #f0f2f5;
+  background: var(--bg-tertiary);
 
   .profiles-grid {
     display: grid;
@@ -65,7 +65,7 @@
   }
 
   .profile-card {
-    background: white;
+    background: var(--card-bg);
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -106,6 +106,8 @@
 
     .profile-card-body {
       padding: 1rem;
+      background: var(--card-bg);
+      color: var(--text-primary);
 
       .profile-card-header {
         display: flex;
@@ -130,8 +132,8 @@
 
         .distance-badge {
           font-size: 0.8rem;
-          color: #6b7280;
-          background: #f3f4f6;
+          color: var(--text-secondary);
+          background: var(--bg-secondary);
           padding: 0.25rem 0.6rem;
           border-radius: 12px;
           display: flex;
@@ -243,6 +245,14 @@
               color: white;
             }
           }
+
+          &.btn-outline-warning {
+            &:hover {
+              background: #f59e0b;
+              border-color: #f59e0b;
+              color: white;
+            }
+          }
         }
       }
     }
@@ -297,7 +307,7 @@
   max-width: 400px;
   height: 600px;
   max-height: 80vh;
-  background: white;
+  background: var(--card-bg);
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -319,6 +329,10 @@
 
   &.swipe-right {
     animation: swipeRight 0.5s ease forwards;
+  }
+
+  &.swipe-up {
+    animation: swipeUp 0.5s ease forwards;
   }
 
   @keyframes swipeLeft {
@@ -404,6 +418,17 @@
 
     &.visible {
       transform: rotate(15deg) scale(1);
+    }
+  }
+
+  &.superlike {
+    left: 50%;
+    transform: translateX(-50%) scale(0.5);
+    color: #3b82f6;
+    border-color: #3b82f6;
+
+    &.visible {
+      transform: translateX(-50%) scale(1);
     }
   }
 
@@ -690,7 +715,7 @@
   }
 
   &.btn-dislike {
-    background: white;
+    background: var(--card-bg);
     color: #f87171;
 
     &:hover {
@@ -700,11 +725,34 @@
   }
 
   &.btn-like {
-    background: white;
+    background: var(--card-bg);
     color: #4ade80;
 
     &:hover {
       background: #4ade80;
+      color: white;
+    }
+  }
+
+  &.btn-superlike {
+    background: var(--card-bg);
+    color: #3b82f6;
+
+    &:hover {
+      background: #3b82f6;
+      color: white;
+    }
+  }
+
+  &.btn-undo {
+    background: var(--card-bg);
+    color: #f59e0b;
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+
+    &:hover {
+      background: #f59e0b;
       color: white;
     }
   }
@@ -774,7 +822,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: white;
+  background: var(--card-bg);
   border-radius: 20px 20px 0 0;
   padding: 1.5rem;
   z-index: 1001;
@@ -821,7 +869,7 @@
   display: block;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #4b5563;
+  color: var(--text-secondary);
   margin-bottom: 0.5rem;
 }
 
@@ -832,10 +880,12 @@
 
 .form-select {
   padding: 0.75rem 1rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
   font-size: 1rem;
   transition: border-color 0.3s ease;
+  background: var(--bg-input);
+  color: var(--text-primary);
 
   &:focus {
     outline: none;

@@ -25,7 +25,9 @@ class PageableRequest(
 
     override fun next(): Pageable = PageableRequest(getPageNumber() + 1, pageSize, sort)
 
-    override fun previousOrFirst(): Pageable = PageableRequest(if (getPageNumber() > 1) getPageNumber() - 1 else 1, pageSize, sort)
+    override fun previousOrFirst(): Pageable = PageableRequest(
+        if (getPageNumber() > 1) getPageNumber() - 1 else 1, pageSize, sort
+    )
 
     override fun first(): Pageable = PageableRequest(1, pageSize, sort)
 
@@ -34,6 +36,8 @@ class PageableRequest(
     override fun hasPrevious(): Boolean = getPageNumber() > 1
 
     companion object {
+        private const val MAX_PAGE_SIZE = 100
+
         fun of(pageable: Pageable?): PageableRequest {
             if (null == pageable) return PageableRequest()
 
@@ -42,7 +46,7 @@ class PageableRequest(
             }
             val pageNumber = if (pageable.pageNumber > 0) pageable.pageNumber else 1
 
-            if (pageable.pageSize <= 0 || pageable.pageSize > 100) {
+            if (pageable.pageSize <= 0 || pageable.pageSize > MAX_PAGE_SIZE) {
                 throw ApiException(
                     ErrorCode.INVALID_PARAMETER_RANGE,
                     mapOf(

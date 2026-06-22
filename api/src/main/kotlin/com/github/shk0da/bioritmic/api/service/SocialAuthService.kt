@@ -25,8 +25,7 @@ class SocialAuthService(
         val payload = decodeJwtPayload(idToken)
         val email = payload["email"] as? String ?: throw ApiException(ErrorCode.INVALID_PARAMETER)
         val name = payload["name"] as? String ?: payload["given_name"] as? String ?: email.substringBefore("@")
-        val picture = payload["picture"] as? String
-        return findOrCreateAndAuth(email, name, picture)
+        return findOrCreateAndAuth(email, name)
     }
 
     @Transactional
@@ -34,10 +33,10 @@ class SocialAuthService(
         val payload = decodeJwtPayload(idToken)
         val email = payload["email"] as? String ?: throw ApiException(ErrorCode.INVALID_PARAMETER)
         val name = payload["name"] as? String ?: email.substringBefore("@")
-        return findOrCreateAndAuth(email, name, null)
+        return findOrCreateAndAuth(email, name)
     }
 
-    private suspend fun findOrCreateAndAuth(email: String, name: String, picture: String?): UserToken {
+    private suspend fun findOrCreateAndAuth(email: String, name: String): UserToken {
         var user = userService.findUserByEmail(email)
         if (user == null) {
             log.info("Creating new user from social login: {}", email)
@@ -57,17 +56,10 @@ class SocialAuthService(
     }
 
     private fun decodeJwtPayload(token: String): Map<String, Any> {
-        return try {
-            val parts = token.split(".")
-            if (parts.size < 2) throw ApiException(ErrorCode.INVALID_PARAMETER)
-            val payload = String(Base64.getUrlDecoder().decode(parts[1]))
-            @Suppress("UNCHECKED_CAST")
-            com.fasterxml.jackson.databind.ObjectMapper().readValue(payload, Map::class.java) as Map<String, Any>
-        } catch (e: ApiException) {
-            throw e
-        } catch (e: Exception) {
-            log.error("Failed to decode JWT payload", e)
-            throw ApiException(ErrorCode.INVALID_PARAMETER)
-        }
+        val parts = token.split(".")
+        require(parts.size >= 2) { "Invalid JWT token" }
+        val payload = String(Base64.getUrlDecoder().decode(parts[1]))
+        @Suppress("UNCHECKED_CAST")
+        return com.fasterxml.jackson.databind.ObjectMapper().readValue(payload, Map::class.java) as Map<String, Any>
     }
 }

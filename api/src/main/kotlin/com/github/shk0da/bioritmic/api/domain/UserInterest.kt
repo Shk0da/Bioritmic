@@ -16,4 +16,8 @@ class UserInterest : Serializable {
 
     @Column("interest_id")
     var interestId: Long = 0
+
+    companion object {
+        private const val serialVersionUID = 1L
+    }
 }

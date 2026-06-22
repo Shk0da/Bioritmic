@@ -134,7 +134,7 @@ class AuthControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isCreated
 
-        val recoveryModel = RecoveryModel(email = userModel.email!!)
+        val recoveryModel = RecoveryModel(email = userModel.email)
 
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/recovery")
@@ -171,7 +171,7 @@ class AuthControllerTest : ApiApplicationTests() {
             .expectStatus().isCreated
 
         val authorizationModel = AuthorizationModel(
-            email = userModel.email!!,
+            email = userModel.email,
             password = userModel.password!!
         )
 
@@ -188,7 +188,7 @@ class AuthControllerTest : ApiApplicationTests() {
 
         val userToken = UserToken(
             name = authResponse!!.name,
-            email = userModel.email!!,
+            email = userModel.email,
             accessToken = authResponse.accessToken,
             refreshToken = authResponse.refreshToken,
             expireTime = authResponse.expireTime
