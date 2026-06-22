@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, Input, inject, DestroyRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgClass, NgStyle } from '@angular/common';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { DomSanitizer } from '@angular/platform-browser';
 import { UserService } from '../../core/services/user.service';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { MailboxService } from '../../core/services/mailbox.service';
@@ -390,7 +390,7 @@ import { ModalService } from '../../core/services/modal.service';
 export class UserDetailComponent implements OnInit, OnDestroy {
   @Input() id?: string;
   user: UserInfo | null = null;
-  photoDataUrl: SafeUrl | null = null;
+  photoDataUrl: string | null = null;
   loading = true;
   error: string | null = null;
   isBookmarked = false;
@@ -485,10 +485,9 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+  private bytesToDataUrl(bytes: Uint8Array): string {
     const base64 = this.uint8ArrayToBase64(bytes);
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+    return `data:image/jpeg;base64,${base64}`;
   }
 
   private uint8ArrayToBase64(bytes: Uint8Array): string {

@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MailboxService } from '../../../core/services/mailbox.service';
 import { UserService } from '../../../core/services/user.service';
@@ -10,7 +10,7 @@ import { ModalService } from '../../../core/services/modal.service';
 
 interface MessageWithUser extends UserMail {
   userName?: string;
-  userPhotoUrl?: SafeUrl | null;
+  userPhotoUrl?: string | null;
   isCurrentUser?: boolean;
 }
 
@@ -66,7 +66,7 @@ interface MessageWithUser extends UserMail {
               }
               <div class="message-bubble {{ message.isCurrentUser ? 'outgoing' : 'incoming' }}">
                 @if (!message.isCurrentUser && message.userName) {
-                  <div class="message-sender">{{ message.userName }}</div>
+                  <a class="message-sender" [routerLink]="['/user', otherUserId]">{{ message.userName }}</a>
                 }
                 <div class="message-text">{{ message.message }}</div>
                 <div class="message-meta">
@@ -253,6 +253,12 @@ interface MessageWithUser extends UserMail {
       font-weight: 600;
       margin-bottom: 4px;
       color: var(--accent-pink, #fd297b);
+      text-decoration: none;
+      display: inline-block;
+
+      &:hover {
+        text-decoration: underline;
+      }
     }
 
     .message-text {
@@ -416,19 +422,20 @@ interface MessageWithUser extends UserMail {
     }
   `]
 })
-export class ConversationComponent implements OnInit, AfterViewChecked {
+export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
   messages: MessageWithUser[] = [];
   loading = false;
   sending = false;
   otherUserId!: number;
   otherUserName?: string;
-  otherUserPhotoUrl?: SafeUrl | null;
+  otherUserPhotoUrl?: string | null;
   otherUserOnline = false;
   newMessage = '';
   currentUserId?: number;
   private shouldScroll = false;
   showEmojiPicker = false;
+  private refreshInterval: any = null;
 
   emojis = [
     '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
@@ -455,6 +462,12 @@ export class ConversationComponent implements OnInit, AfterViewChecked {
   ngOnInit(): void {
     this.otherUserId = +this.route.snapshot.paramMap.get('userId')!;
     this.loadCurrentUserId();
+  }
+
+  ngOnDestroy(): void {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
   }
 
   private loadCurrentUserId(): void {
@@ -485,6 +498,9 @@ export class ConversationComponent implements OnInit, AfterViewChecked {
         this.loading = false;
         this.shouldScroll = true;
         setTimeout(() => this.scrollToBottom(), 100);
+        if (!this.refreshInterval) {
+          this.refreshInterval = setInterval(() => this.refreshMessages(), 3000);
+        }
       },
       error: () => {
         this.loading = false;
@@ -516,10 +532,9 @@ export class ConversationComponent implements OnInit, AfterViewChecked {
     });
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+  private bytesToDataUrl(bytes: Uint8Array): string {
     const base64 = this.uint8ArrayToBase64(bytes);
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+    return `data:image/jpeg;base64,${base64}`;
   }
 
   private uint8ArrayToBase64(bytes: Uint8Array): string {
@@ -592,5 +607,23 @@ export class ConversationComponent implements OnInit, AfterViewChecked {
 
   addEmoji(emoji: string): void {
     this.newMessage += emoji;
+  }
+
+  private refreshMessages(): void {
+    if (this.sending) return;
+    this.mailboxService.getConversation(this.otherUserId).subscribe({
+      next: (allMessages) => {
+        const prevCount = this.messages.length;
+        this.messages = allMessages.map(m => ({
+          ...m,
+          isCurrentUser: m.from === this.currentUserId
+        }));
+        if (this.messages.length > prevCount) {
+          this.shouldScroll = true;
+          setTimeout(() => this.scrollToBottom(), 100);
+        }
+      },
+      error: () => {}
+    });
   }
 }

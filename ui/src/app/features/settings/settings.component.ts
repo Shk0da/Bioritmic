@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { SettingsService } from '../../core/services/settings.service';
 import { UserService } from '../../core/services/user.service';
+import { AuthService } from '../../core/services/auth.service';
 import { UserSettings, Gender } from '../../core/models/user.model';
 
 @Component({
@@ -89,7 +90,10 @@ import { UserSettings, Gender } from '../../core/models/user.model';
                 </div>
 
                 <div class="d-grid">
-                  <button type="submit" class="btn btn-primary btn-lg">
+                  <button type="submit" class="btn btn-primary btn-lg" [disabled]="saving">
+                    @if (saving) {
+                      <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
                     <i class="bi bi-check-lg me-2"></i>Сохранить настройки
                   </button>
                 </div>
@@ -148,14 +152,23 @@ export class SettingsComponent implements OnInit {
     distance: 50
   };
   loading = false;
+  saving = false;
   blockedCount = 0;
 
   Gender = Gender;
 
   constructor(
     private settingsService: SettingsService,
-    private userService: UserService
-  ) {}
+    private userService: UserService,
+    private authService: AuthService
+  ) {
+    const user = this.authService.getCurrentUser();
+    if (user?.gender === Gender.MAN) {
+      this.settings.gender = Gender.WOMAN;
+    } else {
+      this.settings.gender = Gender.MAN;
+    }
+  }
 
   ngOnInit(): void {
     this.loadSettings();
@@ -185,11 +198,14 @@ export class SettingsComponent implements OnInit {
   }
 
   save(): void {
+    this.saving = true;
     this.settingsService.updateSettings(this.settings).subscribe({
       next: () => {
+        this.saving = false;
         alert('Настройки сохранены!');
       },
       error: () => {
+        this.saving = false;
         alert('Ошибка сохранения настроек');
       }
     });

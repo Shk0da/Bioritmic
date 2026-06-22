@@ -7,7 +7,7 @@ import { MatchService, MatchesResponse } from '../../core/services/match.service
 import { UserInfo, PageableRequest } from '../../core/models/user.model';
 
 interface UserWithPhoto extends UserInfo {
-  photoDataUrl?: SafeUrl | null;
+  photoDataUrl?: string | null;
 }
 
 @Component({
@@ -565,10 +565,9 @@ export class BookmarksComponent implements OnInit {
     });
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+  private bytesToDataUrl(bytes: Uint8Array): string {
     const base64 = this.uint8ArrayToBase64(bytes);
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+    return `data:image/jpeg;base64,${base64}`;
   }
 
   private uint8ArrayToBase64(bytes: Uint8Array): string {

@@ -4,12 +4,22 @@ import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
+import { NgClass } from '@angular/common';
 
 @Component({
   selector: 'app-edit-profile',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, NgClass],
   template: `
+    @if (saving) {
+      <div class="saving-overlay">
+        <div class="saving-spinner">
+          <div class="spinner-ring"></div>
+          <p>{{ uploadingPhoto ? 'Загрузка фото...' : 'Сохранение профиля...' }}</p>
+        </div>
+      </div>
+    }
+
     <div class="row">
       <div class="col-md-8 mx-auto">
         <div class="card">
@@ -20,6 +30,13 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
             <!-- Фото профиля -->
             <div class="text-center mb-4">
               <div class="position-relative d-inline-block">
+                @if (saving) {
+                  <div class="photo-loading-overlay">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                  </div>
+                }
                 <img
                   [src]="photoDataUrl || ''"
                   class="profile-avatar rounded-circle"
@@ -97,7 +114,10 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
 
               <div class="d-flex justify-content-between">
                 <a routerLink="/profile/me" class="btn btn-outline-secondary">Отмена</a>
-                <button type="submit" class="btn btn-primary" [disabled]="!isFormValid()">
+                <button type="submit" class="btn btn-primary" [disabled]="!isFormValid() || saving">
+                  @if (saving) {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                  }
                   Сохранить
                 </button>
               </div>
@@ -106,13 +126,66 @@ import { UserInfo, Gender } from '../../../core/models/user.model';
         </div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    .saving-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      backdrop-filter: blur(4px);
+    }
+
+    .saving-spinner {
+      background: var(--card-bg, white);
+      border-radius: 16px;
+      padding: 2rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .spinner-ring {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--border-color, #e5e7eb);
+      border-top-color: #fd297b;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    .saving-spinner p {
+      margin: 0;
+      font-weight: 600;
+      color: var(--text-primary, #1f2937);
+    }
+
+    .photo-loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  `]
 })
 export class EditProfileComponent implements OnInit {
   user: Partial<UserInfo> = {};
   photoFile: File | null = null;
-  photoDataUrl: SafeUrl | null = null;
+  photoDataUrl: string | null = null;
   Gender = Gender;
+  saving = false;
+  uploadingPhoto = false;
 
   constructor(
     private userService: UserService,
@@ -148,19 +221,17 @@ export class EditProfileComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       this.photoFile = input.files[0];
-      // Показываем превью
       const reader = new FileReader();
       reader.onload = (e: any) => {
-        this.photoDataUrl = this.sanitizer.bypassSecurityTrustUrl(e.target.result);
+        this.photoDataUrl = e.target.result;
       };
       reader.readAsDataURL(this.photoFile);
     }
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+  private bytesToDataUrl(bytes: Uint8Array): string {
     const base64 = this.uint8ArrayToBase64(bytes);
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+    return `data:image/jpeg;base64,${base64}`;
   }
 
   private uint8ArrayToBase64(bytes: Uint8Array): string {
@@ -176,27 +247,31 @@ export class EditProfileComponent implements OnInit {
   }
 
   save(): void {
-    // Сначала обновляем профиль
+    this.saving = true;
     this.userService.updateUser(this.user).subscribe({
       next: () => {
-        // Если есть новое фото, загружаем его
         if (this.photoFile) {
+          this.uploadingPhoto = true;
           this.userService.uploadPhoto(this.photoFile).subscribe({
             next: () => {
+              this.saving = false;
+              this.uploadingPhoto = false;
               this.router.navigate(['/profile/me']);
             },
             error: (error: any) => {
-              console.error('Failed to upload photo', error);
+              this.saving = false;
+              this.uploadingPhoto = false;
               alert('Профиль сохранён, но фото не загружено');
               this.router.navigate(['/profile/me']);
             }
           });
         } else {
+          this.saving = false;
           this.router.navigate(['/profile/me']);
         }
       },
       error: (error: any) => {
-        console.error('Failed to update profile', error);
+        this.saving = false;
         alert('Ошибка сохранения профиля');
       }
     });

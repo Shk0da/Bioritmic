@@ -51,14 +51,6 @@ export class AuthService {
     return this.http.post<UserToken>(`${this.apiUrl}/authorization`, credentials);
   }
 
-  googleLogin(idToken: string): Observable<UserToken> {
-    return this.http.post<UserToken>(`${this.apiUrl}/auth/google`, { idToken });
-  }
-
-  appleLogin(idToken: string): Observable<UserToken> {
-    return this.http.post<UserToken>(`${this.apiUrl}/auth/apple`, { idToken });
-  }
-
   register(user: Partial<User> & { password: string }): Observable<User> {
     return this.http.post<User>(`${this.apiUrl}/registration`, user);
   }

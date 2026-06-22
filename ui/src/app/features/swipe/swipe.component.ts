@@ -366,6 +366,12 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.search();
       },
       error: () => {
+        const user = this.authService.getCurrentUser();
+        if (user?.gender === Gender.MAN) {
+          this.searchCriteria.gender = Gender.WOMAN;
+        } else if (user?.gender === Gender.WOMAN) {
+          this.searchCriteria.gender = Gender.MAN;
+        }
         this.search();
       }
     });

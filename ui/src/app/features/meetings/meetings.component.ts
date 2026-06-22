@@ -7,7 +7,7 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 
 interface MeetingWithUser extends UserMeeting {
   userName?: string;
-  userPhotoUrl?: SafeUrl | null;
+  userPhotoUrl?: string | null;
 }
 
 @Component({
@@ -175,10 +175,9 @@ export class MeetingsComponent implements OnInit {
     });
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+  private bytesToDataUrl(bytes: Uint8Array): string {
     const base64 = this.uint8ArrayToBase64(bytes);
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+    return `data:image/jpeg;base64,${base64}`;
   }
 
   private uint8ArrayToBase64(bytes: Uint8Array): string {

@@ -191,7 +191,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
   user: UserInfo | null = null;
-  photoDataUrl: SafeUrl | null = null;
+  photoDataUrl: string | null = null;
   blockedCount = 0;
   activeBoost: BoostInfo | null = null;
   boostActivating = false;
@@ -252,10 +252,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
     });
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+  private bytesToDataUrl(bytes: Uint8Array): string {
     const base64 = this.uint8ArrayToBase64(bytes);
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+    return `data:image/jpeg;base64,${base64}`;
   }
 
   private uint8ArrayToBase64(bytes: Uint8Array): string {

@@ -8,13 +8,13 @@ import { ModalService } from '../../core/services/modal.service';
 
 interface MessageWithUser extends UserMail {
   userName?: string;
-  userPhotoUrl?: SafeUrl | null;
+  userPhotoUrl?: string | null;
 }
 
 interface UserConversation {
   userId: number;
   userName?: string;
-  userPhotoUrl?: SafeUrl | null;
+  userPhotoUrl?: string | null;
   lastMessage: string;
   lastMessageTime: any;
   unreadCount?: number;
@@ -275,10 +275,9 @@ export class MailboxComponent implements OnInit {
     });
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+  private bytesToDataUrl(bytes: Uint8Array): string {
     const base64 = this.uint8ArrayToBase64(bytes);
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+    return `data:image/jpeg;base64,${base64}`;
   }
 
   private uint8ArrayToBase64(bytes: Uint8Array): string {

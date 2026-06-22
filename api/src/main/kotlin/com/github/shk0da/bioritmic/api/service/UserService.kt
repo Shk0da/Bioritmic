@@ -3,6 +3,7 @@ package com.github.shk0da.bioritmic.api.service
 import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager
 import com.github.shk0da.bioritmic.api.domain.GisData
 import com.github.shk0da.bioritmic.api.domain.User
+import com.github.shk0da.bioritmic.api.domain.UserPhoto
 import com.github.shk0da.bioritmic.api.domain.UserSettings
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode

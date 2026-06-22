@@ -7,7 +7,7 @@ import { UserInfo, Gender, UserSearch, UserSettings } from '../../core/models/us
 import { FormsModule } from '@angular/forms';
 
 interface UserWithPhoto extends UserInfo {
-  photoDataUrl?: SafeUrl | null;
+  photoDataUrl?: string | null;
 }
 
 @Component({
@@ -187,10 +187,9 @@ export class SearchComponent implements OnInit {
     });
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): SafeUrl {
+  private bytesToDataUrl(bytes: Uint8Array): string {
     const base64 = this.uint8ArrayToBase64(bytes);
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-    return this.sanitizer.bypassSecurityTrustUrl(dataUrl);
+    return `data:image/jpeg;base64,${base64}`;
   }
 
   private uint8ArrayToBase64(bytes: Uint8Array): string {

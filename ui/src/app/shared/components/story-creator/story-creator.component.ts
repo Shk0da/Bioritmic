@@ -86,7 +86,7 @@ import { StoryService } from '../../../core/services/story.service';
     }
 
     .creator-content {
-      background: white;
+      background: var(--card-bg, white);
       border-radius: 16px;
       width: 90%;
       max-width: 400px;

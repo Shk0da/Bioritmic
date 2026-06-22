@@ -50,8 +50,8 @@ class SecurityConfiguration(
         "$API_WITH_VERSION_1/reset-password",
         "$API_WITH_VERSION_1/authorization",
         "$API_WITH_VERSION_1/update-email",
-        "$API_WITH_VERSION_1/auth/google",
-        "$API_WITH_VERSION_1/auth/apple"
+        "$API_WITH_VERSION_1/user/*/photo",
+        "/api/v1/photos/s3/*"
     )
 
     override fun addCorsMappings(registry: CorsRegistry) {
