@@ -103,10 +103,17 @@ import { ModalService } from '../../core/services/modal.service';
               <i class="bi bi-chat-dots-fill"></i>
               <span>Написать</span>
             </button>
-            <button class="action-btn action-meeting" (click)="sendMeetingRequest()">
-              <i class="bi bi-calendar-heart"></i>
-              <span>Встреча</span>
-            </button>
+            @if (meetingSent) {
+              <button class="action-btn action-meeting-sent" (click)="cancelMeeting()">
+                <i class="bi bi-calendar-check"></i>
+                <span>Встреча отправлена</span>
+              </button>
+            } @else {
+              <button class="action-btn action-meeting" (click)="sendMeetingRequest()">
+                <i class="bi bi-calendar-heart"></i>
+                <span>Встреча</span>
+              </button>
+            }
             <button class="action-btn" [class.action-bookmark-active]="isBookmarked" [class.action-bookmark]="!isBookmarked" (click)="toggleBookmark()">
               <i class="bi" [ngClass]="isBookmarked ? 'bi-bookmark-fill' : 'bi-bookmark'"></i>
               <span>{{ isBookmarked ? 'В избранном' : 'В избранное' }}</span>
@@ -356,6 +363,15 @@ import { ModalService } from '../../core/services/modal.service';
         &:hover { background: #8b5cf6; color: white; }
       }
 
+      &.action-meeting-sent {
+        border-color: #8b5cf6;
+        color: #8b5cf6;
+        background: rgba(139, 92, 246, 0.08);
+        grid-column: 1 / -1;
+
+        &:hover { background: rgba(239, 68, 68, 0.08); border-color: #ef4444; color: #ef4444; }
+      }
+
       &.action-bookmark {
         &:hover { border-color: #f59e0b; color: #f59e0b; }
       }
@@ -395,6 +411,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   error: string | null = null;
   isBookmarked = false;
   isBlocked = false;
+  meetingSent = false;
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
 
@@ -443,6 +460,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
         this.loadPhoto(userId);
         this.loadBookmarkStatus(userId);
         this.loadBlockStatus(userId);
+        this.loadMeetingStatus(userId);
         this.loading = false;
       },
       error: (err) => {
@@ -470,6 +488,17 @@ export class UserDetailComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.isBlocked = false;
+      }
+    });
+  }
+
+  private loadMeetingStatus(userId: number): void {
+    this.meetingsService.getMeetings({ page: 0, size: 100 }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (meetings) => {
+        this.meetingSent = meetings.some(m => m.userId === userId);
+      },
+      error: () => {
+        this.meetingSent = false;
       }
     });
   }
@@ -603,8 +632,29 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     };
 
     this.meetingsService.createMeeting(meeting).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => { this.modalService.alert('Предложение встречи отправлено!', 'Готово'); },
+      next: () => {
+        this.meetingSent = true;
+        this.modalService.alert('Предложение встречи отправлено!', 'Готово');
+      },
       error: () => { this.modalService.alert('Ошибка отправки предложения встречи', 'Ошибка'); }
+    });
+  }
+
+  async cancelMeeting(): Promise<void> {
+    if (!this.user?.id) return;
+
+    const confirmed = await this.modalService.confirm(
+      `Отменить предложение встречи для ${this.user.name || 'пользователя'}?`,
+      'Отмена встречи'
+    );
+    if (!confirmed) return;
+
+    this.meetingsService.deleteMeeting(this.user.id).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.meetingSent = false;
+        this.modalService.alert('Предложение встречи отменено', 'Готово');
+      },
+      error: () => { this.modalService.alert('Ошибка отмены встречи', 'Ошибка'); }
     });
   }
 

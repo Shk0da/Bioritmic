@@ -1,9 +1,12 @@
 package com.github.shk0da.bioritmic.api.service
 
 import com.github.shk0da.bioritmic.api.domain.Meeting
+import com.github.shk0da.bioritmic.api.domain.UserMail
+import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
+import com.github.shk0da.bioritmic.api.repository.MailboxRepository
 import com.github.shk0da.bioritmic.api.repository.MeetingsRepository
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
 import kotlinx.coroutines.flow.toList
@@ -12,9 +15,13 @@ import org.springframework.dao.DataAccessException
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.sql.Timestamp
 
 @Service
-class MeetingsService(val meetingsRepository: MeetingsRepository) {
+class MeetingsService(
+    val meetingsRepository: MeetingsRepository,
+    val mailboxRepository: MailboxRepository
+) {
 
     private val log = LoggerFactory.getLogger(MeetingsService::class.java)
 
@@ -56,5 +63,29 @@ class MeetingsService(val meetingsRepository: MeetingsRepository) {
             log.error("Failed delete meetings for userId [{}]: {}", userId, ex.message)
         }
         return meetingsRepository.findAllByUserId(currentUserId, defaultPageable.pageSize, defaultPageable.offset)
+    }
+
+    @Transactional
+    suspend fun declineMeeting(currentUserId: Long, senderUserId: Long): Meeting? {
+        val meeting = meetingsRepository.findByUserPair(senderUserId, currentUserId)
+            ?: return null
+
+        if (meeting.status == "DECLINED") {
+            return meeting
+        }
+
+        meetingsRepository.updateStatus(senderUserId, currentUserId, "DECLINED")
+
+        val initiatorId = if (meeting.userId == currentUserId) meeting.otherUserId else meeting.userId
+        if (initiatorId != null && initiatorId != currentUserId) {
+            val declineMessage = UserMail()
+            declineMessage.fromUserId = currentUserId
+            declineMessage.toUserId = initiatorId
+            declineMessage.message = "К сожалению, ваше предложение встречи отклонено."
+            declineMessage.timestamp = Timestamp(System.currentTimeMillis())
+            mailboxRepository.save(declineMessage)
+        }
+
+        return meetingsRepository.findByUserPair(senderUserId, currentUserId)
     }
 }

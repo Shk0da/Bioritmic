@@ -1,6 +1,5 @@
 import { Component, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Subject, takeUntil } from 'rxjs';
 import { SearchService } from '../../core/services/search.service';
 import { UserService } from '../../core/services/user.service';
@@ -279,6 +278,9 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   private startY = 0;
   private currentX = 0;
   private currentY = 0;
+  private boundOnDragMove: ((e: MouseEvent | TouchEvent) => void) | null = null;
+  private boundOnDragEnd: ((e: MouseEvent | TouchEvent) => void) | null = null;
+  private boundOnKeyDown: ((e: KeyboardEvent) => void) | null = null;
 
   cardTransform = '';
   swipeDirection: SwipeDirection = SwipeDirection.NONE;
@@ -297,8 +299,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     private swipeService: SwipeService,
     private matchService: MatchService,
     private subscriptionService: SubscriptionService,
-    private authService: AuthService,
-    private sanitizer: DomSanitizer
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -331,21 +332,30 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    document.addEventListener('mousemove', this.onDragMove.bind(this));
-    document.addEventListener('mouseup', this.onDragEnd.bind(this));
-    document.addEventListener('touchmove', this.onDragMove.bind(this));
-    document.addEventListener('touchend', this.onDragEnd.bind(this));
-    document.addEventListener('keydown', this.onKeyDown.bind(this));
+    this.boundOnDragMove = this.onDragMove.bind(this);
+    this.boundOnDragEnd = this.onDragEnd.bind(this);
+    this.boundOnKeyDown = this.onKeyDown.bind(this);
+    document.addEventListener('mousemove', this.boundOnDragMove);
+    document.addEventListener('mouseup', this.boundOnDragEnd);
+    document.addEventListener('touchmove', this.boundOnDragMove);
+    document.addEventListener('touchend', this.boundOnDragEnd);
+    document.addEventListener('keydown', this.boundOnKeyDown);
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    document.removeEventListener('mousemove', this.onDragMove.bind(this));
-    document.removeEventListener('mouseup', this.onDragEnd.bind(this));
-    document.removeEventListener('touchmove', this.onDragMove.bind(this));
-    document.removeEventListener('touchend', this.onDragEnd.bind(this));
-    document.removeEventListener('keydown', this.onKeyDown.bind(this));
+    if (this.boundOnDragMove) {
+      document.removeEventListener('mousemove', this.boundOnDragMove);
+      document.removeEventListener('touchmove', this.boundOnDragMove);
+    }
+    if (this.boundOnDragEnd) {
+      document.removeEventListener('mouseup', this.boundOnDragEnd);
+      document.removeEventListener('touchend', this.boundOnDragEnd);
+    }
+    if (this.boundOnKeyDown) {
+      document.removeEventListener('keydown', this.boundOnKeyDown);
+    }
   }
 
   private loadUserSettings(): void {
@@ -379,20 +389,11 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private loadSwipeLimit(): void {
     const user = this.authService.getCurrentUser();
-    if (user?.isPro) {
-      this.isPro = true;
+    this.isPro = user?.isPro === true;
+    if (this.isPro) {
       this.swipeLimit = -1;
       this.swipeRemaining = -1;
-      return;
     }
-    this.subscriptionService.getSwipeLimit().subscribe({
-      next: (limit: any) => {
-        this.swipeLimit = limit.limit;
-        this.swipeRemaining = limit.remaining;
-        this.isPro = limit.isPro;
-      },
-      error: () => {}
-    });
   }
 
   private search(): void {
@@ -653,19 +654,6 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (card) {
       this.decrementSwipeLimit();
       this.handleSwipeResult({ direction, card });
-
-      // Добавляем/убираем из избранного при свайпе
-      if (card.user.id) {
-        if (direction === SwipeDirection.RIGHT) {
-          // Свайп вправо - добавляем в избранное
-          this.bookmarksService.addBookmark({
-            userId: card.user.id
-          }).subscribe();
-        } else if (direction === SwipeDirection.LEFT) {
-          // Свайп влево - убираем из избранного
-          this.bookmarksService.deleteBookmark(card.user.id).subscribe();
-        }
-      }
     }
     this.resetCard();
   }

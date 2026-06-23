@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -43,5 +44,16 @@ class MeetingsController(val meetingsService: MeetingsService) {
     suspend fun meetings(@PathVariable userId: Long): List<UserMeeting> {
         val currentUserId = getUserId()
         return meetingsService.deleteMetingWithUserId(currentUserId, userId).map { UserMeeting.of(it) }
+    }
+
+    // PUT /meetings/{userId}/decline
+    @PutMapping(value = ["/{userId}/decline"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun declineMeeting(@PathVariable userId: Long): Map<String, Any> {
+        val currentUserId = getUserId()
+        val meeting = meetingsService.declineMeeting(currentUserId, userId)
+        return mapOf(
+            "success" to true,
+            "status" to (meeting?.status ?: "DECLINED")
+        )
     }
 }

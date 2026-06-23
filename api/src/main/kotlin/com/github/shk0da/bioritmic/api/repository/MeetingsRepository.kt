@@ -27,6 +27,13 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
     suspend fun deleteByUserIdAndOtherUserId(userId: Long, otherUserId: Long)
 
     @Modifying
+    @Query("update meetings set status = :status where (user_id = :userId1 and other_user_id = :userId2) or (user_id = :userId2 and other_user_id = :userId1)")
+    suspend fun updateStatus(userId1: Long, userId2: Long, status: String): Int
+
+    @Query("select * from meetings where (user_id = :userId1 and other_user_id = :userId2) or (user_id = :userId2 and other_user_id = :userId1)")
+    suspend fun findByUserPair(userId1: Long, userId2: Long): Meeting?
+
+    @Modifying
     @Query(
         "insert into meetings(user_id, other_user_id, other_user_lat, other_user_lon, distance, timestamp) " +
             "values (:userId, :otherUserId, :otherUserLat, :otherUserLon, :distance, :timestamp) " +

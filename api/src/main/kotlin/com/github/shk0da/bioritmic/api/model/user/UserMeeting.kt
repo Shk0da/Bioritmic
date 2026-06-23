@@ -13,7 +13,11 @@ data class UserMeeting(
     @field:NotNull val lon: Double?,
     @field:NotNull val distance: Double?,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    var timestamp: Timestamp? = null
+    var timestamp: Timestamp? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    var status: String? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    var senderName: String? = null
 ) : BasicPresentation {
 
     companion object {
@@ -24,6 +28,7 @@ data class UserMeeting(
                 lon = meeting.otherUserLon,
                 distance = meeting.distance,
                 timestamp = meeting.timestamp,
+                status = meeting.status,
             )
         }
     }

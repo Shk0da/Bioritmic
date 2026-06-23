@@ -39,7 +39,9 @@ export class GeolocationService {
           }
         },
         (error) => {
-          console.error('Geolocation watch error:', error);
+          if (error.code !== 3) {
+            console.error('Geolocation watch error:', error);
+          }
         },
         {
           enableHighAccuracy: false,
@@ -76,7 +78,9 @@ export class GeolocationService {
             this.doSendLocation(position.coords.latitude, position.coords.longitude);
           },
           (error) => {
-            console.error('Failed to get current location:', error);
+            if (error.code !== 3) {
+              console.error('Failed to get current location:', error);
+            }
           }
         );
       }

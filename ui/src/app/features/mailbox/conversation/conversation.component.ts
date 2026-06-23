@@ -28,7 +28,7 @@ interface MessageWithUser extends UserMail {
           </button>
           <div class="user-info">
             <img
-              [src]="otherUserPhotoUrl || 'assets/img/default-avatar.png'"
+              [src]="otherUserPhotoUrl || 'assets/img/default-avatar.svg'"
               class="user-avatar"
               [alt]="otherUserName || 'User'">
             <div class="user-details">
@@ -60,7 +60,7 @@ interface MessageWithUser extends UserMail {
             <div class="message-wrapper {{ message.isCurrentUser ? 'outgoing' : 'incoming' }}">
               @if (!message.isCurrentUser) {
                 <img
-                  [src]="otherUserPhotoUrl || 'assets/img/default-avatar.png'"
+                  [src]="otherUserPhotoUrl || 'assets/img/default-avatar.svg'"
                   class="message-avatar"
                   [alt]="otherUserName || 'User'">
               }

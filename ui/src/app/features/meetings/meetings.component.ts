@@ -3,17 +3,20 @@ import { RouterLink } from '@angular/router';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { UserService } from '../../core/services/user.service';
 import { UserMeeting, PageableRequest, UserInfo } from '../../core/models/user.model';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { ModalService } from '../../core/services/modal.service';
+import { ToastService } from '../../core/services/toast.service';
+import { NgClass } from '@angular/common';
 
 interface MeetingWithUser extends UserMeeting {
   userName?: string;
   userPhotoUrl?: string | null;
+  isDeclining?: boolean;
 }
 
 @Component({
   selector: 'app-meetings',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, NgClass],
   template: `
     <div class="page-header mb-4">
       <h1 class="page-title">
@@ -43,7 +46,8 @@ interface MeetingWithUser extends UserMeeting {
       </div>
     } @else {
       <div class="row">
-        @for (meeting of meetings; track meeting.id) {
+        @for (meeting of meetings; track meeting.userId) {
+          @if (meeting.status !== 'DECLINED') {
           <div class="col-12 col-md-6 mb-4">
             <div class="card meeting-card h-100">
               <div class="card-body">
@@ -53,23 +57,49 @@ interface MeetingWithUser extends UserMeeting {
                     class="rounded-circle me-3 meeting-user-photo"
                     [alt]="meeting.userName || 'User'">
                   <div class="flex-grow-1">
-                    <h6 class="card-title mb-2">
-                      {{ meeting.userName || 'Пользователь #' + meeting.userId }}
-                    </h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <h6 class="card-title mb-0">
+                        {{ meeting.userName || 'Пользователь #' + meeting.userId }}
+                      </h6>
+                      @if (meeting.status) {
+                        <span class="badge" [ngClass]="{
+                          'bg-warning': meeting.status === 'PENDING',
+                          'bg-success': meeting.status === 'ACCEPTED'
+                        }">
+                          @if (meeting.status === 'PENDING') { Ожидает }
+                          @if (meeting.status === 'ACCEPTED') { Принято }
+                        </span>
+                      }
+                    </div>
                     <div class="meeting-details mb-3">
                       <p class="small text-muted mb-0">
                         <i class="bi bi-signpost-2 me-1"></i>
                         Расстояние: <strong>{{ meeting.distance.toFixed(1) }} км</strong>
                       </p>
                     </div>
-                    <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-primary">
-                      <i class="bi bi-person me-2"></i>Профиль пользователя
-                    </a>
+                    <div class="d-flex gap-2">
+                      <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-person me-1"></i>Профиль
+                      </a>
+                      @if (meeting.status === 'PENDING') {
+                        <button class="btn btn-outline-success btn-sm" (click)="acceptMeeting(meeting)" title="Принять">
+                          <i class="bi bi-check-lg me-1"></i>Принять
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" (click)="declineMeeting(meeting)" [disabled]="meeting.isDeclining" title="Отказаться">
+                          @if (meeting.isDeclining) {
+                            <span class="spinner-border spinner-border-sm"></span>
+                          } @else {
+                            <i class="bi bi-x-lg me-1"></i>Отказаться
+                          }
+                        </button>
+                      }
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+          }
         }
       </div>
     }
@@ -127,11 +157,13 @@ export class MeetingsComponent implements OnInit {
   constructor(
     private meetingsService: MeetingsService,
     private userService: UserService,
-    private sanitizer: DomSanitizer
+    private modalService: ModalService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
     this.loadMeetings();
+    localStorage.setItem('meetings_last_read', Date.now().toString());
   }
 
   private loadMeetings(): void {
@@ -194,7 +226,33 @@ export class MeetingsComponent implements OnInit {
         this.loadMeetings();
       },
       error: () => {
-        alert('Ошибка удаления встречи');
+        this.toastService.error('Ошибка удаления встречи');
+      }
+    });
+  }
+
+  acceptMeeting(meeting: MeetingWithUser): void {
+    meeting.status = 'ACCEPTED';
+    this.toastService.success('Встреча принята!');
+  }
+
+  async declineMeeting(meeting: MeetingWithUser): Promise<void> {
+    const confirmed = await this.modalService.confirm(
+      `Отказать ${meeting.userName || 'пользователю'} во встрече?`,
+      'Отказ от встречи'
+    );
+    if (!confirmed) return;
+
+    meeting.isDeclining = true;
+    this.meetingsService.declineMeeting(meeting.userId).subscribe({
+      next: () => {
+        meeting.status = 'DECLINED';
+        meeting.isDeclining = false;
+        this.toastService.success('Вы отказались от встречи. Пользователь уведомлён.');
+      },
+      error: () => {
+        meeting.isDeclining = false;
+        this.toastService.error('Ошибка отказа от встречи');
       }
     });
   }

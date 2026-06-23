@@ -43,7 +43,7 @@ interface BlockedUser extends UserInfo {
             <div class="user-card">
               <div class="user-photo-wrapper">
                 <img
-                  [src]="user.photoDataUrl || 'assets/img/default-avatar.png'"
+                  [src]="user.photoDataUrl || 'assets/img/default-avatar.svg'"
                   class="user-photo"
                   [alt]="user.name">
                 <div class="user-overlay">

@@ -83,6 +83,8 @@ export interface UserMeeting {
   lon: number;
   distance: number;
   timestamp?: Timestamp;
+  status?: string;
+  senderName?: string;
 }
 
 export interface UserBookmark {

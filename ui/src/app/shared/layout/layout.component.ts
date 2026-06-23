@@ -1,14 +1,14 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { RouterLink, RouterOutlet, RouterLinkActive } from '@angular/router';
+import { RouterLink, RouterOutlet, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { UserInfo } from '../../core/models/user.model';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UserService } from '../../core/services/user.service';
 import { ModalComponent } from '../../core/services/modal.service';
 import { MailboxService } from '../../core/services/mailbox.service';
+import { MeetingsService } from '../../core/services/meetings.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { Subscription } from 'rxjs';
+import { Subscription, filter } from 'rxjs';
 
 @Component({
   selector: 'app-layout',
@@ -42,6 +42,9 @@ import { Subscription } from 'rxjs';
           </a>
           <a routerLink="/meetings" routerLinkActive="active" class="nav-btn" title="Встречи">
             <i class="bi bi-calendar-event"></i>
+            @if (newMeetingsCount > 0) {
+              <span class="notification-badge badge-meetings">{{ newMeetingsCount > 99 ? '99+' : newMeetingsCount }}</span>
+            }
           </a>
           @if (isUserAdmin) {
             <a routerLink="/admin" routerLinkActive="active" class="nav-btn" title="Админ-панель">
@@ -101,8 +104,8 @@ import { Subscription } from 'rxjs';
 
     .notification-badge {
       position: absolute;
-      top: 2px;
-      right: 2px;
+      top: 4px;
+      right: 0px;
       min-width: 18px;
       height: 18px;
       padding: 0 5px;
@@ -115,8 +118,15 @@ import { Subscription } from 'rxjs';
       align-items: center;
       justify-content: center;
       line-height: 1;
-      border: 2px solid #fd297b;
+      border: 2px solid white;
       animation: badgePulse 2s ease infinite;
+      z-index: 10;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .badge-meetings {
+      background: #f59e0b;
+      border-color: white;
     }
 
     @keyframes badgePulse {
@@ -143,46 +153,65 @@ export class LayoutComponent implements OnInit, OnDestroy {
   currentUser: UserInfo | null = null;
   userPhoto: string | null = null;
   unreadCount = 0;
+  newMeetingsCount = 0;
   isUserAdmin = false;
-  private pollingSubscription: Subscription | null = null;
+  private pollingIntervalId: any = null;
+  private routerSubscription: Subscription | null = null;
+  private userSubscription: Subscription | null = null;
 
   constructor(
     private authService: AuthService,
     private userService: UserService,
-    private sanitizer: DomSanitizer,
     private mailboxService: MailboxService,
+    private meetingsService: MeetingsService,
+    private router: Router,
     public themeService: ThemeService
   ) {}
 
   ngOnInit(): void {
-    this.authService.currentUser$.subscribe(user => {
+    this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
       this.isUserAdmin = !!(user?.role && user.role.includes('ADMIN'));
       if (user?.id) {
         this.loadUserPhoto(user.id);
-        this.startUnreadPolling();
+        this.startPolling();
       } else {
-        this.stopUnreadPolling();
+        this.stopPolling();
       }
     });
+
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe((event: any) => {
+        if (event.urlAfterRedirects?.startsWith('/mailbox')) {
+          this.markMessagesAsRead();
+        }
+        if (event.urlAfterRedirects?.startsWith('/meetings')) {
+          this.markMeetingsAsRead();
+        }
+      });
   }
 
   ngOnDestroy(): void {
-    this.stopUnreadPolling();
+    this.stopPolling();
+    this.routerSubscription?.unsubscribe();
+    this.userSubscription?.unsubscribe();
   }
 
-  private startUnreadPolling(): void {
-    this.stopUnreadPolling();
+  private startPolling(): void {
+    this.stopPolling();
     this.loadUnreadCount();
-    this.pollingSubscription = new Subscription();
-    const intervalId = setInterval(() => this.loadUnreadCount(), 30000);
-    this.pollingSubscription.add({ unsubscribe: () => clearInterval(intervalId) });
+    this.loadNewMeetingsCount();
+    this.pollingIntervalId = setInterval(() => {
+      this.loadUnreadCount();
+      this.loadNewMeetingsCount();
+    }, 30000);
   }
 
-  private stopUnreadPolling(): void {
-    if (this.pollingSubscription) {
-      this.pollingSubscription.unsubscribe();
-      this.pollingSubscription = null;
+  private stopPolling(): void {
+    if (this.pollingIntervalId) {
+      clearInterval(this.pollingIntervalId);
+      this.pollingIntervalId = null;
     }
   }
 
@@ -193,7 +222,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
         const lastRead = lastReadTime ? parseInt(lastReadTime, 10) : 0;
         const unread = messages.filter(m => {
           if (!m.timestamp) return false;
-          const msgTime = (m.timestamp.seconds || m.timestamp.time || 0) * 1000;
+          const msgTime = this.parseTimestamp(m.timestamp);
           return msgTime > lastRead && m.from !== this.currentUser?.id;
         });
         const uniqueSenders = new Set(unread.map(m => m.from));
@@ -201,6 +230,45 @@ export class LayoutComponent implements OnInit, OnDestroy {
       },
       error: () => {}
     });
+  }
+
+  private loadNewMeetingsCount(): void {
+    this.meetingsService.getMeetings({ page: 0, size: 100 }).subscribe({
+      next: (meetings) => {
+        const lastReadTime = localStorage.getItem('meetings_last_read');
+        const lastRead = lastReadTime ? parseInt(lastReadTime, 10) : 0;
+        const newMeetings = meetings.filter(m => {
+          if (!m.timestamp) return false;
+          const mTime = this.parseTimestamp(m.timestamp);
+          return mTime > lastRead && m.userId !== this.currentUser?.id;
+        });
+        this.newMeetingsCount = newMeetings.length;
+      },
+      error: () => {}
+    });
+  }
+
+  private parseTimestamp(timestamp: any): number {
+    if (!timestamp) return 0;
+    if (typeof timestamp === 'string') {
+      return new Date(timestamp).getTime();
+    }
+    if (typeof timestamp === 'number') {
+      return timestamp > 1e12 ? timestamp : timestamp * 1000;
+    }
+    if (timestamp.seconds) return timestamp.seconds * 1000;
+    if (timestamp.time) return timestamp.time * 1000;
+    return 0;
+  }
+
+  private markMessagesAsRead(): void {
+    localStorage.setItem('mailbox_last_read', Date.now().toString());
+    this.unreadCount = 0;
+  }
+
+  private markMeetingsAsRead(): void {
+    localStorage.setItem('meetings_last_read', Date.now().toString());
+    this.newMeetingsCount = 0;
   }
 
   private loadUserPhoto(userId: number): void {

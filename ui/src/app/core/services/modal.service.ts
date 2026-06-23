@@ -217,17 +217,15 @@ export class ModalComponent {
   @Output() confirm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
 
+  private originalOnConfirm: (() => void) | null = null;
+  private originalOnCancel: (() => void) | null = null;
+
   constructor(private modalService: ModalService) {
     window.addEventListener('modal:show', (event: any) => {
       this.config = event.detail.config;
+      this.originalOnConfirm = event.detail.onConfirm;
+      this.originalOnCancel = event.detail.onCancel;
       this.isVisible = true;
-
-      event.detail.onConfirm = () => {
-        this.onConfirm();
-      };
-      event.detail.onCancel = () => {
-        this.onCancel();
-      };
     });
 
     window.addEventListener('modal:close', () => {
@@ -238,10 +236,14 @@ export class ModalComponent {
 
   onConfirm(): void {
     this.confirm.emit();
+    this.originalOnConfirm?.();
+    this.modalService.close();
   }
 
   onCancel(): void {
     this.cancel.emit();
+    this.originalOnCancel?.();
+    this.modalService.close();
   }
 
   getIconClass(): string {

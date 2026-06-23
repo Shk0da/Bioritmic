@@ -19,8 +19,4 @@ export class SubscriptionService {
   cancelSubscription(): Observable<any> {
     return this.http.post(`${this.apiUrl}/cancel`, {});
   }
-
-  getSwipeLimit(): Observable<any> {
-    return this.http.get('/api/v1/swipe/limit');
-  }
 }

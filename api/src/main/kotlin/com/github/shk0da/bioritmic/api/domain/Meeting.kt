@@ -33,6 +33,9 @@ class Meeting : Serializable {
     @Column("timestamp")
     var timestamp: Timestamp? = null
 
+    @Column("status")
+    var status: String? = "PENDING"
+
     companion object {
         private const val serialVersionUID = 1L
 

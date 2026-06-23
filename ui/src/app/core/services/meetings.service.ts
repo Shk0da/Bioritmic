@@ -29,4 +29,8 @@ export class MeetingsService {
   deleteMeeting(userId: number): Observable<UserMeeting[]> {
     return this.http.delete<UserMeeting[]>(`${this.apiUrl}/${userId}`);
   }
+
+  declineMeeting(userId: number): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${userId}/decline`, {});
+  }
 }
