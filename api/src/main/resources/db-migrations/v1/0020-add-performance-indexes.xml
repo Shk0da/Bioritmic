@@ -6,181 +6,119 @@
 
     <!-- Bookmarks indexes -->
     <changeSet id="20-1" author="bioritmic">
-        <createIndex indexName="idx_bookmarks_user_id" tableName="bookmarks">
-            <column name="user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id)</sql>
     </changeSet>
 
     <changeSet id="20-2" author="bioritmic">
-        <createIndex indexName="idx_bookmarks_other_user_id" tableName="bookmarks">
-            <column name="other_user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_bookmarks_other_user_id ON bookmarks(other_user_id)</sql>
     </changeSet>
 
     <changeSet id="20-3" author="bioritmic">
-        <createIndex indexName="idx_bookmarks_user_other_unique" tableName="bookmarks" unique="true">
-            <column name="user_id"/>
-            <column name="other_user_id"/>
-        </createIndex>
+        <sql>CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_other_unique ON bookmarks(user_id, other_user_id)</sql>
     </changeSet>
 
     <changeSet id="20-4" author="bioritmic">
-        <createIndex indexName="idx_bookmarks_user_timestamp" tableName="bookmarks">
-            <column name="user_id"/>
-            <column name="timestamp" desc="DESC"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_bookmarks_user_timestamp ON bookmarks(user_id, timestamp DESC)</sql>
     </changeSet>
 
     <!-- Mailbox indexes -->
     <changeSet id="20-5" author="bioritmic">
-        <createIndex indexName="idx_mailbox_from_user_id" tableName="mailbox">
-            <column name="from_user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_mailbox_from_user_id ON mailbox(from_user_id)</sql>
     </changeSet>
 
     <changeSet id="20-6" author="bioritmic">
-        <createIndex indexName="idx_mailbox_to_user_id" tableName="mailbox">
-            <column name="to_user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_mailbox_to_user_id ON mailbox(to_user_id)</sql>
     </changeSet>
 
     <changeSet id="20-7" author="bioritmic">
-        <createIndex indexName="idx_mailbox_conversation" tableName="mailbox">
-            <column name="from_user_id"/>
-            <column name="to_user_id"/>
-            <column name="timestamp"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_mailbox_conversation ON mailbox(from_user_id, to_user_id, timestamp)</sql>
     </changeSet>
 
     <changeSet id="20-8" author="bioritmic">
-        <createIndex indexName="idx_mailbox_timestamp" tableName="mailbox">
-            <column name="timestamp" desc="DESC"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_mailbox_timestamp ON mailbox(timestamp DESC)</sql>
     </changeSet>
 
     <!-- GIS data indexes -->
     <changeSet id="20-9" author="bioritmic">
-        <createIndex indexName="idx_gis_data_user_id" tableName="gis_data">
-            <column name="user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_gis_data_user_id ON gis_data(user_id)</sql>
     </changeSet>
 
     <changeSet id="20-9b" author="bioritmic">
-        <createIndex indexName="idx_gis_data_lat_lon" tableName="gis_data">
-            <column name="lat"/>
-            <column name="lon"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_gis_data_lat_lon ON gis_data(lat, lon)</sql>
     </changeSet>
 
     <!-- Story views indexes -->
     <changeSet id="20-10" author="bioritmic">
-        <createIndex indexName="idx_story_views_story_id" tableName="story_views">
-            <column name="story_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_story_views_story_id ON story_views(story_id)</sql>
     </changeSet>
 
     <changeSet id="20-11" author="bioritmic">
-        <createIndex indexName="idx_story_views_story_viewer" tableName="story_views" unique="true">
-            <column name="story_id"/>
-            <column name="viewer_id"/>
-        </createIndex>
+        <sql>CREATE UNIQUE INDEX IF NOT EXISTS idx_story_views_story_viewer ON story_views(story_id, viewer_id)</sql>
     </changeSet>
 
     <!-- Subscriptions indexes -->
     <changeSet id="20-12" author="bioritmic">
-        <createIndex indexName="idx_subscriptions_user_id" tableName="subscriptions">
-            <column name="user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id)</sql>
     </changeSet>
 
     <changeSet id="20-13" author="bioritmic">
-        <createIndex indexName="idx_subscriptions_user_status" tableName="subscriptions">
-            <column name="user_id"/>
-            <column name="status"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_subscriptions_user_status ON subscriptions(user_id, status)</sql>
     </changeSet>
 
     <!-- Profile boosts indexes -->
     <changeSet id="20-14" author="bioritmic">
-        <createIndex indexName="idx_profile_boosts_user_id" tableName="profile_boosts">
-            <column name="user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_profile_boosts_user_id ON profile_boosts(user_id)</sql>
     </changeSet>
 
     <!-- User blocks indexes -->
     <changeSet id="20-15" author="bioritmic">
-        <createIndex indexName="idx_user_blocks_user_id" tableName="user_blocks">
-            <column name="user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_user_blocks_user_id ON user_blocks(user_id)</sql>
     </changeSet>
 
     <changeSet id="20-16" author="bioritmic">
-        <createIndex indexName="idx_user_blocks_user_other" tableName="user_blocks" unique="true">
-            <column name="user_id"/>
-            <column name="other_user_id"/>
-        </createIndex>
+        <sql>CREATE UNIQUE INDEX IF NOT EXISTS idx_user_blocks_user_other ON user_blocks(user_id, other_user_id)</sql>
     </changeSet>
 
     <!-- User photos indexes -->
     <changeSet id="20-17" author="bioritmic">
-        <createIndex indexName="idx_user_photos_user_id_order" tableName="user_photos">
-            <column name="user_id"/>
-            <column name="photo_order"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_user_photos_user_id_order ON user_photos(user_id, photo_order)</sql>
     </changeSet>
 
     <!-- Stories indexes -->
     <changeSet id="20-18" author="bioritmic">
-        <createIndex indexName="idx_stories_expires_at" tableName="stories">
-            <column name="expires_at"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_stories_expires_at ON stories(expires_at)</sql>
     </changeSet>
 
     <changeSet id="20-19" author="bioritmic">
-        <createIndex indexName="idx_stories_user_id" tableName="stories">
-            <column name="user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_stories_user_id ON stories(user_id)</sql>
     </changeSet>
 
     <!-- Users indexes -->
     <changeSet id="20-20" author="bioritmic">
-        <createIndex indexName="idx_users_email_unique" tableName="users" unique="true">
-            <column name="email"/>
-        </createIndex>
+        <sql>CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email)</sql>
     </changeSet>
 
     <changeSet id="20-21" author="bioritmic">
-        <createIndex indexName="idx_users_gender_birthday" tableName="users">
-            <column name="gender"/>
-            <column name="birthday"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_users_gender_birthday ON users(gender, birthday)</sql>
     </changeSet>
 
     <!-- Meetings indexes -->
     <changeSet id="20-22" author="bioritmic">
-        <createIndex indexName="idx_meetings_user_id" tableName="meetings">
-            <column name="user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_meetings_user_id ON meetings(user_id)</sql>
     </changeSet>
 
     <!-- Super likes indexes -->
     <changeSet id="20-23" author="bioritmic">
-        <createIndex indexName="idx_super_likes_from_user" tableName="super_likes">
-            <column name="from_user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_super_likes_user_id ON super_likes(user_id)</sql>
     </changeSet>
 
     <changeSet id="20-24" author="bioritmic">
-        <createIndex indexName="idx_super_likes_to_user" tableName="super_likes">
-            <column name="to_user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_super_likes_other_user_id ON super_likes(other_user_id)</sql>
     </changeSet>
 
     <!-- User push tokens indexes -->
     <changeSet id="20-25" author="bioritmic">
-        <createIndex indexName="idx_user_push_tokens_user_id" tableName="user_push_tokens">
-            <column name="user_id"/>
-        </createIndex>
+        <sql>CREATE INDEX IF NOT EXISTS idx_user_push_tokens_user_id ON user_push_tokens(user_id)</sql>
     </changeSet>
 
 </databaseChangeLog>
