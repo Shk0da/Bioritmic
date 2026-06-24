@@ -4,6 +4,7 @@ import { NgClass } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Subject, takeUntil } from 'rxjs';
 import { UserService } from '../../../core/services/user.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 import { BoostService, BoostInfo } from '../../../core/services/boost.service';
 
@@ -32,6 +33,11 @@ import { BoostService, BoostInfo } from '../../../core/services/boost.service';
             <a [routerLink]="['/profile/me/edit']" class="btn btn-outline-primary">
               <i class="bi bi-pencil me-2"></i>Редактировать
             </a>
+            @if (isAdmin) {
+              <a routerLink="/admin" class="btn btn-outline-danger mt-2">
+                <i class="bi bi-shield-lock me-2"></i>Админ-панель
+              </a>
+            }
           </div>
         </div>
       </div>
@@ -195,10 +201,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
   blockedCount = 0;
   activeBoost: BoostInfo | null = null;
   boostActivating = false;
+  isAdmin = false;
   private boostCountdownInterval: any = null;
 
   constructor(
     private userService: UserService,
+    private authService: AuthService,
     private sanitizer: DomSanitizer,
     private boostService: BoostService
   ) {
@@ -214,6 +222,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.loadProfile();
     this.loadBlockedCount();
     this.loadActiveBoost();
+    this.checkAdminStatus();
+  }
+
+  private checkAdminStatus(): void {
+    this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
+      this.isAdmin = !!(user?.role && user.role.includes('ADMIN'));
+    });
   }
 
   ngOnDestroy(): void {

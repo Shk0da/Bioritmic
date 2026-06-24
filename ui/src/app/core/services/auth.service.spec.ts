@@ -145,6 +145,34 @@ describe('AuthService', () => {
       expect(cookieService.get('current_user')).toBeNull();
       expect(service.getCurrentUser()).toBeNull();
     });
+
+    it('should make isAuthenticated return false after clearAuth', () => {
+      cookieService.set('access_token', 'tok', 1);
+      expect(service.isAuthenticated()).toBeTrue();
+      service.clearAuth();
+      expect(service.isAuthenticated()).toBeFalse();
+    });
+
+    it('should make getToken return null after clearAuth', () => {
+      cookieService.set('access_token', 'tok', 1);
+      expect(service.getToken()).toBe('tok');
+      service.clearAuth();
+      expect(service.getToken()).toBeNull();
+    });
+
+    it('should make getCurrentUser return null after clearAuth', () => {
+      const token: UserToken = { accessToken: 'at', refreshToken: 'rt', name: 'Test', email: 't@t.com', expireTime: 999 };
+      service.setAuth(token);
+      expect(service.getCurrentUser()).toBeTruthy();
+      service.clearAuth();
+      expect(service.getCurrentUser()).toBeNull();
+    });
+
+    it('should be idempotent - calling clearAuth twice does not throw', () => {
+      service.clearAuth();
+      expect(() => service.clearAuth()).not.toThrow();
+      expect(service.isAuthenticated()).toBeFalse();
+    });
   });
 
   describe('setAuth', () => {
@@ -154,6 +182,18 @@ describe('AuthService', () => {
       expect(cookieService.get('access_token')).toBe('at');
       expect(cookieService.get('refresh_token')).toBe('rt');
       expect(service.getCurrentUser()?.name).toBe('John');
+    });
+
+    it('should allow full login-logout cycle', () => {
+      const token: UserToken = { accessToken: 'at', refreshToken: 'rt', name: 'John', email: 'j@t.com', expireTime: 999 };
+      service.setAuth(token);
+      expect(service.isAuthenticated()).toBeTrue();
+      expect(service.getCurrentUser()?.name).toBe('John');
+
+      service.clearAuth();
+      expect(service.isAuthenticated()).toBeFalse();
+      expect(service.getCurrentUser()).toBeNull();
+      expect(service.getToken()).toBeNull();
     });
   });
 

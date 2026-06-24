@@ -10,7 +10,16 @@
         <comment>Init develop data</comment>
 
         <sql endDelimiter=";">
-            TRUNCATE user_blocks, meetings, mailbox, bookmarks, gis_data, authorizations, user_settings, users RESTART IDENTITY;
+            DELETE FROM user_blocks WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM meetings WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM mailbox WHERE from_user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN') AND to_user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM bookmarks WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM gis_data WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM user_photos WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM user_settings WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM authorizations WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM users WHERE id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            SELECT setval('users_id_seq', COALESCE((SELECT MAX(id) FROM users), 0) + 1, false);
         </sql>
 
         <sql endDelimiter=";">

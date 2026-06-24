@@ -9,18 +9,18 @@
 
         <comment>Insert 100 test users with gis_data, settings, and photos</comment>
 
-        <!-- Clean existing test data (keep admin user_id=1) -->
+        <!-- Clean existing test data (keep all admin users) -->
         <sql endDelimiter=";">
-            DELETE FROM user_blocks WHERE user_id != 1;
-            DELETE FROM meetings WHERE user_id != 1;
-            DELETE FROM mailbox WHERE from_user_id != 1 AND to_user_id != 1;
-            DELETE FROM bookmarks WHERE user_id != 1;
-            DELETE FROM gis_data WHERE user_id != 1;
-            DELETE FROM user_photos WHERE user_id != 1;
-            DELETE FROM user_settings WHERE user_id != 1;
-            DELETE FROM authorizations WHERE user_id != 1;
-            DELETE FROM users WHERE id != 1;
-            ALTER TABLE users ALTER COLUMN id RESTART WITH 2;
+            DELETE FROM user_blocks WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM meetings WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM mailbox WHERE from_user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN') AND to_user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM bookmarks WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM gis_data WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM user_photos WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM user_settings WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM authorizations WHERE user_id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            DELETE FROM users WHERE id NOT IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+            SELECT setval('users_id_seq', COALESCE((SELECT MAX(id) FROM users), 0) + 1, false);
         </sql>
 
         <!-- Insert 100 test users -->

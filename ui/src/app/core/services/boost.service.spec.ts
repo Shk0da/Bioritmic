@@ -32,4 +32,35 @@ describe('BoostService', () => {
     expect(req.request.method).toBe('GET');
     req.flush(null);
   });
+
+  it('activateBoost should return success and expiresAt', () => {
+    const mockResponse = { success: true, expiresAt: 1700000000000 };
+    service.activateBoost().subscribe(r => {
+      expect(r.success).toBeTrue();
+      expect(r.expiresAt).toBe(1700000000000);
+    });
+    const req = httpMock.expectOne('/api/v1/boost/activate');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush(mockResponse);
+  });
+
+  it('getCurrentBoost should return boost info when active', () => {
+    const mockBoost = { startedAt: 1700000000000, expiresAt: 1700086400000 };
+    service.getCurrentBoost().subscribe(boost => {
+      expect(boost).toBeTruthy();
+      expect(boost?.startedAt).toBe(1700000000000);
+      expect(boost?.expiresAt).toBe(1700086400000);
+    });
+    const req = httpMock.expectOne('/api/v1/boost/current');
+    req.flush(mockBoost);
+  });
+
+  it('getCurrentBoost should return null when no active boost', () => {
+    service.getCurrentBoost().subscribe(boost => {
+      expect(boost).toBeNull();
+    });
+    const req = httpMock.expectOne('/api/v1/boost/current');
+    req.flush(null);
+  });
 });

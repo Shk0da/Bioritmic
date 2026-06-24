@@ -299,15 +299,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     if (event) {
       event.preventDefault();
     }
-    this.authService.logout().subscribe({
-      next: () => {
-        this.authService.clearAuth();
-        window.location.reload();
-      },
-      error: () => {
-        this.authService.clearAuth();
-        window.location.reload();
-      }
-    });
+    this.authService.clearAuth();
+    this.router.navigate(['/auth/login']);
   }
 }
