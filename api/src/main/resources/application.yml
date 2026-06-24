@@ -1,5 +1,8 @@
 server.port: 8080
 
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+
 info.app.name: ${spring.application.basic-name}
 info.app.description: ${spring.application.description}
 info.app.version: 0.1
