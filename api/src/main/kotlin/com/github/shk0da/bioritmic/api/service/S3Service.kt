@@ -44,7 +44,7 @@ class S3Service(
                 .build()
 
             val response = s3Client.getObject(request)
-            response.readAllBytes()
+            response?.readAllBytes()
         } catch (e: SdkException) {
             log.error("Failed to download photo from S3: {}/{}", bucket, key, e)
             null

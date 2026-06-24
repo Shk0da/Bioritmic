@@ -1,27 +1,22 @@
 package com.github.shk0da.bioritmic.api.utils
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers.IO
 import org.slf4j.LoggerFactory
 import java.awt.Image
 import java.awt.image.BufferedImage
-import java.io.File
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.lang.Math.min
-import java.nio.file.Files
 import javax.imageio.ImageIO
 
 object ImageUtils {
 
-    private const val STORAGE_DIR = "storage"
-    private const val USERS_IMAGE_SUBDIR = "image/users"
-
     private val log = LoggerFactory.getLogger(ImageUtils::class.java)
 
-    private val classLoader = javaClass.classLoader
-    private val storage = File(STORAGE_DIR).absolutePath
-    private val usersImageStorage = File("$storage${File.separatorChar}$USERS_IMAGE_SUBDIR").absolutePath
+    private val defaultImageBytes: ByteArray by lazy {
+        javaClass.classLoader.getResourceAsStream("images/no_image.png")?.readBytes()
+            ?: throw IllegalStateException("Default image not found")
+    }
 
     @Suppress("MagicNumber")
     enum class ImageTag(val width: Int, val height: Int) {
@@ -33,46 +28,25 @@ object ImageUtils {
         CROPP_100x100(100, 100),
     }
 
-    val noImageFile = File(classLoader.getResource("images/no_image.png")?.file!!)
+    fun defaultNoImage(): ByteArray = defaultImageBytes
 
-    fun initStorages() {
-        val storages = arrayListOf(storage, usersImageStorage)
-        storages.forEach {
-            val dir = File(it)
-            if (!dir.exists()) {
-                val dirPath = Files.createDirectories(dir.toPath())
-                log.debug("Created directory: {}", dirPath)
-            }
-        }
+    fun cropImageBytes(inputBytes: ByteArray, tag: ImageTag): ByteArray {
+        if (tag == ImageTag.ORIGINAL) return inputBytes
+
+        val originalImage = ImageIO.read(ByteArrayInputStream(inputBytes))
+            ?: throw IOException("Unable to read image")
+        val resized = resizeImage(originalImage, tag.width, tag.height)
+        val outputStream = ByteArrayOutputStream()
+        ImageIO.write(resized, "jpg", outputStream)
+        return outputStream.toByteArray()
     }
 
     fun getProfileImageUri(userId: Long): String {
         return "/api/v1/user/$userId/photo"
     }
 
-    fun profileImagePath(userId: Long): String {
-        return profileImagePath(userId, ImageTag.CROPP_250x250)
-    }
-
-    fun profileImagePath(userId: Long, tag: ImageTag): String {
-        return "$usersImageStorage${File.separatorChar}$userId-${tag.name}.jpg"
-    }
-
-    fun cropAndSaveUserImage(userId: Long, originalFile: File, tag: ImageTag) {
-        val croppedFile = File(profileImagePath(userId, tag))
-        val originalImage = ImageIO.read(originalFile)
-        val resized = resizeImage(originalImage, tag.width, tag.height)
-        ImageIO.write(resized, "jpg", croppedFile)
-    }
-
-    fun deleteUserImages(userId: Long) {
-        ImageTag.entries.iterator().forEachRemaining {
-            val image = File(profileImagePath(userId, it))
-            if (image.exists()) {
-                image.delete()
-                log.debug("Delete image '{}' for userId: {}", image, userId)
-            }
-        }
+    fun s3KeyForPhoto(userId: Long, tag: ImageTag): String {
+        return "profile/$userId/${tag.name.lowercase()}.jpg"
     }
 
     @Throws(IOException::class)

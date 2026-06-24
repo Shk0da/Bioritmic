@@ -17,29 +17,23 @@ import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
 import com.github.shk0da.bioritmic.api.repository.GisDataRepository
 import com.github.shk0da.bioritmic.api.repository.UserBlockRepository
+import com.github.shk0da.bioritmic.api.repository.UserPhotoRepository
 import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.repository.UserSettingsRepository
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.ImageTag
-import com.github.shk0da.bioritmic.api.utils.ImageUtils.cropAndSaveUserImage
-import com.github.shk0da.bioritmic.api.utils.ImageUtils.deleteUserImages
-import com.github.shk0da.bioritmic.api.utils.ImageUtils.profileImagePath
 import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
-import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactor.awaitSingle
-import kotlinx.coroutines.time.withTimeout
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.io.File
+import java.io.IOException
 import java.lang.System.currentTimeMillis
-import java.nio.file.Files.readAllBytes
 import java.sql.Timestamp
-import java.time.Duration
 
 @Suppress("TooManyFunctions")
 @Service
@@ -48,11 +42,13 @@ class UserService(
     val gisDataRepository: GisDataRepository,
     val userSettingsRepository: UserSettingsRepository,
     val userBlockRepository: UserBlockRepository,
-    val emailService: EmailService
+    val emailService: EmailService,
+    val s3Service: S3Service,
+    val userPhotoRepository: UserPhotoRepository
 ) {
 
     companion object {
-        private const val UPDATE_PHOTO_TIMEOUT_SECONDS = 3L
+        private const val CONTENT_TYPE_JPEG = "image/jpeg"
     }
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
@@ -77,14 +73,8 @@ class UserService(
         if (!userRepository.existsById(userId)) {
             throw ApiException(ErrorCode.USER_NOT_FOUND)
         }
-        return withContext(Dispatchers.IO) {
-            val photo = File(profileImagePath(userId))
-            if (!photo.exists()) {
-                readAllBytes(ImageUtils.noImageFile.toPath())
-            } else {
-                readAllBytes(photo.toPath())
-            }
-        }
+        val s3Key = ImageUtils.s3KeyForPhoto(userId, ImageTag.CROPP_250x250)
+        return s3Service.downloadPhoto(s3Key) ?: ImageUtils.defaultNoImage()
     }
 
     @Transactional
@@ -152,10 +142,16 @@ class UserService(
         return userRepository.save(user)
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     suspend fun deleteUserById(userId: Long) {
+        deleteUserS3Photos(userId)
         userRepository.deleteById(userId)
-        deleteUserImages(userId)
+    }
+
+    private suspend fun deleteUserS3Photos(userId: Long) {
+        val keys = ImageTag.entries.map { ImageUtils.s3KeyForPhoto(userId, it) }
+        s3Service.deletePhotos(keys)
+        userPhotoRepository.deleteAllByUserId(userId)
     }
 
     @Transactional(readOnly = true)
@@ -212,20 +208,40 @@ class UserService(
 
     suspend fun updatePhoto(userId: Long, filePart: FilePart) {
         try {
-            val originalFile = File(profileImagePath(userId, ImageTag.ORIGINAL))
-            withTimeout(Duration.ofSeconds(UPDATE_PHOTO_TIMEOUT_SECONDS)) {
-                filePart.transferTo(originalFile).and {
-                    cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_100x100)
-                    cropAndSaveUserImage(userId, originalFile, ImageTag.CROPP_250x250)
-                }.awaitSingle()
+            val originalBytes = withContext(Dispatchers.IO) {
+                val dataBuffer = filePart.content().reduce { a, b -> a.write(b) }.awaitSingle()
+                val bytes = ByteArray(dataBuffer.readableByteCount())
+                dataBuffer.read(bytes)
+                bytes
             }
-            log.info("Photo saved to : ${originalFile.toPath()}")
+
+            val tagsToUpload = listOf(ImageTag.ORIGINAL, ImageTag.CROPP_100x100, ImageTag.CROPP_250x250)
+            tagsToUpload.forEach { tag ->
+                val cropped = ImageUtils.cropImageBytes(originalBytes, tag)
+                val s3Key = ImageUtils.s3KeyForPhoto(userId, tag)
+                s3Service.uploadPhoto(s3Key, cropped, CONTENT_TYPE_JPEG)
+            }
+
+            userPhotoRepository.deleteAllByUserId(userId)
+            tagsToUpload.forEachIndexed { index, tag ->
+                userPhotoRepository.save(
+                    UserPhoto().apply {
+                        this.userId = userId
+                        photoOrder = index
+                        s3Key = ImageUtils.s3KeyForPhoto(userId, tag)
+                        contentType = CONTENT_TYPE_JPEG
+                        createdAt = Timestamp(currentTimeMillis())
+                    }
+                )
+            }
+
+            log.info("Photos uploaded to S3 for userId: {}", userId)
         } catch (ex: IOException) {
-            log.error("Failed save photos for userId [{}]: {}", userId, ex.message)
+            log.error("Failed to save photos for userId [{}]: {}", userId, ex.message)
         }
     }
 
     suspend fun deletePhoto(userId: Long) {
-        deleteUserImages(userId)
+        deleteUserS3Photos(userId)
     }
 }
