@@ -6,7 +6,6 @@ import com.github.shk0da.bioritmic.api.domain.StoryView
 import com.github.shk0da.bioritmic.api.repository.StoryRepository
 import com.github.shk0da.bioritmic.api.repository.StoryViewBatchRepository
 import com.github.shk0da.bioritmic.api.repository.StoryViewRepository
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
@@ -14,7 +13,6 @@ import java.util.concurrent.TimeUnit
 
 @Service
 class StoryService(
-
     private val storyRepository: StoryRepository,
     private val storyViewRepository: StoryViewRepository,
     private val storyViewBatchRepository: StoryViewBatchRepository
@@ -23,8 +21,6 @@ class StoryService(
     companion object {
         private const val STORY_EXPIRY_HOURS = 24L
     }
-
-    private val log = LoggerFactory.getLogger(StoryService::class.java)
 
     @Transactional(transactionManager = transactionManager)
     suspend fun createStory(userId: Long, mediaUrl: String, caption: String?): Story {
@@ -64,8 +60,8 @@ class StoryService(
 
     @Transactional(transactionManager = transactionManager)
     suspend fun viewStory(storyId: Long, viewerId: Long) {
-        val alreadyViewed = storyViewRepository.existsByStoryIdAndViewerId(storyId, viewerId)
-        if (!alreadyViewed) {
+        val existing = storyViewRepository.findByStoryIdAndViewerId(storyId, viewerId)
+        if (existing == null) {
             val storyView = StoryView()
             storyView.storyId = storyId
             storyView.viewerId = viewerId
