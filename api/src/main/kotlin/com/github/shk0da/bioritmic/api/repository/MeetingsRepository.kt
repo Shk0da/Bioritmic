@@ -3,7 +3,7 @@ package com.github.shk0da.bioritmic.api.repository
 
 import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager
 import com.github.shk0da.bioritmic.api.domain.Meeting
-import kotlinx.coroutines.reactive.awaitFirst
+import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.springframework.data.r2dbc.repository.Modifying
 import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
@@ -29,7 +29,7 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
     @Query("delete from meetings where user_id = :userId and other_user_id = :otherUserId")
     suspend fun deleteByUserIdAndOtherUserId(userId: Long, otherUserId: Long)
 
-    @Query("select * from meetings where (user_id = :userId1 and other_user_id = :userId2) or (user_id = :userId2 and other_user_id = :userId1)")
+    @Query("select * from meetings where (user_id = :userId1 and other_user_id = :userId2) or (user_id = :userId2 and other_user_id = :userId1) limit 1")
     suspend fun findByUserPair(userId1: Long, userId2: Long): Meeting?
 
     @Modifying
@@ -63,7 +63,8 @@ class MeetingStatusUpdater(
             .bind("userId2", userId2)
             .fetch()
             .rowsUpdated()
-            .awaitFirst()
-            .toInt()
+            .awaitFirstOrNull()
+            ?.toInt()
+            ?: 0
     }
 }

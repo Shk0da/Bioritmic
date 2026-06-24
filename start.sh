@@ -30,6 +30,8 @@ echo -e "${CYAN}========================================${NC}"
 echo ""
 echo -e "${YELLOW}[1/5] Starting PostgreSQL (Docker)...${NC}"
 cd "$ROOT_DIR"
+# Remove stale containers so docker compose up can reuse the name
+docker rm -f bioritmic-postgres >/dev/null 2>&1 || true
 docker compose up -d postgres
 echo "  Waiting for PostgreSQL to be ready..."
 for i in $(seq 1 30); do

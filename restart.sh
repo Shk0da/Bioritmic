@@ -6,7 +6,8 @@ echo ""
 
 # Restart Docker containers
 echo "[1/4] Restarting Docker containers..."
-docker compose down
+# Remove stale containers so docker compose up can reuse the names
+docker rm -f bioritmic-postgres bioritmic-minio >/dev/null 2>&1 || true
 docker compose up -d
 
 echo "[2/4] Waiting for PostgreSQL..."

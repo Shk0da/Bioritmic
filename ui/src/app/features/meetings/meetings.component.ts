@@ -11,6 +11,7 @@ interface MeetingWithUser extends UserMeeting {
   userName?: string;
   userPhotoUrl?: string | null;
   isDeclining?: boolean;
+  isAccepting?: boolean;
 }
 
 @Component({
@@ -66,8 +67,8 @@ interface MeetingWithUser extends UserMeeting {
                           'bg-warning': meeting.status === 'PENDING',
                           'bg-success': meeting.status === 'ACCEPTED'
                         }">
-                          @if (meeting.status === 'PENDING') { Ожидает }
                           @if (meeting.status === 'ACCEPTED') { Принято }
+                          @if (meeting.status === 'PENDING') { Ожидает }
                         </span>
                       }
                     </div>
@@ -81,18 +82,24 @@ interface MeetingWithUser extends UserMeeting {
                       <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-primary btn-sm">
                         <i class="bi bi-person me-1"></i>Профиль
                       </a>
-                      @if (meeting.status === 'PENDING') {
-                        <button class="btn btn-outline-success btn-sm" (click)="acceptMeeting(meeting)" title="Принять">
-                          <i class="bi bi-check-lg me-1"></i>Принять
-                        </button>
-                        <button class="btn btn-outline-danger btn-sm" (click)="declineMeeting(meeting)" [disabled]="meeting.isDeclining" title="Отказаться">
-                          @if (meeting.isDeclining) {
-                            <span class="spinner-border spinner-border-sm"></span>
-                          } @else {
-                            <i class="bi bi-x-lg me-1"></i>Отказаться
-                          }
-                        </button>
-                      }
+                      <button
+                        class="btn btn-outline-success btn-sm"
+                        (click)="acceptMeeting(meeting)"
+                        [disabled]="meeting.status !== 'PENDING' || meeting.isAccepting"
+                        title="Принять">
+                        <i class="bi bi-check-lg me-1"></i>Принять
+                      </button>
+                      <button
+                        class="btn btn-outline-danger btn-sm"
+                        (click)="declineMeeting(meeting)"
+                        [disabled]="!includesStatus(meeting.status) || meeting.isDeclining"
+                        title="Отказаться">
+                        @if (meeting.isDeclining) {
+                          <span class="spinner-border spinner-border-sm"></span>
+                        } @else {
+                          <i class="bi bi-x-lg me-1"></i>Отказаться
+                        }
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -166,6 +173,10 @@ export class MeetingsComponent implements OnInit {
     localStorage.setItem('meetings_last_read', Date.now().toString());
   }
 
+  includesStatus(status: string | undefined): boolean {
+    return status === 'PENDING' || status === 'ACCEPTED';
+  }
+
   private loadMeetings(): void {
     this.loading = true;
     this.meetingsService.getMeetings(this.pageable).subscribe({
@@ -232,12 +243,15 @@ export class MeetingsComponent implements OnInit {
   }
 
   acceptMeeting(meeting: MeetingWithUser): void {
+    meeting.isAccepting = true;
     this.meetingsService.acceptMeeting(meeting.userId).subscribe({
       next: () => {
+        meeting.isAccepting = false;
         meeting.status = 'ACCEPTED';
         this.toastService.success('Встреча принята!');
       },
       error: () => {
+        meeting.isAccepting = false;
         this.toastService.error('Ошибка принятия встречи');
       }
     });
@@ -253,8 +267,8 @@ export class MeetingsComponent implements OnInit {
     meeting.isDeclining = true;
     this.meetingsService.declineMeeting(meeting.userId).subscribe({
       next: () => {
-        meeting.status = 'DECLINED';
         meeting.isDeclining = false;
+        meeting.status = 'DECLINED';
         this.toastService.success('Вы отказались от встречи. Пользователь уведомлён.');
       },
       error: () => {
