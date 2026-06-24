@@ -5,6 +5,7 @@ import com.github.shk0da.bioritmic.api.domain.User
 import org.springframework.data.r2dbc.repository.Modifying
 import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 
@@ -40,4 +41,7 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 
     @Query("SELECT COUNT(*) FROM users WHERE is_verified = false")
     suspend fun countUnverified(): Long
+
+    @Query("SELECT COUNT(*) FROM users WHERE email = :email AND id != :excludeId")
+    suspend fun countByEmailExcludingId(@Param("email") email: String, @Param("excludeId") excludeId: Long): Long
 }

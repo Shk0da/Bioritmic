@@ -123,7 +123,9 @@ class UserService(
                 user.name = name
             }
             if (isNotBlank(email) && !user.email.equals(email)) {
-                if (isUserExists(email!!)) throw ApiException(ErrorCode.USER_EXISTS)
+                if (userRepository.countByEmailExcludingId(email!!, userId) > 0) {
+                    throw ApiException(ErrorCode.USER_EXISTS)
+                }
                 user.setRecoveryCode()
                 emailService.sendConfirmationChangeEmail(user.email!!, email, user.recoveryCode!!)
             }
@@ -144,6 +146,8 @@ class UserService(
 
     @Transactional
     suspend fun deleteUserById(userId: Long) {
+        // S3 deletion happens before DB deletion. If S3 fails, DB transaction still rolls back.
+        // If S3 succeeds but DB fails, orphaned S3 photos remain (acceptable tradeoff).
         deleteUserS3Photos(userId)
         userRepository.deleteById(userId)
     }
@@ -178,11 +182,12 @@ class UserService(
 
     @Transactional
     suspend fun updateUserSettingsById(userId: Long, settings: UserSettingsModel): UserSettings {
+        val userGender = userRepository.findById(userId)?.gender
         val userSettings = userSettingsRepository.findById(userId) ?: UserSettings().apply {
             ageMin = 18
             ageMax = 45
             distance = 30.0
-            gender = (if (MAN.ordinal.toShort() == userRepository.findById(userId)?.gender)
+            gender = (if (MAN.ordinal.toShort() == userGender)
                 WOMAN.ordinal else MAN.ordinal).toShort()
         }
         with(userSettings) {
@@ -238,6 +243,7 @@ class UserService(
             log.info("Photos uploaded to S3 for userId: {}", userId)
         } catch (ex: IOException) {
             log.error("Failed to save photos for userId [{}]: {}", userId, ex.message)
+            throw ApiException("Photo upload failed: ${ex.message}")
         }
     }
 
