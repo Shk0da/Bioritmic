@@ -111,6 +111,14 @@ class UserController(
         return UserInfo.ofWithoutEmail(userService.unblockUser(userId, id))
     }
 
+    // GET /user/{id}/is-blocked-by <- check if current user is blocked by {id}
+    @GetMapping(value = ["/{id}/is-blocked-by"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun isBlockedBy(@PathVariable id: Long): Map<String, Boolean> {
+        val currentUserId = getUserId()
+        val blocked = userService.isBlockedBy(id, currentUserId)
+        return mapOf("blocked" to blocked)
+    }
+
     // GET /me/gis <- GIS
     @GetMapping(value = ["/me/gis"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun meGis(): GisDataModel {

@@ -81,6 +81,13 @@ class DataSourceTestConfiguration(
         return R2dbcTransactionManager(connectionFactory)
     }
 
+    @Bean(DataSourceConfiguration.readTransactionManager)
+    fun readTransactionManager(
+        @Qualifier("connectionFactory") connectionFactory: ConnectionFactory
+    ): ReactiveTransactionManager {
+        return R2dbcTransactionManager(connectionFactory)
+    }
+
     @Bean(destroyMethod = "stop")
     fun postgreSQLContainer(): PostgreSQLContainer<*> {
         val postgreSQLContainer: PostgreSQLContainer<*> = PostgreSQLContainer<Nothing>("postgres:12-alpine")

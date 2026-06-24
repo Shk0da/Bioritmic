@@ -232,8 +232,15 @@ export class MeetingsComponent implements OnInit {
   }
 
   acceptMeeting(meeting: MeetingWithUser): void {
-    meeting.status = 'ACCEPTED';
-    this.toastService.success('Встреча принята!');
+    this.meetingsService.acceptMeeting(meeting.userId).subscribe({
+      next: () => {
+        meeting.status = 'ACCEPTED';
+        this.toastService.success('Встреча принята!');
+      },
+      error: () => {
+        this.toastService.error('Ошибка принятия встречи');
+      }
+    });
   }
 
   async declineMeeting(meeting: MeetingWithUser): Promise<void> {

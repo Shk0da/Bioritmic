@@ -33,4 +33,8 @@ export class MeetingsService {
   declineMeeting(userId: number): Observable<any> {
     return this.http.put(`${this.apiUrl}/${userId}/decline`, {});
   }
+
+  acceptMeeting(userId: number): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${userId}/accept`, {});
+  }
 }

@@ -1,0 +1,59 @@
+import { TestBed } from '@angular/core/testing';
+import { Router, UrlTree } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+import { authGuard } from './auth.guard';
+
+describe('authGuard', () => {
+  let authService: jasmine.SpyObj<AuthService>;
+  let router: jasmine.SpyObj<Router>;
+
+  beforeEach(() => {
+    const authSpy = jasmine.createSpyObj('AuthService', ['isAuthenticated', 'getCurrentUser', 'clearAuth']);
+    const routerSpy = jasmine.createSpyObj('Router', ['createUrlTree']);
+
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AuthService, useValue: authSpy },
+        { provide: Router, useValue: routerSpy }
+      ]
+    });
+
+    authService = TestBed.inject(AuthService) as jasmine.SpyObj<AuthService>;
+    router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
+  });
+
+  it('should return true when authenticated and user exists', () => {
+    authService.isAuthenticated.and.returnValue(true);
+    authService.getCurrentUser.and.returnValue({ id: 1, name: 'Test', email: 't@t.com' });
+
+    TestBed.runInInjectionContext(() => {
+      const result = authGuard();
+      expect(result).toBeTrue();
+    });
+  });
+
+  it('should redirect to /auth/login when not authenticated', () => {
+    authService.isAuthenticated.and.returnValue(false);
+    const urlTree = {} as UrlTree;
+    router.createUrlTree.and.returnValue(urlTree);
+
+    TestBed.runInInjectionContext(() => {
+      const result = authGuard();
+      expect(result).toBe(urlTree);
+      expect(router.createUrlTree).toHaveBeenCalledWith(['/auth/login']);
+    });
+  });
+
+  it('should clear auth and redirect when authenticated but no user', () => {
+    authService.isAuthenticated.and.returnValue(true);
+    authService.getCurrentUser.and.returnValue(null);
+    const urlTree = {} as UrlTree;
+    router.createUrlTree.and.returnValue(urlTree);
+
+    TestBed.runInInjectionContext(() => {
+      const result = authGuard();
+      expect(authService.clearAuth).toHaveBeenCalled();
+      expect(result).toBe(urlTree);
+    });
+  });
+});

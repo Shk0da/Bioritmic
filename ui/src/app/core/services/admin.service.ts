@@ -61,4 +61,40 @@ export class AdminService {
   resolveReport(reportId: number): Observable<any> {
     return this.http.post(`${this.apiUrl}/reports/${reportId}/resolve`, {});
   }
+
+  getMetrics(): Observable<SystemMetrics> {
+    return this.http.get<SystemMetrics>(`${this.apiUrl}/metrics`);
+  }
+}
+
+export interface SystemMetrics {
+  jvm: JvmMetrics;
+  database: DatabaseMetrics;
+  system: SystemInfo;
+}
+
+export interface JvmMetrics {
+  version: string;
+  uptime: string;
+  cpuCores: number;
+  heapUsed: string;
+  heapMax: string;
+  heapUsedPercent: number;
+  nonHeapUsed: string;
+  threadCount: number;
+  peakThreadCount: number;
+}
+
+export interface DatabaseMetrics {
+  poolActive: number;
+  poolIdle: number;
+  poolPending: number;
+}
+
+export interface SystemInfo {
+  osName: string;
+  osVersion: string;
+  availableMemory: string;
+  totalMemory: string;
+  freeMemory: string;
 }

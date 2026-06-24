@@ -1,13 +1,13 @@
 import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
-import { AdminService, AdminDashboard, Report, AdminUser } from '../../core/services/admin.service';
+import { AdminService, AdminDashboard, Report, AdminUser, SystemMetrics } from '../../core/services/admin.service';
 import { ToastService } from '../../core/services/toast.service';
-import { NgClass } from '@angular/common';
+import { NgClass, DecimalPipe } from '@angular/common';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [NgClass],
+  imports: [NgClass, DecimalPipe],
   template: `
     <div class="page-header mb-4">
       <h1 class="page-title">
@@ -84,6 +84,11 @@ import { NgClass } from '@angular/common';
             @if (reports.length > 0) {
               <span class="badge bg-danger ms-1">{{ reports.length }}</span>
             }
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" [class.active]="activeTab === 'metrics'" (click)="activeTab = 'metrics'; loadMetrics()">
+            <i class="bi bi-speedometer me-1"></i>Метрики
           </button>
         </li>
       </ul>
@@ -191,6 +196,67 @@ import { NgClass } from '@angular/common';
           </div>
         }
       }
+
+      <!-- Metrics Tab -->
+      @if (activeTab === 'metrics') {
+        @if (loadingMetrics) {
+          <div class="text-center py-4">
+            <div class="spinner-border" role="status"></div>
+          </div>
+        } @else if (metrics) {
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="card mb-3">
+                <div class="card-header fw-bold">
+                  <i class="bi bi-cpu me-2"></i>JVM
+                </div>
+                <div class="card-body">
+                  <table class="table table-sm mb-0">
+                    <tr><td class="text-muted">Версия</td><td>{{ metrics.jvm.version }}</td></tr>
+                    <tr><td class="text-muted">Аптайм</td><td>{{ metrics.jvm.uptime }}</td></tr>
+                    <tr><td class="text-muted">CPU ядра</td><td>{{ metrics.jvm.cpuCores }}</td></tr>
+                    <tr><td class="text-muted">Heap использовано</td><td>{{ metrics.jvm.heapUsed }} / {{ metrics.jvm.heapMax }}</td></tr>
+                    <tr><td class="text-muted">Heap %</td><td>
+                      <div class="progress" style="height: 20px;">
+                        <div class="progress-bar" [ngClass]="metrics.jvm.heapUsedPercent > 80 ? 'bg-danger' : metrics.jvm.heapUsedPercent > 60 ? 'bg-warning' : 'bg-success'"
+                             [style.width.%]="metrics.jvm.heapUsedPercent">{{ metrics.jvm.heapUsedPercent | number:'1.1-1' }}%</div>
+                      </div>
+                    </td></tr>
+                    <tr><td class="text-muted">Non-Heap</td><td>{{ metrics.jvm.nonHeapUsed }}</td></tr>
+                    <tr><td class="text-muted">Потоки</td><td>{{ metrics.jvm.threadCount }} (пик: {{ metrics.jvm.peakThreadCount }})</td></tr>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card mb-3">
+                <div class="card-header fw-bold">
+                  <i class="bi bi-database me-2"></i>База данных
+                </div>
+                <div class="card-body">
+                  <table class="table table-sm mb-0">
+                    <tr><td class="text-muted">Активные соединения</td><td>{{ metrics.database.poolActive }}</td></tr>
+                    <tr><td class="text-muted">Простаивающие</td><td>{{ metrics.database.poolIdle }}</td></tr>
+                    <tr><td class="text-muted">Ожидающие</td><td>{{ metrics.database.poolPending }}</td></tr>
+                  </table>
+                </div>
+              </div>
+              <div class="card mb-3">
+                <div class="card-header fw-bold">
+                  <i class="bi bi-pc-display me-2"></i>Система
+                </div>
+                <div class="card-body">
+                  <table class="table table-sm mb-0">
+                    <tr><td class="text-muted">ОС</td><td>{{ metrics.system.osName }} {{ metrics.system.osVersion }}</td></tr>
+                    <tr><td class="text-muted">Всего памяти</td><td>{{ metrics.system.totalMemory }}</td></tr>
+                    <tr><td class="text-muted">Свободно</td><td>{{ metrics.system.freeMemory }}</td></tr>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      }
     }
   `,
   styles: [`
@@ -219,13 +285,15 @@ export class AdminComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
 
-  activeTab: 'users' | 'reports' = 'users';
+  activeTab: 'users' | 'reports' | 'metrics' = 'users';
   loadingUsers = false;
   loadingReports = false;
+  loadingMetrics = false;
   accessDenied = false;
   dashboard: AdminDashboard | null = null;
   users: AdminUser[] = [];
   reports: Report[] = [];
+  metrics: SystemMetrics | null = null;
 
   constructor(
     private adminService: AdminService,
@@ -271,6 +339,18 @@ export class AdminComponent implements OnInit, OnDestroy {
       next: (reports) => { this.reports = reports; this.loadingReports = false; },
       error: (err) => {
         this.loadingReports = false;
+        if (err.status === 403) this.accessDenied = true;
+      }
+    });
+  }
+
+  loadMetrics(): void {
+    if (this.metrics) return;
+    this.loadingMetrics = true;
+    this.adminService.getMetrics().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (m) => { this.metrics = m; this.loadingMetrics = false; },
+      error: (err) => {
+        this.loadingMetrics = false;
         if (err.status === 403) this.accessDenied = true;
       }
     });

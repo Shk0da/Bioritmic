@@ -11,7 +11,7 @@ export class SettingsService {
   private readonly apiUrl = '/api/v1/user/settings';
 
   private defaultSettings: UserSettings = {
-    gender: Gender.WOMAN,
+    gender: null as any,
     ageMin: 18,
     ageMax: 45,
     distance: 50

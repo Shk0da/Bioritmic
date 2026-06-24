@@ -7,6 +7,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import com.github.shk0da.bioritmic.api.repository.MailboxRepository
+import com.github.shk0da.bioritmic.api.repository.MeetingStatusUpdater
 import com.github.shk0da.bioritmic.api.repository.MeetingsRepository
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
 import kotlinx.coroutines.flow.toList
@@ -20,6 +21,7 @@ import java.sql.Timestamp
 @Service
 class MeetingsService(
     val meetingsRepository: MeetingsRepository,
+    val meetingStatusUpdater: MeetingStatusUpdater,
     val mailboxRepository: MailboxRepository
 ) {
 
@@ -35,7 +37,7 @@ class MeetingsService(
 
     @Transactional
     suspend fun createMeetings(userId: Long, meetings: List<UserMeeting>): List<Meeting> {
-        val meetingList = meetings.filter { it.isFilledInput() }
+        val meetingList = meetings.filter { it.isFilledInput() && it.userId != userId }
         val currentElementsCount = meetingsRepository.countByUserId(userId)
         val totalCount = (currentElementsCount + meetingList.count()).toInt()
         if (checkSize(totalCount, maximumUserMeetingsSize, ErrorCode.MANY_MEETINGS)) {
@@ -67,14 +69,20 @@ class MeetingsService(
 
     @Transactional
     suspend fun declineMeeting(currentUserId: Long, senderUserId: Long): Meeting? {
+        log.info("declineMeeting: currentUserId={}, senderUserId={}", currentUserId, senderUserId)
         val meeting = meetingsRepository.findByUserPair(senderUserId, currentUserId)
-            ?: return null
+        log.info("declineMeeting: found meeting={}", meeting)
+        if (meeting == null) {
+            log.warn("declineMeeting: no meeting found between {} and {}", senderUserId, currentUserId)
+            return null
+        }
 
         if (meeting.status == "DECLINED") {
             return meeting
         }
 
-        meetingsRepository.updateStatus(senderUserId, currentUserId, "DECLINED")
+        val updated = meetingStatusUpdater.updateStatus(senderUserId, currentUserId, "DECLINED")
+        log.info("declineMeeting: updateStatus returned {}", updated)
 
         val initiatorId = if (meeting.userId == currentUserId) meeting.otherUserId else meeting.userId
         if (initiatorId != null && initiatorId != currentUserId) {
@@ -86,6 +94,36 @@ class MeetingsService(
             mailboxRepository.save(declineMessage)
         }
 
-        return meetingsRepository.findByUserPair(senderUserId, currentUserId)
+        val result = meetingsRepository.findByUserPair(senderUserId, currentUserId)
+        log.info("declineMeeting: result status={}", result?.status)
+        return result
+    }
+
+    @Transactional
+    suspend fun acceptMeeting(currentUserId: Long, otherUserId: Long): Meeting? {
+        log.info("acceptMeeting: currentUserId={}, otherUserId={}", currentUserId, otherUserId)
+        val meeting = meetingsRepository.findByUserPair(otherUserId, currentUserId)
+        log.info("acceptMeeting: found meeting={}", meeting)
+        if (meeting == null) {
+            log.warn("acceptMeeting: no meeting found between {} and {}", otherUserId, currentUserId)
+            return null
+        }
+
+        val updated = meetingStatusUpdater.updateStatus(otherUserId, currentUserId, "ACCEPTED")
+        log.info("acceptMeeting: updateStatus returned {}", updated)
+
+        val initiatorId = if (meeting.userId == currentUserId) meeting.otherUserId else meeting.userId
+        if (initiatorId != null && initiatorId != currentUserId) {
+            val acceptMessage = UserMail()
+            acceptMessage.fromUserId = currentUserId
+            acceptMessage.toUserId = initiatorId
+            acceptMessage.message = "Ваше предложение встречи принято!"
+            acceptMessage.timestamp = Timestamp(System.currentTimeMillis())
+            mailboxRepository.save(acceptMessage)
+        }
+
+        val result = meetingsRepository.findByUserPair(otherUserId, currentUserId)
+        log.info("acceptMeeting: result status={}", result?.status)
+        return result
     }
 }

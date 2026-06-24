@@ -83,7 +83,17 @@ class SettingsControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(settings))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isNotFound
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/settings")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.ageMin").isEqualTo(20)
+            .jsonPath("$.ageMax").isEqualTo(40)
     }
 
     @Test
@@ -102,6 +112,16 @@ class SettingsControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(settings))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isBadRequest
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/settings")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.ageMin").isEqualTo(25)
+            .jsonPath("$.ageMax").isEqualTo(45)
     }
 }

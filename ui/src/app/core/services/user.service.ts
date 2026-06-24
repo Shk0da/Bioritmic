@@ -80,6 +80,10 @@ export class UserService {
     return this.http.put<UserInfo>(`${this.apiUrl}/${userId}/unblock`, {});
   }
 
+  isBlockedBy(userId: number): Observable<{ blocked: boolean }> {
+    return this.http.get<{ blocked: boolean }>(`${this.apiUrl}/${userId}/is-blocked-by`);
+  }
+
   getGisData(): Observable<GisData> {
     return this.http.get<GisData>(`${this.apiUrl}/me/gis`);
   }

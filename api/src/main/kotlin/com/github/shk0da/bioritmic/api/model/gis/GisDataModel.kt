@@ -16,7 +16,7 @@ data class GisDataModel(
 
     companion object {
         fun of(gisData: GisData): GisDataModel {
-            return GisDataModel(gisData.userId, gisData.lat!!, gisData.lon!!, Timestamp(System.currentTimeMillis()))
+            return GisDataModel(gisData.userId, gisData.lat!!, gisData.lon!!, gisData.timestamp ?: Timestamp(System.currentTimeMillis()))
         }
     }
 

@@ -188,7 +188,18 @@ export class SettingsComponent implements OnInit {
     this.loading = true;
     this.settingsService.getSettings().subscribe({
       next: (settings) => {
-        this.settings = { ...this.settings, ...settings };
+        if (settings.gender !== undefined && settings.gender !== null) {
+          this.settings.gender = settings.gender;
+        }
+        if (settings.ageMin !== undefined && settings.ageMin !== null) {
+          this.settings.ageMin = settings.ageMin;
+        }
+        if (settings.ageMax !== undefined && settings.ageMax !== null) {
+          this.settings.ageMax = settings.ageMax;
+        }
+        if (settings.distance !== undefined && settings.distance !== null) {
+          this.settings.distance = settings.distance;
+        }
         this.loading = false;
       },
       error: () => {

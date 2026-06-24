@@ -361,16 +361,16 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   private loadUserSettings(): void {
     this.userService.getUserSettings().subscribe({
       next: (settings: UserSettings) => {
-        if (settings.gender !== undefined) {
+        if (settings.gender !== undefined && settings.gender !== null) {
           this.searchCriteria.gender = settings.gender;
         }
-        if (settings.ageMin !== undefined) {
+        if (settings.ageMin !== undefined && settings.ageMin !== null) {
           this.searchCriteria.ageMin = settings.ageMin;
         }
-        if (settings.ageMax !== undefined) {
+        if (settings.ageMax !== undefined && settings.ageMax !== null) {
           this.searchCriteria.ageMax = settings.ageMax;
         }
-        if (settings.distance !== undefined) {
+        if (settings.distance !== undefined && settings.distance !== null) {
           this.searchCriteria.distance = settings.distance;
         }
         this.search();

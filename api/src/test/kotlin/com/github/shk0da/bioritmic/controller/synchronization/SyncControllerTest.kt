@@ -53,6 +53,16 @@ class SyncControllerTest : ApiApplicationTests() {
         val auth = authTokenCache.values.find { it.userId != null }
         userId = auth?.userId
         authToken = "Bearer ${auth?.accessToken}"
+
+        val gis = mapOf("lat" to 55.7558, "lon" to 37.6173)
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/user/me/gis")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(gis))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
     }
 
     @Test

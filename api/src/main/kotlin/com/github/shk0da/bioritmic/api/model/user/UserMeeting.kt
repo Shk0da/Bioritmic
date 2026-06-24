@@ -21,11 +21,19 @@ data class UserMeeting(
 ) : BasicPresentation {
 
     companion object {
-        fun of(meeting: Meeting): UserMeeting {
+        fun of(meeting: Meeting, currentUserId: Long? = null): UserMeeting {
+            val isCurrentUserCreator = currentUserId == meeting.userId
+            val otherUserId = when (currentUserId) {
+                meeting.userId -> meeting.otherUserId
+                meeting.otherUserId -> meeting.userId
+                else -> meeting.otherUserId
+            }
+            val lat = if (isCurrentUserCreator) meeting.otherUserLat else null
+            val lon = if (isCurrentUserCreator) meeting.otherUserLon else null
             return UserMeeting(
-                userId = meeting.otherUserId,
-                lat = meeting.otherUserLat,
-                lon = meeting.otherUserLon,
+                userId = otherUserId,
+                lat = lat,
+                lon = lon,
                 distance = meeting.distance,
                 timestamp = meeting.timestamp,
                 status = meeting.status,

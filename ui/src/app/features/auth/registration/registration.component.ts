@@ -207,8 +207,25 @@ export class RegistrationComponent {
     this.loading = true;
     this.authService.register(this.user).subscribe({
       next: () => {
-        this.loading = false;
-        this.router.navigate(['/auth/login']);
+        this.authService.login({ email: this.user.email!, password: this.user.password! }).subscribe({
+          next: (token) => {
+            this.authService.setAuth(token);
+            this.authService.loadCurrentUser().subscribe({
+              next: () => {
+                this.loading = false;
+                this.router.navigate(['/swipe']);
+              },
+              error: () => {
+                this.loading = false;
+                this.router.navigate(['/swipe']);
+              }
+            });
+          },
+          error: () => {
+            this.loading = false;
+            this.router.navigate(['/auth/login']);
+          }
+        });
       },
       error: (error) => {
         this.loading = false;

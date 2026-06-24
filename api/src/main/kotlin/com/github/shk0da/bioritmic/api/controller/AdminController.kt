@@ -9,6 +9,11 @@ import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics
+import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
+import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -19,6 +24,9 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.lang.management.ManagementFactory
+import java.lang.management.MemoryMXBean
+import java.lang.management.RuntimeMXBean
 
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/admin")
@@ -26,7 +34,8 @@ class AdminController(
     val userRepository: UserRepository,
     val userRoleRepository: UserRoleRepository,
     val reportRepository: ReportRepository,
-    val userService: UserService
+    val userService: UserService,
+    val meterRegistry: MeterRegistry
 ) {
 
     private val log = LoggerFactory.getLogger(AdminController::class.java)
@@ -129,6 +138,87 @@ class AdminController(
         log.info("Admin resolved report {}", reportId)
         return mapOf("success" to true, "reportId" to reportId)
     }
+
+    @GetMapping(value = ["/metrics"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun metrics(): SystemMetrics {
+        requireAdmin()
+        val runtime = Runtime.getRuntime()
+        val memoryBean = ManagementFactory.getMemoryMXBean()
+        val runtimeBean = ManagementFactory.getRuntimeMXBean()
+        val threadBean = ManagementFactory.getThreadMXBean()
+
+        val heapUsed = runtime.totalMemory() - runtime.freeMemory()
+        val heapMax = runtime.maxMemory()
+        val nonHeapUsed = memoryBean.nonHeapMemoryUsage.used
+
+        val upTimeMs = runtimeBean.uptime
+        val upTimeStr = formatDuration(upTimeMs)
+
+        val cpuCores = runtime.availableProcessors()
+        val threadCount = threadBean.threadCount
+        val peakThreadCount = threadBean.peakThreadCount
+
+        val dbPoolActive = getMeterValue("r2dbc.pool.active.connections")
+        val dbPoolIdle = getMeterValue("r2dbc.pool.idle.connections")
+        val dbPoolPending = getMeterValue("r2dbc.pool.pending.connections")
+
+        return SystemMetrics(
+            jvm = JvmMetrics(
+                version = System.getProperty("java.vm.name") + " " + System.getProperty("java.vm.version"),
+                uptime = upTimeStr,
+                cpuCores = cpuCores,
+                heapUsed = formatBytes(heapUsed),
+                heapMax = formatBytes(heapMax),
+                heapUsedPercent = if (heapMax > 0) (heapUsed * 100.0 / heapMax) else 0.0,
+                nonHeapUsed = formatBytes(nonHeapUsed),
+                threadCount = threadCount,
+                peakThreadCount = peakThreadCount
+            ),
+            database = DatabaseMetrics(
+                poolActive = dbPoolActive,
+                poolIdle = dbPoolIdle,
+                poolPending = dbPoolPending
+            ),
+            system = SystemInfo(
+                osName = System.getProperty("os.name"),
+                osVersion = System.getProperty("os.version"),
+                availableMemory = formatBytes(runtime.maxMemory()),
+                totalMemory = formatBytes(runtime.totalMemory()),
+                freeMemory = formatBytes(runtime.freeMemory())
+            )
+        )
+    }
+
+    private fun getMeterValue(name: String): Long {
+        return try {
+            meterRegistry.get(name).gauge().value().toLong()
+        } catch (e: Exception) {
+            0L
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val kb = bytes / 1024.0
+        if (kb < 1024) return "%.1f KB".format(kb)
+        val mb = kb / 1024.0
+        if (mb < 1024) return "%.1f MB".format(mb)
+        val gb = mb / 1024.0
+        return "%.2f GB".format(gb)
+    }
+
+    private fun formatDuration(ms: Long): String {
+        val seconds = ms / 1000
+        val minutes = seconds / 60
+        val hours = minutes / 60
+        val days = hours / 24
+        return when {
+            days > 0 -> "${days}d ${hours % 24}h ${minutes % 60}m"
+            hours > 0 -> "${hours}h ${minutes % 60}m"
+            minutes > 0 -> "${minutes}m ${seconds % 60}s"
+            else -> "${seconds}s"
+        }
+    }
 }
 
 data class AdminDashboard(
@@ -147,4 +237,36 @@ data class ReportAdminView(
     val reason: String?,
     val status: String?,
     val createdAt: String?
+)
+
+data class SystemMetrics(
+    val jvm: JvmMetrics,
+    val database: DatabaseMetrics,
+    val system: SystemInfo
+)
+
+data class JvmMetrics(
+    val version: String,
+    val uptime: String,
+    val cpuCores: Int,
+    val heapUsed: String,
+    val heapMax: String,
+    val heapUsedPercent: Double,
+    val nonHeapUsed: String,
+    val threadCount: Int,
+    val peakThreadCount: Int
+)
+
+data class DatabaseMetrics(
+    val poolActive: Long,
+    val poolIdle: Long,
+    val poolPending: Long
+)
+
+data class SystemInfo(
+    val osName: String?,
+    val osVersion: String?,
+    val availableMemory: String,
+    val totalMemory: String,
+    val freeMemory: String
 )

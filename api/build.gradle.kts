@@ -92,6 +92,13 @@ tasks.withType<JavaExec> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    maxParallelForks = 1
+    jvmArgs = listOf(
+        "--add-opens", "java.base/java.lang=ALL-UNNAMED",
+        "--add-opens", "java.base/java.net=ALL-UNNAMED",
+        "--add-opens", "java.base/java.io=ALL-UNNAMED",
+        "--add-opens", "java.base/java.util=ALL-UNNAMED"
+    )
 }
 
 // use like this: gradle -Pprofile=${profile} build

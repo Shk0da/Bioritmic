@@ -31,7 +31,7 @@ if not errorlevel 1 (
 echo.
 echo [3/5] Starting Backend (Kotlin/Spring Boot on :8080^)...
 cd /d "%ROOT_DIR%"
-set JAVA_HOME=C:\Program Files\OpenJDK\jdk-25
+set JAVA_HOME=C:\Program Files\OpenJDK\jdk-21
 start "bioritmic-api" cmd /c ".\gradlew.bat :api:bootRun > %TEMP%\bioritmic-api.log 2>&1"
 echo   Waiting for backend to start...
 :wait_api

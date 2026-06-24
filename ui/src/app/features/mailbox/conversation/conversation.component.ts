@@ -84,6 +84,12 @@ interface MessageWithUser extends UserMail {
       </div>
 
       <!-- Input -->
+      @if (isBlocked) {
+        <div class="block-notice">
+          <i class="bi bi-shield-slash"></i>
+          <span>К сожалению, пользователь ограничил с вами общение</span>
+        </div>
+      } @else {
       <div class="message-input-container">
         <div class="input-wrapper">
           <input
@@ -105,6 +111,7 @@ interface MessageWithUser extends UserMail {
           <i class="bi bi-send-fill"></i>
         </button>
       </div>
+      }
 
       <!-- Emoji Picker -->
       @if (showEmojiPicker) {
@@ -420,6 +427,21 @@ interface MessageWithUser extends UserMail {
       background: var(--border-color, #d1d5db);
       border-radius: 3px;
     }
+
+    .block-notice {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px;
+      background: rgba(239, 68, 68, 0.08);
+      border-top: 1px solid rgba(239, 68, 68, 0.2);
+      color: #dc2626;
+      font-size: 0.9rem;
+      font-weight: 500;
+
+      i { font-size: 1.1rem; }
+    }
   `]
 })
 export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecked {
@@ -436,6 +458,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
   private shouldScroll = false;
   showEmojiPicker = false;
   private refreshInterval: any = null;
+  isBlocked = false;
 
   emojis = [
     '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
@@ -474,6 +497,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
     this.userService.getCurrentUser().subscribe({
       next: (user) => {
         this.currentUserId = user.id;
+        this.checkBlockStatus();
         this.loadAllMessages();
         this.loadOtherUserInfo();
       },
@@ -481,6 +505,15 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
         this.loadAllMessages();
         this.loadOtherUserInfo();
       }
+    });
+  }
+
+  private checkBlockStatus(): void {
+    this.userService.isBlockedBy(this.otherUserId).subscribe({
+      next: (result) => {
+        this.isBlocked = result.blocked;
+      },
+      error: () => {}
     });
   }
 
@@ -546,7 +579,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
   }
 
   sendMessage(): void {
-    if (!this.newMessage.trim()) return;
+    if (!this.newMessage.trim() || this.isBlocked) return;
 
     this.sending = true;
     const message: UserMail = {
@@ -556,14 +589,18 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
 
     this.mailboxService.sendMail(message).subscribe({
       next: () => {
-        // Перезагружаем все сообщения после отправки
         this.loadAllMessages();
         this.newMessage = '';
         this.sending = false;
         this.shouldScroll = true;
       },
-      error: () => {
-        this.modalService.alert('Ошибка отправки сообщения', 'Ошибка');
+      error: (error) => {
+        if (error.status === 412) {
+          this.isBlocked = true;
+          this.modalService.alert('К сожалению, пользователь ограничил с вами общение', 'Ошибка');
+        } else {
+          this.modalService.alert('Ошибка отправки сообщения', 'Ошибка');
+        }
         this.sending = false;
       }
     });

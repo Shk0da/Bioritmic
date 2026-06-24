@@ -109,6 +109,11 @@ class UserService(
     }
 
     @Transactional(readOnly = true)
+    suspend fun isBlockedBy(userId: Long, currentUserId: Long): Boolean {
+        return userBlockRepository.findByUserIdAndOtherUserId(userId, currentUserId) != null
+    }
+
+    @Transactional(readOnly = true)
     suspend fun findUserByIdWithSettings(id: Long): User {
         val user = userRepository.findById(id) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val settings = userSettingsRepository.findById(user.id!!)

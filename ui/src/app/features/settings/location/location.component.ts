@@ -171,7 +171,20 @@ export class LocationComponent implements OnInit {
 
   getTimestamp(): string {
     if (!this.gisData?.timestamp) return '';
-    const timeValue = (this.gisData.timestamp as any).time || 0;
-    return new Date(timeValue).toLocaleString('ru-RU');
+    const ts = this.gisData.timestamp;
+    let date: Date;
+    if (typeof ts === 'number') {
+      date = new Date(ts);
+    } else if (typeof ts === 'string') {
+      date = new Date(ts);
+    } else if ((ts as any).time) {
+      date = new Date((ts as any).time);
+    } else if ((ts as any).seconds) {
+      date = new Date((ts as any).seconds * 1000);
+    } else {
+      return '';
+    }
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleString('ru-RU');
   }
 }

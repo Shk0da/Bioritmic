@@ -29,21 +29,21 @@ class MeetingsController(val meetingsService: MeetingsService) {
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun meetings(@ParameterObject pageable: Pageable): List<UserMeeting> {
         val userId = getUserId()
-        return meetingsService.findAllMeetingsByUserId(userId, of(pageable)).map { UserMeeting.of(it) }
+        return meetingsService.findAllMeetingsByUserId(userId, of(pageable)).map { UserMeeting.of(it, userId) }
     }
 
     // POST /meetings/
     @PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun meetings(@RequestBody @Valid meetings: List<UserMeeting>, principal: Principal): List<UserMeeting> {
         val userId = getUserId(principal)
-        return meetingsService.createMeetings(userId, meetings).map { UserMeeting.of(it) }
+        return meetingsService.createMeetings(userId, meetings).map { UserMeeting.of(it, userId) }
     }
 
     // DELETE /meetings/
     @DeleteMapping(value = ["/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun meetings(@PathVariable userId: Long): List<UserMeeting> {
         val currentUserId = getUserId()
-        return meetingsService.deleteMetingWithUserId(currentUserId, userId).map { UserMeeting.of(it) }
+        return meetingsService.deleteMetingWithUserId(currentUserId, userId).map { UserMeeting.of(it, currentUserId) }
     }
 
     // PUT /meetings/{userId}/decline
@@ -54,6 +54,17 @@ class MeetingsController(val meetingsService: MeetingsService) {
         return mapOf(
             "success" to true,
             "status" to (meeting?.status ?: "DECLINED")
+        )
+    }
+
+    // PUT /meetings/{userId}/accept
+    @PutMapping(value = ["/{userId}/accept"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun acceptMeeting(@PathVariable userId: Long): Map<String, Any> {
+        val currentUserId = getUserId()
+        val meeting = meetingsService.acceptMeeting(currentUserId, userId)
+        return mapOf(
+            "success" to true,
+            "status" to (meeting?.status ?: "ACCEPTED")
         )
     }
 }
