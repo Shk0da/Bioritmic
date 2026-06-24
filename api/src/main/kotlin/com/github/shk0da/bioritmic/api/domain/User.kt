@@ -80,7 +80,7 @@ class User {
     }
 
     companion object {
-        private const val RECOVERY_CODE_EXPIRY_SECONDS = 60L
+        private const val RECOVERY_CODE_EXPIRY_SECONDS = 900L
 
         fun of(userModel: UserModel): User {
             val user = User()
