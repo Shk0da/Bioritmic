@@ -43,6 +43,7 @@ class ReportService(
         return saved
     }
 
+    @Transactional
     private suspend fun checkAndBanIfNeeded(userId: Long) {
         val pendingCount = reportRepository.countPendingByReportedId(userId)
         if (pendingCount >= autoBanThreshold) {
@@ -52,6 +53,12 @@ class ReportService(
 
     @Transactional
     suspend fun banUser(userId: Long, reason: String) {
+        // Prevent duplicate bans
+        if (banRepository.findActiveByUserId(userId) != null) {
+            log.info("User {} is already banned, skipping", userId)
+            return
+        }
+
         val ban = Ban()
         ban.userId = userId
         ban.reason = reason
