@@ -32,7 +32,7 @@ interface MessageWithUser extends UserMail {
               class="user-avatar"
               [alt]="otherUserName || 'User'">
             <div class="user-details">
-              <h5 class="user-name">{{ otherUserName || 'Пользователь #' + otherUserId }}</h5>
+              <a class="user-name" [routerLink]="['/user', otherUserId]">{{ otherUserName || 'Пользователь #' + otherUserId }}</a>
               @if (otherUserOnline) {
                 <span class="user-status">в сети</span>
               }
@@ -192,6 +192,13 @@ interface MessageWithUser extends UserMail {
       font-size: 1rem;
       font-weight: 600;
       color: white;
+      text-decoration: none;
+      cursor: pointer;
+
+      &:hover {
+        text-decoration: underline;
+        opacity: 0.9;
+      }
     }
 
     .user-status {

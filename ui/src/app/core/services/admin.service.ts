@@ -65,6 +65,14 @@ export class AdminService {
   getMetrics(): Observable<SystemMetrics> {
     return this.http.get<SystemMetrics>(`${this.apiUrl}/metrics`);
   }
+
+  createReport(reportedUserId: number, reason: string, description?: string): Observable<any> {
+    return this.http.post('/api/v1/report', {
+      reported_user_id: reportedUserId,
+      reason,
+      description: description || null
+    });
+  }
 }
 
 export interface SystemMetrics {

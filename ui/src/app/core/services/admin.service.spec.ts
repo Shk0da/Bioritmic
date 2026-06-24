@@ -70,4 +70,30 @@ describe('AdminService', () => {
     const req = httpMock.expectOne('/api/v1/admin/metrics');
     req.flush({ jvm: { version: '21' }, database: {}, system: {} });
   });
+
+  it('createReport should POST /api/v1/report', () => {
+    service.createReport(42, 'SPAM', 'Test description').subscribe(r => {
+      expect(r.id).toBe(1);
+      expect(r.status).toBe('PENDING');
+    });
+    const req = httpMock.expectOne('/api/v1/report');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      reported_user_id: 42,
+      reason: 'SPAM',
+      description: 'Test description'
+    });
+    req.flush({ id: 1, status: 'PENDING' });
+  });
+
+  it('createReport should send null description when not provided', () => {
+    service.createReport(10, 'INAPPROPRIATE').subscribe();
+    const req = httpMock.expectOne('/api/v1/report');
+    expect(req.request.body).toEqual({
+      reported_user_id: 10,
+      reason: 'INAPPROPRIATE',
+      description: null
+    });
+    req.flush({ id: 2, status: 'PENDING' });
+  });
 });

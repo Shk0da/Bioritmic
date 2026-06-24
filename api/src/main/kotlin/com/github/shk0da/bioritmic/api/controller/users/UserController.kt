@@ -9,6 +9,7 @@ import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserInfo.Companion.ofWithCompare
+import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.service.SubscriptionService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
@@ -45,7 +46,8 @@ import javax.validation.constraints.NotNull
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/user")
 class UserController(
     val userService: UserService,
-    val subscriptionService: SubscriptionService
+    val subscriptionService: SubscriptionService,
+    val userRoleRepository: UserRoleRepository
 ) {
 
     private val log = LoggerFactory.getLogger(UserController::class.java)
@@ -55,8 +57,9 @@ class UserController(
     suspend fun me(): UserInfo {
         val userId = getUserId()
         val user = userService.findUserById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val roles = userRoleRepository.findAllByUserId(userId).map { it.role }.joinToString(",")
         val userInfo = UserInfo.of(user)
-        return userInfo.copy(isPro = subscriptionService.isProUser(userId))
+        return userInfo.copy(role = roles, isPro = subscriptionService.isProUser(userId))
     }
 
     // PUT/PATH /me -> UserInfo

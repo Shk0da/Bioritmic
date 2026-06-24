@@ -1,11 +1,13 @@
 import { Component, OnInit, OnDestroy, Input, inject, DestroyRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { NgClass, NgStyle } from '@angular/common';
+import { NgClass, NgStyle, NgIf, NgFor } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
 import { UserService } from '../../core/services/user.service';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { MeetingsService } from '../../core/services/meetings.service';
+import { AdminService } from '../../core/services/admin.service';
+import { ToastService } from '../../core/services/toast.service';
 import { UserInfo, Gender, UserMeeting } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
 import { BiorhythmDetailComponent } from '../../shared/components/biorhythm-detail/biorhythm-detail.component';
@@ -15,7 +17,7 @@ import { ModalService } from '../../core/services/modal.service';
 @Component({
   selector: 'app-user-detail',
   standalone: true,
-  imports: [RouterLink, NgClass, NgStyle, FormsModule, BiorhythmDetailComponent],
+  imports: [RouterLink, NgClass, NgStyle, NgIf, NgFor, FormsModule, BiorhythmDetailComponent],
   template: `
     @if (loading) {
       <div class="text-center py-5">
@@ -122,7 +124,62 @@ import { ModalService } from '../../core/services/modal.service';
               <i class="bi" [ngClass]="isBlocked ? 'bi-shield-fill-check' : 'bi-shield-slash'"></i>
               <span>{{ isBlocked ? 'Разблокировать' : 'Заблокировать' }}</span>
             </button>
+            @if (!isReported) {
+              <button class="action-btn action-report" (click)="openReportModal()">
+                <i class="bi bi-flag"></i>
+                <span>Пожаловаться</span>
+              </button>
+            } @else {
+              <button class="action-btn action-reported" disabled>
+                <i class="bi bi-flag-fill"></i>
+                <span>Жалоба отправлена</span>
+              </button>
+            }
           </div>
+
+          @if (showReportModal) {
+            <div class="report-modal-overlay" (click)="closeReportModal()">
+              <div class="report-modal" (click)="$event.stopPropagation()">
+                <div class="report-modal-header">
+                  <h5><i class="bi bi-flag me-2"></i>Жалоба на пользователя</h5>
+                  <button class="report-modal-close" (click)="closeReportModal()"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="report-modal-body">
+                  <p class="report-modal-user">Пожаловаться на <strong>{{ user?.name }}</strong>?</p>
+                  <label class="form-label">Причина жалобы</label>
+                  <div class="report-reasons">
+                    @for (reason of reportReasons; track reason.value) {
+                      <label class="report-reason-item" [class.selected]="selectedReason === reason.value">
+                        <input type="radio" name="reportReason" [value]="reason.value" [(ngModel)]="selectedReason">
+                        <i class="bi" [ngClass]="reason.icon"></i>
+                        <span>{{ reason.label }}</span>
+                      </label>
+                    }
+                  </div>
+                  <div class="report-description">
+                    <label class="form-label">Дополнительная информация (необязательно)</label>
+                    <textarea
+                      class="form-control"
+                      rows="3"
+                      [(ngModel)]="reportDescription"
+                      placeholder="Опишите ситуацию подробнее..."></textarea>
+                  </div>
+                </div>
+                <div class="report-modal-footer">
+                  <button class="btn btn-cancel" (click)="closeReportModal()">Отмена</button>
+                  <button
+                    class="btn btn-report"
+                    [disabled]="!selectedReason || reportSending"
+                    (click)="submitReport()">
+                    @if (reportSending) {
+                      <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-send me-1"></i>Отправить жалобу
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
 
           <!-- Biorhythm -->
           @if (user.id) {
@@ -394,6 +451,174 @@ import { ModalService } from '../../core/services/modal.service';
 
         &:hover { background: #22c55e; color: white; }
       }
+
+      &.action-report {
+        grid-column: 1 / -1;
+        border-color: #ef4444;
+        color: #ef4444;
+
+        &:hover { background: #ef4444; color: white; }
+      }
+
+      &.action-reported {
+        grid-column: 1 / -1;
+        border-color: #9ca3af;
+        color: #9ca3af;
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+
+    .report-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 1rem;
+      backdrop-filter: blur(4px);
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .report-modal {
+      background: var(--card-bg, white);
+      border-radius: 20px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+      overflow: hidden;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .report-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-color, #e5e7eb);
+
+      h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary, #1f2937);
+      }
+    }
+
+    .report-modal-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary, #6b7280);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 8px;
+      transition: all 0.2s;
+
+      &:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary); }
+    }
+
+    .report-modal-body {
+      padding: 1.25rem 1.5rem;
+    }
+
+    .report-modal-user {
+      color: var(--text-secondary, #6b7280);
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .report-reasons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .report-reason-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--border-color, #e5e7eb);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+      color: var(--text-secondary, #4b5563);
+
+      input[type="radio"] { display: none; }
+
+      i { font-size: 1rem; color: var(--text-muted, #9ca3af); }
+
+      &:hover {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.03);
+      }
+
+      &.selected {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.06);
+        color: #ef4444;
+        font-weight: 600;
+
+        i { color: #ef4444; }
+      }
+    }
+
+    .report-description {
+      textarea {
+        border-radius: 12px;
+        resize: vertical;
+        min-height: 80px;
+      }
+    }
+
+    .report-modal-footer {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem 1.25rem;
+      justify-content: flex-end;
+
+      .btn {
+        padding: 0.6rem 1.25rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .btn-cancel {
+        background: var(--bg-secondary, #f3f4f6);
+        color: var(--text-secondary, #6b7280);
+
+        &:hover { background: var(--border-color, #e5e7eb); }
+      }
+
+      .btn-report {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+
+        &:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); transform: translateY(-1px); }
+        &:disabled { opacity: 0.5; cursor: not-allowed; }
+      }
     }
 
     @media (max-width: 768px) {
@@ -412,6 +637,21 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   isBookmarked = false;
   isBlocked = false;
   meetingSent = false;
+  isReported = false;
+  showReportModal = false;
+  selectedReason = '';
+  reportDescription = '';
+  reportSending = false;
+
+  reportReasons = [
+    { value: 'SPAM', label: 'Спам или фейковый профиль', icon: 'bi-envelope-exclamation' },
+    { value: 'INAPPROPRIATE', label: 'Неприемлемый контент', icon: 'bi-emoji-angry' },
+    { value: 'HARASSMENT', label: 'Преследование или оскорбления', icon: 'bi-shield-exclamation' },
+    { value: 'FAKE', label: 'Фото не принадлежит пользователю', icon: 'bi-person-x' },
+    { value: 'UNDERAGE', label: 'Пользователь несовершеннолетний', icon: 'bi-exclamation-triangle' },
+    { value: 'OTHER', label: 'Другое', icon: 'bi-three-dots' },
+  ];
+
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
 
@@ -422,6 +662,8 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     private bookmarksService: BookmarksService,
     private mailboxService: MailboxService,
     private meetingsService: MeetingsService,
+    private adminService: AdminService,
+    private toastService: ToastService,
     private sanitizer: DomSanitizer,
     private modalService: ModalService
   ) {
@@ -676,5 +918,35 @@ export class UserDetailComponent implements OnInit, OnDestroy {
         }
       });
     }
+  }
+
+  openReportModal(): void {
+    this.showReportModal = true;
+    this.selectedReason = '';
+    this.reportDescription = '';
+  }
+
+  closeReportModal(): void {
+    this.showReportModal = false;
+  }
+
+  submitReport(): void {
+    if (!this.user?.id || !this.selectedReason) return;
+
+    this.reportSending = true;
+    this.adminService.createReport(this.user.id, this.selectedReason, this.reportDescription || undefined)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.isReported = true;
+          this.showReportModal = false;
+          this.reportSending = false;
+          this.toastService.success('Жалоба отправлена. Спасибо за бдительность!');
+        },
+        error: () => {
+          this.reportSending = false;
+          this.toastService.error('Ошибка отправки жалобы. Попробуйте позже.');
+        }
+      });
   }
 }

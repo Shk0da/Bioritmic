@@ -8,6 +8,7 @@
     "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:e2e": "mocha --timeout 60000 e2e/**/*.test.js",
     "lint": "ng lint"
   },
   "dependencies": {
@@ -36,7 +37,9 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "mocha": "^11.7.6",
     "playwright": "^1.61.0",
+    "selenium-webdriver": "^4.45.0",
     "typescript": "~5.2.2"
   }
 }

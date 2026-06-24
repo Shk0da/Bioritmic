@@ -62,7 +62,7 @@ interface UserConversation {
                   <div class="flex-grow-1 min-w-0">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                       <h6 class="mb-0 conversation-name">
-                        {{ conv.userName || 'Пользователь #' + conv.userId }}
+                        <a [routerLink]="['/user', conv.userId]" class="conversation-name-link" (click)="$event.stopPropagation()">{{ conv.userName || 'Пользователь #' + conv.userId }}</a>
                       </h6>
                       <small class="text-muted conversation-time">
                         {{ getMessageDate(conv.lastMessageTime) }}
@@ -131,6 +131,17 @@ interface UserConversation {
     .conversation-name {
       font-weight: 600;
       color: var(--text-primary, #1f2937);
+    }
+
+    .conversation-name-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+
+      &:hover {
+        color: #fd297b;
+        text-decoration: underline;
+      }
     }
 
     .conversation-preview {

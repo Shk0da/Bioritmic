@@ -1,0 +1,3 @@
+timeout: 60000
+spec: e2e/**/*.test.js
+exit: true
