@@ -7,22 +7,23 @@ import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
 interface UserRoleRepository : CoroutineCrudRepository<UserRole, Long> {
 
     @Query("SELECT * FROM user_roles WHERE user_id = :userId")
-    suspend fun findAllByUserId(userId: Long): List<UserRole>
+    suspend fun findAllByUserId(userId: UUID): List<UserRole>
 
     @Query("SELECT * FROM user_roles WHERE user_id = :userId AND role = :role")
-    suspend fun findByUserIdAndRole(userId: Long, role: String): UserRole?
+    suspend fun findByUserIdAndRole(userId: UUID, role: String): UserRole?
 
     @Modifying
     @Query("INSERT INTO user_roles (user_id, role) VALUES (:userId, :role) ON CONFLICT (user_id, role) DO NOTHING")
-    suspend fun addRole(userId: Long, role: String)
+    suspend fun addRole(userId: UUID, role: String)
 
     @Modifying
     @Query("DELETE FROM user_roles WHERE user_id = :userId AND role = :role")
-    suspend fun removeRole(userId: Long, role: String)
+    suspend fun removeRole(userId: UUID, role: String)
 }

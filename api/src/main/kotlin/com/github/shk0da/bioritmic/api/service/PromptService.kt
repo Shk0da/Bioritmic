@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.UUID
 
 @Service
 class PromptService(
@@ -23,12 +24,12 @@ class PromptService(
     }
 
     @Transactional(readOnly = true)
-    suspend fun getUserAnswers(userId: Long): List<UserPromptAnswer> {
+    suspend fun getUserAnswers(userId: UUID): List<UserPromptAnswer> {
         return userPromptAnswerRepository.findAnswersByUserId(userId)
     }
 
     @Transactional
-    suspend fun saveAnswer(userId: Long, promptId: Long, answer: String): UserPromptAnswer {
+    suspend fun saveAnswer(userId: UUID, promptId: Long, answer: String): UserPromptAnswer {
         val existing = userPromptAnswerRepository.findByUserIdAndPromptId(userId, promptId)
         if (existing != null) {
             existing.answer = answer
@@ -45,7 +46,7 @@ class PromptService(
     }
 
     @Transactional
-    suspend fun deleteAnswer(userId: Long, promptId: Long) {
+    suspend fun deleteAnswer(userId: UUID, promptId: Long) {
         val answer = userPromptAnswerRepository.findByUserIdAndPromptId(userId, promptId)
         answer?.let { userPromptAnswerRepository.deleteById(it.id!!) }
     }

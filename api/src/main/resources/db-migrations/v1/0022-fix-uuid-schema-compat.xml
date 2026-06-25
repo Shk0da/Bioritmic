@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0022-fix-uuid-schema-compat" author="uuid-migration">
+        <comment>Restore schema pieces required by existing repositories.</comment>
+
+        <sql>CREATE EXTENSION IF NOT EXISTS cube;</sql>
+        <sql>CREATE EXTENSION IF NOT EXISTS earthdistance;</sql>
+        <sql>ALTER TABLE prompts ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;</sql>
+        <sql>ALTER TABLE interests ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;</sql>
+        <sql>ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();</sql>
+        <sql>ALTER TABLE user_prompt_answers ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();</sql>
+
+        <sql>
+            INSERT INTO interests (name, category, icon, active)
+            SELECT 'Hiking', 'OUTDOOR', 'tree', TRUE
+            WHERE NOT EXISTS (SELECT 1 FROM interests);
+        </sql>
+        <sql>
+            INSERT INTO prompts (text, category, active)
+            SELECT 'What makes you smile every day?', 'ICEBREAKER', TRUE
+            WHERE NOT EXISTS (SELECT 1 FROM prompts);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

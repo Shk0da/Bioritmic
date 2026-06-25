@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.UUID
 
 @Service
 class MeetingsService(
@@ -31,12 +32,12 @@ class MeetingsService(
     private val defaultPageable = PageableRequest(1, maximumUserMeetingsSize, Sort.by(Sort.Direction.DESC, "timestamp"))
 
     @Transactional
-    suspend fun findAllMeetingsByUserId(userId: Long, pageable: PageableRequest): List<Meeting> {
+    suspend fun findAllMeetingsByUserId(userId: UUID, pageable: PageableRequest): List<Meeting> {
         return meetingsRepository.findAllByUserId(userId, pageable.pageSize, pageable.offset)
     }
 
     @Transactional
-    suspend fun createMeetings(userId: Long, meetings: List<UserMeeting>): List<Meeting> {
+    suspend fun createMeetings(userId: UUID, meetings: List<UserMeeting>): List<Meeting> {
         val meetingList = meetings.filter { it.isFilledInput() && it.userId != userId }
         val currentElementsCount = meetingsRepository.countByUserId(userId)
         val totalCount = (currentElementsCount + meetingList.count()).toInt()
@@ -58,7 +59,7 @@ class MeetingsService(
     }
 
     @Transactional
-    suspend fun deleteMetingWithUserId(currentUserId: Long, userId: Long): List<Meeting> {
+    suspend fun deleteMetingWithUserId(currentUserId: UUID, userId: UUID): List<Meeting> {
         try {
             meetingsRepository.deleteByUserIdAndOtherUserId(currentUserId, userId)
         } catch (ex: DataAccessException) {
@@ -68,7 +69,7 @@ class MeetingsService(
     }
 
     @Transactional
-    suspend fun declineMeeting(currentUserId: Long, senderUserId: Long): Meeting? {
+    suspend fun declineMeeting(currentUserId: UUID, senderUserId: UUID): Meeting? {
         log.info("declineMeeting: currentUserId={}, senderUserId={}", currentUserId, senderUserId)
         val meeting = meetingsRepository.findByUserPair(senderUserId, currentUserId)
         log.info("declineMeeting: found meeting={}", meeting)
@@ -100,7 +101,7 @@ class MeetingsService(
     }
 
     @Transactional
-    suspend fun acceptMeeting(currentUserId: Long, otherUserId: Long): Meeting? {
+    suspend fun acceptMeeting(currentUserId: UUID, otherUserId: UUID): Meeting? {
         log.info("acceptMeeting: currentUserId={}, otherUserId={}", currentUserId, otherUserId)
         val meeting = meetingsRepository.findByUserPair(otherUserId, currentUserId)
         log.info("acceptMeeting: found meeting={}", meeting)

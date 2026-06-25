@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController
 import java.lang.management.ManagementFactory
 import java.lang.management.MemoryMXBean
 import java.lang.management.RuntimeMXBean
+import java.util.UUID
 
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/admin")
@@ -78,7 +79,7 @@ class AdminController(
     }
 
     @PostMapping(value = ["/users/{userId}/ban"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun banUser(@PathVariable userId: Long): Map<String, Any> {
+    suspend fun banUser(@PathVariable userId: UUID): Map<String, Any> {
         requireAdmin()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
@@ -92,7 +93,7 @@ class AdminController(
     }
 
     @PostMapping(value = ["/users/{userId}/unban"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun unbanUser(@PathVariable userId: Long): Map<String, Any> {
+    suspend fun unbanUser(@PathVariable userId: UUID): Map<String, Any> {
         requireAdmin()
         userRoleRepository.removeRole(userId, "BANNED")
         userRoleRepository.addRole(userId, "USER")
@@ -101,7 +102,7 @@ class AdminController(
     }
 
     @DeleteMapping(value = ["/users/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun deleteUser(@PathVariable userId: Long): Map<String, Any> {
+    suspend fun deleteUser(@PathVariable userId: UUID): Map<String, Any> {
         requireAdmin()
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
         if (UserRoleConstants.ROLE_ADMIN in roles) {
@@ -230,9 +231,9 @@ data class AdminDashboard(
 
 data class ReportAdminView(
     val id: Long?,
-    val reporterId: Long?,
+    val reporterId: UUID?,
     val reporterName: String?,
-    val targetId: Long?,
+    val targetId: UUID?,
     val targetName: String?,
     val reason: String?,
     val status: String?,

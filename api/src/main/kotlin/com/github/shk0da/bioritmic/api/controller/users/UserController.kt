@@ -34,9 +34,9 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
-import java.lang.Long.valueOf
 import java.security.Principal
 import java.util.Date
+import java.util.UUID
 import javax.validation.Valid
 import javax.validation.constraints.NotNull
 
@@ -82,9 +82,9 @@ class UserController(
 
     // GET /user/{id} <- UserInfo. id - hash?? of real id
     @GetMapping(value = ["/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun user(@PathVariable id: Long): UserInfo {
+    suspend fun user(@PathVariable id: UUID): UserInfo {
         val currentUserId = getUserId()
-        val user = userService.findUserById(valueOf(id)) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val user = userService.findUserById(id) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val currentUser = userService.findUserById(currentUserId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         return if (null != user.birthday && null != currentUser.birthday) {
             ofWithCompare(user, Date(currentUser.birthday!!.toInstant().toEpochMilli()))
@@ -102,21 +102,21 @@ class UserController(
 
     // PUT /user/{id}/block <- UserInfo
     @PutMapping(value = ["/{id}/block"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun blockUser(@PathVariable id: Long): UserInfo {
+    suspend fun blockUser(@PathVariable id: UUID): UserInfo {
         val userId = getUserId()
         return UserInfo.ofWithoutEmail(userService.blockUser(userId, id))
     }
 
     // PUT /user/{id}/block <- unblock
     @PutMapping(value = ["/{id}/unblock"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun unblockUser(@PathVariable id: Long): UserInfo {
+    suspend fun unblockUser(@PathVariable id: UUID): UserInfo {
         val userId = getUserId()
         return UserInfo.ofWithoutEmail(userService.unblockUser(userId, id))
     }
 
     // GET /user/{id}/is-blocked-by <- check if current user is blocked by {id}
     @GetMapping(value = ["/{id}/is-blocked-by"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun isBlockedBy(@PathVariable id: Long): Map<String, Boolean> {
+    suspend fun isBlockedBy(@PathVariable id: UUID): Map<String, Boolean> {
         val currentUserId = getUserId()
         val blocked = userService.isBlockedBy(id, currentUserId)
         return mapOf("blocked" to blocked)
@@ -143,7 +143,7 @@ class UserController(
     // GET /{id}/photo <- UserInfo
     @GetMapping(value = ["/{id}/photo"], produces = [MediaType.IMAGE_JPEG_VALUE])
     suspend fun photo(@PathVariable id: String): ByteArray {
-        val userId = valueOf(id)
+        val userId = UUID.fromString(id)
         return userService.getPhoto(userId)
     }
 

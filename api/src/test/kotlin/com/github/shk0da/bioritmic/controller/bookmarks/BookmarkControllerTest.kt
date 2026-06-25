@@ -17,7 +17,7 @@ class BookmarkControllerTest : ApiApplicationTests() {
 
     private lateinit var defaultUserModel: UserModel
     private lateinit var authToken: String
-    private var userId: Long? = null
+    private var userId: UUID? = null
 
     @BeforeEach
     fun setup() {
@@ -89,7 +89,7 @@ class BookmarkControllerTest : ApiApplicationTests() {
     @Test
     fun deleteBookmarkTest() {
         webTestClient.delete()
-            .uri("$API_WITH_VERSION_1/bookmarks/1")
+            .uri("$API_WITH_VERSION_1/bookmarks/00000000-0000-0000-0000-000000000001")
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()

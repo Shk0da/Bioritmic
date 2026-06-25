@@ -6,27 +6,28 @@ import org.springframework.data.relational.core.mapping.Table
 import java.io.Serializable
 import java.lang.System.currentTimeMillis
 import java.sql.Timestamp
+import java.util.UUID
 
 @Table(name = "bookmarks")
 class Bookmark {
 
-    data class PrimaryKey(var userId: Long? = null, var otherUserId: Long? = null) : Serializable {
+    data class PrimaryKey(var userId: UUID? = null, var otherUserId: UUID? = null) : Serializable {
         companion object {
             private const val serialVersionUID = 1L
         }
     }
 
     @Column("user_id")
-    var userId: Long? = null
+    var userId: UUID? = null
 
     @Column("other_user_id")
-    var otherUserId: Long? = null
+    var otherUserId: UUID? = null
 
     @Column("timestamp")
     var timestamp: Timestamp? = null
 
     companion object {
-        fun of(userId: Long, userBookmark: UserBookmark): Bookmark {
+        fun of(userId: UUID, userBookmark: UserBookmark): Bookmark {
             val bookmark = Bookmark()
             bookmark.userId = userId
             bookmark.otherUserId = userBookmark.userId

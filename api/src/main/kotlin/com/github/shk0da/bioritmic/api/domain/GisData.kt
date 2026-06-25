@@ -6,13 +6,14 @@ import org.springframework.data.annotation.Transient
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 import java.sql.Timestamp
+import java.util.UUID
 
 @Table(name = "gis_data")
 class GisData {
 
     @Id
     @Column("user_id")
-    var userId: Long? = null
+    var userId: UUID? = null
 
     @Column("lat")
     var lat: Double? = null
@@ -27,7 +28,7 @@ class GisData {
     var distance: Double? = null
 
     companion object {
-        fun of(userId: Long, gisDataModel: GisDataModel): GisData {
+        fun of(userId: UUID, gisDataModel: GisDataModel): GisData {
             val gisData = GisData()
             gisData.userId = userId
             gisData.lat = gisDataModel.lat

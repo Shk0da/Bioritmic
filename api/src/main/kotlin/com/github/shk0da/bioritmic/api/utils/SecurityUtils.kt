@@ -9,19 +9,19 @@ import java.util.*
 
 object SecurityUtils {
 
-    fun getUserId(principal: Principal?): Long {
+    fun getUserId(principal: Principal?): UUID {
         if (null == principal) {
             throw ApiException(ErrorCode.AUTH_NOT_FOUND)
         }
-        return (principal as PreAuthenticatedAuthenticationToken).principal as Long
+        return (principal as PreAuthenticatedAuthenticationToken).principal as UUID
     }
 
-    fun getUserId(): Long {
+    fun getUserId(): UUID {
         val auth = SecurityContextHolder.getContext().authentication
         if (null == auth || null == auth.principal) {
             throw ApiException(ErrorCode.AUTH_NOT_FOUND)
         }
-        return auth.principal as Long
+        return auth.principal as UUID
     }
 
     fun generateRandomPassword(len: Int): String {

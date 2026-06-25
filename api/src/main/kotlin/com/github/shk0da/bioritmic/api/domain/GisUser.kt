@@ -3,11 +3,12 @@ package com.github.shk0da.bioritmic.api.domain
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import org.springframework.data.annotation.Id
 import java.sql.Timestamp
+import java.util.UUID
 
 class GisUser {
 
     @Id
-    var id: Long? = null
+    var id: UUID? = null
 
     var name: String? = null
 

@@ -32,9 +32,11 @@ command_exists() {
 # Function to run backend tests
 run_backend_tests() {
     print_info "Running backend tests..."
-    cd /Users/a.shkondin/Documents/Projects/Other/Bioritmic
+    local root_dir
+    root_dir="$(cd "$(dirname "$0")" && pwd)"
+    cd "$root_dir"
     
-    if command_exists ./gradlew; then
+    if [[ -x ./gradlew ]]; then
         if ./gradlew :api:test; then
             print_info "✅ Backend tests passed"
             return 0
@@ -51,10 +53,12 @@ run_backend_tests() {
 # Function to run frontend unit tests
 run_frontend_tests() {
     print_info "Running frontend unit tests..."
-    cd /Users/a.shkondin/Documents/Projects/Other/Bioritmic/ui
+    local root_dir
+    root_dir="$(cd "$(dirname "$0")" && pwd)"
+    cd "$root_dir/ui"
     
     if command_exists npm; then
-        if npm test -- --watch=false --browsers=ChromeHeadless; then
+        if npm test -- --watch=false; then
             print_info "✅ Frontend unit tests passed"
             return 0
         else

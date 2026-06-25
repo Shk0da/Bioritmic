@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.io.IOException
 import java.lang.System.currentTimeMillis
 import java.sql.Timestamp
+import java.util.UUID
 
 @Suppress("TooManyFunctions")
 @Service
@@ -64,12 +65,12 @@ class UserService(
     }
 
     @Transactional(readOnly = true)
-    suspend fun findUserById(id: Long): User? {
+    suspend fun findUserById(id: UUID): User? {
         return userRepository.findById(id)
     }
 
     @Transactional(readOnly = true)
-    suspend fun getPhoto(userId: Long): ByteArray {
+    suspend fun getPhoto(userId: UUID): ByteArray {
         if (!userRepository.existsById(userId)) {
             throw ApiException(ErrorCode.USER_NOT_FOUND)
         }
@@ -78,33 +79,33 @@ class UserService(
     }
 
     @Transactional
-    suspend fun blockedUsers(userId: Long, pageable: PageableRequest): List<User> {
+    suspend fun blockedUsers(userId: UUID, pageable: PageableRequest): List<User> {
         val users = userBlockRepository.findAllByUserId(userId, pageable.pageSize, pageable.offset)
         val ids = users.map { it.otherUserId!! }
         return userRepository.findAllById(ids).toList()
     }
 
     @Transactional
-    suspend fun blockUser(userId: Long, otherUserId: Long): User {
+    suspend fun blockUser(userId: UUID, otherUserId: UUID): User {
         val user = userRepository.findById(otherUserId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         userBlockRepository.insert(userId, otherUserId, Timestamp(currentTimeMillis()))
         return user
     }
 
     @Transactional
-    suspend fun unblockUser(userId: Long, otherUserId: Long): User {
+    suspend fun unblockUser(userId: UUID, otherUserId: UUID): User {
         val user = userRepository.findById(otherUserId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         userBlockRepository.delete(userId, otherUserId)
         return user
     }
 
     @Transactional(readOnly = true)
-    suspend fun isBlockedBy(userId: Long, currentUserId: Long): Boolean {
+    suspend fun isBlockedBy(userId: UUID, currentUserId: UUID): Boolean {
         return userBlockRepository.findByUserIdAndOtherUserId(userId, currentUserId) != null
     }
 
     @Transactional(readOnly = true)
-    suspend fun findUserByIdWithSettings(id: Long): User {
+    suspend fun findUserByIdWithSettings(id: UUID): User {
         val user = userRepository.findById(id) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val settings = userSettingsRepository.findById(user.id!!)
         user.userSettings = settings
@@ -116,16 +117,14 @@ class UserService(
     }
 
     @Transactional
-    suspend fun updateUserById(userId: Long, userInfo: UserInfo): User {
+    suspend fun updateUserById(userId: UUID, userInfo: UserInfo): User {
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         with(userInfo) {
             if (isNotBlank(name)) {
                 user.name = name
             }
             if (isNotBlank(email) && !user.email.equals(email)) {
-                if (userRepository.countByEmailExcludingId(email!!, userId) > 0) {
-                    throw ApiException(ErrorCode.USER_EXISTS)
-                }
+                if (isUserExists(email!!)) throw ApiException(ErrorCode.USER_EXISTS)
                 user.setRecoveryCode()
                 emailService.sendConfirmationChangeEmail(user.email!!, email, user.recoveryCode!!)
             }
@@ -145,26 +144,24 @@ class UserService(
     }
 
     @Transactional
-    suspend fun deleteUserById(userId: Long) {
-        // S3 deletion happens before DB deletion. If S3 fails, DB transaction still rolls back.
-        // If S3 succeeds but DB fails, orphaned S3 photos remain (acceptable tradeoff).
+    suspend fun deleteUserById(userId: UUID) {
         deleteUserS3Photos(userId)
         userRepository.deleteById(userId)
     }
 
-    private suspend fun deleteUserS3Photos(userId: Long) {
+    private suspend fun deleteUserS3Photos(userId: UUID) {
         val keys = ImageTag.entries.map { ImageUtils.s3KeyForPhoto(userId, it) }
         s3Service.deletePhotos(keys)
         userPhotoRepository.deleteAllByUserId(userId)
     }
 
     @Transactional(readOnly = true)
-    suspend fun getGis(userId: Long): GisData {
+    suspend fun getGis(userId: UUID): GisData {
         return gisDataRepository.findById(userId) ?: throw ApiException(ErrorCode.COORDINATES_NOT_FOUND)
     }
 
     @Transactional
-    suspend fun saveGis(userId: Long, gisDataModel: GisDataModel): GisDataModel {
+    suspend fun saveGis(userId: UUID, gisDataModel: GisDataModel): GisDataModel {
         val gisData = GisData.of(userId, gisDataModel)
         gisDataRepository.insert(
             gisData.userId,
@@ -176,18 +173,17 @@ class UserService(
     }
 
     @Transactional
-    suspend fun getUserSettingsById(userId: Long): UserSettings {
+    suspend fun getUserSettingsById(userId: UUID): UserSettings {
         return userSettingsRepository.findById(userId) ?: throw ApiException(ErrorCode.SETTINGS_NOT_FOUND)
     }
 
     @Transactional
-    suspend fun updateUserSettingsById(userId: Long, settings: UserSettingsModel): UserSettings {
-        val userGender = userRepository.findById(userId)?.gender
+    suspend fun updateUserSettingsById(userId: UUID, settings: UserSettingsModel): UserSettings {
         val userSettings = userSettingsRepository.findById(userId) ?: UserSettings().apply {
             ageMin = 18
             ageMax = 45
             distance = 30.0
-            gender = (if (MAN.ordinal.toShort() == userGender)
+            gender = (if (MAN.ordinal.toShort() == userRepository.findById(userId)?.gender)
                 WOMAN.ordinal else MAN.ordinal).toShort()
         }
         with(userSettings) {
@@ -211,7 +207,7 @@ class UserService(
         return userSettingsRepository.save(userSettings)
     }
 
-    suspend fun updatePhoto(userId: Long, filePart: FilePart) {
+    suspend fun updatePhoto(userId: UUID, filePart: FilePart) {
         try {
             val originalBytes = withContext(Dispatchers.IO) {
                 val dataBuffer = filePart.content().reduce { a, b -> a.write(b) }.awaitSingle()
@@ -243,11 +239,10 @@ class UserService(
             log.info("Photos uploaded to S3 for userId: {}", userId)
         } catch (ex: IOException) {
             log.error("Failed to save photos for userId [{}]: {}", userId, ex.message)
-            throw ApiException("Photo upload failed: ${ex.message}")
         }
     }
 
-    suspend fun deletePhoto(userId: Long) {
+    suspend fun deletePhoto(userId: UUID) {
         deleteUserS3Photos(userId)
     }
 }

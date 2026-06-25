@@ -7,13 +7,14 @@ import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
 interface UserPushTokenRepository : CoroutineCrudRepository<UserPushToken, Long> {
 
     @Query("SELECT * FROM user_push_tokens WHERE user_id = :userId")
-    suspend fun findAllByUserId(userId: Long): List<UserPushToken>
+    suspend fun findAllByUserId(userId: UUID): List<UserPushToken>
 
     @Query("SELECT * FROM user_push_tokens WHERE token = :token")
     suspend fun findByToken(token: String): UserPushToken?
@@ -24,5 +25,5 @@ interface UserPushTokenRepository : CoroutineCrudRepository<UserPushToken, Long>
 
     @Modifying
     @Query("DELETE FROM user_push_tokens WHERE user_id = :userId")
-    suspend fun deleteAllByUserId(userId: Long)
+    suspend fun deleteAllByUserId(userId: UUID)
 }

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
@@ -21,11 +22,11 @@ class SubscriptionService(
     @Value("\${premium.free-for-all:true}")
     private var freeForAll: Boolean = true
 
-    private val proStatusCache = ConcurrentHashMap<Long, Pair<Boolean, Long>>()
+    private val proStatusCache = ConcurrentHashMap<UUID, Pair<Boolean, Long>>()
     private val CACHE_TTL_MS = 60_000L
 
     @Transactional(readOnly = true, transactionManager = transactionManager)
-    suspend fun isProUser(userId: Long): Boolean {
+    suspend fun isProUser(userId: UUID): Boolean {
         if (freeForAll) return true
 
         val cached = proStatusCache[userId]
@@ -44,12 +45,12 @@ class SubscriptionService(
     fun isFreeForAll(): Boolean = freeForAll
 
     @Transactional(readOnly = true, transactionManager = transactionManager)
-    suspend fun getActiveSubscription(userId: Long): Subscription? {
+    suspend fun getActiveSubscription(userId: UUID): Subscription? {
         return subscriptionRepository.findActiveByUserId(userId)
     }
 
     @Transactional
-    suspend fun activatePro(userId: Long, expiresAt: Timestamp) {
+    suspend fun activatePro(userId: UUID, expiresAt: Timestamp) {
         proStatusCache.remove(userId)
         val existing = subscriptionRepository.findActiveByUserId(userId)
         if (existing != null && existing.plan == Subscription.PLAN_PRO) {
@@ -70,7 +71,7 @@ class SubscriptionService(
     }
 
     @Transactional
-    suspend fun cancelSubscription(userId: Long) {
+    suspend fun cancelSubscription(userId: UUID) {
         proStatusCache.remove(userId)
         val existing = subscriptionRepository.findActiveByUserId(userId) ?: return
         existing.status = Subscription.STATUS_CANCELLED

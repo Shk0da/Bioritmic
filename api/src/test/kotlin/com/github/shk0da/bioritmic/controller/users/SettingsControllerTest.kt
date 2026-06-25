@@ -18,7 +18,7 @@ class SettingsControllerTest : ApiApplicationTests() {
 
     private lateinit var defaultUserModel: UserModel
     private lateinit var authToken: String
-    private var userId: Long? = null
+    private var userId: UUID? = null
 
     @BeforeEach
     fun setup() {

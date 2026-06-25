@@ -6,6 +6,7 @@ import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils
 import java.sql.Timestamp
 import java.util.Date
+import java.util.UUID
 import javax.validation.constraints.DecimalMax
 import javax.validation.constraints.DecimalMin
 import javax.validation.constraints.Max
@@ -13,7 +14,7 @@ import javax.validation.constraints.Min
 
 data class UserSearch(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    var userId: Long? = null,
+    var userId: UUID? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     var birthdate: Date? = null,
     val gender: Gender? = null,

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
 import java.time.Instant
+import java.util.UUID
 
 @Service
 class BoostService(
@@ -18,15 +19,15 @@ class BoostService(
     private val log = LoggerFactory.getLogger(BoostService::class.java)
 
     @Transactional(readOnly = true, transactionManager = transactionManager)
-    suspend fun isBoosted(userId: Long): Boolean {
+    suspend fun isBoosted(userId: UUID): Boolean {
         val boost = profileBoostRepository.findActiveByUserId(userId) ?: return false
         return boost.expiresAt?.after(Timestamp.from(Instant.now())) == true
     }
 
-    suspend fun getBoostedUserIds(userIds: Set<Long>): Set<Long> {
+    suspend fun getBoostedUserIds(userIds: Set<UUID>): Set<UUID> {
         if (userIds.isEmpty()) return emptySet()
         val now = Timestamp.from(Instant.now())
-        val boosted = mutableSetOf<Long>()
+        val boosted = mutableSetOf<UUID>()
         for (userId in userIds) {
             val boost = profileBoostRepository.findActiveByUserId(userId)
             if (boost != null && boost.expiresAt?.after(now) == true) {
@@ -37,7 +38,7 @@ class BoostService(
     }
 
     @Transactional
-    suspend fun activateBoost(userId: Long, hours: Int = 24): ProfileBoost {
+    suspend fun activateBoost(userId: UUID, hours: Int = 24): ProfileBoost {
         val isPro = subscriptionService.isProUser(userId)
         if (!isPro) {
             throw IllegalArgumentException("Only Pro users can activate boost")
@@ -68,7 +69,7 @@ class BoostService(
     }
 
     @Transactional(readOnly = true, transactionManager = transactionManager)
-    suspend fun getActiveBoost(userId: Long): ProfileBoost? {
+    suspend fun getActiveBoost(userId: UUID): ProfileBoost? {
         return profileBoostRepository.findActiveByUserId(userId)
     }
 

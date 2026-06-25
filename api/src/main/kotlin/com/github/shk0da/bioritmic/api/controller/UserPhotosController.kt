@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/user")
@@ -16,7 +17,7 @@ class UserPhotosController(
 ) {
 
     @GetMapping(value = ["/{id}/photos"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun getUserPhotos(@PathVariable id: Long): List<UserPhotoModel> {
+    suspend fun getUserPhotos(@PathVariable id: UUID): List<UserPhotoModel> {
         val photos = userPhotoRepository.findAllByUserId(id)
         return photos.map { photo ->
             UserPhotoModel(

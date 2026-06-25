@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
+import java.util.UUID
 import javax.validation.Valid
 
 @Validated
@@ -40,14 +41,14 @@ class MailboxController(val mailboxService: MailboxService) {
 
     // DELETE /me/mailbox -> Mail/Mails
     @DeleteMapping(value = ["/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun deleteMailbox(@PathVariable userId: Long) {
+    suspend fun deleteMailbox(@PathVariable userId: UUID) {
         val currentUserId = getUserId()
         mailboxService.deleteMailboxes(currentUserId, userId)
     }
 
     // GET /mailbox/conversation/{userId} <- Conversation
     @GetMapping(value = ["/conversation/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun conversation(@PathVariable userId: Long): List<UserMailModel> {
+    suspend fun conversation(@PathVariable userId: UUID): List<UserMailModel> {
         val currentUserId = getUserId()
         return mailboxService.getConversation(currentUserId, userId).map { UserMailModel.of(it) }
     }

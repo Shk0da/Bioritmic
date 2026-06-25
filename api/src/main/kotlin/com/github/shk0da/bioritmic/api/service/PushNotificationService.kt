@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.UUID
 
 @Service
 class PushNotificationService(
@@ -20,7 +21,7 @@ class PushNotificationService(
     private val log = LoggerFactory.getLogger(PushNotificationService::class.java)
 
     @Transactional
-    suspend fun registerToken(userId: Long, token: String, platform: String) {
+    suspend fun registerToken(userId: UUID, token: String, platform: String) {
         val existing = userPushTokenRepository.findByToken(token)
         if (existing != null) {
             existing.userId = userId
@@ -45,7 +46,7 @@ class PushNotificationService(
     }
 
     suspend fun sendPushNotification(
-        userId: Long, title: String, body: String,
+        userId: UUID, title: String, body: String,
         data: Map<String, String> = emptyMap()
     ) {
         if (!isFirebaseInitialized()) {

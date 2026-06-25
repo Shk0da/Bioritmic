@@ -19,7 +19,7 @@ class Auth : Serializable {
     var id: Long? = null
 
     @Column("user_id")
-    var userId: Long? = null
+    var userId: UUID? = null
 
     @Column("access_token")
     var accessToken: String? = null

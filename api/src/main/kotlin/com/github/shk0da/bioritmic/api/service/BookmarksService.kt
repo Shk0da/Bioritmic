@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Service
 class BookmarksService(
@@ -28,14 +29,14 @@ class BookmarksService(
     private val defaultPageable = PageableRequest(1, maximumUserBookmarkSize, Sort.by(Sort.Direction.DESC, "timestamp"))
 
     @Transactional
-    suspend fun findBookmarksByUserId(userId: Long, pageable: Pageable): List<User> {
+    suspend fun findBookmarksByUserId(userId: UUID, pageable: Pageable): List<User> {
         val bookmarks = bookmarkRepository.findAllByUserId(userId, pageable.pageSize, pageable.offset)
         val usersByBookmarks = bookmarks.map { it.otherUserId!! }.toSet()
         return userRepository.findAllById(usersByBookmarks).toList()
     }
 
     @Transactional
-    suspend fun saveBookmarks(userId: Long, bookmarks: List<UserBookmark>): List<User> {
+    suspend fun saveBookmarks(userId: UUID, bookmarks: List<UserBookmark>): List<User> {
         val bookmarkList = bookmarks.filter { it.isFilledInput() }
         val currentElementsCount = bookmarkRepository.countByUserId(userId)
         val totalCount = (currentElementsCount + bookmarkList.count()).toInt()
@@ -56,7 +57,7 @@ class BookmarksService(
     }
 
     @Transactional
-    suspend fun deleteBookmarks(userId: Long, otherUserId: Long): List<User> {
+    suspend fun deleteBookmarks(userId: UUID, otherUserId: UUID): List<User> {
         try {
             bookmarkRepository.deleteByUserIdAndOtherUserId(userId, otherUserId)
         } catch (ex: DataAccessException) {
@@ -69,19 +70,19 @@ class BookmarksService(
     }
 
     @Transactional
-    suspend fun findMatches(userId: Long): List<User> {
+    suspend fun findMatches(userId: UUID): List<User> {
         val mutualIds = bookmarkRepository.findMutualBookmarkUserIds(userId)
         if (mutualIds.isEmpty()) return emptyList()
         return userRepository.findAllById(mutualIds.toSet()).toList()
     }
 
     @Transactional(readOnly = true)
-    suspend fun countMatches(userId: Long): Int {
+    suspend fun countMatches(userId: UUID): Int {
         return bookmarkRepository.findMutualBookmarkUserIds(userId).size
     }
 
     @Transactional
-    suspend fun isMatch(userId: Long, otherUserId: Long): Boolean {
+    suspend fun isMatch(userId: UUID, otherUserId: UUID): Boolean {
         return bookmarkRepository.existsByUserIdAndOtherUserId(userId, otherUserId) &&
             bookmarkRepository.existsByUserIdAndOtherUserId(otherUserId, userId)
     }

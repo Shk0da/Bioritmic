@@ -4,6 +4,7 @@ import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 import java.io.Serializable
+import java.util.UUID
 
 @Table(name = "user_interests")
 class UserInterest : Serializable {
@@ -12,7 +13,7 @@ class UserInterest : Serializable {
     var id: Long? = null
 
     @Column("user_id")
-    var userId: Long = 0
+    var userId: UUID = UUID.randomUUID()
 
     @Column("interest_id")
     var interestId: Long = 0

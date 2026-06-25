@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.util.Date
+import java.util.UUID
 
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/biorhythm")
@@ -18,7 +19,7 @@ class BiorhythmController(
 ) {
 
     @GetMapping(value = ["/{userId}/detail"], produces = [APPLICATION_JSON_VALUE])
-    suspend fun getBiorhythmDetail(@PathVariable userId: Long): BiorhythmDetail {
+    suspend fun getBiorhythmDetail(@PathVariable userId: UUID): BiorhythmDetail {
         val currentUserId = getUserId()
         val currentUser = userService.findUserById(currentUserId)
             ?: throw IllegalArgumentException("Current user not found")

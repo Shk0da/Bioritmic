@@ -8,10 +8,11 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
-interface UserRepository : CoroutineCrudRepository<User, Long> {
+interface UserRepository : CoroutineCrudRepository<User, UUID> {
 
     @Transactional(readOnly = true)
     suspend fun existsByEmail(email: String): Boolean
@@ -27,11 +28,11 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 
     @Modifying
     @Query("UPDATE users SET is_verified = :verified WHERE id = :userId")
-    suspend fun setVerified(userId: Long, verified: Boolean)
+    suspend fun setVerified(userId: UUID, verified: Boolean)
 
     @Modifying
     @Query("UPDATE users SET last_active_at = :lastActiveAt WHERE id = :userId")
-    suspend fun updateLastActiveAt(userId: Long, lastActiveAt: java.sql.Timestamp)
+    suspend fun updateLastActiveAt(userId: UUID, lastActiveAt: java.sql.Timestamp)
 
     @Query("SELECT COUNT(*) FROM users")
     suspend fun countAll(): Long

@@ -11,6 +11,7 @@ import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
@@ -22,7 +23,7 @@ interface StoryViewRepository : CoroutineCrudRepository<StoryView, Long> {
 
     @Transactional(readOnly = true)
     @Query("SELECT EXISTS(SELECT 1 FROM story_views WHERE story_id = :storyId AND viewer_id = :viewerId)")
-    suspend fun existsByStoryIdAndViewerId(storyId: Long, viewerId: Long): Boolean
+    suspend fun existsByStoryIdAndViewerId(storyId: Long, viewerId: UUID): Boolean
 
     @Transactional(readOnly = true)
     @Query("SELECT COUNT(*) FROM story_views WHERE story_id = :storyId")
@@ -43,8 +44,11 @@ class StoryViewBatchRepository(private val slaveConnectionFactory: ConnectionFac
         val sql = "SELECT story_id, COUNT(*) as cnt FROM story_views WHERE story_id IN ($placeholders) GROUP BY story_id"
 
         val result = databaseClient.sql(sql)
-            .let { query ->
-                storyIds.forEachIndexed { i, id -> query.bind("id$i", id) }
+            .let { initialQuery ->
+                var query = initialQuery
+                storyIds.forEachIndexed { i, id ->
+                    query = query.bind("id$i", id)
+                }
                 query
             }
             .fetch()
@@ -60,15 +64,18 @@ class StoryViewBatchRepository(private val slaveConnectionFactory: ConnectionFac
         return result.toMap()
     }
 
-    suspend fun existsByStoryIdsAndViewerId(storyIds: List<Long>, viewerId: Long): Set<Long> {
+    suspend fun existsByStoryIdsAndViewerId(storyIds: List<Long>, viewerId: UUID): Set<Long> {
         if (storyIds.isEmpty()) return emptySet()
 
         val placeholders = storyIds.mapIndexed { i, _ -> ":id$i" }.joinToString(",")
         val sql = "SELECT DISTINCT story_id FROM story_views WHERE story_id IN ($placeholders) AND viewer_id = :viewerId"
 
         val result = databaseClient.sql(sql)
-            .let { query ->
-                storyIds.forEachIndexed { i, id -> query.bind("id$i", id) }
+            .let { initialQuery ->
+                var query = initialQuery
+                storyIds.forEachIndexed { i, id ->
+                    query = query.bind("id$i", id)
+                }
                 query.bind("viewerId", viewerId)
             }
             .fetch()

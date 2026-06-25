@@ -5,6 +5,7 @@ import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 import java.io.Serializable
 import java.sql.Timestamp
+import java.util.UUID
 
 @Table(name = "reports")
 class Report : Serializable {
@@ -13,10 +14,10 @@ class Report : Serializable {
     var id: Long? = null
 
     @Column("reporter_id")
-    var reporterId: Long = 0
+    var reporterId: UUID = UUID.randomUUID()
 
     @Column("reported_id")
-    var reportedId: Long = 0
+    var reportedId: UUID = UUID.randomUUID()
 
     @Column("reason")
     var reason: String = ""

@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 class User {
 
     @Id
-    var id: Long? = null
+    var id: UUID? = null
 
     @Column("name")
     var name: String? = null
