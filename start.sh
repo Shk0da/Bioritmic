@@ -79,7 +79,7 @@ echo -e "  PID: $API_PID"
 
 echo -e "  Waiting for backend to start..."
 for i in $(seq 1 60); do
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/management/actuator/health 2>/dev/null || true)
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/management/actuator/health 2>/dev/null || true)
     if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
         echo -e "  ${GREEN}Backend is ready (http://localhost:8080)${NC}"
         break
@@ -121,7 +121,7 @@ echo -e "  Backend:    ${GREEN}http://localhost:8080${NC}"
 echo -e "  Swagger:    ${GREEN}http://localhost:8080/swagger-ui.html${NC}"
 echo -e "  PostgreSQL: ${GREEN}localhost:5432${NC}  (postgres/postgres)"
 echo -e "  MinIO:      ${GREEN}http://localhost:9341${NC}  (bioritmic/bioritmic)"
-echo -e "  Actuator:   ${GREEN}http://localhost:8080/management/actuator/health${NC}"
+echo -e "  Actuator:   ${GREEN}http://localhost:8081/management/actuator/health${NC}"
 echo ""
 echo -e "  API logs:   ${YELLOW}tail -f /tmp/bioritmic-api.log${NC}"
 echo -e "  UI logs:    ${YELLOW}tail -f /tmp/bioritmic-ui.log${NC}"
