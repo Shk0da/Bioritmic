@@ -28,22 +28,22 @@ describe('BookmarksService', () => {
   });
 
   it('addBookmark should POST array', () => {
-    service.addBookmark({ userId: 5 }).subscribe();
+    service.addBookmark({ userId: '5' }).subscribe();
     const req = httpMock.expectOne('/api/v1/bookmarks');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual([{ userId: 5 }]);
+    expect(req.request.body).toEqual([{ userId: '5' }]);
     req.flush([]);
   });
 
   it('addBookmark with name should include param', () => {
-    service.addBookmark({ userId: 5 }, 'TestName').subscribe();
+    service.addBookmark({ userId: '5' }, 'TestName').subscribe();
     const req = httpMock.expectOne(r => r.url === '/api/v1/bookmarks');
     expect(req.request.params.get('name')).toBe('TestName');
     req.flush([]);
   });
 
   it('deleteBookmark should DELETE /{userId}', () => {
-    service.deleteBookmark(5).subscribe();
+    service.deleteBookmark('5').subscribe();
     const req = httpMock.expectOne('/api/v1/bookmarks/5');
     expect(req.request.method).toBe('DELETE');
     req.flush([]);

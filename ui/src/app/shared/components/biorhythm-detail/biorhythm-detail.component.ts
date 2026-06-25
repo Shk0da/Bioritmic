@@ -73,7 +73,7 @@ import { UserService, BiorhythmDetail } from '../../../core/services/user.servic
   `]
 })
 export class BiorhythmDetailComponent implements OnInit {
-  @Input() userId!: number;
+  @Input() userId!: string;
   
   detail: BiorhythmDetail | null = null;
   loading = false;

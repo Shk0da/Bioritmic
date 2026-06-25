@@ -13,7 +13,7 @@ import java.util.UUID
 class UserPhotosControllerTest : ApiApplicationTests() {
 
     private lateinit var authToken: String
-    private var userId: Long? = null
+    private var userId: UUID? = null
 
     @BeforeEach
     fun setup() {
@@ -64,7 +64,7 @@ class UserPhotosControllerTest : ApiApplicationTests() {
 
     @Test
     fun `should return 404 for non-existent user photos`() {
-        val nonExistentId = 999999L
+        val nonExistentId = UUID.fromString("99999999-9999-9999-9999-999999999999")
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/user/$nonExistentId/photos")
             .header(HttpHeaders.AUTHORIZATION, authToken)

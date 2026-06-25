@@ -673,7 +673,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const userId = this.route.snapshot.paramMap.get('id');
     if (userId) {
-      this.loadUser(parseInt(userId, 10));
+      this.loadUser(userId);
     } else {
       this.error = 'Пользователь не найден';
       this.loading = false;
@@ -695,7 +695,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  private loadUser(userId: number): void {
+  private loadUser(userId: string): void {
     this.userService.getUserById(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (user) => {
         this.user = user;
@@ -712,7 +712,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadBookmarkStatus(userId: number): void {
+  private loadBookmarkStatus(userId: string): void {
     this.bookmarksService.getBookmarks({ page: 0, size: 100 }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (bookmarks: UserInfo[]) => {
         this.isBookmarked = bookmarks.some(b => b.id === userId);
@@ -723,7 +723,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadBlockStatus(userId: number): void {
+  private loadBlockStatus(userId: string): void {
     this.userService.getBlockedUsers({ page: 0, size: 100 }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (blockedUsers) => {
         this.isBlocked = blockedUsers.some(u => u.id === userId);
@@ -734,7 +734,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadMeetingStatus(userId: number): void {
+  private loadMeetingStatus(userId: string): void {
     this.meetingsService.getMeetings({ page: 0, size: 100 }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (meetings) => {
         this.meetingSent = meetings.some(m => m.userId === userId);
@@ -745,7 +745,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadPhoto(userId: number): void {
+  private loadPhoto(userId: string): void {
     this.userService.getPhoto(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
         this.photoDataUrl = this.bytesToDataUrl(bytes);

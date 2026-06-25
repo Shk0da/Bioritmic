@@ -12,7 +12,7 @@ interface MessageWithUser extends UserMail {
 }
 
 interface UserConversation {
-  userId: number;
+  userId: string;
   userName?: string;
   userPhotoUrl?: string | null;
   lastMessage: string;
@@ -180,7 +180,7 @@ export class MailboxComponent implements OnInit {
   messages: MessageWithUser[] = [];
   loading = false;
   pageable: PageableRequest = { page: 0, size: 100 };
-  currentUserId?: number;
+  currentUserId?: string;
 
   constructor(
     private mailboxService: MailboxService,
@@ -225,7 +225,7 @@ export class MailboxComponent implements OnInit {
   }
 
   private groupByUsers(): void {
-    const userMap = new Map<number, MessageWithUser>();
+    const userMap = new Map<string, MessageWithUser>();
 
     this.messages.forEach(message => {
       // Определяем собеседника (не текущего пользователя)
@@ -275,7 +275,7 @@ export class MailboxComponent implements OnInit {
     return timestamp.seconds || timestamp.time || 0;
   }
 
-  private loadUserPhoto(userId: number, conv: UserConversation): void {
+  private loadUserPhoto(userId: string, conv: UserConversation): void {
     this.userService.getPhoto(userId).subscribe({
       next: (bytes: Uint8Array) => {
         conv.userPhotoUrl = this.bytesToDataUrl(bytes);
@@ -299,7 +299,7 @@ export class MailboxComponent implements OnInit {
     return btoa(binary);
   }
 
-  async deleteConversation(userId: number): Promise<void> {
+  async deleteConversation(userId: string): Promise<void> {
     const confirmed = await this.modalService.confirm('Удалить переписку?', 'Подтверждение');
     if (confirmed) {
       this.mailboxService.deleteMail(userId).subscribe({
@@ -327,7 +327,7 @@ export class MailboxComponent implements OnInit {
     return '';
   }
 
-  openConversation(userId: number): void {
+  openConversation(userId: string): void {
     this.router.navigate(['/mailbox/conversation', userId]);
   }
 }

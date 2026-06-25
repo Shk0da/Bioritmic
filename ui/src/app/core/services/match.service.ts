@@ -21,7 +21,7 @@ export class MatchService {
     return this.http.get<MatchesResponse>(`${this.apiUrl}/matches`);
   }
 
-  checkMatch(userId: number): Observable<{ isMatch: boolean }> {
+  checkMatch(userId: string): Observable<{ isMatch: boolean }> {
     return this.http.get<{ isMatch: boolean }>(`${this.apiUrl}/matches/${userId}`);
   }
 }

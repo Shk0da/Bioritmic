@@ -26,15 +26,15 @@ export class MeetingsService {
     return this.http.post<UserMeeting[]>(this.apiUrl, [meeting], { params });
   }
 
-  deleteMeeting(userId: number): Observable<UserMeeting[]> {
+  deleteMeeting(userId: string): Observable<UserMeeting[]> {
     return this.http.delete<UserMeeting[]>(`${this.apiUrl}/${userId}`);
   }
 
-  declineMeeting(userId: number): Observable<any> {
+  declineMeeting(userId: string): Observable<any> {
     return this.http.put(`${this.apiUrl}/${userId}/decline`, {});
   }
 
-  acceptMeeting(userId: number): Observable<any> {
+  acceptMeeting(userId: string): Observable<any> {
     return this.http.put(`${this.apiUrl}/${userId}/accept`, {});
   }
 }

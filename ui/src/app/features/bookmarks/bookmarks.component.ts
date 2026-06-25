@@ -578,7 +578,7 @@ export class BookmarksComponent implements OnInit {
     return btoa(binary);
   }
 
-  removeBookmark(userId: number | undefined): void {
+  removeBookmark(userId: string | undefined): void {
     if (!userId) return;
     this.bookmarksService.deleteBookmark(userId).subscribe({
       next: () => {

@@ -4,9 +4,9 @@ import { SwipeDirection, SwipeCard, UserInfo } from '../models/user.model';
 describe('SwipeService', () => {
   let service: SwipeService;
   const mockUsers: UserInfo[] = [
-    { id: 1, name: 'Alice', email: 'a@test.com', birthday: '1990-01-01', gender: 'WOMAN' as any },
-    { id: 2, name: 'Bob', email: 'b@test.com', birthday: '1988-05-05', gender: 'MAN' as any },
-    { id: 3, name: 'Charlie', email: 'c@test.com', birthday: '1995-09-09', gender: 'MAN' as any }
+    { id: '1', name: 'Alice', email: 'a@test.com', birthday: '1990-01-01', gender: 'WOMAN' as any },
+    { id: '2', name: 'Bob', email: 'b@test.com', birthday: '1988-05-05', gender: 'MAN' as any },
+    { id: '3', name: 'Charlie', email: 'c@test.com', birthday: '1995-09-09', gender: 'MAN' as any }
   ];
 
   beforeEach(() => {
@@ -119,7 +119,7 @@ describe('SwipeService', () => {
 
     it('should cap history at maxHistory', () => {
       const manyUsers: UserInfo[] = Array.from({ length: 15 }, (_, i) => ({
-        id: i, name: `U${i}`, email: `u${i}@t.com`, birthday: '1990-01-01', gender: 'MAN' as any
+        id: String(i), name: `U${i}`, email: `u${i}@t.com`, birthday: '1990-01-01', gender: 'MAN' as any
       }));
       service.setCards(manyUsers);
       for (let i = 0; i < 15; i++) {

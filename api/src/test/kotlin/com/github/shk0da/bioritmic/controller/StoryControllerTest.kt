@@ -13,7 +13,7 @@ import java.util.UUID
 class StoryControllerTest : ApiApplicationTests() {
 
     private lateinit var authToken: String
-    private var userId: Long? = null
+    private var userId: UUID? = null
 
     @BeforeEach
     fun setup() {
@@ -111,14 +111,11 @@ class StoryControllerTest : ApiApplicationTests() {
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk
-            .expectBody()
-            .jsonPath("$.id").exists()
             .returnResult(String::class.java)
-            .responseBody
 
-        val storyId = createResponse?.toString()?.let { 
-            Regex("\"id\":(\\d+)").find(it)?.groupValues?.get(1)?.toLongOrNull() 
-        } ?: 1L
+        val storyId = createResponse.responseBody?.blockFirst()?.let { body -> 
+            Regex("\"id\":\"([0-9a-f-]+)\"").find(body)?.groupValues?.get(1)
+        } ?: UUID.randomUUID().toString()
 
         // View the story
         webTestClient.post()

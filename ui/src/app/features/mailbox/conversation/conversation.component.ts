@@ -456,12 +456,12 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
   messages: MessageWithUser[] = [];
   loading = false;
   sending = false;
-  otherUserId!: number;
+  otherUserId!: string;
   otherUserName?: string;
   otherUserPhotoUrl?: string | null;
   otherUserOnline = false;
   newMessage = '';
-  currentUserId?: number;
+  currentUserId?: string;
   private shouldScroll = false;
   showEmojiPicker = false;
   private refreshInterval: any = null;
@@ -490,7 +490,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
   ) {}
 
   ngOnInit(): void {
-    this.otherUserId = +this.route.snapshot.paramMap.get('userId')!;
+    this.otherUserId = this.route.snapshot.paramMap.get('userId')!;
     this.loadCurrentUserId();
   }
 

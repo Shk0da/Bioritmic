@@ -26,7 +26,7 @@ export class BookmarksService {
     return this.http.post<UserInfo[]>(this.apiUrl, [bookmark], { params });
   }
 
-  deleteBookmark(userId: number): Observable<UserInfo[]> {
+  deleteBookmark(userId: string): Observable<UserInfo[]> {
     return this.http.delete<UserInfo[]>(`${this.apiUrl}/${userId}`);
   }
 }

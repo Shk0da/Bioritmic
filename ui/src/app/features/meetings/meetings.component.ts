@@ -207,7 +207,7 @@ export class MeetingsComponent implements OnInit {
     });
   }
 
-  private loadUserPhoto(userId: number, meeting: MeetingWithUser): void {
+  private loadUserPhoto(userId: string, meeting: MeetingWithUser): void {
     this.userService.getPhoto(userId).subscribe({
       next: (bytes: Uint8Array) => {
         meeting.userPhotoUrl = this.bytesToDataUrl(bytes);
@@ -231,7 +231,7 @@ export class MeetingsComponent implements OnInit {
     return btoa(binary);
   }
 
-  deleteMeeting(userId: number): void {
+  deleteMeeting(userId: string): void {
     this.meetingsService.deleteMeeting(userId).subscribe({
       next: () => {
         this.loadMeetings();

@@ -14,7 +14,7 @@ import java.util.UUID
 class AdminControllerTest : ApiApplicationTests() {
 
     private lateinit var adminToken: String
-    private var adminId: Long? = null
+    private var adminId: UUID? = null
 
     @BeforeEach
     fun setup() {

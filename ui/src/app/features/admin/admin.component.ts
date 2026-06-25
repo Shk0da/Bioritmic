@@ -1,4 +1,6 @@
 import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { AdminService, AdminDashboard, Report, AdminUser, SystemMetrics } from '../../core/services/admin.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -7,7 +9,7 @@ import { NgClass, DecimalPipe } from '@angular/common';
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [NgClass, DecimalPipe],
+  imports: [NgClass, DecimalPipe, RouterLink, FormsModule],
   template: `
     <div class="page-header mb-4">
       <h1 class="page-title">
@@ -100,6 +102,40 @@ import { NgClass, DecimalPipe } from '@angular/common';
             <div class="spinner-border" role="status"></div>
           </div>
         } @else {
+          <div class="card mb-3">
+            <div class="card-body py-2">
+              <div class="row g-2 align-items-end">
+                <div class="col-md-6">
+                  <label class="form-label form-label-sm mb-0">Поиск</label>
+                  <input type="text" class="form-control form-control-sm" placeholder="Имя или email..."
+                    [(ngModel)]="filterSearch">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label form-label-sm mb-0">Роль</label>
+                  <select class="form-select form-select-sm" [(ngModel)]="filterRole">
+                    <option value="">Все роли</option>
+                    <option value="ROLE_ADMIN">ADMIN</option>
+                    <option value="USER">USER</option>
+                    <option value="BANNED">BANNED</option>
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label form-label-sm mb-0">Верификация</label>
+                  <select class="form-select form-select-sm" [(ngModel)]="filterVerified">
+                    <option value="">Все</option>
+                    <option value="verified">Верифицированы</option>
+                    <option value="unverified">Не верифицированы</option>
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-sm btn-outline-secondary w-100" (click)="filterSearch = ''; filterRole = ''; filterVerified = ''">
+                    <i class="bi bi-x-lg me-1"></i>Сброс
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="table-responsive">
             <table class="table table-hover">
               <thead>
@@ -109,14 +145,19 @@ import { NgClass, DecimalPipe } from '@angular/common';
                   <th>Email</th>
                   <th>Возраст</th>
                   <th>Роль</th>
+                  <th>Верификация</th>
                   <th>Действия</th>
                 </tr>
               </thead>
               <tbody>
-                @for (user of users; track user.id) {
+                @for (user of filteredUsers; track user.id) {
                   <tr>
                     <td>{{ user.id }}</td>
-                    <td>{{ user.name || '—' }}</td>
+                    <td>
+                      <a [routerLink]="['/user', user.id]" class="text-decoration-none fw-semibold">
+                        {{ user.name || '—' }}
+                      </a>
+                    </td>
                     <td>{{ user.email || '—' }}</td>
                     <td>{{ user.age || '—' }}</td>
                     <td>
@@ -125,8 +166,27 @@ import { NgClass, DecimalPipe } from '@angular/common';
                       </span>
                     </td>
                     <td>
+                      @if (user.isVerified) {
+                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Да</span>
+                      } @else {
+                        <span class="badge bg-secondary"><i class="bi bi-clock me-1"></i>Нет</span>
+                      }
+                    </td>
+                    <td>
                       <div class="btn-group btn-group-sm">
+                        <a [routerLink]="['/user', user.id]" class="btn btn-outline-info" title="Профиль">
+                          <i class="bi bi-eye"></i>
+                        </a>
                         @if (!user.role?.includes('ADMIN')) {
+                          @if (user.isVerified) {
+                            <button class="btn btn-outline-warning" (click)="unverifyUser(user.id!)" title="Снять верификацию">
+                              <i class="bi bi-person-x"></i>
+                            </button>
+                          } @else {
+                            <button class="btn btn-outline-success" (click)="verifyUser(user.id!)" title="Верифицировать">
+                              <i class="bi bi-person-check"></i>
+                            </button>
+                          }
                           @if (user.role?.includes('BANNED')) {
                             <button class="btn btn-success" (click)="unbanUser(user.id!)" title="Разбанить">
                               <i class="bi bi-shield-check"></i>
@@ -141,6 +201,16 @@ import { NgClass, DecimalPipe } from '@angular/common';
                           </button>
                         }
                       </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-3">
+                      @if (filterSearch || filterRole) {
+                        <i class="bi bi-search fs-4 d-block mb-1"></i>Нет пользователей по фильтру
+                      } @else {
+                        <i class="bi bi-people fs-4 d-block mb-1"></i>Нет пользователей
+                      }
                     </td>
                   </tr>
                 }
@@ -295,6 +365,23 @@ export class AdminComponent implements OnInit, OnDestroy {
   reports: Report[] = [];
   metrics: SystemMetrics | null = null;
 
+  filterSearch = '';
+  filterRole = '';
+  filterVerified = '';
+
+  get filteredUsers(): AdminUser[] {
+    return this.users.filter(u => {
+      const matchSearch = !this.filterSearch ||
+        (u.name?.toLowerCase().includes(this.filterSearch.toLowerCase())) ||
+        (u.email?.toLowerCase().includes(this.filterSearch.toLowerCase()));
+      const matchRole = !this.filterRole || u.role === this.filterRole;
+      const matchVerified = this.filterVerified === '' || this.filterVerified === 'all' ||
+        (this.filterVerified === 'verified' && u.isVerified === true) ||
+        (this.filterVerified === 'unverified' && u.isVerified !== true);
+      return matchSearch && matchRole && matchVerified;
+    });
+  }
+
   constructor(
     private adminService: AdminService,
     private toastService: ToastService
@@ -371,7 +458,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     }
   }
 
-  banUser(userId: number): void {
+  banUser(userId: string): void {
     this.adminService.banUser(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.toastService.success('Пользователь заблокирован');
@@ -381,7 +468,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
   }
 
-  unbanUser(userId: number): void {
+  unbanUser(userId: string): void {
     this.adminService.unbanUser(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.toastService.success('Пользователь разблокирован');
@@ -391,7 +478,29 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
   }
 
-  deleteUser(userId: number): void {
+  verifyUser(userId: string): void {
+    this.adminService.verifyUser(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.toastService.success('Пользователь верифицирован');
+        this.loadUsers();
+        this.loadDashboard();
+      },
+      error: () => this.toastService.error('Ошибка верификации')
+    });
+  }
+
+  unverifyUser(userId: string): void {
+    this.adminService.unverifyUser(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.toastService.success('Верификация снята');
+        this.loadUsers();
+        this.loadDashboard();
+      },
+      error: () => this.toastService.error('Ошибка')
+    });
+  }
+
+  deleteUser(userId: string): void {
     this.adminService.deleteUser(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.toastService.success('Пользователь удалён');

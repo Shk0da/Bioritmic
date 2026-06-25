@@ -13,7 +13,7 @@ import java.util.UUID
 class PhotoS3ControllerTest : ApiApplicationTests() {
 
     private lateinit var authToken: String
-    private var userId: Long? = null
+    private var userId: UUID? = null
 
     @BeforeEach
     fun setup() {

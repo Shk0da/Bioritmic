@@ -43,7 +43,9 @@ data class UserInfo(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val isPro: Boolean? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    val role: String? = null
+    val role: String? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val isVerified: Boolean? = null
 ) : BasicPresentation {
 
     companion object {
@@ -58,7 +60,8 @@ data class UserInfo(
                 birthday = Date(user.birthday!!.time),
                 gender = user.getGender(),
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
-                image = ImageUtils.getProfileImageUri(user.id!!)
+                image = ImageUtils.getProfileImageUri(user.id!!),
+                isVerified = user.isVerified
             )
         }
 
@@ -69,7 +72,8 @@ data class UserInfo(
                 birthday = Date(user.birthday!!.time),
                 gender = user.getGender(),
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
-                image = ImageUtils.getProfileImageUri(user.id!!)
+                image = ImageUtils.getProfileImageUri(user.id!!),
+                isVerified = user.isVerified
             )
         }
 

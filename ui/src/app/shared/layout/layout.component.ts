@@ -31,21 +31,23 @@ import { Subscription, filter } from 'rxjs';
           <a routerLink="/swipe" routerLinkActive="active" class="nav-btn" title="Поиск">
             <i class="bi bi-people"></i>
           </a>
-          <a routerLink="/bookmarks" routerLinkActive="active" class="nav-btn" title="Избранное">
-            <i class="bi bi-bookmark-heart"></i>
-          </a>
-          <a routerLink="/mailbox" routerLinkActive="active" class="nav-btn" title="Сообщения">
-            <i class="bi bi-chat-heart"></i>
-            @if (unreadCount > 0) {
-              <span class="notification-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
-            }
-          </a>
-          <a routerLink="/meetings" routerLinkActive="active" class="nav-btn" title="Встречи">
-            <i class="bi bi-calendar-event"></i>
-            @if (newMeetingsCount > 0) {
-              <span class="notification-badge badge-meetings">{{ newMeetingsCount > 99 ? '99+' : newMeetingsCount }}</span>
-            }
-          </a>
+          @if (isUserVerified) {
+            <a routerLink="/bookmarks" routerLinkActive="active" class="nav-btn" title="Избранное">
+              <i class="bi bi-bookmark-heart"></i>
+            </a>
+            <a routerLink="/mailbox" routerLinkActive="active" class="nav-btn" title="Сообщения">
+              <i class="bi bi-chat-heart"></i>
+              @if (unreadCount > 0) {
+                <span class="notification-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+              }
+            </a>
+            <a routerLink="/meetings" routerLinkActive="active" class="nav-btn" title="Встречи">
+              <i class="bi bi-calendar-event"></i>
+              @if (newMeetingsCount > 0) {
+                <span class="notification-badge badge-meetings">{{ newMeetingsCount > 99 ? '99+' : newMeetingsCount }}</span>
+              }
+            </a>
+          }
           @if (isUserAdmin) {
             <a routerLink="/admin" routerLinkActive="active" class="nav-btn" title="Админ-панель">
               <i class="bi bi-shield-lock"></i>
@@ -68,6 +70,14 @@ import { Subscription, filter } from 'rxjs';
     </header>
 
     <main class="main-container">
+      @if (!isUserVerified) {
+        <div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <div>
+            <strong>Аккаунт не верифицирован.</strong> Подтвердите email для полного доступа к функционалу.
+          </div>
+        </div>
+      }
       <router-outlet></router-outlet>
     </main>
   `,
@@ -155,6 +165,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   unreadCount = 0;
   newMeetingsCount = 0;
   isUserAdmin = false;
+  isUserVerified = true;
   private pollingIntervalId: any = null;
   private routerSubscription: Subscription | null = null;
   private userSubscription: Subscription | null = null;
@@ -172,6 +183,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
       this.isUserAdmin = !!(user?.role && user.role.includes('ADMIN'));
+      this.isUserVerified = user?.isVerified !== false;
       if (user?.id) {
         this.loadUserPhoto(user.id);
         this.startPolling();
@@ -271,7 +283,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.newMeetingsCount = 0;
   }
 
-  private loadUserPhoto(userId: number): void {
+  private loadUserPhoto(userId: string): void {
     this.userService.getPhoto(userId).subscribe({
       next: (bytes: Uint8Array) => {
         this.userPhoto = this.bytesToDataUrl(bytes);

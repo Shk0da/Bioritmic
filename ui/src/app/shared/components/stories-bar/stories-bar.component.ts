@@ -198,7 +198,7 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
   }
 
   private groupStoriesByUser(stories: Story[]): void {
-    const grouped = new Map<number, StoryGroup>();
+    const grouped = new Map<string, StoryGroup>();
 
     for (const story of stories) {
       if (!grouped.has(story.userId)) {
@@ -253,7 +253,7 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
 }
 
 export interface StoryGroup {
-  userId: number;
+  userId: string;
   stories: Story[];
   viewedByCurrentUser: boolean;
   userName: string;

@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 export interface Story {
   id: number;
-  userId: number;
+  userId: string;
   mediaUrl: string;
   caption?: string;
   expiresAt: number;

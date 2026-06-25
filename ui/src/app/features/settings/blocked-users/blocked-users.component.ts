@@ -344,7 +344,7 @@ export class BlockedUsersComponent implements OnInit {
   pageable: PageableRequest = { page: 0, size: 20 };
   hasMore = false;
   showConfirmModal = false;
-  userToUnblock?: number;
+  userToUnblock?: string;
 
   constructor(
     private userService: UserService,
@@ -410,7 +410,7 @@ export class BlockedUsersComponent implements OnInit {
     });
   }
 
-  unblockUser(userId: number): void {
+  unblockUser(userId: string): void {
     this.userToUnblock = userId;
     this.showConfirmModal = true;
   }

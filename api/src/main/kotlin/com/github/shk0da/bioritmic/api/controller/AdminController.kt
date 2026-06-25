@@ -101,6 +101,28 @@ class AdminController(
         return mapOf("success" to true, "userId" to userId)
     }
 
+    @PostMapping(value = ["/users/{userId}/verify"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun verifyUser(@PathVariable userId: UUID): Map<String, Any> {
+        requireAdmin()
+        val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        userRepository.setVerified(userId, true)
+        log.info("Admin verified user {} ({})", userId, user.name)
+        return mapOf("success" to true, "userId" to userId)
+    }
+
+    @PostMapping(value = ["/users/{userId}/unverify"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun unverifyUser(@PathVariable userId: UUID): Map<String, Any> {
+        requireAdmin()
+        val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
+        if (UserRoleConstants.ROLE_ADMIN in roles) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot unverify an admin"))
+        }
+        userRepository.setVerified(userId, false)
+        log.info("Admin unverified user {} ({})", userId, user.name)
+        return mapOf("success" to true, "userId" to userId)
+    }
+
     @DeleteMapping(value = ["/users/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun deleteUser(@PathVariable userId: UUID): Map<String, Any> {
         requireAdmin()

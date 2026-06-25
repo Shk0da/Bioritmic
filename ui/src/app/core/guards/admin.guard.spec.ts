@@ -24,7 +24,7 @@ describe('adminGuard', () => {
 
   it('should return true when authenticated and user has ADMIN role', () => {
     authService.isAuthenticated.and.returnValue(true);
-    authService.getCurrentUser.and.returnValue({ id: 1, name: 'Admin', email: 'a@t.com', role: 'ADMIN' });
+    authService.getCurrentUser.and.returnValue({ id: '1', name: 'Admin', email: 'a@t.com', role: 'ADMIN' });
 
     TestBed.runInInjectionContext(() => {
       const result = adminGuard();
@@ -46,7 +46,7 @@ describe('adminGuard', () => {
 
   it('should redirect to /swipe when user has no ADMIN role', () => {
     authService.isAuthenticated.and.returnValue(true);
-    authService.getCurrentUser.and.returnValue({ id: 1, name: 'User', email: 'u@t.com', role: 'USER' });
+    authService.getCurrentUser.and.returnValue({ id: '1', name: 'User', email: 'u@t.com', role: 'USER' });
     const urlTree = {} as UrlTree;
     router.createUrlTree.and.returnValue(urlTree);
 
@@ -59,7 +59,7 @@ describe('adminGuard', () => {
 
   it('should redirect to /swipe when user has no role', () => {
     authService.isAuthenticated.and.returnValue(true);
-    authService.getCurrentUser.and.returnValue({ id: 1, name: 'User', email: 'u@t.com' });
+    authService.getCurrentUser.and.returnValue({ id: '1', name: 'User', email: 'u@t.com' });
     const urlTree = {} as UrlTree;
     router.createUrlTree.and.returnValue(urlTree);
 

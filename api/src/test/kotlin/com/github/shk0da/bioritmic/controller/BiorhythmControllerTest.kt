@@ -13,8 +13,8 @@ import java.util.UUID
 class BiorhythmControllerTest : ApiApplicationTests() {
 
     private lateinit var authToken: String
-    private var userId: Long? = null
-    private var otherUserId: Long? = null
+    private var userId: UUID? = null
+    private var otherUserId: UUID? = null
 
     @BeforeEach
     fun setup() {
@@ -65,8 +65,19 @@ class BiorhythmControllerTest : ApiApplicationTests() {
         userId = auth?.userId
         authToken = "Bearer ${auth?.accessToken}"
         
-        // Get second user ID
-        otherUserId = userId?.plus(1)
+        // Get second user ID - login as second user
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(email2, "12345")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val otherAuth = authTokenCache.entries.find {
+            it.value.userId != null && it.value.userId != userId
+        }?.value
+        otherUserId = otherAuth?.userId
     }
 
     @Test
@@ -85,7 +96,7 @@ class BiorhythmControllerTest : ApiApplicationTests() {
 
     @Test
     fun `should return 404 for non-existent user biorhythm`() {
-        val nonExistentId = 999999L
+        val nonExistentId = UUID.fromString("99999999-9999-9999-9999-999999999999")
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/biorhythm/$nonExistentId/detail")
             .header(HttpHeaders.AUTHORIZATION, authToken)

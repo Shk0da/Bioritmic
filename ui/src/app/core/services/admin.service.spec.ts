@@ -32,21 +32,21 @@ describe('AdminService', () => {
   });
 
   it('banUser should POST', () => {
-    service.banUser(5).subscribe();
+    service.banUser('5').subscribe();
     const req = httpMock.expectOne('/api/v1/admin/users/5/ban');
     expect(req.request.method).toBe('POST');
     req.flush({});
   });
 
   it('unbanUser should POST', () => {
-    service.unbanUser(5).subscribe();
+    service.unbanUser('5').subscribe();
     const req = httpMock.expectOne('/api/v1/admin/users/5/unban');
     expect(req.request.method).toBe('POST');
     req.flush({});
   });
 
   it('deleteUser should DELETE', () => {
-    service.deleteUser(5).subscribe();
+    service.deleteUser('5').subscribe();
     const req = httpMock.expectOne('/api/v1/admin/users/5');
     expect(req.request.method).toBe('DELETE');
     req.flush({});
@@ -72,14 +72,14 @@ describe('AdminService', () => {
   });
 
   it('createReport should POST /api/v1/report', () => {
-    service.createReport(42, 'SPAM', 'Test description').subscribe(r => {
+    service.createReport('42', 'SPAM', 'Test description').subscribe(r => {
       expect(r.id).toBe(1);
       expect(r.status).toBe('PENDING');
     });
     const req = httpMock.expectOne('/api/v1/report');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({
-      reported_user_id: 42,
+      reported_user_id: '42',
       reason: 'SPAM',
       description: 'Test description'
     });
@@ -87,10 +87,10 @@ describe('AdminService', () => {
   });
 
   it('createReport should send null description when not provided', () => {
-    service.createReport(10, 'INAPPROPRIATE').subscribe();
+    service.createReport('10', 'INAPPROPRIATE').subscribe();
     const req = httpMock.expectOne('/api/v1/report');
     expect(req.request.body).toEqual({
-      reported_user_id: 10,
+      reported_user_id: '10',
       reason: 'INAPPROPRIATE',
       description: null
     });
