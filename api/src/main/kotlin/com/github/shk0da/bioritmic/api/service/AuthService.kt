@@ -13,6 +13,7 @@ import com.github.shk0da.bioritmic.api.utils.SecurityUtils.generateRandomPasswor
 import org.infinispan.Cache
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Service
 class AuthService(
@@ -23,7 +24,7 @@ class AuthService(
 ) {
 
     @Transactional
-    suspend fun deleteAuthByUserId(userId: Long) {
+    suspend fun deleteAuthByUserId(userId: UUID) {
         val auth = authRepository.findByUserId(userId)
         if (null != auth?.accessToken) {
             authTokenCache.remove(auth.accessToken)

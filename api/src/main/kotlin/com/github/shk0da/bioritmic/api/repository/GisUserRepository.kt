@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDateTime
+import java.util.UUID
 import kotlin.math.cos
 
 @Repository
@@ -25,7 +26,7 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
     private val maxLimit = 500
 
     suspend fun findNearest(
-        userId: Long,
+        userId: UUID,
         lat: Double, lon: Double,
         distanceInKilometers: Double,
         gender: Gender? = null, ageMin: Int? = null, ageMax: Int? = null
@@ -89,7 +90,7 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
             .all()
             .map { row ->
                 GisUser().apply {
-                    this.id = row["id"] as? Long
+                    this.id = row["id"] as? UUID
                     this.name = row["name"] as? String
                     this.birthday = (row["birthday"] as? LocalDateTime)
                         ?.let { Timestamp.from(it.toInstant(defaultZone)) }

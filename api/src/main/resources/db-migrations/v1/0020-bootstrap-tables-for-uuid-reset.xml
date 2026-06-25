@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0020-bootstrap-truncate-tables" author="uuid-migration">
+        <comment>Create placeholder tables required by 0021 TRUNCATE on clean databases.</comment>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS users (id BIGSERIAL PRIMARY KEY);
+            CREATE TABLE IF NOT EXISTS user_settings (user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS authorizations (id BIGSERIAL PRIMARY KEY, user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS gis_data (user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS bookmarks (user_id BIGINT, other_user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS mailbox (id BIGSERIAL PRIMARY KEY, from_user_id BIGINT, to_user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS meetings (user_id BIGINT, other_user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS user_blocks (user_id BIGINT, other_user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS user_photos (id BIGSERIAL PRIMARY KEY, user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS user_roles (id BIGSERIAL PRIMARY KEY, user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS user_push_tokens (id BIGSERIAL PRIMARY KEY, user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS user_interests (id BIGSERIAL PRIMARY KEY, user_id BIGINT, interest_id BIGINT);
+            CREATE TABLE IF NOT EXISTS user_prompt_answers (id BIGSERIAL PRIMARY KEY, user_id BIGINT, prompt_id BIGINT);
+            CREATE TABLE IF NOT EXISTS stories (id BIGSERIAL PRIMARY KEY, user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS story_views (id BIGSERIAL PRIMARY KEY, story_id BIGINT, viewer_id BIGINT);
+            CREATE TABLE IF NOT EXISTS profile_boosts (id BIGSERIAL PRIMARY KEY, user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS subscriptions (id BIGSERIAL PRIMARY KEY, user_id BIGINT);
+            CREATE TABLE IF NOT EXISTS reports (id BIGSERIAL PRIMARY KEY, reporter_id BIGINT, reported_id BIGINT);
+            CREATE TABLE IF NOT EXISTS bans (id BIGSERIAL PRIMARY KEY, user_id BIGINT);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

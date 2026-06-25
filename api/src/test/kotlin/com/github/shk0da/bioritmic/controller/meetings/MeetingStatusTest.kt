@@ -17,10 +17,10 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 class MeetingStatusTest : ApiApplicationTests() {
 
     private lateinit var userAToken: String
-    private var userAId: Long = 0
+    private var userAId: UUID = UUID(0, 0)
 
     private lateinit var userBToken: String
-    private var userBId: Long = 0
+    private var userBId: UUID = UUID(0, 0)
 
     @BeforeEach
     fun setup() {

@@ -7,6 +7,7 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
@@ -16,7 +17,7 @@ interface ProfileBoostRepository : CoroutineCrudRepository<ProfileBoost, Long> {
         "SELECT * FROM profile_boosts WHERE user_id = :userId " +
             "AND expires_at > NOW() ORDER BY expires_at DESC LIMIT 1"
     )
-    suspend fun findActiveByUserId(userId: Long): ProfileBoost?
+    suspend fun findActiveByUserId(userId: UUID): ProfileBoost?
 
     @Query("DELETE FROM profile_boosts WHERE expires_at <= :now")
     suspend fun deleteExpired(now: Timestamp)

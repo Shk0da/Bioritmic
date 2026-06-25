@@ -9,10 +9,11 @@ import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.service.BiorhythmService
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
 import java.util.Date
+import java.util.UUID
 
 data class UserInfo(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    val id: Long? = null,
+    val id: UUID? = null,
     val name: String? = null,
     val email: String? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")

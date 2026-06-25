@@ -4,6 +4,7 @@ import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 import java.sql.Timestamp
+import java.util.UUID
 
 @Table(name = "stories")
 class Story {
@@ -12,7 +13,7 @@ class Story {
     var id: Long? = null
 
     @Column("user_id")
-    var userId: Long? = null
+    var userId: UUID? = null
 
     @Column("media_url")
     var mediaUrl: String? = null

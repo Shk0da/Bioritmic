@@ -46,6 +46,17 @@ class ApiApplicationTests {
     fun clearDatabase() {
         // Clear database tables
         val tables = listOf(
+            "story_views",
+            "stories",
+            "user_prompt_answers",
+            "user_push_tokens",
+            "user_roles",
+            "user_photos",
+            "profile_boosts",
+            "subscriptions",
+            "reports",
+            "bans",
+            "user_interests",
             "user_blocks",
             "meetings",
             "mailbox",
@@ -53,7 +64,7 @@ class ApiApplicationTests {
             "gis_data",
             "authorizations",
             "user_settings",
-            "users"
+            "users",
         )
 
         tables.forEach { table ->

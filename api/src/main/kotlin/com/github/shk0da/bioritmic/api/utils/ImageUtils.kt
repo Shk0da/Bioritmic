@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.lang.Math.min
+import java.util.UUID
 import javax.imageio.ImageIO
 
 object ImageUtils {
@@ -41,11 +42,11 @@ object ImageUtils {
         return outputStream.toByteArray()
     }
 
-    fun getProfileImageUri(userId: Long): String {
+    fun getProfileImageUri(userId: UUID): String {
         return "/api/v1/user/$userId/photo"
     }
 
-    fun s3KeyForPhoto(userId: Long, tag: ImageTag): String {
+    fun s3KeyForPhoto(userId: UUID, tag: ImageTag): String {
         return "profile/$userId/${tag.name.lowercase()}.jpg"
     }
 

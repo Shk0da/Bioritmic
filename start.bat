@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 
 set ROOT_DIR=%~dp0
 set API_DIR=%ROOT_DIR%api
@@ -13,20 +13,29 @@ echo.
 echo [1/5] Starting PostgreSQL (Docker)...
 docker compose up -d postgres
 echo   Waiting for PostgreSQL to be ready...
-:wait_pg
-timeout /t 1 /nobreak >nul
-docker compose exec -T postgres pg_isready -U postgres -d bioritmic >nul 2>&1
-if errorlevel 1 goto wait_pg
+for /l %%i in (1,1,60) do (
+    docker compose exec -T postgres pg_isready -U postgres -d bioritmic >nul 2>&1
+    if not errorlevel 1 goto pg_ready
+    timeout /t 1 /nobreak >nul
+)
+echo   PostgreSQL failed to start in 60 seconds
+exit /b 1
+:pg_ready
 echo   PostgreSQL is ready (port 5432)
 
 echo.
-echo [2/5] Checking MinIO (S3 storage)...
-curl -sf http://localhost:9341 >nul 2>&1
-if not errorlevel 1 (
-    echo   MinIO is already running (port 9341)
-) else (
-    echo   MinIO not found. Skipping (S3 features won't work^)
+echo [2/5] Starting MinIO (S3 storage)...
+docker compose up -d minio >nul 2>&1
+echo   Waiting for MinIO to be ready...
+for /l %%i in (1,1,60) do (
+    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:9341' -TimeoutSec 2; exit 0 } catch { exit 1 }" >nul 2>&1
+    if not errorlevel 1 goto minio_ready
+    timeout /t 1 /nobreak >nul
 )
+echo   MinIO failed to start in 60 seconds
+exit /b 1
+:minio_ready
+echo   MinIO is ready (port 9341^)
 
 echo.
 echo [3/5] Starting Backend (Kotlin/Spring Boot on :8080^)...
@@ -34,17 +43,33 @@ cd /d "%ROOT_DIR%"
 set JAVA_HOME=C:\Program Files\OpenJDK\jdk-21
 start "bioritmic-api" cmd /c ".\gradlew.bat :api:bootRun > %TEMP%\bioritmic-api.log 2>&1"
 echo   Waiting for backend to start...
-:wait_api
-timeout /t 2 /nobreak >nul
-curl -s -o nul -w "%%{http_code}" http://localhost:8080/management/actuator/health 2>nul | findstr /r "^200$ ^401$ ^403$" >nul 2>&1
-if errorlevel 1 goto wait_api
+for /l %%i in (1,1,90) do (
+    set "HTTP_CODE="
+    for /f %%H in ('curl -s -o nul -w "%%{http_code}" http://localhost:8080/management/actuator/health 2^>nul') do set "HTTP_CODE=%%H"
+    if "!HTTP_CODE!"=="200" goto api_ready
+    if "!HTTP_CODE!"=="401" goto api_ready
+    if "!HTTP_CODE!"=="403" goto api_ready
+    timeout /t 2 /nobreak >nul
+)
+echo   Backend failed to start in expected time. Check %TEMP%\bioritmic-api.log
+exit /b 1
+:api_ready
 echo   Backend is ready (http://localhost:8080^)
 
 echo.
 echo [4/5] Starting Frontend (Angular on :4200^)...
 cd /d "%UI_DIR%"
 start "bioritmic-ui" cmd /c "npx ng serve --proxy-config proxy.conf.json --open > %TEMP%\bioritmic-ui.log 2>&1"
-echo   Frontend starting...
+echo   Waiting for frontend to start...
+for /l %%i in (1,1,120) do (
+    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:4200' -TimeoutSec 2; exit 0 } catch { exit 1 }" >nul 2>&1
+    if not errorlevel 1 goto ui_ready
+    timeout /t 1 /nobreak >nul
+)
+echo   Frontend failed to start in expected time. Check %TEMP%\bioritmic-ui.log
+exit /b 1
+:ui_ready
+echo   Frontend is ready (http://localhost:4200^)
 
 echo.
 echo ========================================

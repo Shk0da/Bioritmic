@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 @Service
@@ -27,7 +28,7 @@ class ReportService(
     private var autoBanThreshold: Int = 5
 
     @Transactional
-    suspend fun createReport(reporterId: Long, reportedId: Long, reason: String, description: String?): Report {
+    suspend fun createReport(reporterId: UUID, reportedId: UUID, reason: String, description: String?): Report {
         val report = Report()
         report.reporterId = reporterId
         report.reportedId = reportedId
@@ -43,7 +44,7 @@ class ReportService(
         return saved
     }
 
-    private suspend fun checkAndBanIfNeeded(userId: Long) {
+    private suspend fun checkAndBanIfNeeded(userId: UUID) {
         val pendingCount = reportRepository.countPendingByReportedId(userId)
         if (pendingCount >= autoBanThreshold) {
             banUser(userId, "Автоматический бан: $pendingCount жалоб")
@@ -51,7 +52,7 @@ class ReportService(
     }
 
     @Transactional
-    suspend fun banUser(userId: Long, reason: String) {
+    suspend fun banUser(userId: UUID, reason: String) {
         val ban = Ban()
         ban.userId = userId
         ban.reason = reason
@@ -63,11 +64,11 @@ class ReportService(
         log.warn("User {} banned: {}", userId, reason)
     }
 
-    suspend fun isUserBanned(userId: Long): Boolean {
+    suspend fun isUserBanned(userId: UUID): Boolean {
         return banRepository.findActiveByUserId(userId) != null
     }
 
-    suspend fun getBan(userId: Long): Ban? {
+    suspend fun getBan(userId: UUID): Ban? {
         return banRepository.findActiveByUserId(userId)
     }
 }

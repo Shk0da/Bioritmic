@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0021" author="uuid-migration">
+        <comment>Convert user IDs from BIGINT to UUID</comment>
+
+        <sql>CREATE EXTENSION IF NOT EXISTS "uuid-ossp";</sql>
+
+        <!-- Drop all dependent tables first (foreign keys) -->
+        <sql>TRUNCATE user_blocks, meetings, mailbox, bookmarks, gis_data, authorizations, user_settings, user_roles, user_push_tokens, user_prompt_answers, stories, story_views, profile_boosts, subscriptions, reports, bans, user_interests, user_photos, users RESTART IDENTITY CASCADE;</sql>
+
+        <!-- Drop and recreate all tables with UUID -->
+        <sql>
+        DROP TABLE IF EXISTS user_blocks CASCADE;
+        DROP TABLE IF EXISTS meetings CASCADE;
+        DROP TABLE IF EXISTS mailbox CASCADE;
+        DROP TABLE IF EXISTS bookmarks CASCADE;
+        DROP TABLE IF EXISTS story_views CASCADE;
+        DROP TABLE IF EXISTS stories CASCADE;
+        DROP TABLE IF EXISTS user_prompt_answers CASCADE;
+        DROP TABLE IF EXISTS profile_boosts CASCADE;
+        DROP TABLE IF EXISTS subscriptions CASCADE;
+        DROP TABLE IF EXISTS reports CASCADE;
+        DROP TABLE IF EXISTS bans CASCADE;
+        DROP TABLE IF EXISTS user_interests CASCADE;
+        DROP TABLE IF EXISTS user_push_tokens CASCADE;
+        DROP TABLE IF EXISTS user_roles CASCADE;
+        DROP TABLE IF EXISTS user_photos CASCADE;
+        DROP TABLE IF EXISTS authorizations CASCADE;
+        DROP TABLE IF EXISTS gis_data CASCADE;
+        DROP TABLE IF EXISTS user_settings CASCADE;
+        DROP TABLE IF EXISTS users CASCADE;
+        </sql>
+
+        <!-- Recreate users table with UUID primary key -->
+        <sql>
+        CREATE TABLE users (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL,
+            birthday TIMESTAMP NOT NULL DEFAULT NOW(),
+            gender SMALLINT,
+            recovery_code VARCHAR(255),
+            recovery_code_expire_time TIMESTAMP,
+            register_date TIMESTAMP NOT NULL DEFAULT NOW(),
+            bio TEXT,
+            last_active_at TIMESTAMP,
+            is_verified BOOLEAN DEFAULT FALSE
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE user_settings (
+            user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            gender SMALLINT,
+            age_min SMALLINT,
+            age_max SMALLINT,
+            distance FLOAT
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE authorizations (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+            access_token VARCHAR(255) NOT NULL,
+            refresh_token VARCHAR(255) NOT NULL,
+            expire_time TIMESTAMP
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE gis_data (
+            user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            lat FLOAT NOT NULL,
+            lon FLOAT NOT NULL,
+            timestamp TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE bookmarks (
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            other_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (user_id, other_user_id)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE mailbox (
+            id BIGSERIAL PRIMARY KEY,
+            from_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            to_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            message VARCHAR(1024) NOT NULL,
+            timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+            is_read BOOLEAN DEFAULT FALSE,
+            voice_url VARCHAR(1024)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE meetings (
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            other_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            other_user_lat FLOAT,
+            other_user_lon FLOAT,
+            distance FLOAT,
+            timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+            status VARCHAR(20) DEFAULT 'PENDING',
+            PRIMARY KEY (user_id, other_user_id)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE user_blocks (
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            other_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (user_id, other_user_id)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE user_photos (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            s3_key VARCHAR(512),
+            photo_order INT DEFAULT 0,
+            content_type VARCHAR(50)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE user_roles (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            role VARCHAR(50) NOT NULL,
+            UNIQUE (user_id, role)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE user_push_tokens (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token VARCHAR(512) NOT NULL,
+            platform VARCHAR(50),
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE interests (
+            id BIGSERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            category VARCHAR(100),
+            icon VARCHAR(50)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE user_interests (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            interest_id BIGINT NOT NULL REFERENCES interests(id) ON DELETE CASCADE,
+            UNIQUE (user_id, interest_id)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE prompts (
+            id BIGSERIAL PRIMARY KEY,
+            text VARCHAR(500) NOT NULL,
+            category VARCHAR(100)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE user_prompt_answers (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            prompt_id BIGINT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
+            answer VARCHAR(1024),
+            UNIQUE (user_id, prompt_id)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE stories (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            media_url VARCHAR(1024) NOT NULL,
+            caption VARCHAR(500),
+            created_at TIMESTAMP DEFAULT NOW(),
+            expires_at TIMESTAMP NOT NULL
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE story_views (
+            id BIGSERIAL PRIMARY KEY,
+            story_id BIGINT NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+            viewer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            viewed_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE (story_id, viewer_id)
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE profile_boosts (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            expires_at TIMESTAMP NOT NULL
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE subscriptions (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            plan VARCHAR(50) NOT NULL,
+            status VARCHAR(50) NOT NULL,
+            started_at TIMESTAMP DEFAULT NOW(),
+            expires_at TIMESTAMP
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE reports (
+            id BIGSERIAL PRIMARY KEY,
+            reporter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            reported_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            reason VARCHAR(100) NOT NULL,
+            description VARCHAR(1024),
+            status VARCHAR(50) DEFAULT 'PENDING',
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        </sql>
+
+        <sql>
+        CREATE TABLE bans (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            reason VARCHAR(500),
+            banned_at TIMESTAMP DEFAULT NOW(),
+            expires_at TIMESTAMP
+        );
+        </sql>
+
+        <!-- Create indexes for performance -->
+        <sql>
+        CREATE INDEX idx_bookmarks_user ON bookmarks(user_id);
+        CREATE INDEX idx_bookmarks_other ON bookmarks(other_user_id);
+        CREATE INDEX idx_mailbox_from ON mailbox(from_user_id);
+        CREATE INDEX idx_mailbox_to ON mailbox(to_user_id);
+        CREATE INDEX idx_meetings_user ON meetings(user_id);
+        CREATE INDEX idx_meetings_other ON meetings(other_user_id);
+        CREATE INDEX idx_user_blocks_user ON user_blocks(user_id);
+        CREATE INDEX idx_user_photos_user ON user_photos(user_id);
+        CREATE INDEX idx_user_roles_user ON user_roles(user_id);
+        CREATE INDEX idx_stories_user ON stories(user_id);
+        CREATE INDEX idx_story_views_viewer ON story_views(viewer_id);
+        CREATE INDEX idx_profile_boosts_user ON profile_boosts(user_id);
+        CREATE INDEX idx_subscriptions_user ON subscriptions(user_id);
+        CREATE INDEX idx_reports_reporter ON reports(reporter_id);
+        CREATE INDEX idx_reports_reported ON reports(reported_id);
+        CREATE INDEX idx_bans_user ON bans(user_id);
+        CREATE INDEX idx_user_interests_user ON user_interests(user_id);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

@@ -9,16 +9,17 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
 interface ReportRepository : CoroutineCrudRepository<Report, Long> {
 
     @Query("SELECT * FROM reports WHERE reported_id = :reportedId AND status = 'PENDING'")
-    suspend fun findPendingByReportedId(reportedId: Long): List<Report>
+    suspend fun findPendingByReportedId(reportedId: UUID): List<Report>
 
     @Query("SELECT COUNT(*) FROM reports WHERE reported_id = :reportedId AND status = 'PENDING'")
-    suspend fun countPendingByReportedId(reportedId: Long): Long
+    suspend fun countPendingByReportedId(reportedId: UUID): Long
 
     @Modifying
     @Query("UPDATE reports SET status = :status WHERE id = :reportId")
@@ -33,9 +34,9 @@ interface ReportRepository : CoroutineCrudRepository<Report, Long> {
 interface BanRepository : CoroutineCrudRepository<Ban, Long> {
 
     @Query("SELECT * FROM bans WHERE user_id = :userId AND (permanent = true OR banned_until > NOW())")
-    suspend fun findActiveByUserId(userId: Long): Ban?
+    suspend fun findActiveByUserId(userId: UUID): Ban?
 
     @Modifying
     @Query("DELETE FROM bans WHERE user_id = :userId")
-    suspend fun deleteAllByUserId(userId: Long)
+    suspend fun deleteAllByUserId(userId: UUID)
 }

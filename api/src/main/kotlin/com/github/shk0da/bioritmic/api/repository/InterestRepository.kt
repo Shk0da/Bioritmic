@@ -8,6 +8,7 @@ import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
@@ -31,19 +32,19 @@ interface UserInterestRepository : CoroutineCrudRepository<UserInterest, Long> {
         "select ui.*, i.name, i.category, i.icon from user_interests ui " +
             "join interests i on ui.interest_id = i.id where ui.user_id = :userId"
     )
-    suspend fun findInterestsByUserId(userId: Long): List<Interest>
+    suspend fun findInterestsByUserId(userId: UUID): List<Interest>
 
     @Query("select * from user_interests where user_id = :userId")
-    suspend fun findAllByUserId(userId: Long): List<UserInterest>
+    suspend fun findAllByUserId(userId: UUID): List<UserInterest>
 
     @Query("select * from user_interests where user_id = :userId and interest_id = :interestId")
-    suspend fun findByUserIdAndInterestId(userId: Long, interestId: Long): UserInterest?
+    suspend fun findByUserIdAndInterestId(userId: UUID, interestId: Long): UserInterest?
 
     @Modifying
     @Query("delete from user_interests where user_id = :userId")
-    suspend fun deleteAllByUserId(userId: Long)
+    suspend fun deleteAllByUserId(userId: UUID)
 
     @Modifying
     @Query("delete from user_interests where user_id = :userId and interest_id = :interestId")
-    suspend fun deleteByUserIdAndInterestId(userId: Long, interestId: Long)
+    suspend fun deleteByUserIdAndInterestId(userId: UUID, interestId: Long)
 }

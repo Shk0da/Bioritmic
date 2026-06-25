@@ -13,22 +13,23 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
 interface UserPhotoRepository : CoroutineCrudRepository<UserPhoto, Long> {
 
     @Query("select * from user_photos where user_id = :userId order by photo_order asc")
-    suspend fun findAllByUserId(userId: Long): List<UserPhoto>
+    suspend fun findAllByUserId(userId: UUID): List<UserPhoto>
 
     @Query("select * from user_photos where user_id = :userId and id = :photoId")
-    suspend fun findByUserIdAndPhotoId(userId: Long, photoId: Long): UserPhoto?
+    suspend fun findByUserIdAndPhotoId(userId: UUID, photoId: Long): UserPhoto?
 
     @Query("delete from user_photos where user_id = :userId and id = :photoId")
-    suspend fun deleteByUserIdAndPhotoId(userId: Long, photoId: Long)
+    suspend fun deleteByUserIdAndPhotoId(userId: UUID, photoId: Long)
 
     @Query("delete from user_photos where user_id = :userId")
-    suspend fun deleteAllByUserId(userId: Long)
+    suspend fun deleteAllByUserId(userId: UUID)
 
     @Modifying
     @Query("update user_photos set photo_order = :newOrder where id = :photoId")
@@ -42,13 +43,13 @@ class UserPhotoBatchRepository(private val slaveConnectionFactory: ConnectionFac
     private val log = LoggerFactory.getLogger(UserPhotoBatchRepository::class.java)
     private val databaseClient: DatabaseClient by lazy { DatabaseClient.create(slaveConnectionFactory) }
 
-    suspend fun findProfilePhotosByUserIds(userIds: List<Long>): Map<Long, String> {
+    suspend fun findProfilePhotosByUserIds(userIds: List<UUID>): Map<UUID, String> {
         if (userIds.isEmpty()) return emptyMap()
 
         val placeholders = userIds.mapIndexed { i, _ -> ":id$i" }.joinToString(",")
         val sql = "SELECT user_id, s3_key FROM user_photos WHERE user_id IN ($placeholders) AND photo_order = 0"
 
-        val result = databaseClient.sql(sql)
+        return databaseClient.sql(sql)
             .let { query ->
                 userIds.forEachIndexed { i, id -> query.bind("id$i", id) }
                 query
@@ -56,13 +57,14 @@ class UserPhotoBatchRepository(private val slaveConnectionFactory: ConnectionFac
             .fetch()
             .all()
             .map { row ->
-                val userId = (row["user_id"] as? Number)?.toLong() ?: 0L
+                val userId = row["user_id"] as? UUID
                 val s3Key = row["s3_key"] as? String ?: ""
                 userId to s3Key
             }
             .collectList()
-            .awaitFirstOrNull() ?: emptyList()
-
-        return result.toMap()
+            .awaitFirstOrNull()
+            ?.mapNotNull { (userId, s3Key) -> userId?.let { it to s3Key } }
+            ?.toMap()
+            ?: emptyMap()
     }
 }

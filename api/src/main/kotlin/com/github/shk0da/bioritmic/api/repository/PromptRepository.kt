@@ -8,6 +8,7 @@ import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
@@ -26,12 +27,12 @@ interface UserPromptAnswerRepository : CoroutineCrudRepository<UserPromptAnswer,
             "FROM user_prompt_answers upa JOIN prompts p ON upa.prompt_id = p.id " +
             "WHERE upa.user_id = :userId"
     )
-    suspend fun findAnswersByUserId(userId: Long): List<UserPromptAnswer>
+    suspend fun findAnswersByUserId(userId: UUID): List<UserPromptAnswer>
 
     @Query("SELECT * FROM user_prompt_answers WHERE user_id = :userId AND prompt_id = :promptId")
-    suspend fun findByUserIdAndPromptId(userId: Long, promptId: Long): UserPromptAnswer?
+    suspend fun findByUserIdAndPromptId(userId: UUID, promptId: Long): UserPromptAnswer?
 
     @Modifying
     @Query("DELETE FROM user_prompt_answers WHERE user_id = :userId")
-    suspend fun deleteAllByUserId(userId: Long)
+    suspend fun deleteAllByUserId(userId: UUID)
 }

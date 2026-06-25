@@ -5,10 +5,11 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.shk0da.bioritmic.api.domain.Meeting
 import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import java.sql.Timestamp
+import java.util.UUID
 import javax.validation.constraints.NotNull
 
 data class UserMeeting(
-    @field:NotNull val userId: Long?,
+    @field:NotNull val userId: UUID?,
     @field:NotNull val lat: Double?,
     @field:NotNull val lon: Double?,
     @field:NotNull val distance: Double?,
@@ -21,7 +22,7 @@ data class UserMeeting(
 ) : BasicPresentation {
 
     companion object {
-        fun of(meeting: Meeting, currentUserId: Long? = null): UserMeeting {
+        fun of(meeting: Meeting, currentUserId: UUID? = null): UserMeeting {
             val isCurrentUserCreator = currentUserId == meeting.userId
             val otherUserId = when (currentUserId) {
                 meeting.userId -> meeting.otherUserId

@@ -6,6 +6,7 @@ import com.github.shk0da.bioritmic.api.repository.UserInterestRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Service
 class InterestService(
@@ -26,12 +27,12 @@ class InterestService(
     }
 
     @Transactional(readOnly = true)
-    suspend fun getUserInterests(userId: Long): List<Interest> {
+    suspend fun getUserInterests(userId: UUID): List<Interest> {
         return userInterestRepository.findInterestsByUserId(userId)
     }
 
     @Transactional
-    suspend fun setUserInterests(userId: Long, interestIds: List<Long>): List<Interest> {
+    suspend fun setUserInterests(userId: UUID, interestIds: List<Long>): List<Interest> {
         userInterestRepository.deleteAllByUserId(userId)
 
         if (interestIds.isEmpty()) {
@@ -51,7 +52,7 @@ class InterestService(
     }
 
     @Transactional
-    suspend fun addInterestToUser(userId: Long, interestId: Long): Interest? {
+    suspend fun addInterestToUser(userId: UUID, interestId: Long): Interest? {
         val existing = userInterestRepository.findByUserIdAndInterestId(userId, interestId)
         if (existing != null) {
             return interestRepository.findById(interestId)
@@ -69,7 +70,7 @@ class InterestService(
     }
 
     @Transactional
-    suspend fun removeInterestFromUser(userId: Long, interestId: Long) {
+    suspend fun removeInterestFromUser(userId: UUID, interestId: Long) {
         userInterestRepository.deleteByUserIdAndInterestId(userId, interestId)
     }
 }

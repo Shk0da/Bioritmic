@@ -12,25 +12,26 @@ import org.springframework.stereotype.Component
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
 interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryKey> {
 
     @Query("select count(*) from meetings where user_id = :userId")
-    suspend fun countByUserId(userId: Long): Long
+    suspend fun countByUserId(userId: UUID): Long
 
     @Query("select * from meetings where other_user_id = :userId and user_id != other_user_id and (status is null or status != 'DECLINED') order by timestamp desc limit :limit offset :offset")
-    suspend fun findAllByUserId(userId: Long, limit: Int, offset: Long): List<Meeting>
+    suspend fun findAllByUserId(userId: UUID, limit: Int, offset: Long): List<Meeting>
 
     @Query("delete from meetings where user_id = :userId")
-    suspend fun deleteAllByUserId(userId: Long)
+    suspend fun deleteAllByUserId(userId: UUID)
 
     @Query("delete from meetings where user_id = :userId and other_user_id = :otherUserId")
-    suspend fun deleteByUserIdAndOtherUserId(userId: Long, otherUserId: Long)
+    suspend fun deleteByUserIdAndOtherUserId(userId: UUID, otherUserId: UUID)
 
     @Query("select * from meetings where (user_id = :userId1 and other_user_id = :userId2) or (user_id = :userId2 and other_user_id = :userId1) limit 1")
-    suspend fun findByUserPair(userId1: Long, userId2: Long): Meeting?
+    suspend fun findByUserPair(userId1: UUID, userId2: UUID): Meeting?
 
     @Modifying
     @Query(
@@ -41,8 +42,8 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
             "distance = excluded.distance, timestamp = excluded.timestamp"
     )
     suspend fun insert(
-        userId: Long,
-        otherUserId: Long,
+        userId: UUID,
+        otherUserId: UUID,
         otherUserLat: Double?,
         otherUserLon: Double?,
         distance: Double?,
@@ -54,7 +55,7 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
 class MeetingStatusUpdater(
     private val databaseClient: DatabaseClient
 ) {
-    suspend fun updateStatus(userId1: Long, userId2: Long, status: String): Int {
+    suspend fun updateStatus(userId1: UUID, userId2: UUID, status: String): Int {
         return databaseClient.sql(
             "UPDATE meetings SET status = :status WHERE (user_id = :userId1 AND other_user_id = :userId2) OR (user_id = :userId2 AND other_user_id = :userId1)"
         )

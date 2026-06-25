@@ -8,10 +8,11 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
-interface GisDataRepository : CoroutineCrudRepository<GisData, Long> {
+interface GisDataRepository : CoroutineCrudRepository<GisData, UUID> {
 
     @Modifying
     @Query(
@@ -20,5 +21,5 @@ interface GisDataRepository : CoroutineCrudRepository<GisData, Long> {
             "on conflict (user_id) do update " +
             "set lat = excluded.lat, lon = excluded.lon, timestamp = excluded.timestamp"
     )
-    suspend fun insert(userId: Long?, lat: Double?, lon: Double?, timestamp: Timestamp?): Int
+    suspend fun insert(userId: UUID?, lat: Double?, lon: Double?, timestamp: Timestamp?): Int
 }

@@ -5,6 +5,7 @@ import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 import java.io.Serializable
 import java.sql.Timestamp
+import java.util.UUID
 
 @Table(name = "user_push_tokens")
 class UserPushToken : Serializable {
@@ -13,7 +14,7 @@ class UserPushToken : Serializable {
     var id: Long? = null
 
     @Column("user_id")
-    var userId: Long = 0
+    var userId: UUID = UUID.randomUUID()
 
     @Column("token")
     var token: String = ""

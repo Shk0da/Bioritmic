@@ -4,31 +4,10 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!--  Schema -->
-    <include file="v1/0001-database-initialization.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0002-add-user-bio.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0003-add-meeting-status.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0004-create-super-likes.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0005-create-swipe-history.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0006-create-user-photos.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0007-create-interests.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0008-add-s3-key-to-user-photos.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0009-add-last-active-at-to-users.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0010-add-is-verified-to-users.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0011-create-reports-and-bans.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0012-add-read-status-to-mailbox.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0013-create-prompts.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0014-create-user-push-tokens.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0015-create-subscriptions.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0016-create-user-roles.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0017-add-voice-to-mailbox.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0018-create-stories.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0019-create-profile-boosts.xml" relativeToChangelogFile="true"/>
-    <include file="v1/0020-add-performance-indexes.xml" relativeToChangelogFile="true"/>
-    <!-- -->
-
-    <!-- Indexes  -->
-    
+    <!--  Schema (UUID-based) -->
+    <include file="v1/0020-bootstrap-tables-for-uuid-reset.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0021-convert-user-ids-to-uuid.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0022-fix-uuid-schema-compat.xml" relativeToChangelogFile="true"/>
     <!-- -->
 
     <!--  Seeding  -->

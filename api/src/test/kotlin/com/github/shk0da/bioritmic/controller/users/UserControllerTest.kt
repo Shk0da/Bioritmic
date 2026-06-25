@@ -18,7 +18,7 @@ class UserControllerTest : ApiApplicationTests() {
 
     private lateinit var defaultUserModel: UserModel
     private lateinit var authToken: String
-    private var userId: Long? = null
+    private var userId: UUID? = null
 
     @BeforeEach
     fun setup() {
@@ -121,7 +121,7 @@ class UserControllerTest : ApiApplicationTests() {
     @Test
     fun getUserByIdTest() {
         webTestClient.get()
-            .uri("$API_WITH_VERSION_1/user/1")
+            .uri("$API_WITH_VERSION_1/user/00000000-0000-0000-0000-000000000001")
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()

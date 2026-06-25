@@ -6,13 +6,14 @@ import org.springframework.data.annotation.Transient
 import org.springframework.data.domain.Persistable
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
+import java.util.UUID
 
 @Table(name = "user_settings")
-class UserSettings : Persistable<Long> {
+class UserSettings : Persistable<UUID> {
 
     @Id
     @Column("user_id")
-    var userId: Long? = null
+    var userId: UUID? = null
 
     @Column("gender")
     var gender: Short? = null
@@ -30,7 +31,7 @@ class UserSettings : Persistable<Long> {
     private var isNew: Boolean = false
 
     @Transient
-    override fun getId(): Long? {
+    override fun getId(): UUID? {
         return userId
     }
 

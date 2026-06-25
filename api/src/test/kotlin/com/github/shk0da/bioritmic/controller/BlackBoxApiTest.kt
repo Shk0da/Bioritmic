@@ -17,13 +17,13 @@ import java.util.UUID
 class BlackBoxApiTest : ApiApplicationTests() {
 
     private lateinit var aliceToken: String
-    private var aliceId: Long = 0
+    private var aliceId: UUID = UUID(0, 0)
 
     private lateinit var bobToken: String
-    private var bobId: Long = 0
+    private var bobId: UUID = UUID(0, 0)
 
     private lateinit var charlieToken: String
-    private var charlieId: Long = 0
+    private var charlieId: UUID = UUID(0, 0)
 
     @BeforeEach
     fun setup() {
@@ -55,8 +55,8 @@ class BlackBoxApiTest : ApiApplicationTests() {
         }
     }
 
-    private fun registerAndLogin(email: String, name: String, birthday: String, gender: String): Long {
-        var userId = 0L
+    private fun registerAndLogin(email: String, name: String, birthday: String, gender: String): UUID {
+        var userId = UUID(0, 0)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
@@ -65,7 +65,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isCreated
             .expectBody()
-            .jsonPath("$.id").value { id: Any -> userId = (id as Number).toLong() }
+            .jsonPath("$.id").value { id: Any -> userId = UUID.fromString(id as String) }
 
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
@@ -174,7 +174,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
     @Test
     fun `get non-existent user returns 404`() {
         webTestClient.get()
-            .uri("$API_WITH_VERSION_1/user/99999")
+            .uri("$API_WITH_VERSION_1/user/00000000-0000-0000-0000-000000000099")
             .headers(auth(aliceToken))
             .exchange()
             .expectStatus().is4xxClientError

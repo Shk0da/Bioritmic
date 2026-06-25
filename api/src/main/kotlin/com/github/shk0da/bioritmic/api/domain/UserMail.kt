@@ -5,6 +5,7 @@ import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 import java.sql.Timestamp
+import java.util.UUID
 
 @Table(name = "mailbox")
 class UserMail {
@@ -13,10 +14,10 @@ class UserMail {
     var id: Long? = null
 
     @Column("from_user_id")
-    var fromUserId: Long? = null
+    var fromUserId: UUID? = null
 
     @Column("to_user_id")
-    var toUserId: Long? = null
+    var toUserId: UUID? = null
 
     @Column("message")
     var message: String? = null

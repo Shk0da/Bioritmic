@@ -13,6 +13,7 @@ import org.springframework.data.domain.Sort
 import org.springframework.data.domain.Sort.by
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Service
 class MailboxService(
@@ -24,12 +25,12 @@ class MailboxService(
     private val defaultPageable = PageableRequest(1, 10, by(Sort.Direction.DESC, "timestamp"))
 
     @Transactional
-    suspend fun getUserMailbox(userId: Long, pageable: Pageable): List<UserMail> {
+    suspend fun getUserMailbox(userId: UUID, pageable: Pageable): List<UserMail> {
         return mailboxRepository.findAllMailsByUserId(userId, pageable.pageSize, pageable.offset)
     }
 
     @Transactional
-    suspend fun sendUserMail(userId: Long, userMailModel: UserMailModel): List<UserMail> {
+    suspend fun sendUserMail(userId: UUID, userMailModel: UserMailModel): List<UserMail> {
         val user = userService.findUserById(userMailModel.to!!) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val block = userBlockRepository.findByUserIdAndOtherUserId(user.id!!, userId)
         if (null != block) {
@@ -45,12 +46,12 @@ class MailboxService(
     }
 
     @Transactional
-    suspend fun deleteMailboxes(currentUserId: Long, userId: Long) {
+    suspend fun deleteMailboxes(currentUserId: UUID, userId: UUID) {
         mailboxRepository.deleteAllMailByBetweenTwoUserId(currentUserId, userId)
     }
 
     @Transactional
-    suspend fun getConversation(currentUserId: Long, otherUserId: Long): List<UserMail> {
+    suspend fun getConversation(currentUserId: UUID, otherUserId: UUID): List<UserMail> {
         return mailboxRepository.findConversationBetweenUsers(currentUserId, otherUserId)
     }
 }

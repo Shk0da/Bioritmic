@@ -8,6 +8,7 @@ import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
@@ -20,7 +21,7 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
             "order by timestamp desc " +
             "limit :limit offset :offset"
     )
-    suspend fun findAllMailsByUserId(userId: Long, limit: Int, offset: Long): List<UserMail>
+    suspend fun findAllMailsByUserId(userId: UUID, limit: Int, offset: Long): List<UserMail>
 
     @Query(
         "select id, from_user_id, to_user_id, message, timestamp " +
@@ -29,14 +30,14 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
                 "or (from_user_id = :userId2 and to_user_id = :userId1) " +
             "order by timestamp asc"
     )
-    suspend fun findConversationBetweenUsers(userId1: Long, userId2: Long): List<UserMail>
+    suspend fun findConversationBetweenUsers(userId1: UUID, userId2: UUID): List<UserMail>
 
-    fun findAllByFromUserIdAndToUserId(from: Long, to: Long, pageable: Pageable?): Flow<UserMail>
+    fun findAllByFromUserIdAndToUserId(from: UUID, to: UUID, pageable: Pageable?): Flow<UserMail>
 
     @Query(
         "delete from mailbox m where " +
             "(m.from_user_id = :userId and m.to_user_id = :currentUserId) or " +
             "(m.to_user_id = :userId and m.from_user_id = :currentUserId)"
     )
-    suspend fun deleteAllMailByBetweenTwoUserId(currentUserId: Long, userId: Long)
+    suspend fun deleteAllMailByBetweenTwoUserId(currentUserId: UUID, userId: UUID)
 }

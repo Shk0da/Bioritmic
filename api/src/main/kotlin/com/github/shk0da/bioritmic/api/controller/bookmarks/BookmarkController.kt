@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
+import java.util.UUID
 import javax.validation.Valid
 
 @Validated
@@ -45,7 +46,7 @@ class BookmarkController(
     }
 
     @DeleteMapping(value = ["/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun deleteBookmark(@PathVariable userId: Long): List<UserInfo> {
+    suspend fun deleteBookmark(@PathVariable userId: UUID): List<UserInfo> {
         val currentUserId = getUserId()
         return bookmarksService.deleteBookmarks(currentUserId, userId).map { UserInfo.of(it) }
     }
@@ -63,7 +64,7 @@ class BookmarkController(
     }
 
     @GetMapping(value = ["/matches/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun checkMatch(@PathVariable userId: Long): Map<String, Boolean> {
+    suspend fun checkMatch(@PathVariable userId: UUID): Map<String, Boolean> {
         val currentUserId = getUserId()
         val isMatch = bookmarksService.isMatch(currentUserId, userId)
         return mapOf("isMatch" to isMatch)

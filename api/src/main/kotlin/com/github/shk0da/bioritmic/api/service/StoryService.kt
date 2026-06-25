@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
+import java.util.UUID
 
 @Service
 class StoryService(
@@ -27,7 +28,7 @@ class StoryService(
     private val log = LoggerFactory.getLogger(StoryService::class.java)
 
     @Transactional(transactionManager = transactionManager)
-    suspend fun createStory(userId: Long, mediaUrl: String, caption: String?): Story {
+    suspend fun createStory(userId: UUID, mediaUrl: String, caption: String?): Story {
         val story = Story()
         story.userId = userId
         story.mediaUrl = mediaUrl
@@ -39,7 +40,7 @@ class StoryService(
     }
 
     @Transactional(readOnly = true, transactionManager = transactionManager)
-    suspend fun getFeed(currentUserId: Long): List<Map<String, Any?>> {
+    suspend fun getFeed(currentUserId: UUID): List<Map<String, Any?>> {
         val stories = storyRepository.findAllActive()
         if (stories.isEmpty()) return emptyList()
 
@@ -63,7 +64,7 @@ class StoryService(
     }
 
     @Transactional(transactionManager = transactionManager)
-    suspend fun viewStory(storyId: Long, viewerId: Long) {
+    suspend fun viewStory(storyId: Long, viewerId: UUID) {
         val alreadyViewed = storyViewRepository.existsByStoryIdAndViewerId(storyId, viewerId)
         if (!alreadyViewed) {
             val storyView = StoryView()

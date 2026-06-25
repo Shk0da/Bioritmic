@@ -8,6 +8,7 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
@@ -15,7 +16,7 @@ interface StoryRepository : CoroutineCrudRepository<Story, Long> {
 
     @Transactional(readOnly = true)
     @Query("SELECT * FROM stories WHERE user_id = :userId AND expires_at > NOW() ORDER BY created_at DESC")
-    suspend fun findActiveByUserId(userId: Long): List<Story>
+    suspend fun findActiveByUserId(userId: UUID): List<Story>
 
     @Transactional(readOnly = true)
     @Query("SELECT * FROM stories WHERE expires_at > NOW() ORDER BY created_at DESC")
