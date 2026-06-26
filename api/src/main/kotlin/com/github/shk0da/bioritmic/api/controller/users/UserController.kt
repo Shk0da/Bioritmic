@@ -142,9 +142,8 @@ class UserController(
 
     // GET /{id}/photo <- UserInfo
     @GetMapping(value = ["/{id}/photo"], produces = [MediaType.IMAGE_JPEG_VALUE])
-    suspend fun photo(@PathVariable id: String): ByteArray {
-        val userId = UUID.fromString(id)
-        return userService.getPhoto(userId)
+    suspend fun photo(@PathVariable id: UUID): ByteArray {
+        return userService.getPhoto(id)
     }
 
     // GET /me/photo <- UserInfo

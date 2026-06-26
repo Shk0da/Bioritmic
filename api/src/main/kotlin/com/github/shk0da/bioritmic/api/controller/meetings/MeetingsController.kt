@@ -1,6 +1,8 @@
 package com.github.shk0da.bioritmic.api.controller.meetings
 
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes
+import com.github.shk0da.bioritmic.api.exceptions.ApiException
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import com.github.shk0da.bioritmic.api.service.MeetingsService
@@ -52,9 +54,10 @@ class MeetingsController(val meetingsService: MeetingsService) {
     suspend fun declineMeeting(@PathVariable userId: UUID): Map<String, Any> {
         val currentUserId = getUserId()
         val meeting = meetingsService.declineMeeting(currentUserId, userId)
+            ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         return mapOf(
             "success" to true,
-            "status" to (meeting?.status ?: "DECLINED")
+            "status" to (meeting.status as Any)
         )
     }
 
@@ -63,9 +66,10 @@ class MeetingsController(val meetingsService: MeetingsService) {
     suspend fun acceptMeeting(@PathVariable userId: UUID): Map<String, Any> {
         val currentUserId = getUserId()
         val meeting = meetingsService.acceptMeeting(currentUserId, userId)
+            ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         return mapOf(
             "success" to true,
-            "status" to (meeting?.status ?: "ACCEPTED")
+            "status" to (meeting.status as Any)
         )
     }
 }

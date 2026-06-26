@@ -1,10 +1,11 @@
 package com.github.shk0da.bioritmic.api.configuration
 
-import com.github.shk0da.bioritmic.api.constants.UserRoleConstants
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_BANNED
 import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_USER
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.service.AuthService
+import com.github.shk0da.bioritmic.api.service.ReportService
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -29,7 +30,8 @@ import reactor.core.publisher.Mono
 @EnableWebFluxSecurity
 class SecurityConfiguration(
     private val authService: AuthService,
-    private val userRoleRepository: UserRoleRepository
+    private val userRoleRepository: UserRoleRepository,
+    private val reportService: ReportService
 ) : WebFluxConfigurer {
 
     companion object {
@@ -124,13 +126,22 @@ class SecurityConfiguration(
                     .flatMap { auth ->
                         Mono.fromCallable {
                             runBlocking {
-                                val userId = auth.userId ?: return@runBlocking mutableListOf(SimpleGrantedAuthority(ROLE_USER))
+                                val userId = auth.userId
+                                    ?: return@runBlocking listOf(SimpleGrantedAuthority(ROLE_USER))
+                                if (reportService.isUserBanned(userId)) {
+                                    return@runBlocking emptyList()
+                                }
                                 val roles = userRoleRepository.findAllByUserId(userId)
-                                    .map { role -> SimpleGrantedAuthority("ROLE_${role.role}") }
-                                    .ifEmpty { mutableListOf(SimpleGrantedAuthority(ROLE_USER)) }
+                                if (roles.any { it.role == ROLE_BANNED || it.role == "BANNED" }) {
+                                    return@runBlocking emptyList()
+                                }
                                 roles
+                                    .map { role -> toSpringAuthority(role.role) }
+                                    .ifEmpty { listOf(SimpleGrantedAuthority(ROLE_USER)) }
                             }
-                        }.map { authorities ->
+                        }
+                            .filter { authorities -> authorities.isNotEmpty() }
+                            .map { authorities ->
                             PreAuthenticatedAuthenticationToken(
                                 auth.userId as Any,
                                 auth.accessToken,
@@ -146,5 +157,10 @@ class SecurityConfiguration(
             }
             this
         }
+    }
+
+    private fun toSpringAuthority(role: String): SimpleGrantedAuthority {
+        val authority = if (role.startsWith("ROLE_")) role else "ROLE_$role"
+        return SimpleGrantedAuthority(authority)
     }
 }

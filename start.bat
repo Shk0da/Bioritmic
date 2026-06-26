@@ -40,8 +40,16 @@ echo   MinIO is ready (port 9341^)
 echo.
 echo [3/5] Starting Backend (Kotlin/Spring Boot on :8080^)...
 cd /d "%ROOT_DIR%"
-set JAVA_HOME=C:\Program Files\OpenJDK\jdk-21
-start "bioritmic-api" cmd /c ".\gradlew.bat :api:bootRun > %TEMP%\bioritmic-api.log 2>&1"
+if not defined JAVA_HOME (
+    if exist "C:\Program Files\OpenJDK\jdk-21\bin\java.exe" (
+        set "JAVA_HOME=C:\Program Files\OpenJDK\jdk-21"
+    ) else (
+        echo   JAVA_HOME is not set and default JDK path was not found.
+        echo   Set JAVA_HOME to your JDK 21 installation and retry.
+        exit /b 1
+    )
+)
+start "bioritmic-api" cmd /c ".\gradlew.bat :api:bootRun -Dspring-boot.run.profiles=develop > %TEMP%\bioritmic-api.log 2>&1"
 echo   Waiting for backend to start...
 for /l %%i in (1,1,90) do (
     set "HTTP_CODE="

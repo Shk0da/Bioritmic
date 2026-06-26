@@ -14,6 +14,7 @@ import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.api.service.AuthService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_ADMIN
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_USER
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
@@ -61,6 +62,8 @@ class AuthController(
         if (userCount <= 1) {
             userRoleRepository.addRole(userId, ROLE_ADMIN)
             log.info("User {} assigned ADMIN role (first user)", userId)
+        } else {
+            userRoleRepository.addRole(userId, ROLE_USER)
         }
 
         log.debug("Created new {}", newUser)

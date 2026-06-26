@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0023-fix-uuid-entity-schema" author="uuid-migration">
+        <comment>Align bans, user_photos, user_roles, and user_push_tokens with Kotlin entities.</comment>
+
+        <!-- bans: entity uses banned_until, permanent, created_at (not banned_at/expires_at) -->
+        <sql>ALTER TABLE bans DROP COLUMN IF EXISTS banned_at;</sql>
+        <sql>ALTER TABLE bans DROP COLUMN IF EXISTS expires_at;</sql>
+        <sql>ALTER TABLE bans ADD COLUMN IF NOT EXISTS banned_until TIMESTAMP;</sql>
+        <sql>ALTER TABLE bans ADD COLUMN IF NOT EXISTS permanent BOOLEAN NOT NULL DEFAULT FALSE;</sql>
+        <sql>ALTER TABLE bans ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();</sql>
+
+        <!-- user_photos: entity maps photo_bytes and created_at -->
+        <sql>ALTER TABLE user_photos ADD COLUMN IF NOT EXISTS photo_bytes BYTEA;</sql>
+        <sql>ALTER TABLE user_photos ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();</sql>
+
+        <!-- user_roles: entity maps created_at -->
+        <sql>ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();</sql>
+
+        <!-- user_push_tokens: restore unique token constraint -->
+        <sql>CREATE UNIQUE INDEX IF NOT EXISTS idx_user_push_tokens_token ON user_push_tokens(token);</sql>
+    </changeSet>
+</databaseChangeLog>

@@ -1,9 +1,12 @@
 package com.github.shk0da.bioritmic.api.service
 
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_BANNED
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_USER
 import com.github.shk0da.bioritmic.api.domain.Ban
 import com.github.shk0da.bioritmic.api.domain.Report
 import com.github.shk0da.bioritmic.api.repository.BanRepository
 import com.github.shk0da.bioritmic.api.repository.ReportRepository
+import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -15,7 +18,8 @@ import java.util.concurrent.TimeUnit
 @Service
 class ReportService(
     private val reportRepository: ReportRepository,
-    private val banRepository: BanRepository
+    private val banRepository: BanRepository,
+    private val userRoleRepository: UserRoleRepository
 ) {
 
     companion object {
@@ -61,6 +65,8 @@ class ReportService(
         ban.createdAt = Timestamp(System.currentTimeMillis())
 
         banRepository.save(ban)
+        userRoleRepository.removeRole(userId, ROLE_USER)
+        userRoleRepository.addRole(userId, ROLE_BANNED)
         log.warn("User {} banned: {}", userId, reason)
     }
 

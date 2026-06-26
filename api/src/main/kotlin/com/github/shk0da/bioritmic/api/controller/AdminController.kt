@@ -1,6 +1,8 @@
 package com.github.shk0da.bioritmic.api.controller
 
-import com.github.shk0da.bioritmic.api.constants.UserRoleConstants
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_ADMIN
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_BANNED
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_USER
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
@@ -46,7 +48,7 @@ class AdminController(
         val roles = runBlocking {
             userRoleRepository.findAllByUserId(userId).map { it.role }
         }
-        if (UserRoleConstants.ROLE_ADMIN !in roles) {
+        if (ROLE_ADMIN !in roles) {
             throw ApiException(ErrorCode.ACCESS_DENIED)
         }
     }
@@ -83,11 +85,11 @@ class AdminController(
         requireAdmin()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
-        if (UserRoleConstants.ROLE_ADMIN in roles) {
+        if (ROLE_ADMIN in roles) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot ban an admin"))
         }
-        userRoleRepository.removeRole(userId, "USER")
-        userRoleRepository.addRole(userId, "BANNED")
+        userRoleRepository.removeRole(userId, ROLE_USER)
+        userRoleRepository.addRole(userId, ROLE_BANNED)
         log.warn("Admin banned user {}", userId)
         return mapOf("success" to true, "userId" to userId)
     }
@@ -95,8 +97,8 @@ class AdminController(
     @PostMapping(value = ["/users/{userId}/unban"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun unbanUser(@PathVariable userId: UUID): Map<String, Any> {
         requireAdmin()
-        userRoleRepository.removeRole(userId, "BANNED")
-        userRoleRepository.addRole(userId, "USER")
+        userRoleRepository.removeRole(userId, ROLE_BANNED)
+        userRoleRepository.addRole(userId, ROLE_USER)
         log.info("Admin unbanned user {}", userId)
         return mapOf("success" to true, "userId" to userId)
     }
@@ -105,7 +107,7 @@ class AdminController(
     suspend fun deleteUser(@PathVariable userId: UUID): Map<String, Any> {
         requireAdmin()
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
-        if (UserRoleConstants.ROLE_ADMIN in roles) {
+        if (ROLE_ADMIN in roles) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot delete an admin"))
         }
         userService.deleteUserById(userId)
