@@ -17,10 +17,15 @@ chmod +x start-docker.sh
 ./start-docker.sh
 ```
 
-Or directly:
+Or directly (2 GB RAM profile — default in `start-docker.*`):
 
 ```bash
-cp .env.example .env    # optional: change MAIL_PASSWORD
+docker compose -f docker-compose.yml -f docker-compose.lowmem.yml up --build -d
+```
+
+Without memory limits (dev machine with 4+ GB):
+
+```bash
 docker compose up --build -d
 ```
 
@@ -35,6 +40,20 @@ Open **http://localhost:4200** — the UI proxies `/api/` to the backend.
 | SMTP | localhost:587 |
 
 Stop: `docker compose down`
+
+### Memory (2 GB RAM VPS)
+
+`docker-compose.lowmem.yml` caps containers to ~1.2 GB total:
+
+| Service | Limit |
+|---------|-------|
+| API | 640 MB (`-Xmx448m`) |
+| Mail | 256 MB |
+| PostgreSQL | 160 MB |
+| MinIO | 128 MB |
+| UI | 48 MB |
+
+Swagger is disabled in this profile. On a machine with more RAM, use `docker compose up` without the lowmem file.
 
 ## Quick start (Windows, local dev without Docker for API/UI)
 

@@ -1,4 +1,5 @@
 services:
+  # Base stack. For 2 GB RAM hosts, also use docker-compose.lowmem.yml (see start-docker.bat).
   postgres:
     image: postgres:16-alpine
     container_name: bioritmic-postgres

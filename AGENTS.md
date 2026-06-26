@@ -157,7 +157,10 @@ start-docker.bat
 # Linux / macOS
 ./start-docker.sh
 
-# Or manually
+# Or manually (2 GB RAM — includes memory limits)
+docker compose -f docker-compose.yml -f docker-compose.lowmem.yml up --build -d
+
+# Dev machine with more RAM (no limits, Swagger enabled)
 docker compose up --build -d
 ```
 
@@ -173,6 +176,8 @@ Open **http://localhost:4200**. Nginx in the `ui` container proxies `/api/` and 
 | SMTP | localhost:587 |
 
 Stop: `docker compose down`
+
+**2 GB RAM overlay** (`docker-compose.lowmem.yml`): JVM `-Xmx448m`, Postgres/MinIO/Mail/UI `mem_limit`, Swagger off. Used by `start-docker.bat` / `start-docker.sh` by default.
 
 Docker profile: `application-docker.yml` (`SPRING_PROFILES_ACTIVE=docker`). Mailbox `noreply@bioritmic.ru` is created automatically by the `mail-init` service.
 
@@ -538,6 +543,7 @@ describe('Feature', function () {
 | E2E tests | `ui/e2e/*.test.js` |
 | Unit tests (FE) | `ui/src/app/**/*.spec.ts` |
 | Docker Compose | `docker-compose.yml` |
+| Docker low-memory overlay (2 GB) | `docker-compose.lowmem.yml` |
 | Docker one-launch (Windows) | `start-docker.bat` |
 | Docker one-launch (Unix) | `start-docker.sh` |
 | Docker API profile | `api/src/main/resources/config/application-docker.yml` |
