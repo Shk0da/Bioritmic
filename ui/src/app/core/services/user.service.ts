@@ -160,4 +160,14 @@ export class UserService {
   getBiorhythmDetail(userId: string): Observable<BiorhythmDetail> {
     return this.http.get<BiorhythmDetail>(`/api/v1/biorhythm/${userId}/detail`);
   }
+
+  static createPhotoUrl(bytes: Uint8Array): string {
+    return URL.createObjectURL(new Blob([bytes]));
+  }
+
+  static revokePhotoUrl(url: string | null | undefined): void {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+    }
+  }
 }

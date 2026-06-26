@@ -26,9 +26,12 @@ describe('AdminService', () => {
   });
 
   it('getUsers should GET /api/v1/admin/users', () => {
-    service.getUsers().subscribe(u => expect(u.length).toBe(2));
-    const req = httpMock.expectOne('/api/v1/admin/users');
-    req.flush([{ id: 1 }, { id: 2 }]);
+    service.getUsers().subscribe(u => {
+      expect(u.users.length).toBe(2);
+      expect(u.total).toBe(2);
+    });
+    const req = httpMock.expectOne('/api/v1/admin/users?page=0&size=50');
+    req.flush({ users: [{ id: '1' }, { id: '2' }], total: 2, page: 0, size: 50 });
   });
 
   it('banUser should POST', () => {

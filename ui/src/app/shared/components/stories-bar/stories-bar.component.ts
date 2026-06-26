@@ -177,7 +177,8 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
   private loadCurrentUserPhoto(): void {
     this.userService.getPhoto().pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
-        this.currentUserPhoto = this.bytesToDataUrl(bytes);
+        UserService.revokePhotoUrl(this.currentUserPhoto);
+        this.currentUserPhoto = UserService.createPhotoUrl(bytes);
       },
       error: () => {
         this.currentUserPhoto = null;
@@ -231,25 +232,14 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
 
       this.userService.getPhoto(group.userId).pipe(takeUntil(this.destroy$)).subscribe({
         next: (bytes: Uint8Array) => {
-          group.userPhoto = this.bytesToDataUrl(bytes);
+          UserService.revokePhotoUrl(group.userPhoto);
+          group.userPhoto = UserService.createPhotoUrl(bytes);
         },
         error: () => {}
       });
     }
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
 }
 
 export interface StoryGroup {

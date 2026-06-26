@@ -29,6 +29,13 @@ export interface AdminUser {
   isVerified?: boolean;
 }
 
+export interface PaginatedUsersResponse {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  size: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly apiUrl = '/api/v1/admin';
@@ -39,8 +46,8 @@ export class AdminService {
     return this.http.get<AdminDashboard>(`${this.apiUrl}/dashboard`);
   }
 
-  getUsers(): Observable<AdminUser[]> {
-    return this.http.get<AdminUser[]>(`${this.apiUrl}/users`);
+  getUsers(page = 0, size = 50): Observable<PaginatedUsersResponse> {
+    return this.http.get<PaginatedUsersResponse>(`${this.apiUrl}/users?page=${page}&size=${size}`);
   }
 
   banUser(userId: string): Observable<any> {

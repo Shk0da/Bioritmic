@@ -8,6 +8,7 @@
     <include file="v1/0020-bootstrap-tables-for-uuid-reset.xml" relativeToChangelogFile="true"/>
     <include file="v1/0021-convert-user-ids-to-uuid.xml" relativeToChangelogFile="true"/>
     <include file="v1/0022-fix-uuid-schema-compat.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0023-add-performance-indexes.xml" relativeToChangelogFile="true"/>
     <!-- -->
 
     <!--  Seeding  -->

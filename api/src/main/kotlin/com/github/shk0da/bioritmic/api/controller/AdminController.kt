@@ -15,15 +15,16 @@ import com.github.shk0da.bioritmic.api.utils.SecurityUtils
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.lang.management.ManagementFactory
 import java.util.UUID
@@ -43,11 +44,8 @@ class AdminController(
     private val log = LoggerFactory.getLogger(AdminController::class.java)
 
     private fun requireAdmin() {
-        val userId = getUserId()
-        val roles = runBlocking {
-            userRoleRepository.findAllByUserId(userId).map { it.role }
-        }
-        if (UserRole.ROLE_ADMIN !in roles) {
+        val auth = SecurityContextHolder.getContext().authentication
+        if (auth == null || auth.authorities.none { it.authority == "ROLE_ADMIN" }) {
             throw ApiException(ErrorCode.ACCESS_DENIED)
         }
     }
@@ -69,14 +67,24 @@ class AdminController(
     }
 
     @GetMapping(value = ["/users"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun listUsers(): List<UserInfo> {
+    suspend fun listUsers(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int
+    ): PaginatedUsersResponse {
         requireAdmin()
-        val users = userRepository.findAll().toList()
-        return users.map { user ->
-            val userId = user.id ?: return@map UserInfo.of(user)
-            val roles = userRoleRepository.findAllByUserId(userId).joinToString(",") { it.role }
+        val total = userRepository.countAll()
+        val users = userRepository.findAllPaginated(size, page.toLong() * size)
+        val userIds = users.mapNotNull { it.id }.toSet()
+        val rolesByUser = if (userIds.isNotEmpty()) {
+            userRoleRepository.findAllByUserIds(userIds).groupBy({ it.userId }, { it.role })
+        } else {
+            emptyMap()
+        }
+        val userInfos = users.map { user ->
+            val roles = rolesByUser[user.id]?.joinToString(",") ?: "USER"
             UserInfo.of(user).copy(role = roles)
         }
+        return PaginatedUsersResponse(users = userInfos, total = total, page = page, size = size)
     }
 
     @PostMapping(value = ["/users/{userId}/ban"], produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -171,7 +179,7 @@ class AdminController(
         }
 
         log.warn("Admin reset password for user {}", userId)
-        return mapOf("success" to true, "userId" to userId, "newPassword" to newPassword)
+        return mapOf("success" to true, "userId" to userId)
     }
 
     @DeleteMapping(value = ["/users/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -189,15 +197,20 @@ class AdminController(
     @GetMapping(value = ["/reports"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun pendingReports(): List<ReportAdminView> {
         requireAdmin()
-        return reportRepository.findAllPending().map { report ->
-            val reporter = userRepository.findById(report.reporterId)
-            val reported = userRepository.findById(report.reportedId)
+        val pending = reportRepository.findAllPending()
+        val userIds = pending.flatMap { listOf(it.reporterId, it.reportedId) }.toSet()
+        val usersByName = if (userIds.isNotEmpty()) {
+            userRepository.findAllById(userIds).toList().associateBy { it.id }
+        } else {
+            emptyMap()
+        }
+        return pending.map { report ->
             ReportAdminView(
                 id = report.id,
                 reporterId = report.reporterId,
-                reporterName = reporter?.name,
+                reporterName = usersByName[report.reporterId]?.name,
                 targetId = report.reportedId,
-                targetName = reported?.name,
+                targetName = usersByName[report.reportedId]?.name,
                 reason = report.reason,
                 status = report.status,
                 createdAt = report.createdAt?.toString()
@@ -343,4 +356,11 @@ data class SystemInfo(
     val availableMemory: String,
     val totalMemory: String,
     val freeMemory: String
+)
+
+data class PaginatedUsersResponse(
+    val users: List<UserInfo>,
+    val total: Long,
+    val page: Int,
+    val size: Int
 )

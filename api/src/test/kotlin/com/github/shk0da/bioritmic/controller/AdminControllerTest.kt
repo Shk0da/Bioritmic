@@ -68,13 +68,16 @@ class AdminControllerTest : ApiApplicationTests() {
     @Test
     fun `should list all users`() {
         webTestClient.get()
-            .uri("$API_WITH_VERSION_1/admin/users")
+            .uri("$API_WITH_VERSION_1/admin/users?page=0&size=50")
             .header(HttpHeaders.AUTHORIZATION, adminToken)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$").isArray
+            .jsonPath("$.users").isArray
+            .jsonPath("$.total").exists()
+            .jsonPath("$.page").exists()
+            .jsonPath("$.size").exists()
     }
 
     @Test

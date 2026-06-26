@@ -85,6 +85,7 @@ class SecurityConfiguration(
             .headers{ it.frameOptions{ frame -> frame.disable() } }
             .authorizeExchange {
                 it.pathMatchers(*openRoutes).permitAll()
+                it.pathMatchers("/management/logs").hasRole("ADMIN")
                 it.anyExchange().authenticated()
             }
             .exceptionHandling {

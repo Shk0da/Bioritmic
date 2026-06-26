@@ -356,6 +356,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.boundOnKeyDown) {
       document.removeEventListener('keydown', this.boundOnKeyDown);
     }
+    this.cards.forEach(card => UserService.revokePhotoUrl(card.photoDataUrl));
   }
 
   private loadUserSettings(): void {
@@ -414,16 +415,15 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private loadVisiblePhotos(): void {
-    // Загружаем фото только для первых 2 видимых карточек
     const visibleCards = this.cards.slice(0, 2);
     visibleCards.forEach(card => {
       if (card.user.id && !card.photoDataUrl) {
-        this.userService.getPhoto(card.user.id).subscribe({
+        this.userService.getPhoto(card.user.id).pipe(takeUntil(this.destroy$)).subscribe({
           next: (bytes: Uint8Array) => {
-            card.photoDataUrl = this.bytesToDataUrl(bytes);
+            UserService.revokePhotoUrl(card.photoDataUrl);
+            card.photoDataUrl = UserService.createPhotoUrl(bytes);
           },
           error: () => {
-            // Если 401, пробуем использовать image из карточки
             card.photoDataUrl = card.user.image || null;
           }
         });
@@ -431,15 +431,15 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  // Вызывается при свайпе для загрузки следующей карточки
   loadNextPhoto(): void {
     const nextIndex = 2;
     if (this.cards.length > nextIndex) {
       const card = this.cards[nextIndex];
       if (card.user.id && !card.photoDataUrl) {
-        this.userService.getPhoto(card.user.id).subscribe({
+        this.userService.getPhoto(card.user.id).pipe(takeUntil(this.destroy$)).subscribe({
           next: (bytes: Uint8Array) => {
-            card.photoDataUrl = this.bytesToDataUrl(bytes);
+            UserService.revokePhotoUrl(card.photoDataUrl);
+            card.photoDataUrl = UserService.createPhotoUrl(bytes);
           },
           error: () => {
             card.photoDataUrl = card.user.image || null;
@@ -447,19 +447,6 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
         });
       }
     }
-  }
-
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   getAge(birthday?: string, age?: number): number {

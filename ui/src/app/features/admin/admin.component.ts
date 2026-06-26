@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core'
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
-import { AdminService, AdminDashboard, Report, AdminUser, SystemMetrics } from '../../core/services/admin.service';
+import { AdminService, AdminDashboard, Report, AdminUser, SystemMetrics, PaginatedUsersResponse } from '../../core/services/admin.service';
 import { ModalService } from '../../core/services/modal.service';
 import { ToastService } from '../../core/services/toast.service';
 import { NgClass, DecimalPipe } from '@angular/common';
@@ -154,13 +154,13 @@ import { NgClass, DecimalPipe } from '@angular/common';
               <tbody>
                 @for (user of filteredUsers; track user.id) {
                   <tr>
-                    <td>{{ user.id }}</td>
+                    <td class="text-truncate" style="max-width: 80px;">{{ user.id }}</td>
                     <td>
                       <a [routerLink]="['/user', user.id]" class="text-decoration-none fw-semibold">
                         {{ user.name || '—' }}
                       </a>
                     </td>
-                    <td>{{ user.email || '—' }}</td>
+                    <td class="text-truncate" style="max-width: 150px;">{{ user.email || '—' }}</td>
                     <td>{{ user.age || '—' }}</td>
                     <td>
                       <span class="badge" [ngClass]="getRoleBadgeClass(user.role)">
@@ -217,7 +217,7 @@ import { NgClass, DecimalPipe } from '@angular/common';
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="6" class="text-center text-muted py-3">
+                    <td colspan="7" class="text-center text-muted py-3">
                       @if (filterSearch || filterRole) {
                         <i class="bi bi-search fs-4 d-block mb-1"></i>Нет пользователей по фильтру
                       } @else {
@@ -229,6 +229,22 @@ import { NgClass, DecimalPipe } from '@angular/common';
               </tbody>
             </table>
           </div>
+          @if (totalUsers > pageSize) {
+            <div class="d-flex justify-content-between align-items-center mt-3">
+              <span class="text-muted small">Всего: {{ totalUsers }} пользователей</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary" (click)="changePage(-1)" [disabled]="currentPage === 0">
+                  <i class="bi bi-chevron-left"></i>
+                </button>
+                <button class="btn btn-outline-secondary" disabled>
+                  {{ currentPage + 1 }} / {{ totalPages }}
+                </button>
+                <button class="btn btn-outline-secondary" (click)="changePage(1)" [disabled]="currentPage + 1 >= totalPages">
+                  <i class="bi bi-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          }
         }
       }
 
@@ -381,6 +397,9 @@ export class AdminComponent implements OnInit, OnDestroy {
   filterRole = '';
   filterVerified = '';
   filteredUsers: AdminUser[] = [];
+  currentPage = 0;
+  pageSize = 50;
+  totalUsers = 0;
 
   constructor(
     private adminService: AdminService,
@@ -399,6 +418,10 @@ export class AdminComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.totalUsers / this.pageSize);
   }
 
   applyFilters(): void {
@@ -423,15 +446,27 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadUsers(): void {
+  private loadUsers(page = 0): void {
     this.loadingUsers = true;
-    this.adminService.getUsers().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (users) => { this.users = users; this.loadingUsers = false; this.applyFilters(); },
+    this.adminService.getUsers(page, this.pageSize).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        this.users = response.users;
+        this.totalUsers = response.total;
+        this.currentPage = response.page;
+        this.loadingUsers = false;
+        this.applyFilters();
+      },
       error: (err) => {
         this.loadingUsers = false;
         if (err.status === 403) this.accessDenied = true;
       }
     });
+  }
+
+  changePage(delta: number): void {
+    const newPage = this.currentPage + delta;
+    if (newPage < 0 || newPage >= Math.ceil(this.totalUsers / this.pageSize)) return;
+    this.loadUsers(newPage);
   }
 
   private loadReports(): void {
@@ -483,7 +518,8 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.adminService.banUser(user.id!).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.toastService.success('Пользователь заблокирован');
-        this.loadUsers();
+        const idx = this.users.findIndex(u => u.id === user.id);
+        if (idx >= 0) { this.users[idx].role = 'BANNED'; this.applyFilters(); }
       },
       error: () => this.toastService.error('Ошибка блокировки')
     });
@@ -499,7 +535,8 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.adminService.unbanUser(user.id!).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.toastService.success('Пользователь разблокирован');
-        this.loadUsers();
+        const idx = this.users.findIndex(u => u.id === user.id);
+        if (idx >= 0) { this.users[idx].role = 'USER'; this.applyFilters(); }
       },
       error: () => this.toastService.error('Ошибка')
     });
@@ -515,7 +552,8 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.adminService.verifyUser(user.id!).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.toastService.success('Пользователь верифицирован');
-        this.loadUsers();
+        const idx = this.users.findIndex(u => u.id === user.id);
+        if (idx >= 0) { this.users[idx].isVerified = true; this.applyFilters(); }
         this.loadDashboard();
       },
       error: () => this.toastService.error('Ошибка верификации')
@@ -532,7 +570,8 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.adminService.unverifyUser(user.id!).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.toastService.success('Верификация снята');
-        this.loadUsers();
+        const idx = this.users.findIndex(u => u.id === user.id);
+        if (idx >= 0) { this.users[idx].isVerified = false; this.applyFilters(); }
         this.loadDashboard();
       },
       error: () => this.toastService.error('Ошибка')
@@ -549,7 +588,8 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.adminService.deleteUser(user.id!).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.toastService.success('Пользователь удалён');
-        this.loadUsers();
+        this.users = this.users.filter(u => u.id !== user.id);
+        this.applyFilters();
         this.loadDashboard();
       },
       error: () => this.toastService.error('Ошибка удаления')
@@ -569,7 +609,8 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.adminService.changeRole(user.id!, newRole).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.toastService.success(`Роль изменена на ${newRole}`);
-        this.loadUsers();
+        const idx = this.users.findIndex(u => u.id === user.id);
+        if (idx >= 0) { this.users[idx].role = newRole; this.applyFilters(); }
       },
       error: (err) => this.toastService.error(err.error?.error || 'Ошибка смены роли')
     });

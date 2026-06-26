@@ -26,15 +26,7 @@ class BoostService(
 
     suspend fun getBoostedUserIds(userIds: Set<UUID>): Set<UUID> {
         if (userIds.isEmpty()) return emptySet()
-        val now = Timestamp.from(Instant.now())
-        val boosted = mutableSetOf<UUID>()
-        for (userId in userIds) {
-            val boost = profileBoostRepository.findActiveByUserId(userId)
-            if (boost != null && boost.expiresAt?.after(now) == true) {
-                boosted.add(userId)
-            }
-        }
-        return boosted
+        return profileBoostRepository.findActiveByUserIds(userIds).map { it.userId }.toSet()
     }
 
     @Transactional

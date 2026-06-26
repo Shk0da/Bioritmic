@@ -1,17 +1,14 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getMessaging, Messaging, getToken, onMessage, MessagePayload } from 'firebase/messaging';
 import { Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PushNotificationService {
-  private firebaseApp: FirebaseApp | null = null;
-  private messaging: Messaging | null = null;
-  private messageSubject = new Subject<MessagePayload>();
+  private firebaseApp: any = null;
+  private messaging: any = null;
+  private messageSubject = new Subject<any>();
   public messages$ = this.messageSubject.asObservable();
   private currentToken: string | null = null;
 
@@ -30,14 +27,17 @@ export class PushNotificationService {
         appId: "YOUR_APP_ID"
       };
 
+      const [{ initializeApp }, { getMessaging, onMessage }] = await Promise.all([
+        import('firebase/app'),
+        import('firebase/messaging')
+      ]);
+
       this.firebaseApp = initializeApp(firebaseConfig);
       this.messaging = getMessaging(this.firebaseApp);
 
-      onMessage(this.messaging, (payload) => {
+      onMessage(this.messaging, (payload: any) => {
         this.messageSubject.next(payload);
       });
-
-      console.log('Firebase messaging initialized');
     } catch (error) {
       console.error('Failed to initialize Firebase messaging:', error);
     }
@@ -55,6 +55,7 @@ export class PushNotificationService {
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
+        const { getToken } = await import('firebase/messaging');
         const token = await getToken(this.messaging, {
           vapidKey: 'YOUR_VAPID_KEY'
         });

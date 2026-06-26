@@ -15,7 +15,8 @@ export class CookieService {
     const expires = new Date();
     expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
     const expiresString = `expires=${expires.toUTCString()}`;
-    document.cookie = `${name}=${encodeURIComponent(value)};${expiresString};path=/;SameSite=Strict`;
+    const secureFlag = location.protocol === 'https:' ? ';Secure' : '';
+    document.cookie = `${name}=${encodeURIComponent(value)};${expiresString};path=/;SameSite=Strict${secureFlag}`;
   }
 
   /**

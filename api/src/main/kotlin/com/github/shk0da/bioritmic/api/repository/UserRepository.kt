@@ -45,4 +45,7 @@ interface UserRepository : CoroutineCrudRepository<User, UUID> {
 
     @Query("SELECT COUNT(*) FROM users WHERE email = :email AND id != :excludeId")
     suspend fun countByEmailExcludingId(@Param("email") email: String, @Param("excludeId") excludeId: Long): Long
+
+    @Query("SELECT * FROM users ORDER BY id LIMIT :size OFFSET :offset")
+    suspend fun findAllPaginated(@Param("size") size: Int, @Param("offset") offset: Long): List<User>
 }

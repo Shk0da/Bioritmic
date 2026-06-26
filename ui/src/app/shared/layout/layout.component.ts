@@ -208,6 +208,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.stopPolling();
     this.routerSubscription?.unsubscribe();
     this.userSubscription?.unsubscribe();
+    UserService.revokePhotoUrl(this.userPhoto);
   }
 
   private startPolling(): void {
@@ -227,9 +228,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
     }
   }
 
+  private isLoadingUnread = false;
   private loadUnreadCount(): void {
+    if (this.isLoadingUnread) return;
+    this.isLoadingUnread = true;
     this.mailboxService.getMailbox({ page: 0, size: 100 }).subscribe({
       next: (messages) => {
+        this.isLoadingUnread = false;
         const lastReadTime = localStorage.getItem('mailbox_last_read');
         const lastRead = lastReadTime ? parseInt(lastReadTime, 10) : 0;
         const unread = messages.filter(m => {
@@ -240,13 +245,17 @@ export class LayoutComponent implements OnInit, OnDestroy {
         const uniqueSenders = new Set(unread.map(m => m.from));
         this.unreadCount = uniqueSenders.size;
       },
-      error: () => {}
+      error: () => { this.isLoadingUnread = false; }
     });
   }
 
+  private isLoadingMeetings = false;
   private loadNewMeetingsCount(): void {
+    if (this.isLoadingMeetings) return;
+    this.isLoadingMeetings = true;
     this.meetingsService.getMeetings({ page: 0, size: 100 }).subscribe({
       next: (meetings) => {
+        this.isLoadingMeetings = false;
         const lastReadTime = localStorage.getItem('meetings_last_read');
         const lastRead = lastReadTime ? parseInt(lastReadTime, 10) : 0;
         const newMeetings = meetings.filter(m => {
@@ -256,7 +265,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
         });
         this.newMeetingsCount = newMeetings.length;
       },
-      error: () => {}
+      error: () => { this.isLoadingMeetings = false; }
     });
   }
 
@@ -286,25 +295,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private loadUserPhoto(userId: string): void {
     this.userService.getPhoto(userId).subscribe({
       next: (bytes: Uint8Array) => {
-        this.userPhoto = this.bytesToDataUrl(bytes);
+        UserService.revokePhotoUrl(this.userPhoto);
+        this.userPhoto = UserService.createPhotoUrl(bytes);
       },
       error: () => {
         this.userPhoto = null;
       }
     });
-  }
-
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   logout(event?: Event): void {

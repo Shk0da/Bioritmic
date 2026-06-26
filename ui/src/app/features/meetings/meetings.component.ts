@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { UserService } from '../../core/services/user.service';
@@ -6,6 +6,7 @@ import { UserMeeting, PageableRequest, UserInfo } from '../../core/models/user.m
 import { ModalService } from '../../core/services/modal.service';
 import { ToastService } from '../../core/services/toast.service';
 import { NgClass } from '@angular/common';
+import { Subject, takeUntil } from 'rxjs';
 
 interface MeetingWithUser extends UserMeeting {
   userName?: string;
@@ -156,10 +157,11 @@ interface MeetingWithUser extends UserMeeting {
     }
   `]
 })
-export class MeetingsComponent implements OnInit {
+export class MeetingsComponent implements OnInit, OnDestroy {
   meetings: MeetingWithUser[] = [];
   loading = false;
   pageable: PageableRequest = { page: 0, size: 20 };
+  private destroy$ = new Subject<void>();
 
   constructor(
     private meetingsService: MeetingsService,
@@ -173,13 +175,19 @@ export class MeetingsComponent implements OnInit {
     localStorage.setItem('meetings_last_read', Date.now().toString());
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.meetings.forEach(m => UserService.revokePhotoUrl(m.userPhotoUrl));
+  }
+
   includesStatus(status: string | undefined): boolean {
     return status === 'PENDING' || status === 'ACCEPTED';
   }
 
   private loadMeetings(): void {
     this.loading = true;
-    this.meetingsService.getMeetings(this.pageable).subscribe({
+    this.meetingsService.getMeetings(this.pageable).pipe(takeUntil(this.destroy$)).subscribe({
       next: (meetings) => {
         this.meetings = meetings;
         this.loadUserData();
@@ -194,7 +202,7 @@ export class MeetingsComponent implements OnInit {
   private loadUserData(): void {
     this.meetings.forEach(meeting => {
       if (meeting.userId) {
-        this.userService.getUserById(meeting.userId).subscribe({
+        this.userService.getUserById(meeting.userId).pipe(takeUntil(this.destroy$)).subscribe({
           next: (user: UserInfo) => {
             meeting.userName = user.name;
             this.loadUserPhoto(meeting.userId!, meeting);
@@ -208,9 +216,10 @@ export class MeetingsComponent implements OnInit {
   }
 
   private loadUserPhoto(userId: string, meeting: MeetingWithUser): void {
-    this.userService.getPhoto(userId).subscribe({
+    this.userService.getPhoto(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
-        meeting.userPhotoUrl = this.bytesToDataUrl(bytes);
+        UserService.revokePhotoUrl(meeting.userPhotoUrl);
+        meeting.userPhotoUrl = UserService.createPhotoUrl(bytes);
       },
       error: () => {
         meeting.userPhotoUrl = null;
@@ -218,21 +227,8 @@ export class MeetingsComponent implements OnInit {
     });
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
-
   deleteMeeting(userId: string): void {
-    this.meetingsService.deleteMeeting(userId).subscribe({
+    this.meetingsService.deleteMeeting(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.loadMeetings();
       },
@@ -244,7 +240,7 @@ export class MeetingsComponent implements OnInit {
 
   acceptMeeting(meeting: MeetingWithUser): void {
     meeting.isAccepting = true;
-    this.meetingsService.acceptMeeting(meeting.userId).subscribe({
+    this.meetingsService.acceptMeeting(meeting.userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         meeting.isAccepting = false;
         meeting.status = 'ACCEPTED';
@@ -265,7 +261,7 @@ export class MeetingsComponent implements OnInit {
     if (!confirmed) return;
 
     meeting.isDeclining = true;
-    this.meetingsService.declineMeeting(meeting.userId).subscribe({
+    this.meetingsService.declineMeeting(meeting.userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         meeting.isDeclining = false;
         meeting.status = 'DECLINED';

@@ -222,6 +222,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    UserService.revokePhotoUrl(this.photoDataUrl);
   }
 
   private loadBlockedCount(): void {
@@ -247,25 +248,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private loadPhoto(): void {
     this.userService.getPhoto().pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
-        this.photoDataUrl = this.bytesToDataUrl(bytes);
+        UserService.revokePhotoUrl(this.photoDataUrl);
+        this.photoDataUrl = UserService.createPhotoUrl(bytes);
       },
       error: () => {
         this.photoDataUrl = null;
       }
     });
-  }
-
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   getBirthday(): string {

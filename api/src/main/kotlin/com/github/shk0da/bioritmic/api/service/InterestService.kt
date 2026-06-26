@@ -3,7 +3,9 @@ package com.github.shk0da.bioritmic.api.service
 import com.github.shk0da.bioritmic.api.domain.Interest
 import com.github.shk0da.bioritmic.api.repository.InterestRepository
 import com.github.shk0da.bioritmic.api.repository.UserInterestRepository
+import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.slf4j.LoggerFactory
+import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -11,7 +13,8 @@ import java.util.UUID
 @Service
 class InterestService(
     private val interestRepository: InterestRepository,
-    private val userInterestRepository: UserInterestRepository
+    private val userInterestRepository: UserInterestRepository,
+    private val databaseClient: DatabaseClient
 ) {
 
     private val log = LoggerFactory.getLogger(InterestService::class.java)
@@ -40,11 +43,12 @@ class InterestService(
         }
 
         val interests = interestRepository.findAllByIds(interestIds)
-        interests.forEach { interest ->
-            val userInterest = com.github.shk0da.bioritmic.api.domain.UserInterest()
-            userInterest.userId = userId
-            userInterest.interestId = interest.id!!
-            userInterestRepository.save(userInterest)
+        val validIds = interests.mapNotNull { it.id }
+        if (validIds.isNotEmpty()) {
+            val values = validIds.joinToString(", ") { "('$userId', $it)" }
+            databaseClient.sql(
+                "INSERT INTO user_interests (user_id, interest_id) VALUES $values ON CONFLICT DO NOTHING"
+            ).fetch().rowsUpdated().awaitFirstOrNull()
         }
 
         log.debug("Set {} interests for userId: {}", interests.size, userId)

@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { GeolocationService } from './core/services/geolocation.service';
 import { AuthService } from './core/services/auth.service';
 
@@ -11,6 +12,7 @@ import { AuthService } from './core/services/auth.service';
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'Bioritmic';
+  private userSubscription: Subscription | null = null;
 
   constructor(
     private geolocationService: GeolocationService,
@@ -18,8 +20,7 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // Подписываемся на изменения авторизации и запускаем/останавливаем отслеживание
-    this.authService.currentUser$.subscribe(user => {
+    this.userSubscription = this.authService.currentUser$.subscribe(user => {
       if (user) {
         this.geolocationService.startTracking();
       } else {
@@ -29,6 +30,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.userSubscription?.unsubscribe();
     this.geolocationService.stopTracking();
   }
 }
