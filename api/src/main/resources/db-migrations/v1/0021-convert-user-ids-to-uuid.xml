@@ -13,6 +13,11 @@
         <!-- Drop all dependent tables first (foreign keys) -->
         <sql>TRUNCATE user_blocks, meetings, mailbox, bookmarks, gis_data, authorizations, user_settings, user_roles, user_push_tokens, user_prompt_answers, stories, story_views, profile_boosts, subscriptions, reports, bans, user_interests, user_photos, users RESTART IDENTITY CASCADE;</sql>
 
+        <sql>
+        DROP TABLE IF EXISTS interests CASCADE;
+        DROP TABLE IF EXISTS prompts CASCADE;
+        </sql>
+
         <!-- Drop and recreate all tables with UUID -->
         <sql>
         DROP TABLE IF EXISTS user_blocks CASCADE;

@@ -11,9 +11,11 @@ import com.github.shk0da.bioritmic.api.repository.MeetingStatusUpdater
 import com.github.shk0da.bioritmic.api.repository.MeetingsRepository
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
 import org.springframework.data.domain.Sort
+import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
@@ -23,7 +25,8 @@ import java.util.UUID
 class MeetingsService(
     val meetingsRepository: MeetingsRepository,
     val meetingStatusUpdater: MeetingStatusUpdater,
-    val mailboxRepository: MailboxRepository
+    val mailboxRepository: MailboxRepository,
+    val databaseClient: DatabaseClient
 ) {
 
     private val log = LoggerFactory.getLogger(MeetingsService::class.java)
@@ -43,13 +46,22 @@ class MeetingsService(
         val totalCount = (currentElementsCount + meetingList.count()).toInt()
         if (checkSize(totalCount, maximumUserMeetingsSize, ErrorCode.MANY_MEETINGS)) {
             try {
-                val meetings = meetingList.map { Meeting.of(userId, it) }
-                meetings.forEach { meeting ->
-                    meetingsRepository.insert(
-                        meeting.userId!!, meeting.otherUserId!!,
-                        meeting.otherUserLat, meeting.otherUserLon,
-                        meeting.distance, meeting.timestamp
-                    )
+                val specs = meetingList.map { Meeting.of(userId, it) }
+                if (specs.isNotEmpty()) {
+                    val values = specs.joinToString(", ") { spec ->
+                        "('${spec.userId}'::uuid, '${spec.otherUserId}'::uuid, " +
+                            "${spec.otherUserLat}, ${spec.otherUserLon}, " +
+                            "${spec.distance}, '${spec.timestamp}')"
+                    }
+                    databaseClient.sql(
+                        """INSERT INTO meetings(user_id, other_user_id, other_user_lat, other_user_lon, distance, timestamp)
+                           VALUES $values
+                           ON CONFLICT (user_id, other_user_id) DO UPDATE
+                           SET other_user_lat = excluded.other_user_lat,
+                               other_user_lon = excluded.other_user_lon,
+                               distance = excluded.distance,
+                               timestamp = excluded.timestamp"""
+                    ).fetch().rowsUpdated().awaitFirstOrNull()
                 }
             } catch (ex: DataAccessException) {
                 log.error("Failed save meetings for userId [{}]: {}", userId, ex.message)

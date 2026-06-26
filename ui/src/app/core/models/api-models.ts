@@ -28,7 +28,7 @@ export interface UserModelRes {
   birthday: string; // format: yyyy-MM-dd
   email: string;
   gender?: Gender;
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -57,7 +57,7 @@ export interface UserInfo {
   email?: string;
   gender?: Gender;
   horo?: number; // порядковый номер знака зодиака (1-12)
-  id?: number;
+  id?: string;
   image?: string;
   isBioCompatible?: boolean;
   isFullCompatible?: boolean;
@@ -81,7 +81,7 @@ export interface UserInfoRes {
   email?: string;
   gender?: Gender;
   horo?: number; // порядковый номер знака зодиака (1-12)
-  id?: number;
+  id?: string;
   image?: string;
   isBioCompatible?: boolean;
   isFullCompatible?: boolean;
@@ -103,27 +103,27 @@ export interface GisDataModelRes {
 }
 
 export interface UserBookmark {
-  userId: number;
+  userId: string;
 }
 
 export interface UserMailModelReq {
   message: string; // minLength: 1, maxLength: 1024
-  to: number;
+  to: string;
 }
 
 export interface UserMailModelRes {
-  from?: number;
+  from?: string;
   id?: number;
   message: string; // minLength: 1, maxLength: 1024
   timestamp?: Timestamp;
-  to: number;
+  to: string;
 }
 
 export interface UserMeetingReq {
   distance: number;
   lat: number;
   lon: number;
-  userId: number;
+  userId: string;
 }
 
 export interface UserMeetingRes {
@@ -131,7 +131,7 @@ export interface UserMeetingRes {
   lat: number;
   lon: number;
   timestamp?: Timestamp;
-  userId: number;
+  userId: string;
 }
 
 export interface UserSearch {

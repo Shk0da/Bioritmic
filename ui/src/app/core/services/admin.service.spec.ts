@@ -26,27 +26,30 @@ describe('AdminService', () => {
   });
 
   it('getUsers should GET /api/v1/admin/users', () => {
-    service.getUsers().subscribe(u => expect(u.length).toBe(2));
-    const req = httpMock.expectOne('/api/v1/admin/users');
-    req.flush([{ id: 1 }, { id: 2 }]);
+    service.getUsers().subscribe(u => {
+      expect(u.users.length).toBe(2);
+      expect(u.total).toBe(2);
+    });
+    const req = httpMock.expectOne('/api/v1/admin/users?page=0&size=50');
+    req.flush({ users: [{ id: '1' }, { id: '2' }], total: 2, page: 0, size: 50 });
   });
 
   it('banUser should POST', () => {
-    service.banUser(5).subscribe();
+    service.banUser('5').subscribe();
     const req = httpMock.expectOne('/api/v1/admin/users/5/ban');
     expect(req.request.method).toBe('POST');
     req.flush({});
   });
 
   it('unbanUser should POST', () => {
-    service.unbanUser(5).subscribe();
+    service.unbanUser('5').subscribe();
     const req = httpMock.expectOne('/api/v1/admin/users/5/unban');
     expect(req.request.method).toBe('POST');
     req.flush({});
   });
 
   it('deleteUser should DELETE', () => {
-    service.deleteUser(5).subscribe();
+    service.deleteUser('5').subscribe();
     const req = httpMock.expectOne('/api/v1/admin/users/5');
     expect(req.request.method).toBe('DELETE');
     req.flush({});
@@ -72,14 +75,14 @@ describe('AdminService', () => {
   });
 
   it('createReport should POST /api/v1/report', () => {
-    service.createReport(42, 'SPAM', 'Test description').subscribe(r => {
+    service.createReport('42', 'SPAM', 'Test description').subscribe(r => {
       expect(r.id).toBe(1);
       expect(r.status).toBe('PENDING');
     });
     const req = httpMock.expectOne('/api/v1/report');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({
-      reported_user_id: 42,
+      reported_user_id: '42',
       reason: 'SPAM',
       description: 'Test description'
     });
@@ -87,13 +90,42 @@ describe('AdminService', () => {
   });
 
   it('createReport should send null description when not provided', () => {
-    service.createReport(10, 'INAPPROPRIATE').subscribe();
+    service.createReport('10', 'INAPPROPRIATE').subscribe();
     const req = httpMock.expectOne('/api/v1/report');
     expect(req.request.body).toEqual({
-      reported_user_id: 10,
+      reported_user_id: '10',
       reason: 'INAPPROPRIATE',
       description: null
     });
     req.flush({ id: 2, status: 'PENDING' });
+  });
+
+  it('verifyUser should POST', () => {
+    service.verifyUser('5').subscribe();
+    const req = httpMock.expectOne('/api/v1/admin/users/5/verify');
+    expect(req.request.method).toBe('POST');
+    req.flush({});
+  });
+
+  it('unverifyUser should POST', () => {
+    service.unverifyUser('5').subscribe();
+    const req = httpMock.expectOne('/api/v1/admin/users/5/unverify');
+    expect(req.request.method).toBe('POST');
+    req.flush({});
+  });
+
+  it('changeRole should POST with role body', () => {
+    service.changeRole('5', 'MODERATOR').subscribe();
+    const req = httpMock.expectOne('/api/v1/admin/users/5/role');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ role: 'MODERATOR' });
+    req.flush({ success: true });
+  });
+
+  it('resetPassword should POST and return newPassword', () => {
+    service.resetPassword('5').subscribe(r => expect(r.newPassword).toBe('ABC123'));
+    const req = httpMock.expectOne('/api/v1/admin/users/5/reset-password');
+    expect(req.request.method).toBe('POST');
+    req.flush({ success: true, userId: '5', newPassword: 'ABC123' });
   });
 });

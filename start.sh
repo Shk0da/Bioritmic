@@ -22,15 +22,34 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
+kill_by_port() {
+    local port=$1
+    local pids
+    pids=$(lsof -ti :"$port" 2>/dev/null)
+    if [ -n "$pids" ]; then
+        echo "$pids" | xargs kill -15 2>/dev/null || true
+        sleep 1
+        pids=$(lsof -ti :"$port" 2>/dev/null)
+        [ -n "$pids" ] && echo "$pids" | xargs kill -9 2>/dev/null || true
+    fi
+}
+
 echo -e "${CYAN}========================================${NC}"
 echo -e "${CYAN}  Bioritmic — Starting project${NC}"
 echo -e "${CYAN}========================================${NC}"
 
+# --- Kill old processes ---
+echo ""
+echo -e "${YELLOW}[1/7] Stopping old processes...${NC}"
+kill_by_port 8080
+kill_by_port 4200
+pkill -f "GradleWorkerMain" 2>/dev/null || true
+echo -e "  ${GREEN}Done${NC}"
+
 # --- Infrastructure: PostgreSQL (Docker) ---
 echo ""
-echo -e "${YELLOW}[1/5] Starting PostgreSQL (Docker)...${NC}"
+echo -e "${YELLOW}[2/7] Starting PostgreSQL (Docker)...${NC}"
 cd "$ROOT_DIR"
-# Remove stale containers so docker compose up can reuse the name
 docker rm -f bioritmic-postgres >/dev/null 2>&1 || true
 docker compose up -d postgres
 echo "  Waiting for PostgreSQL to be ready..."
@@ -48,7 +67,7 @@ done
 
 # --- Infrastructure: MinIO ---
 echo ""
-echo -e "${YELLOW}[2/5] Checking MinIO (S3 storage)...${NC}"
+echo -e "${YELLOW}[3/7] Checking MinIO (S3 storage)...${NC}"
 if curl -sf http://localhost:9341 > /dev/null 2>&1; then
     echo -e "  ${GREEN}MinIO is already running (port 9341)${NC}"
 else
@@ -69,19 +88,28 @@ else
     fi
 fi
 
+# --- Clean Build Backend ---
+echo ""
+echo -e "${YELLOW}[4/7] Clean building backend...${NC}"
+cd "$ROOT_DIR"
+./gradlew clean :api:build -x test > /tmp/bioritmic-build.log 2>&1
+echo -e "  ${GREEN}Backend built successfully${NC}"
+
 # --- Backend ---
 echo ""
-echo -e "${YELLOW}[3/5] Starting Backend (Kotlin/Spring Boot on :8080)...${NC}"
+echo -e "${YELLOW}[5/7] Starting Backend (Kotlin/Spring Boot on :8080)...${NC}"
 cd "$ROOT_DIR"
 ./gradlew :api:bootRun > /tmp/bioritmic-api.log 2>&1 &
 API_PID=$!
 echo -e "  PID: $API_PID"
 
 echo -e "  Waiting for backend to start..."
+BACKEND_OK=false
 for i in $(seq 1 60); do
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/management/actuator/health 2>/dev/null || true)
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/management/actuator/health 2>/dev/null || true)
     if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
         echo -e "  ${GREEN}Backend is ready (http://localhost:8080)${NC}"
+        BACKEND_OK=true
         break
     fi
     if ! kill -0 "$API_PID" 2>/dev/null; then
@@ -92,23 +120,42 @@ for i in $(seq 1 60); do
     sleep 2
 done
 
+if [ "$BACKEND_OK" = false ]; then
+    echo -e "  ${RED}Backend failed to start within 120 seconds. Check /tmp/bioritmic-api.log${NC}"
+    tail -20 /tmp/bioritmic-api.log
+    exit 1
+fi
+
 # --- Frontend ---
 echo ""
-echo -e "${YELLOW}[4/5] Starting Frontend (Angular on :4200)...${NC}"
+echo -e "${YELLOW}[6/7] Starting Frontend (Angular on :4200)...${NC}"
 cd "$UI_DIR"
 npx ng serve --proxy-config proxy.conf.json --open > /tmp/bioritmic-ui.log 2>&1 &
 UI_PID=$!
 echo -e "  PID: $UI_PID"
 
+FRONTEND_OK=false
 echo -e "  Waiting for frontend to compile..."
 for i in $(seq 1 120); do
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 2>/dev/null || true)
     if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "404" ]; then
         echo -e "  ${GREEN}Frontend is ready (http://localhost:4200)${NC}"
+        FRONTEND_OK=true
         break
+    fi
+    if ! kill -0 "$UI_PID" 2>/dev/null; then
+        echo -e "  ${RED}Frontend process died. Check /tmp/bioritmic-ui.log${NC}"
+        tail -20 /tmp/bioritmic-ui.log
+        exit 1
     fi
     sleep 2
 done
+
+if [ "$FRONTEND_OK" = false ]; then
+    echo -e "  ${RED}Frontend failed to start within 240 seconds. Check /tmp/bioritmic-ui.log${NC}"
+    tail -20 /tmp/bioritmic-ui.log
+    exit 1
+fi
 
 # --- Summary ---
 echo ""
@@ -121,7 +168,7 @@ echo -e "  Backend:    ${GREEN}http://localhost:8080${NC}"
 echo -e "  Swagger:    ${GREEN}http://localhost:8080/swagger-ui.html${NC}"
 echo -e "  PostgreSQL: ${GREEN}localhost:5432${NC}  (postgres/postgres)"
 echo -e "  MinIO:      ${GREEN}http://localhost:9341${NC}  (bioritmic/bioritmic)"
-echo -e "  Actuator:   ${GREEN}http://localhost:8080/management/actuator/health${NC}"
+echo -e "  Actuator:   ${GREEN}http://localhost:8081/management/actuator/health${NC}"
 echo ""
 echo -e "  API logs:   ${YELLOW}tail -f /tmp/bioritmic-api.log${NC}"
 echo -e "  UI logs:    ${YELLOW}tail -f /tmp/bioritmic-ui.log${NC}"

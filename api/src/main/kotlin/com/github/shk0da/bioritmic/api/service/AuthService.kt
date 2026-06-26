@@ -38,7 +38,6 @@ class AuthService(
         val currentAuth = authRepository.findByUserId(userId = user.id!!)
         if (null != currentAuth) {
             newAuth.id = currentAuth.id
-            newAuth.refreshToken = newAuth.refreshToken
         }
         authTokenCache[newAuth.accessToken] = newAuth
         return authRepository.save(newAuth)
@@ -50,6 +49,10 @@ class AuthService(
         val auth = authRepository.findByUserIdAndRefreshToken(
             user.id!!, userToken.refreshToken
         ) ?: throw ApiException(ErrorCode.AUTH_NOT_FOUND)
+        if (auth.isExpired()) {
+            authRepository.deleteByUserId(user.id!!)
+            throw ApiException(ErrorCode.AUTH_NOT_FOUND)
+        }
         val newAuth = auth.refresh()
         authTokenCache[auth.accessToken] = auth
         authRepository.save(newAuth)

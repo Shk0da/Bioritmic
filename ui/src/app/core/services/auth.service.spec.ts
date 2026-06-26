@@ -199,7 +199,7 @@ describe('AuthService', () => {
 
   describe('loadCurrentUser', () => {
     it('should GET /api/v1/user/me and update user', () => {
-      const user: UserInfo = { id: 1, name: 'Loaded', email: 'l@t.com' };
+      const user: UserInfo = { id: '1', name: 'Loaded', email: 'l@t.com' };
 
       service.loadCurrentUser().subscribe(u => {
         expect(u.name).toBe('Loaded');

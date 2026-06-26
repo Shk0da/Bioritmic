@@ -28,7 +28,7 @@ export interface BiorhythmCycle {
 }
 
 export interface BiorhythmDetail {
-  userId?: number;
+  userId?: string;
   physical?: number;
   emotional?: number;
   intellectual?: number;
@@ -53,7 +53,7 @@ export class UserService {
     return this.http.get<UserInfo>(`${this.apiUrl}/me`);
   }
 
-  getUserById(id: number): Observable<UserInfo> {
+  getUserById(id: string): Observable<UserInfo> {
     return this.http.get<UserInfo>(`${this.apiUrl}/${id}`);
   }
 
@@ -72,15 +72,15 @@ export class UserService {
     return this.http.get<UserInfo[]>(`${this.apiUrl}/blocked`, { params });
   }
 
-  blockUser(userId: number): Observable<UserInfo> {
+  blockUser(userId: string): Observable<UserInfo> {
     return this.http.put<UserInfo>(`${this.apiUrl}/${userId}/block`, {});
   }
 
-  unblockUser(userId: number): Observable<UserInfo> {
+  unblockUser(userId: string): Observable<UserInfo> {
     return this.http.put<UserInfo>(`${this.apiUrl}/${userId}/unblock`, {});
   }
 
-  isBlockedBy(userId: number): Observable<{ blocked: boolean }> {
+  isBlockedBy(userId: string): Observable<{ blocked: boolean }> {
     return this.http.get<{ blocked: boolean }>(`${this.apiUrl}/${userId}/is-blocked-by`);
   }
 
@@ -92,14 +92,14 @@ export class UserService {
     return this.http.post<GisData>(`${this.apiUrl}/me/gis`, gisData);
   }
 
-  getPhoto(userId?: number): Observable<Uint8Array> {
+  getPhoto(userId?: string): Observable<Uint8Array> {
     const url = userId ? `${this.apiUrl}/${userId}/photo` : `${this.apiUrl}/me/photo`;
     return this.http.get(url, { responseType: 'arraybuffer' }).pipe(
       map((buffer: ArrayBuffer) => new Uint8Array(buffer))
     );
   }
 
-  getUserPhotos(userId: number): Observable<UserPhoto[]> {
+  getUserPhotos(userId: string): Observable<UserPhoto[]> {
     return this.http.get<UserPhoto[]>(`${this.apiUrl}/${userId}/photos`);
   }
 
@@ -112,7 +112,7 @@ export class UserService {
   uploadPhoto(file: File): Observable<void> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<void>(`${this.apiUrl}/me/photo`, formData);
+    return this.http.post<void>(`${this.apiUrl}/me/photo`, formData, { responseType: 'text' as any });
   }
 
   deletePhoto(): Observable<void> {
@@ -157,7 +157,17 @@ export class UserService {
     return this.http.post<{ success: boolean; status: string }>(`${this.apiUrl}/me/verify`, formData);
   }
 
-  getBiorhythmDetail(userId: number): Observable<BiorhythmDetail> {
+  getBiorhythmDetail(userId: string): Observable<BiorhythmDetail> {
     return this.http.get<BiorhythmDetail>(`/api/v1/biorhythm/${userId}/detail`);
+  }
+
+  static createPhotoUrl(bytes: Uint8Array): string {
+    return URL.createObjectURL(new Blob([bytes]));
+  }
+
+  static revokePhotoUrl(url: string | null | undefined): void {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+    }
   }
 }

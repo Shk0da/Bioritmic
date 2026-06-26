@@ -1,5 +1,5 @@
 export interface User {
-  id?: number;
+  id?: string;
   email: string;
   name: string;
   birthday: string; // format: yyyy-MM-dd
@@ -62,7 +62,7 @@ export interface Timestamp {
 
 export interface GisData {
   id?: number;
-  userId: number;
+  userId: string;
   lat: number;
   lon: number;
   timestamp?: Date;
@@ -70,15 +70,15 @@ export interface GisData {
 
 export interface UserMail {
   id?: number;
-  from?: number;
-  to: number;
+  from?: string;
+  to: string;
   message: string; // minLength: 1, maxLength: 1024
   timestamp?: Timestamp;
 }
 
 export interface UserMeeting {
   id?: number;
-  userId: number;
+  userId: string;
   lat: number;
   lon: number;
   distance: number;
@@ -88,7 +88,7 @@ export interface UserMeeting {
 }
 
 export interface UserBookmark {
-  userId: number;
+  userId: string;
 }
 
 export interface UserInfo {
@@ -99,7 +99,7 @@ export interface UserInfo {
   email?: string;
   gender?: Gender;
   horo?: number; // порядковый номер знака зодиака (1-12)
-  id?: number;
+  id?: string;
   image?: string;
   isBioCompatible?: boolean;
   isFullCompatible?: boolean;

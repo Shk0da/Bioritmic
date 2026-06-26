@@ -38,7 +38,7 @@ class SubscriptionService(
         val subscription = subscriptionRepository.findActiveByUserId(userId) ?: return false
         val result = subscription.plan == Subscription.PLAN_PRO &&
                 subscription.expiresAt?.after(Timestamp(now)) == true
-        proStatusCache[userId] = Pair(result, now)
+        proStatusCache.compute(userId) { _, _ -> Pair(result, now) }
         return result
     }
 

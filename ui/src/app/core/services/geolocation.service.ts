@@ -94,7 +94,7 @@ export class GeolocationService {
    */
   private doSendLocation(lat: number, lon: number): void {
     const gisData: GisData = {
-      userId: 0, // Сервер определит по токену
+      userId: '', // Сервер определит по токену
       lat,
       lon
     };

@@ -1,6 +1,7 @@
 package com.github.shk0da.bioritmic.api.service
 
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.stereotype.Service
@@ -13,6 +14,9 @@ class EmailService(val mailSender: JavaMailSender) {
     companion object {
         const val DEFAULT_FROM = "admin@bioritmic.com"
     }
+
+    @Value("\${app.base-url:http://localhost:8080}")
+    private val baseUrl: String = "http://localhost:8080"
 
     suspend fun sendTextEmail(to: String, subject: String, text: String) {
         val message = SimpleMailMessage()
@@ -29,13 +33,13 @@ class EmailService(val mailSender: JavaMailSender) {
     }
 
     suspend fun sendRecoveryLink(email: String, code: String) {
-        val link = "http://localhost:8080/api/v1/reset-password?code=$code"
+        val link = "$baseUrl/api/v1/reset-password?code=$code"
         log.debug("Send recovery link: '{}' for {}", link, email)
         sendTextEmail(email, "Reset password", link)
     }
 
     suspend fun sendConfirmationChangeEmail(email: String, newEmail: String, code: String) {
-        val link = "http://localhost:8080/api/v1/update-email?code=$code&email=$newEmail"
+        val link = "$baseUrl/api/v1/update-email?code=$code&email=$newEmail"
         log.debug("Send change email link: '{}' for {}", link, email)
         sendTextEmail(email, "Confirmation change email", link)
     }

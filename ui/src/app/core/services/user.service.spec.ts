@@ -28,10 +28,10 @@ describe('UserService', () => {
   });
 
   it('getUserById should GET /api/v1/user/{id}', () => {
-    service.getUserById(42).subscribe();
+    service.getUserById('42').subscribe();
     const req = httpMock.expectOne('/api/v1/user/42');
     expect(req.request.method).toBe('GET');
-    req.flush({ id: 42 });
+    req.flush({ id: '42' });
   });
 
   it('updateUser should PATCH /api/v1/user/me', () => {
@@ -58,21 +58,21 @@ describe('UserService', () => {
   });
 
   it('blockUser should PUT /api/v1/user/{id}/block', () => {
-    service.blockUser(5).subscribe();
+    service.blockUser('5').subscribe();
     const req = httpMock.expectOne('/api/v1/user/5/block');
     expect(req.request.method).toBe('PUT');
     req.flush({});
   });
 
   it('unblockUser should PUT /api/v1/user/{id}/unblock', () => {
-    service.unblockUser(5).subscribe();
+    service.unblockUser('5').subscribe();
     const req = httpMock.expectOne('/api/v1/user/5/unblock');
     expect(req.request.method).toBe('PUT');
     req.flush({});
   });
 
   it('isBlockedBy should GET /api/v1/user/{id}/is-blocked-by', () => {
-    service.isBlockedBy(5).subscribe(r => expect(r.blocked).toBeTrue());
+    service.isBlockedBy('5').subscribe(r => expect(r.blocked).toBeTrue());
     const req = httpMock.expectOne('/api/v1/user/5/is-blocked-by');
     expect(req.request.method).toBe('GET');
     req.flush({ blocked: true });
@@ -86,14 +86,14 @@ describe('UserService', () => {
   });
 
   it('saveGisData should POST /api/v1/user/me/gis', () => {
-    service.saveGisData({ userId: 1, lat: 55, lon: 37 }).subscribe();
+    service.saveGisData({ userId: '1', lat: 55, lon: 37 }).subscribe();
     const req = httpMock.expectOne('/api/v1/user/me/gis');
     expect(req.request.method).toBe('POST');
     req.flush({});
   });
 
   it('getPhoto with userId should GET /api/v1/user/{id}/photo', () => {
-    service.getPhoto(42).subscribe();
+    service.getPhoto('42').subscribe();
     const req = httpMock.expectOne('/api/v1/user/42/photo');
     expect(req.request.method).toBe('GET');
     expect(req.request.responseType).toBe('arraybuffer');
@@ -108,7 +108,7 @@ describe('UserService', () => {
   });
 
   it('getUserPhotos should GET /api/v1/user/{id}/photos', () => {
-    service.getUserPhotos(42).subscribe();
+    service.getUserPhotos('42').subscribe();
     const req = httpMock.expectOne('/api/v1/user/42/photos');
     expect(req.request.method).toBe('GET');
     req.flush([]);
@@ -174,7 +174,7 @@ describe('UserService', () => {
   });
 
   it('getBiorhythmDetail should GET /api/v1/biorhythm/{id}/detail', () => {
-    service.getBiorhythmDetail(42).subscribe();
+    service.getBiorhythmDetail('42').subscribe();
     const req = httpMock.expectOne('/api/v1/biorhythm/42/detail');
     expect(req.request.method).toBe('GET');
     req.flush({ physical: 0.8 });

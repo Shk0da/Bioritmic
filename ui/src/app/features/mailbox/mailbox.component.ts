@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { UserService } from '../../core/services/user.service';
 import { UserMail, PageableRequest, UserInfo } from '../../core/models/user.model';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ModalService } from '../../core/services/modal.service';
+import { Subject, takeUntil } from 'rxjs';
 
 interface MessageWithUser extends UserMail {
   userName?: string;
@@ -12,7 +13,7 @@ interface MessageWithUser extends UserMail {
 }
 
 interface UserConversation {
-  userId: number;
+  userId: string;
   userName?: string;
   userPhotoUrl?: string | null;
   lastMessage: string;
@@ -175,12 +176,13 @@ interface UserConversation {
     }
   `]
 })
-export class MailboxComponent implements OnInit {
+export class MailboxComponent implements OnInit, OnDestroy {
   conversations: UserConversation[] = [];
   messages: MessageWithUser[] = [];
   loading = false;
   pageable: PageableRequest = { page: 0, size: 100 };
-  currentUserId?: number;
+  currentUserId?: string;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private mailboxService: MailboxService,
@@ -195,14 +197,19 @@ export class MailboxComponent implements OnInit {
     localStorage.setItem('mailbox_last_read', Date.now().toString());
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.conversations.forEach(conv => UserService.revokePhotoUrl(conv.userPhotoUrl));
+  }
+
   private loadCurrentUserId(): void {
-    this.userService.getCurrentUser().subscribe({
+    this.userService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe({
       next: (user) => {
         this.currentUserId = user.id;
         this.loadMessages();
       },
       error: () => {
-        // Если не удалось получить текущего пользователя, пробуем загрузить сообщения
         this.loadMessages();
       }
     });
@@ -210,7 +217,7 @@ export class MailboxComponent implements OnInit {
 
   private loadMessages(): void {
     this.loading = true;
-    this.mailboxService.getMailbox(this.pageable).subscribe({
+    this.mailboxService.getMailbox(this.pageable).pipe(takeUntil(this.destroy$)).subscribe({
       next: (messages) => {
         this.messages = messages;
         if (this.currentUserId) {
@@ -225,10 +232,9 @@ export class MailboxComponent implements OnInit {
   }
 
   private groupByUsers(): void {
-    const userMap = new Map<number, MessageWithUser>();
+    const userMap = new Map<string, MessageWithUser>();
 
     this.messages.forEach(message => {
-      // Определяем собеседника (не текущего пользователя)
       const otherUserId = message.from === this.currentUserId ? message.to : message.from;
       
       if (!otherUserId) return;
@@ -252,7 +258,7 @@ export class MailboxComponent implements OnInit {
     });
 
     this.conversations.forEach(conv => {
-      this.userService.getUserById(conv.userId).subscribe({
+      this.userService.getUserById(conv.userId).pipe(takeUntil(this.destroy$)).subscribe({
         next: (user: UserInfo) => {
           conv.userName = user.name;
           this.loadUserPhoto(conv.userId, conv);
@@ -275,10 +281,11 @@ export class MailboxComponent implements OnInit {
     return timestamp.seconds || timestamp.time || 0;
   }
 
-  private loadUserPhoto(userId: number, conv: UserConversation): void {
-    this.userService.getPhoto(userId).subscribe({
+  private loadUserPhoto(userId: string, conv: UserConversation): void {
+    this.userService.getPhoto(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
-        conv.userPhotoUrl = this.bytesToDataUrl(bytes);
+        UserService.revokePhotoUrl(conv.userPhotoUrl);
+        conv.userPhotoUrl = UserService.createPhotoUrl(bytes);
       },
       error: () => {
         conv.userPhotoUrl = null;
@@ -286,23 +293,10 @@ export class MailboxComponent implements OnInit {
     });
   }
 
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
-
-  async deleteConversation(userId: number): Promise<void> {
+  async deleteConversation(userId: string): Promise<void> {
     const confirmed = await this.modalService.confirm('Удалить переписку?', 'Подтверждение');
     if (confirmed) {
-      this.mailboxService.deleteMail(userId).subscribe({
+      this.mailboxService.deleteMail(userId).pipe(takeUntil(this.destroy$)).subscribe({
         next: () => {
           this.loadMessages();
         },
@@ -327,7 +321,7 @@ export class MailboxComponent implements OnInit {
     return '';
   }
 
-  openConversation(userId: number): void {
+  openConversation(userId: string): void {
     this.router.navigate(['/mailbox/conversation', userId]);
   }
 }

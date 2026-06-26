@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 import { NgClass } from '@angular/common';
+import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-edit-profile',
@@ -179,13 +180,14 @@ import { NgClass } from '@angular/common';
     }
   `]
 })
-export class EditProfileComponent implements OnInit {
+export class EditProfileComponent implements OnInit, OnDestroy {
   user: Partial<UserInfo> = {};
   photoFile: File | null = null;
   photoDataUrl: string | null = null;
   Gender = Gender;
   saving = false;
   uploadingPhoto = false;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private userService: UserService,
@@ -198,8 +200,14 @@ export class EditProfileComponent implements OnInit {
     this.loadPhoto();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    UserService.revokePhotoUrl(this.photoDataUrl);
+  }
+
   private loadProfile(): void {
-    this.userService.getCurrentUser().subscribe({
+    this.userService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe({
       next: (user: UserInfo) => {
         this.user = { ...user };
       }
@@ -207,9 +215,10 @@ export class EditProfileComponent implements OnInit {
   }
 
   private loadPhoto(): void {
-    this.userService.getPhoto().subscribe({
+    this.userService.getPhoto().pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
-        this.photoDataUrl = this.bytesToDataUrl(bytes);
+        UserService.revokePhotoUrl(this.photoDataUrl);
+        this.photoDataUrl = UserService.createPhotoUrl(bytes);
       },
       error: () => {
         this.photoDataUrl = null;
@@ -223,23 +232,11 @@ export class EditProfileComponent implements OnInit {
       this.photoFile = input.files[0];
       const reader = new FileReader();
       reader.onload = (e: any) => {
+        UserService.revokePhotoUrl(this.photoDataUrl);
         this.photoDataUrl = e.target.result;
       };
       reader.readAsDataURL(this.photoFile);
     }
-  }
-
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   isFormValid(): boolean {

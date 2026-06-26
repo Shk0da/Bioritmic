@@ -51,32 +51,51 @@ if not defined JAVA_HOME (
 )
 start "bioritmic-api" cmd /c ".\gradlew.bat :api:bootRun -Dspring-boot.run.profiles=develop > %TEMP%\bioritmic-api.log 2>&1"
 echo   Waiting for backend to start...
+set API_OK=0
 for /l %%i in (1,1,90) do (
     set "HTTP_CODE="
-    for /f %%H in ('curl -s -o nul -w "%%{http_code}" http://localhost:8080/management/actuator/health 2^>nul') do set "HTTP_CODE=%%H"
-    if "!HTTP_CODE!"=="200" goto api_ready
-    if "!HTTP_CODE!"=="401" goto api_ready
-    if "!HTTP_CODE!"=="403" goto api_ready
+    for /f %%H in ('curl -s -o nul -w "%%{http_code}" http://localhost:8081/management/actuator/health 2^>nul') do set "HTTP_CODE=%%H"
+    if "!HTTP_CODE!"=="200" (
+        set API_OK=1
+        goto api_ready
+    )
+    if "!HTTP_CODE!"=="401" (
+        set API_OK=1
+        goto api_ready
+    )
+    if "!HTTP_CODE!"=="403" (
+        set API_OK=1
+        goto api_ready
+    )
     timeout /t 2 /nobreak >nul
 )
-echo   Backend failed to start in expected time. Check %TEMP%\bioritmic-api.log
-exit /b 1
 :api_ready
+if "!API_OK!"=="0" (
+    echo   Backend failed to start within 180 seconds. Check %TEMP%\bioritmic-api.log
+    exit /b 1
+)
 echo   Backend is ready (http://localhost:8080^)
 
 echo.
 echo [4/5] Starting Frontend (Angular on :4200^)...
 cd /d "%UI_DIR%"
 start "bioritmic-ui" cmd /c "npx ng serve --proxy-config proxy.conf.json --open > %TEMP%\bioritmic-ui.log 2>&1"
-echo   Waiting for frontend to start...
+echo   Waiting for frontend to compile...
+set UI_OK=0
 for /l %%i in (1,1,120) do (
     powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:4200' -TimeoutSec 2; exit 0 } catch { exit 1 }" >nul 2>&1
-    if not errorlevel 1 goto ui_ready
-    timeout /t 1 /nobreak >nul
+    if not errorlevel 1 (
+        set UI_OK=1
+        goto ui_ready
+    )
+    timeout /t 2 /nobreak >nul
 )
-echo   Frontend failed to start in expected time. Check %TEMP%\bioritmic-ui.log
-exit /b 1
 :ui_ready
+if "!UI_OK!"=="0" (
+    echo   Frontend failed to start within 240 seconds. Check %TEMP%\bioritmic-ui.log
+    type %TEMP%\bioritmic-ui.log | findstr /i "error ERR"
+    exit /b 1
+)
 echo   Frontend is ready (http://localhost:4200^)
 
 echo.

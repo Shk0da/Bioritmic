@@ -19,6 +19,9 @@ interface ProfileBoostRepository : CoroutineCrudRepository<ProfileBoost, Long> {
     )
     suspend fun findActiveByUserId(userId: UUID): ProfileBoost?
 
+    @Query("SELECT * FROM profile_boosts WHERE user_id IN (:userIds) AND expires_at > NOW()")
+    suspend fun findActiveByUserIds(userIds: Set<UUID>): List<ProfileBoost>
+
     @Query("DELETE FROM profile_boosts WHERE expires_at <= :now")
     suspend fun deleteExpired(now: Timestamp)
 }

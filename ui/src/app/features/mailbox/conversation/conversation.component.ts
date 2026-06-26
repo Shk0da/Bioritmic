@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, DestroyRef, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MailboxService } from '../../../core/services/mailbox.service';
 import { UserService } from '../../../core/services/user.service';
@@ -7,6 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Location, NgIf, NgFor, DatePipe } from '@angular/common';
 import { ModalService } from '../../../core/services/modal.service';
+import { Subject, takeUntil } from 'rxjs';
 
 interface MessageWithUser extends UserMail {
   userName?: string;
@@ -456,16 +457,18 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
   messages: MessageWithUser[] = [];
   loading = false;
   sending = false;
-  otherUserId!: number;
+  otherUserId!: string;
   otherUserName?: string;
   otherUserPhotoUrl?: string | null;
   otherUserOnline = false;
   newMessage = '';
-  currentUserId?: number;
+  currentUserId?: string;
   private shouldScroll = false;
   showEmojiPicker = false;
   private refreshInterval: any = null;
   isBlocked = false;
+  private destroy$ = new Subject<void>();
+  private destroyRef = inject(DestroyRef);
 
   emojis = [
     '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
@@ -487,21 +490,29 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
     private sanitizer: DomSanitizer,
     private location: Location,
     private modalService: ModalService
-  ) {}
+  ) {
+    this.destroyRef.onDestroy(() => {
+      this.destroy$.next();
+      this.destroy$.complete();
+      UserService.revokePhotoUrl(this.otherUserPhotoUrl);
+    });
+  }
 
   ngOnInit(): void {
-    this.otherUserId = +this.route.snapshot.paramMap.get('userId')!;
+    this.otherUserId = this.route.snapshot.paramMap.get('userId')!;
     this.loadCurrentUserId();
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
     }
   }
 
   private loadCurrentUserId(): void {
-    this.userService.getCurrentUser().subscribe({
+    this.userService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe({
       next: (user) => {
         this.currentUserId = user.id;
         this.checkBlockStatus();
@@ -516,7 +527,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
   }
 
   private checkBlockStatus(): void {
-    this.userService.isBlockedBy(this.otherUserId).subscribe({
+    this.userService.isBlockedBy(this.otherUserId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (result) => {
         this.isBlocked = result.blocked;
       },
@@ -526,9 +537,8 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
 
   private loadAllMessages(): void {
     this.loading = true;
-    this.mailboxService.getConversation(this.otherUserId).subscribe({
+    this.mailboxService.getConversation(this.otherUserId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (allMessages) => {
-        // Фильтруем и обрабатываем сообщения
         this.messages = allMessages
           .map(m => ({
             ...m,
@@ -549,7 +559,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
   }
 
   private loadOtherUserInfo(): void {
-    this.userService.getUserById(this.otherUserId).subscribe({
+    this.userService.getUserById(this.otherUserId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (user: UserInfo) => {
         this.otherUserName = user.name;
         this.otherUserOnline = user.isOnline === true;
@@ -562,27 +572,15 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
   }
 
   private loadOtherUserPhoto(): void {
-    this.userService.getPhoto(this.otherUserId).subscribe({
+    this.userService.getPhoto(this.otherUserId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
-        this.otherUserPhotoUrl = this.bytesToDataUrl(bytes);
+        UserService.revokePhotoUrl(this.otherUserPhotoUrl);
+        this.otherUserPhotoUrl = UserService.createPhotoUrl(bytes);
       },
       error: () => {
         this.otherUserPhotoUrl = null;
       }
     });
-  }
-
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   sendMessage(): void {
@@ -594,7 +592,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
       message: this.newMessage.trim()
     };
 
-    this.mailboxService.sendMail(message).subscribe({
+    this.mailboxService.sendMail(message).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.loadAllMessages();
         this.newMessage = '';
@@ -653,10 +651,13 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
     this.newMessage += emoji;
   }
 
+  private isRefreshing = false;
   private refreshMessages(): void {
-    if (this.sending) return;
-    this.mailboxService.getConversation(this.otherUserId).subscribe({
+    if (this.sending || this.isRefreshing) return;
+    this.isRefreshing = true;
+    this.mailboxService.getConversation(this.otherUserId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (allMessages) => {
+        this.isRefreshing = false;
         const prevCount = this.messages.length;
         this.messages = allMessages.map(m => ({
           ...m,
@@ -667,7 +668,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
           setTimeout(() => this.scrollToBottom(), 100);
         }
       },
-      error: () => {}
+      error: () => { this.isRefreshing = false; }
     });
   }
 }

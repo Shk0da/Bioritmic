@@ -4,7 +4,7 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <changeSet id="0023-fix-uuid-entity-schema" author="uuid-migration">
+    <changeSet id="0024-fix-uuid-entity-schema" author="uuid-migration">
         <comment>Align bans, user_photos, user_roles, and user_push_tokens with Kotlin entities.</comment>
 
         <!-- bans: entity uses banned_until, permanent, created_at (not banned_at/expires_at) -->
@@ -21,7 +21,8 @@
         <!-- user_roles: entity maps created_at -->
         <sql>ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();</sql>
 
-        <!-- user_push_tokens: restore unique token constraint -->
-        <sql>CREATE UNIQUE INDEX IF NOT EXISTS idx_user_push_tokens_token ON user_push_tokens(token);</sql>
+        <!-- user_push_tokens: restore unique token constraint (replace non-unique index from 0023) -->
+        <sql>DROP INDEX IF EXISTS idx_user_push_tokens_token;</sql>
+        <sql>CREATE UNIQUE INDEX idx_user_push_tokens_token ON user_push_tokens(token);</sql>
     </changeSet>
 </databaseChangeLog>

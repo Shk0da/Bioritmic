@@ -18,6 +18,10 @@ import java.util.UUID
 interface StoryViewRepository : CoroutineCrudRepository<StoryView, Long> {
 
     @Transactional(readOnly = true)
+    @Query("SELECT * FROM story_views WHERE story_id = :storyId AND viewer_id = :viewerId LIMIT 1")
+    suspend fun findByStoryIdAndViewerId(storyId: Long, viewerId: Long): StoryView?
+
+    @Transactional(readOnly = true)
     @Query("SELECT EXISTS(SELECT 1 FROM story_views WHERE story_id = :storyId AND viewer_id = :viewerId)")
     suspend fun existsByStoryIdAndViewerId(storyId: Long, viewerId: UUID): Boolean
 

@@ -11,9 +11,9 @@ export interface AdminDashboard {
 
 export interface Report {
   id: number;
-  reporterId: number;
+  reporterId: string;
   reporterName?: string;
-  targetId: number;
+  targetId: string;
   targetName?: string;
   reason: string;
   status: string;
@@ -21,11 +21,19 @@ export interface Report {
 }
 
 export interface AdminUser {
-  id?: number;
+  id?: string;
   name?: string;
   email?: string;
   role?: string;
   age?: number;
+  isVerified?: boolean;
+}
+
+export interface PaginatedUsersResponse {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  size: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,19 +46,19 @@ export class AdminService {
     return this.http.get<AdminDashboard>(`${this.apiUrl}/dashboard`);
   }
 
-  getUsers(): Observable<AdminUser[]> {
-    return this.http.get<AdminUser[]>(`${this.apiUrl}/users`);
+  getUsers(page = 0, size = 50): Observable<PaginatedUsersResponse> {
+    return this.http.get<PaginatedUsersResponse>(`${this.apiUrl}/users?page=${page}&size=${size}`);
   }
 
-  banUser(userId: number): Observable<any> {
+  banUser(userId: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/users/${userId}/ban`, {});
   }
 
-  unbanUser(userId: number): Observable<any> {
+  unbanUser(userId: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/users/${userId}/unban`, {});
   }
 
-  deleteUser(userId: number): Observable<any> {
+  deleteUser(userId: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/users/${userId}`);
   }
 
@@ -66,12 +74,28 @@ export class AdminService {
     return this.http.get<SystemMetrics>(`${this.apiUrl}/metrics`);
   }
 
-  createReport(reportedUserId: number, reason: string, description?: string): Observable<any> {
+  createReport(reportedUserId: string, reason: string, description?: string): Observable<any> {
     return this.http.post('/api/v1/report', {
       reported_user_id: reportedUserId,
       reason,
       description: description || null
     });
+  }
+
+  verifyUser(userId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/users/${userId}/verify`, {});
+  }
+
+  unverifyUser(userId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/users/${userId}/unverify`, {});
+  }
+
+  changeRole(userId: string, role: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/users/${userId}/role`, { role });
+  }
+
+  resetPassword(userId: string): Observable<{ success: boolean; userId: string; newPassword: string }> {
+    return this.http.post<{ success: boolean; userId: string; newPassword: string }>(`${this.apiUrl}/users/${userId}/reset-password`, {});
   }
 }
 

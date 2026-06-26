@@ -24,7 +24,7 @@ describe('authGuard', () => {
 
   it('should return true when authenticated and user exists', () => {
     authService.isAuthenticated.and.returnValue(true);
-    authService.getCurrentUser.and.returnValue({ id: 1, name: 'Test', email: 't@t.com' });
+    authService.getCurrentUser.and.returnValue({ id: '1', name: 'Test', email: 't@t.com' });
 
     TestBed.runInInjectionContext(() => {
       const result = authGuard();

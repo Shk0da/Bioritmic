@@ -47,7 +47,7 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
                 WHERE lat BETWEEN :latMin AND :latMax AND lon BETWEEN :lonMin AND :lonMax
                 ORDER BY distance
             ) AS gis
-            WHERE gis.user_id <> :userId AND gis.distance <= :distance AND usr.id = gis.user_id
+            WHERE gis.user_id <> :userId AND gis.distance <= :distance AND usr.id = gis.user_id AND usr.is_verified = true
         """.trimIndent()
 
         val params = mutableMapOf<String, Any>(

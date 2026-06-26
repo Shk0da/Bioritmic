@@ -27,7 +27,7 @@ describe('MeetingsService', () => {
   });
 
   it('createMeeting should POST array', () => {
-    service.createMeeting({ userId: 2, lat: 55, lon: 37, distance: 10 }).subscribe();
+    service.createMeeting({ userId: '2', lat: 55, lon: 37, distance: 10 }).subscribe();
     const req = httpMock.expectOne('/api/v1/meetings');
     expect(req.request.method).toBe('POST');
     expect(Array.isArray(req.request.body)).toBeTrue();
@@ -35,21 +35,21 @@ describe('MeetingsService', () => {
   });
 
   it('deleteMeeting should DELETE /{userId}', () => {
-    service.deleteMeeting(2).subscribe();
+    service.deleteMeeting('2').subscribe();
     const req = httpMock.expectOne('/api/v1/meetings/2');
     expect(req.request.method).toBe('DELETE');
     req.flush([]);
   });
 
   it('declineMeeting should PUT /{userId}/decline', () => {
-    service.declineMeeting(2).subscribe();
+    service.declineMeeting('2').subscribe();
     const req = httpMock.expectOne('/api/v1/meetings/2/decline');
     expect(req.request.method).toBe('PUT');
     req.flush({});
   });
 
   it('acceptMeeting should PUT /{userId}/accept', () => {
-    service.acceptMeeting(2).subscribe();
+    service.acceptMeeting('2').subscribe();
     const req = httpMock.expectOne('/api/v1/meetings/2/accept');
     expect(req.request.method).toBe('PUT');
     req.flush({});

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Critical: auth token lookup on every request -->
+    <changeSet id="23-1" author="bioritmic">
+        <sql>CREATE INDEX IF NOT EXISTS idx_authorizations_access_token ON authorizations(access_token)</sql>
+    </changeSet>
+
+    <!-- Reports: filter by pending status -->
+    <changeSet id="23-2" author="bioritmic">
+        <sql>CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)</sql>
+    </changeSet>
+
+    <!-- Push tokens: lookup by token -->
+    <changeSet id="23-3" author="bioritmic">
+        <sql>CREATE INDEX IF NOT EXISTS idx_user_push_tokens_token ON user_push_tokens(token)</sql>
+    </changeSet>
+
+    <!-- Mailbox: composite indexes for sorted conversation queries -->
+    <changeSet id="23-4" author="bioritmic">
+        <sql>CREATE INDEX IF NOT EXISTS idx_mailbox_from_user_timestamp ON mailbox(from_user_id, timestamp DESC)</sql>
+    </changeSet>
+
+    <changeSet id="23-5" author="bioritmic">
+        <sql>CREATE INDEX IF NOT EXISTS idx_mailbox_to_user_timestamp ON mailbox(to_user_id, timestamp DESC)</sql>
+    </changeSet>
+
+    <!-- Meetings: composite indexes for sorted queries -->
+    <changeSet id="23-6" author="bioritmic">
+        <sql>CREATE INDEX IF NOT EXISTS idx_meetings_user_timestamp ON meetings(user_id, timestamp DESC)</sql>
+    </changeSet>
+
+    <changeSet id="23-7" author="bioritmic">
+        <sql>CREATE INDEX IF NOT EXISTS idx_meetings_other_user_timestamp ON meetings(other_user_id, timestamp DESC)</sql>
+    </changeSet>
+
+    <!-- User prompt answers: composite index for user-specific queries -->
+    <changeSet id="23-8" author="bioritmic">
+        <sql>CREATE INDEX IF NOT EXISTS idx_user_prompt_answers_user_prompt ON user_prompt_answers(user_id, prompt_id)</sql>
+    </changeSet>
+
+    <!-- GIS data: spatial query support -->
+    <changeSet id="23-9" author="bioritmic">
+        <sql>CREATE INDEX IF NOT EXISTS idx_gis_data_lat_lon ON gis_data(lat, lon)</sql>
+    </changeSet>
+
+    <!-- Profile boosts: active boost lookup -->
+    <changeSet id="23-10" author="bioritmic">
+        <sql>CREATE INDEX IF NOT EXISTS idx_profile_boosts_user_expires ON profile_boosts(user_id, expires_at DESC)</sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -31,21 +31,23 @@ import { Subscription, filter } from 'rxjs';
           <a routerLink="/swipe" routerLinkActive="active" class="nav-btn" title="Поиск">
             <i class="bi bi-people"></i>
           </a>
-          <a routerLink="/bookmarks" routerLinkActive="active" class="nav-btn" title="Избранное">
-            <i class="bi bi-bookmark-heart"></i>
-          </a>
-          <a routerLink="/mailbox" routerLinkActive="active" class="nav-btn" title="Сообщения">
-            <i class="bi bi-chat-heart"></i>
-            @if (unreadCount > 0) {
-              <span class="notification-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
-            }
-          </a>
-          <a routerLink="/meetings" routerLinkActive="active" class="nav-btn" title="Встречи">
-            <i class="bi bi-calendar-event"></i>
-            @if (newMeetingsCount > 0) {
-              <span class="notification-badge badge-meetings">{{ newMeetingsCount > 99 ? '99+' : newMeetingsCount }}</span>
-            }
-          </a>
+          @if (isUserVerified) {
+            <a routerLink="/bookmarks" routerLinkActive="active" class="nav-btn" title="Избранное">
+              <i class="bi bi-bookmark-heart"></i>
+            </a>
+            <a routerLink="/mailbox" routerLinkActive="active" class="nav-btn" title="Сообщения">
+              <i class="bi bi-chat-heart"></i>
+              @if (unreadCount > 0) {
+                <span class="notification-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+              }
+            </a>
+            <a routerLink="/meetings" routerLinkActive="active" class="nav-btn" title="Встречи">
+              <i class="bi bi-calendar-event"></i>
+              @if (newMeetingsCount > 0) {
+                <span class="notification-badge badge-meetings">{{ newMeetingsCount > 99 ? '99+' : newMeetingsCount }}</span>
+              }
+            </a>
+          }
           @if (isUserAdmin) {
             <a routerLink="/admin" routerLinkActive="active" class="nav-btn" title="Админ-панель">
               <i class="bi bi-shield-lock"></i>
@@ -68,6 +70,14 @@ import { Subscription, filter } from 'rxjs';
     </header>
 
     <main class="main-container">
+      @if (!isUserVerified) {
+        <div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <div>
+            <strong>Аккаунт не верифицирован.</strong> Подтвердите email для полного доступа к функционалу.
+          </div>
+        </div>
+      }
       <router-outlet></router-outlet>
     </main>
   `,
@@ -155,6 +165,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   unreadCount = 0;
   newMeetingsCount = 0;
   isUserAdmin = false;
+  isUserVerified = true;
   private pollingIntervalId: any = null;
   private routerSubscription: Subscription | null = null;
   private userSubscription: Subscription | null = null;
@@ -172,6 +183,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
       this.isUserAdmin = !!(user?.role && user.role.includes('ADMIN'));
+      this.isUserVerified = user?.isVerified !== false;
       if (user?.id) {
         this.loadUserPhoto(user.id);
         this.startPolling();
@@ -196,6 +208,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.stopPolling();
     this.routerSubscription?.unsubscribe();
     this.userSubscription?.unsubscribe();
+    UserService.revokePhotoUrl(this.userPhoto);
   }
 
   private startPolling(): void {
@@ -215,9 +228,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
     }
   }
 
+  private isLoadingUnread = false;
   private loadUnreadCount(): void {
+    if (this.isLoadingUnread) return;
+    this.isLoadingUnread = true;
     this.mailboxService.getMailbox({ page: 0, size: 100 }).subscribe({
       next: (messages) => {
+        this.isLoadingUnread = false;
         const lastReadTime = localStorage.getItem('mailbox_last_read');
         const lastRead = lastReadTime ? parseInt(lastReadTime, 10) : 0;
         const unread = messages.filter(m => {
@@ -228,13 +245,17 @@ export class LayoutComponent implements OnInit, OnDestroy {
         const uniqueSenders = new Set(unread.map(m => m.from));
         this.unreadCount = uniqueSenders.size;
       },
-      error: () => {}
+      error: () => { this.isLoadingUnread = false; }
     });
   }
 
+  private isLoadingMeetings = false;
   private loadNewMeetingsCount(): void {
+    if (this.isLoadingMeetings) return;
+    this.isLoadingMeetings = true;
     this.meetingsService.getMeetings({ page: 0, size: 100 }).subscribe({
       next: (meetings) => {
+        this.isLoadingMeetings = false;
         const lastReadTime = localStorage.getItem('meetings_last_read');
         const lastRead = lastReadTime ? parseInt(lastReadTime, 10) : 0;
         const newMeetings = meetings.filter(m => {
@@ -244,7 +265,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
         });
         this.newMeetingsCount = newMeetings.length;
       },
-      error: () => {}
+      error: () => { this.isLoadingMeetings = false; }
     });
   }
 
@@ -271,28 +292,16 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.newMeetingsCount = 0;
   }
 
-  private loadUserPhoto(userId: number): void {
+  private loadUserPhoto(userId: string): void {
     this.userService.getPhoto(userId).subscribe({
       next: (bytes: Uint8Array) => {
-        this.userPhoto = this.bytesToDataUrl(bytes);
+        UserService.revokePhotoUrl(this.userPhoto);
+        this.userPhoto = UserService.createPhotoUrl(bytes);
       },
       error: () => {
         this.userPhoto = null;
       }
     });
-  }
-
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   logout(event?: Event): void {

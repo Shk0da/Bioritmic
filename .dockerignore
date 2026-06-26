@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.iml
+
+# Build
+api/build/
+ui/
+
+# Logs
+*.log
+/tmp/
+
+# Docker
+docker-compose*.yml
+api/Dockerfile
+ui/Dockerfile
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+api/src/test/
+ui/e2e/

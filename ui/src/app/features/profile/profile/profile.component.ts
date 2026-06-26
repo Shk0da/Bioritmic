@@ -33,11 +33,6 @@ import { BoostService, BoostInfo } from '../../../core/services/boost.service';
             <a [routerLink]="['/profile/me/edit']" class="btn btn-outline-primary">
               <i class="bi bi-pencil me-2"></i>Редактировать
             </a>
-            @if (isAdmin) {
-              <a routerLink="/admin" class="btn btn-outline-danger mt-2">
-                <i class="bi bi-shield-lock me-2"></i>Админ-панель
-              </a>
-            }
           </div>
         </div>
       </div>
@@ -201,7 +196,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   blockedCount = 0;
   activeBoost: BoostInfo | null = null;
   boostActivating = false;
-  isAdmin = false;
+
   private boostCountdownInterval: any = null;
 
   constructor(
@@ -222,18 +217,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.loadProfile();
     this.loadBlockedCount();
     this.loadActiveBoost();
-    this.checkAdminStatus();
-  }
-
-  private checkAdminStatus(): void {
-    this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
-      this.isAdmin = !!(user?.role && user.role.includes('ADMIN'));
-    });
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    UserService.revokePhotoUrl(this.photoDataUrl);
   }
 
   private loadBlockedCount(): void {
@@ -259,25 +248,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private loadPhoto(): void {
     this.userService.getPhoto().pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
-        this.photoDataUrl = this.bytesToDataUrl(bytes);
+        UserService.revokePhotoUrl(this.photoDataUrl);
+        this.photoDataUrl = UserService.createPhotoUrl(bytes);
       },
       error: () => {
         this.photoDataUrl = null;
       }
     });
-  }
-
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   getBirthday(): string {

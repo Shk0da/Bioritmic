@@ -46,6 +46,7 @@ class SecurityConfiguration(
         "/swagger-resources/**",
         "/v2/api-docs/**",
         "/v3/api-docs/**",
+        "/management/actuator/health",
         "$API_WITH_VERSION_1/registration",
         "$API_WITH_VERSION_1/refresh-token",
         "$API_WITH_VERSION_1/recovery",
@@ -86,6 +87,7 @@ class SecurityConfiguration(
             .headers{ it.frameOptions{ frame -> frame.disable() } }
             .authorizeExchange {
                 it.pathMatchers(*openRoutes).permitAll()
+                it.pathMatchers("/management/logs").hasRole("ADMIN")
                 it.anyExchange().authenticated()
             }
             .exceptionHandling {

@@ -26,11 +26,11 @@ export class MailboxService {
     return this.http.post<UserMail[]>(this.apiUrl, mail, { params });
   }
 
-  deleteMail(userId: number): Observable<void> {
+  deleteMail(userId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${userId}`);
   }
 
-  getConversation(userId: number): Observable<UserMail[]> {
+  getConversation(userId: string): Observable<UserMail[]> {
     return this.http.get<UserMail[]>(`${this.apiUrl}/conversation/${userId}`);
   }
 }
