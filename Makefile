@@ -1,4 +1,4 @@
-.PHONY: start stop build test clean api ui logs-api logs-ui
+.PHONY: start stop build test clean api ui logs-api logs-ui docker-up docker-down docker-build docker-logs docker-stop
 
 start:
 	./start.sh
@@ -28,3 +28,18 @@ logs-api:
 
 logs-ui:
 	tail -f /tmp/bioritmic-ui.log
+
+docker-up:
+	./start-docker.sh
+
+docker-down:
+	docker compose down
+
+docker-build:
+	docker compose build
+
+docker-logs:
+	docker compose logs -f
+
+docker-stop:
+	docker compose stop

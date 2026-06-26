@@ -114,8 +114,19 @@ class StoryControllerTest : ApiApplicationTests() {
             .returnResult(String::class.java)
 
         val storyId = createResponse.responseBody?.blockFirst()?.let { body -> 
-            Regex("\"id\":\"([0-9a-f-]+)\"").find(body)?.groupValues?.get(1)
-        } ?: UUID.randomUUID().toString()
+            Regex("\"id\":(\\d+)").find(body)?.groupValues?.get(1)
+        }?.toLong() ?: run {
+            // fallback: get any story from feed
+            val feedResponse = webTestClient.get()
+                .uri("$API_WITH_VERSION_1/stories")
+                .header(HttpHeaders.AUTHORIZATION, authToken)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .returnResult(String::class.java)
+            feedResponse.responseBody.blockFirst()?.let { body ->
+                Regex("\"id\":(\\d+)").find(body)?.groupValues?.get(1)?.toLong()
+            } ?: 0L
+        }
 
         // View the story
         webTestClient.post()

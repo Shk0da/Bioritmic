@@ -13,8 +13,12 @@ pkill -f "ng serve" 2>/dev/null && echo "  Frontend stopped" || echo "  Frontend
 # Kill MinIO (only the one we started)
 pkill -f "minio server /tmp/bioritmic-minio" 2>/dev/null && echo "  MinIO stopped" || echo "  MinIO was not running"
 
-# Stop PostgreSQL (Docker)
+# Stop Docker containers
 cd "$ROOT_DIR"
-docker compose down 2>/dev/null && echo "  PostgreSQL stopped" || echo "  PostgreSQL was not running"
+if docker compose ps --status running -q 2>/dev/null | head -1 | grep -q .; then
+    docker compose down 2>/dev/null && echo "  Docker containers stopped" || echo "  Docker was not running"
+else
+    echo "  Docker containers were not running"
+fi
 
 echo "Done."

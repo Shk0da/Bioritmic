@@ -96,4 +96,33 @@ describe('AdminService', () => {
     });
     req.flush({ id: 2, status: 'PENDING' });
   });
+
+  it('verifyUser should POST', () => {
+    service.verifyUser('5').subscribe();
+    const req = httpMock.expectOne('/api/v1/admin/users/5/verify');
+    expect(req.request.method).toBe('POST');
+    req.flush({});
+  });
+
+  it('unverifyUser should POST', () => {
+    service.unverifyUser('5').subscribe();
+    const req = httpMock.expectOne('/api/v1/admin/users/5/unverify');
+    expect(req.request.method).toBe('POST');
+    req.flush({});
+  });
+
+  it('changeRole should POST with role body', () => {
+    service.changeRole('5', 'MODERATOR').subscribe();
+    const req = httpMock.expectOne('/api/v1/admin/users/5/role');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ role: 'MODERATOR' });
+    req.flush({ success: true });
+  });
+
+  it('resetPassword should POST and return newPassword', () => {
+    service.resetPassword('5').subscribe(r => expect(r.newPassword).toBe('ABC123'));
+    const req = httpMock.expectOne('/api/v1/admin/users/5/reset-password');
+    expect(req.request.method).toBe('POST');
+    req.flush({ success: true, userId: '5', newPassword: 'ABC123' });
+  });
 });

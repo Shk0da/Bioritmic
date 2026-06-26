@@ -1,19 +1,19 @@
 package com.github.shk0da.bioritmic.api.controller
 
-import com.github.shk0da.bioritmic.api.constants.UserRoleConstants
+import com.github.shk0da.bioritmic.api.domain.UserRole
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
+import com.github.shk0da.bioritmic.api.repository.AuthRepository
 import com.github.shk0da.bioritmic.api.repository.ReportRepository
 import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
+import com.github.shk0da.bioritmic.api.service.EmailService
 import com.github.shk0da.bioritmic.api.service.UserService
+import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
+import com.github.shk0da.bioritmic.api.utils.SecurityUtils
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics
-import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
-import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
-import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -22,11 +22,10 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.lang.management.ManagementFactory
-import java.lang.management.MemoryMXBean
-import java.lang.management.RuntimeMXBean
 import java.util.UUID
 
 @RestController
@@ -34,8 +33,10 @@ import java.util.UUID
 class AdminController(
     val userRepository: UserRepository,
     val userRoleRepository: UserRoleRepository,
+    val authRepository: AuthRepository,
     val reportRepository: ReportRepository,
     val userService: UserService,
+    val emailService: EmailService,
     val meterRegistry: MeterRegistry
 ) {
 
@@ -46,7 +47,7 @@ class AdminController(
         val roles = runBlocking {
             userRoleRepository.findAllByUserId(userId).map { it.role }
         }
-        if (UserRoleConstants.ROLE_ADMIN !in roles) {
+        if (UserRole.ROLE_ADMIN !in roles) {
             throw ApiException(ErrorCode.ACCESS_DENIED)
         }
     }
@@ -83,10 +84,10 @@ class AdminController(
         requireAdmin()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
-        if (UserRoleConstants.ROLE_ADMIN in roles) {
+        if (UserRole.ROLE_ADMIN in roles) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot ban an admin"))
         }
-        userRoleRepository.removeRole(userId, "USER")
+        userRoleRepository.removeRole(userId, UserRole.ROLE_USER)
         userRoleRepository.addRole(userId, "BANNED")
         log.warn("Admin banned user {}", userId)
         return mapOf("success" to true, "userId" to userId)
@@ -96,7 +97,7 @@ class AdminController(
     suspend fun unbanUser(@PathVariable userId: UUID): Map<String, Any> {
         requireAdmin()
         userRoleRepository.removeRole(userId, "BANNED")
-        userRoleRepository.addRole(userId, "USER")
+        userRoleRepository.addRole(userId, UserRole.ROLE_USER)
         log.info("Admin unbanned user {}", userId)
         return mapOf("success" to true, "userId" to userId)
     }
@@ -115,7 +116,7 @@ class AdminController(
         requireAdmin()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
-        if (UserRoleConstants.ROLE_ADMIN in roles) {
+        if (UserRole.ROLE_ADMIN in roles) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot unverify an admin"))
         }
         userRepository.setVerified(userId, false)
@@ -123,11 +124,61 @@ class AdminController(
         return mapOf("success" to true, "userId" to userId)
     }
 
+    @PostMapping(value = ["/users/{userId}/role"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun changeRole(@PathVariable userId: UUID, @RequestBody body: Map<String, String>): Map<String, Any> {
+        requireAdmin()
+        val newRole = body["role"] ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Role is required"))
+        val validRoles = setOf(UserRole.ROLE_USER, UserRole.ROLE_ADMIN, UserRole.ROLE_MODERATOR, "BANNED")
+        if (newRole !in validRoles) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Invalid role: $newRole"))
+        }
+
+        val currentUserId = getUserId()
+        if (userId == currentUserId) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot change your own role"))
+        }
+
+        val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val currentRoles = userRoleRepository.findAllByUserId(userId).map { it.role }
+        if (UserRole.ROLE_ADMIN in currentRoles) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot change role of an admin"))
+        }
+
+        currentRoles.forEach { role ->
+            userRoleRepository.removeRole(userId, role)
+        }
+        userRoleRepository.addRole(userId, newRole)
+
+        log.warn("Admin changed role of user {} from {} to {}", userId, currentRoles.joinToString(","), newRole)
+        return mapOf("success" to true, "userId" to userId, "role" to newRole)
+    }
+
+    @PostMapping(value = ["/users/{userId}/reset-password"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun resetPassword(@PathVariable userId: UUID): Map<String, Any> {
+        requireAdmin()
+        val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+
+        val newPassword = SecurityUtils.generateRandomPassword(12)
+        user.password = passwordEncoder.encode(newPassword)
+        userRepository.save(user)
+
+        authRepository.deleteByUserId(userId)
+
+        try {
+            emailService.sendNewPassword(user.email!!, newPassword)
+        } catch (e: Exception) {
+            log.error("Failed to send new password email to {}: {}", user.email, e.message)
+        }
+
+        log.warn("Admin reset password for user {}", userId)
+        return mapOf("success" to true, "userId" to userId, "newPassword" to newPassword)
+    }
+
     @DeleteMapping(value = ["/users/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun deleteUser(@PathVariable userId: UUID): Map<String, Any> {
         requireAdmin()
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
-        if (UserRoleConstants.ROLE_ADMIN in roles) {
+        if (UserRole.ROLE_ADMIN in roles) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot delete an admin"))
         }
         userService.deleteUserById(userId)

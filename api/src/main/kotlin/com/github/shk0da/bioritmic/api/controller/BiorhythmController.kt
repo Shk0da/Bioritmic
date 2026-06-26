@@ -1,5 +1,7 @@
 package com.github.shk0da.bioritmic.api.controller
 
+import com.github.shk0da.bioritmic.api.exceptions.ApiException
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.service.BiorhythmDetail
 import com.github.shk0da.bioritmic.api.service.BiorhythmService
 import com.github.shk0da.bioritmic.api.service.UserService
@@ -22,9 +24,9 @@ class BiorhythmController(
     suspend fun getBiorhythmDetail(@PathVariable userId: UUID): BiorhythmDetail {
         val currentUserId = getUserId()
         val currentUser = userService.findUserById(currentUserId)
-            ?: throw IllegalArgumentException("Current user not found")
+            ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val otherUser = userService.findUserById(userId)
-            ?: throw IllegalArgumentException("User not found")
+            ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
 
         val birthDate1 = Date(currentUser.birthday!!.toInstant().toEpochMilli())
         val birthDate2 = Date(otherUser.birthday!!.toInstant().toEpochMilli())

@@ -89,9 +89,8 @@ class BiorhythmControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.physical").exists()
-            .jsonPath("$.emotional").exists()
-            .jsonPath("$.intellectual").exists()
+            .jsonPath("$.cycles").isArray()
+            .jsonPath("$.overallCompatibility").isNumber()
     }
 
     @Test

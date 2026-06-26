@@ -78,10 +78,12 @@ API_PID=$!
 echo -e "  PID: $API_PID"
 
 echo -e "  Waiting for backend to start..."
+BACKEND_OK=false
 for i in $(seq 1 60); do
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/management/actuator/health 2>/dev/null || true)
     if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
         echo -e "  ${GREEN}Backend is ready (http://localhost:8080)${NC}"
+        BACKEND_OK=true
         break
     fi
     if ! kill -0 "$API_PID" 2>/dev/null; then
@@ -92,6 +94,12 @@ for i in $(seq 1 60); do
     sleep 2
 done
 
+if [ "$BACKEND_OK" = false ]; then
+    echo -e "  ${RED}Backend failed to start within 120 seconds. Check /tmp/bioritmic-api.log${NC}"
+    tail -20 /tmp/bioritmic-api.log
+    exit 1
+fi
+
 # --- Frontend ---
 echo ""
 echo -e "${YELLOW}[4/5] Starting Frontend (Angular on :4200)...${NC}"
@@ -100,15 +108,28 @@ npx ng serve --proxy-config proxy.conf.json --open > /tmp/bioritmic-ui.log 2>&1 
 UI_PID=$!
 echo -e "  PID: $UI_PID"
 
+FRONTEND_OK=false
 echo -e "  Waiting for frontend to compile..."
 for i in $(seq 1 120); do
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 2>/dev/null || true)
     if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "404" ]; then
         echo -e "  ${GREEN}Frontend is ready (http://localhost:4200)${NC}"
+        FRONTEND_OK=true
         break
+    fi
+    if ! kill -0 "$UI_PID" 2>/dev/null; then
+        echo -e "  ${RED}Frontend process died. Check /tmp/bioritmic-ui.log${NC}"
+        tail -20 /tmp/bioritmic-ui.log
+        exit 1
     fi
     sleep 2
 done
+
+if [ "$FRONTEND_OK" = false ]; then
+    echo -e "  ${RED}Frontend failed to start within 240 seconds. Check /tmp/bioritmic-ui.log${NC}"
+    tail -20 /tmp/bioritmic-ui.log
+    exit 1
+fi
 
 # --- Summary ---
 echo ""

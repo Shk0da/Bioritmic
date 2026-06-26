@@ -5,8 +5,10 @@ import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_V
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.web.reactive.function.BodyInserters
 import java.util.UUID
 
@@ -51,12 +53,16 @@ class VerifyControllerTest : ApiApplicationTests() {
 
     @Test
     fun `should accept verification request with photo`() {
-        // Create a mock multipart request
+        val builder = MultipartBodyBuilder()
+        builder.part("photo", ByteArrayResource(byteArrayOf(1, 2, 3)))
+            .contentType(MediaType.IMAGE_JPEG)
+            .filename("photo.jpg")
+
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/user/me/verify")
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .contentType(MediaType.MULTIPART_FORM_DATA)
-            .body(BodyInserters.fromMultipartData("photo", byteArrayOf(1, 2, 3)))
+            .body(BodyInserters.fromMultipartData(builder.build()))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk
@@ -67,10 +73,15 @@ class VerifyControllerTest : ApiApplicationTests() {
 
     @Test
     fun `should return 401 without auth token`() {
+        val builder = MultipartBodyBuilder()
+        builder.part("photo", ByteArrayResource(byteArrayOf(1, 2, 3)))
+            .contentType(MediaType.IMAGE_JPEG)
+            .filename("photo.jpg")
+
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/user/me/verify")
             .contentType(MediaType.MULTIPART_FORM_DATA)
-            .body(BodyInserters.fromMultipartData("photo", byteArrayOf(1, 2, 3)))
+            .body(BodyInserters.fromMultipartData(builder.build()))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isUnauthorized

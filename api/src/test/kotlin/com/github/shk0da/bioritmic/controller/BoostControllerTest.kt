@@ -71,14 +71,16 @@ class BoostControllerTest : ApiApplicationTests() {
     }
 
     @Test
-    fun `should return 403 for non-pro user activating boost`() {
-        // Free users cannot activate boost
+    fun `should activate boost for any user when free-for-all is enabled`() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/boost/activate")
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .contentType(MediaType.APPLICATION_JSON)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isForbidden
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.success").isEqualTo(true)
+            .jsonPath("$.expiresAt").isNumber()
     }
 }

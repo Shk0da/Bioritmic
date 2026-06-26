@@ -82,6 +82,14 @@ export class AdminService {
   unverifyUser(userId: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/users/${userId}/unverify`, {});
   }
+
+  changeRole(userId: string, role: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/users/${userId}/role`, { role });
+  }
+
+  resetPassword(userId: string): Observable<{ success: boolean; userId: string; newPassword: string }> {
+    return this.http.post<{ success: boolean; userId: string; newPassword: string }>(`${this.apiUrl}/users/${userId}/reset-password`, {});
+  }
 }
 
 export interface SystemMetrics {

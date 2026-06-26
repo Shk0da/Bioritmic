@@ -51,10 +51,9 @@ class PhotoS3ControllerTest : ApiApplicationTests() {
 
     @Test
     fun `should return empty array when downloading non-existent S3 photo`() {
-        // This test verifies the S3 proxy endpoint works
-        // Since S3 is mocked in tests, it returns empty array for non-existent keys
         webTestClient.get()
-            .uri("$API_WITH_VERSION_1/photos/s3/profile/$userId/cropp_250x250.jpg")
+            .uri("$API_WITH_VERSION_1/photos/s3/test-photo-key.jpg")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.IMAGE_JPEG)
             .exchange()
             .expectStatus().isOk
