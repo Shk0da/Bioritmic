@@ -22,15 +22,34 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
+kill_by_port() {
+    local port=$1
+    local pids
+    pids=$(lsof -ti :"$port" 2>/dev/null)
+    if [ -n "$pids" ]; then
+        echo "$pids" | xargs kill -15 2>/dev/null || true
+        sleep 1
+        pids=$(lsof -ti :"$port" 2>/dev/null)
+        [ -n "$pids" ] && echo "$pids" | xargs kill -9 2>/dev/null || true
+    fi
+}
+
 echo -e "${CYAN}========================================${NC}"
 echo -e "${CYAN}  Bioritmic — Starting project${NC}"
 echo -e "${CYAN}========================================${NC}"
 
+# --- Kill old processes ---
+echo ""
+echo -e "${YELLOW}[1/7] Stopping old processes...${NC}"
+kill_by_port 8080
+kill_by_port 4200
+pkill -f "GradleWorkerMain" 2>/dev/null || true
+echo -e "  ${GREEN}Done${NC}"
+
 # --- Infrastructure: PostgreSQL (Docker) ---
 echo ""
-echo -e "${YELLOW}[1/5] Starting PostgreSQL (Docker)...${NC}"
+echo -e "${YELLOW}[2/7] Starting PostgreSQL (Docker)...${NC}"
 cd "$ROOT_DIR"
-# Remove stale containers so docker compose up can reuse the name
 docker rm -f bioritmic-postgres >/dev/null 2>&1 || true
 docker compose up -d postgres
 echo "  Waiting for PostgreSQL to be ready..."
@@ -48,7 +67,7 @@ done
 
 # --- Infrastructure: MinIO ---
 echo ""
-echo -e "${YELLOW}[2/5] Checking MinIO (S3 storage)...${NC}"
+echo -e "${YELLOW}[3/7] Checking MinIO (S3 storage)...${NC}"
 if curl -sf http://localhost:9341 > /dev/null 2>&1; then
     echo -e "  ${GREEN}MinIO is already running (port 9341)${NC}"
 else
@@ -69,9 +88,16 @@ else
     fi
 fi
 
+# --- Clean Build Backend ---
+echo ""
+echo -e "${YELLOW}[4/7] Clean building backend...${NC}"
+cd "$ROOT_DIR"
+./gradlew clean :api:build -x test > /tmp/bioritmic-build.log 2>&1
+echo -e "  ${GREEN}Backend built successfully${NC}"
+
 # --- Backend ---
 echo ""
-echo -e "${YELLOW}[3/5] Starting Backend (Kotlin/Spring Boot on :8080)...${NC}"
+echo -e "${YELLOW}[5/7] Starting Backend (Kotlin/Spring Boot on :8080)...${NC}"
 cd "$ROOT_DIR"
 ./gradlew :api:bootRun > /tmp/bioritmic-api.log 2>&1 &
 API_PID=$!
@@ -102,7 +128,7 @@ fi
 
 # --- Frontend ---
 echo ""
-echo -e "${YELLOW}[4/5] Starting Frontend (Angular on :4200)...${NC}"
+echo -e "${YELLOW}[6/7] Starting Frontend (Angular on :4200)...${NC}"
 cd "$UI_DIR"
 npx ng serve --proxy-config proxy.conf.json --open > /tmp/bioritmic-ui.log 2>&1 &
 UI_PID=$!
