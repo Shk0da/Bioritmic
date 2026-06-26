@@ -146,7 +146,37 @@ Bioritmic/
 - Node.js 20.11+
 - Docker (for PostgreSQL, MinIO, and the self-hosted mail server)
 
-### Start Infrastructure
+### Start Everything in Docker (recommended)
+
+One command — PostgreSQL, MinIO, mail server, API, and UI:
+
+```bash
+# Windows
+start-docker.bat
+
+# Linux / macOS
+./start-docker.sh
+
+# Or manually
+docker compose up --build -d
+```
+
+Open **http://localhost:4200**. Nginx in the `ui` container proxies `/api/` and `/swagger-ui/` to the backend.
+
+| Service | URL |
+|---------|-----|
+| App | http://localhost:4200 |
+| API (direct) | http://localhost:8080 |
+| Actuator | http://localhost:8081/management/actuator/health |
+| PostgreSQL | localhost:5432 |
+| MinIO | http://localhost:9341 |
+| SMTP | localhost:587 |
+
+Stop: `docker compose down`
+
+Docker profile: `application-docker.yml` (`SPRING_PROFILES_ACTIVE=docker`). Mailbox `noreply@bioritmic.ru` is created automatically by the `mail-init` service.
+
+### Start Infrastructure (host dev — API/UI on machine)
 ```bash
 cp .env.example .env   # optional: change MAIL_PASSWORD from default "changeme"
 docker compose up -d
@@ -507,7 +537,10 @@ describe('Feature', function () {
 | E2E helpers | `ui/e2e/helpers.js` |
 | E2E tests | `ui/e2e/*.test.js` |
 | Unit tests (FE) | `ui/src/app/**/*.spec.ts` |
-| Docker setup | `docker-compose.yml` |
+| Docker Compose | `docker-compose.yml` |
+| Docker one-launch (Windows) | `start-docker.bat` |
+| Docker one-launch (Unix) | `start-docker.sh` |
+| Docker API profile | `api/src/main/resources/config/application-docker.yml` |
 | Mail server config | `docker/mail/mailserver.env` |
 | Mail init scripts | `scripts/init-mail.ps1`, `scripts/init-mail.sh` |
 | Mail env template | `.env.example` |

@@ -1,0 +1,46 @@
+# Docker Compose stack: -Dspring.profiles.active=docker
+spring:
+  liquibase.contexts: develop
+  profiles:
+    include: swagger
+  datasource:
+    master:
+      host: postgres
+      port: 5432
+      database: bioritmic
+      username: postgres
+      password: postgres
+  mail:
+    host: mail
+    port: 587
+    username: noreply@bioritmic.ru
+    password: ${MAIL_PASSWORD:changeme}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: false
+          ssl:
+            trust: mail.bioritmic.ru,mail
+            checkserveridentity: false
+
+s3:
+  endpoint: http://minio:9000
+  access-key: bioritmic
+  secret-key: bioritmic
+  bucket: bioritmic
+  region: us-east-1
+
+app:
+  base-url: http://localhost:4200
+  frontend-url: http://localhost:4200
+  cors:
+    allowed-origins:
+      - http://localhost:4200
+      - http://127.0.0.1:4200
+  mail:
+    from: noreply@bioritmic.ru
+    from-name: Bioritmic
+    mode: smtp
