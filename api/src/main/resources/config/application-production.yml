@@ -1,0 +1,44 @@
+# Production profile: -Dspring.profiles.active=production
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  health:
+    mail:
+      enabled: true
+
+spring:
+  mail:
+    host: ${MAIL_HOST:mail}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:noreply@bioritmic.ru}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_STARTTLS_ENABLE:true}
+            required: ${MAIL_STARTTLS_REQUIRED:true}
+          ssl:
+            enable: ${MAIL_SSL_ENABLE:false}
+            trust: ${MAIL_SSL_TRUST:mail.bioritmic.ru}
+
+app:
+  security:
+    cookies:
+      secure: true
+  cors:
+    allowed-origins:
+      - ${APP_FRONTEND_URL:https://bioritmic.com}
+  mail:
+    from: ${MAIL_FROM:noreply@bioritmic.ru}
+    from-name: ${MAIL_FROM_NAME:Bioritmic}
+    mode: smtp

@@ -58,6 +58,14 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
 
     ACCESS_DENIED("API-403", "Access denied. Admin role required.", HttpStatus.FORBIDDEN),
 
+    ACCOUNT_LOCKED(
+        "API-423",
+        "Account temporarily locked due to too many failed login attempts.",
+        HttpStatus.LOCKED
+    ),
+
+    RATE_LIMIT_EXCEEDED("API-429", "Too many requests. Please try again later.", HttpStatus.TOO_MANY_REQUESTS),
+
     API_INTERNAL_ERROR("API-500", "Unknown error.", HttpStatus.INTERNAL_SERVER_ERROR),
     API_SERVICE_UNAVAILABLE("API-503", "Service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
 

@@ -105,6 +105,16 @@ class UserService(
     }
 
     @Transactional(readOnly = true)
+    suspend fun hasBlocked(userId: UUID, otherUserId: UUID): Boolean {
+        return userBlockRepository.findByUserIdAndOtherUserId(userId, otherUserId) != null
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun countBlockedUsers(userId: UUID): Long {
+        return userBlockRepository.countByUserId(userId)
+    }
+
+    @Transactional(readOnly = true)
     suspend fun findUserByIdWithSettings(id: UUID): User {
         val user = userRepository.findById(id) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val settings = userSettingsRepository.findById(user.id!!)
@@ -238,7 +248,8 @@ class UserService(
 
             log.info("Photos uploaded to S3 for userId: {}", userId)
         } catch (ex: IOException) {
-            log.error("Failed to save photos for userId [{}]: {}", userId, ex.message)
+            log.error("Failed to save photos for userId [{}]: {}", userId, ex.message, ex)
+            throw ApiException(ErrorCode.API_INTERNAL_ERROR)
         }
     }
 

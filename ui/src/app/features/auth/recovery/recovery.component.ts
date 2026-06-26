@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -60,7 +60,7 @@ import { AuthService } from '../../../core/services/auth.service';
                   [(ngModel)]="newPassword" 
                   name="newPassword"
                   required
-                  placeholder="Придумайте новый пароль">
+                  placeholder="Минимум 8 символов, буквы и цифры">
               </div>
               
               <div class="d-grid gap-2">
@@ -79,7 +79,7 @@ import { AuthService } from '../../../core/services/auth.service';
     </div>
   `
 })
-export class RecoveryComponent {
+export class RecoveryComponent implements OnInit {
   email = '';
   code = '';
   newPassword = '';
@@ -87,8 +87,17 @@ export class RecoveryComponent {
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
+
+  ngOnInit(): void {
+    const code = this.route.snapshot.queryParamMap.get('code');
+    if (code) {
+      this.code = code;
+      this.codeSent = true;
+    }
+  }
 
   sendRecoveryCode(): void {
     this.authService.recovery(this.email).subscribe({

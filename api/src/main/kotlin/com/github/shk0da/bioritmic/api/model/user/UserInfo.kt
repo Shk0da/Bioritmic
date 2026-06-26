@@ -52,6 +52,17 @@ data class UserInfo(
 
         private val biorhythmService: BiorhythmService = BiorhythmService.instance
 
+        fun adminSummary(user: User): UserInfo {
+            val birthday = user.birthday
+            return UserInfo(
+                id = user.id,
+                name = user.name,
+                email = user.email,
+                age = birthday?.let { biorhythmService.calculateAge(Date(it.time)) },
+                isVerified = user.isVerified
+            )
+        }
+
         fun of(user: User): UserInfo {
             return UserInfo(
                 id = user.id,

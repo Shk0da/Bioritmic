@@ -38,8 +38,9 @@ class AuthService(
         val currentAuth = authRepository.findByUserId(userId = user.id!!)
         if (null != currentAuth) {
             newAuth.id = currentAuth.id
+            currentAuth.accessToken?.let { authTokenCache.remove(it) }
         }
-        authTokenCache[newAuth.accessToken] = newAuth
+        authTokenCache[newAuth.accessToken!!] = newAuth
         return authRepository.save(newAuth)
     }
 
@@ -50,12 +51,15 @@ class AuthService(
             user.id!!, userToken.refreshToken
         ) ?: throw ApiException(ErrorCode.AUTH_NOT_FOUND)
         if (auth.isExpired()) {
+            auth.accessToken?.let { authTokenCache.remove(it) }
             authRepository.deleteByUserId(user.id!!)
             throw ApiException(ErrorCode.AUTH_NOT_FOUND)
         }
-        val newAuth = auth.refresh()
-        authTokenCache[auth.accessToken] = auth
-        authRepository.save(newAuth)
+        val oldAccessToken = auth.accessToken
+        auth.refresh()
+        oldAccessToken?.let { authTokenCache.remove(it) }
+        authTokenCache[auth.accessToken!!] = auth
+        authRepository.save(auth)
         return UserToken.of(user, auth)
     }
 
@@ -66,6 +70,14 @@ class AuthService(
             authTokenCache[auth.accessToken] = auth
         }
         return auth
+    }
+
+    fun findUserIdByAccessTokenCached(token: String): UUID? {
+        val auth = authTokenCache[token] ?: return null
+        if (auth.isExpired()) {
+            return null
+        }
+        return auth.userId
     }
 
     @Transactional
@@ -85,6 +97,24 @@ class AuthService(
     @Transactional(readOnly = true, transactionManager = transactionManager)
     suspend fun findUserByRecoveryCode(code: String): User? {
         return userRepository.findByRecoveryCode(code)
+    }
+
+    @Transactional
+    suspend fun resetPasswordWithCode(code: String, newPassword: String) {
+        val user = findUserByRecoveryCode(code) ?: throw ApiException(ErrorCode.INVALID_RECOVERY_CODE)
+        if (user.recoveryCodeExpireTime == null ||
+            user.recoveryCodeExpireTime!!.time < System.currentTimeMillis()
+        ) {
+            throw ApiException(ErrorCode.INVALID_RECOVERY_CODE)
+        }
+        if (user.id == null || user.email == null) {
+            throw ApiException(ErrorCode.USER_NOT_FOUND)
+        }
+        com.github.shk0da.bioritmic.api.utils.PasswordValidator.validate(newPassword)
+        user.resetRecoveryCode()
+        user.password = passwordEncoder.encode(newPassword)
+        userRepository.save(user)
+        deleteAuthByUserId(user.id!!)
     }
 
     @Transactional

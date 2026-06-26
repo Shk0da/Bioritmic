@@ -24,6 +24,8 @@ export class GeolocationService {
       return;
     }
 
+    this.stopTracking();
+
     // Отправляем координаты сразу
     this.sendLocation();
 

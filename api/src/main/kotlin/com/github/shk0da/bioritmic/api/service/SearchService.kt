@@ -39,8 +39,8 @@ class SearchService(
             val notBoosted = results.filter { it.id !in boostedIds }
             boostedUsers + notBoosted
         } catch (ex: DataAccessException) {
-            log.error("Failed get nearest users for [{}]: {}", search, ex.message)
-            emptyList()
+            log.error("Failed get nearest users for [{}]: {}", search, ex.message, ex)
+            throw ApiException(ErrorCode.API_INTERNAL_ERROR)
         }
     }
 }

@@ -19,8 +19,8 @@ interface StoryRepository : CoroutineCrudRepository<Story, Long> {
     suspend fun findActiveByUserId(userId: UUID): List<Story>
 
     @Transactional(readOnly = true)
-    @Query("SELECT * FROM stories WHERE expires_at > NOW() ORDER BY created_at DESC")
-    suspend fun findAllActive(): List<Story>
+    @Query("SELECT * FROM stories WHERE expires_at > NOW() ORDER BY created_at DESC LIMIT :limit")
+    suspend fun findAllActive(limit: Int = 200): List<Story>
 
     @Modifying
     @Query("DELETE FROM stories WHERE expires_at < :now")

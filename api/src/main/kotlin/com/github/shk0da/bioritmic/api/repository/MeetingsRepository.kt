@@ -33,6 +33,14 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
     @Query("select * from meetings where (user_id = :userId1 and other_user_id = :userId2) or (user_id = :userId2 and other_user_id = :userId1) limit 1")
     suspend fun findByUserPair(userId1: UUID, userId2: UUID): Meeting?
 
+    @Query("SELECT EXISTS(SELECT 1 FROM meetings WHERE user_id = :userId AND other_user_id = :otherUserId)")
+    suspend fun existsByUserIdAndOtherUserId(userId: UUID, otherUserId: UUID): Boolean
+
+    @Query(
+        "SELECT COUNT(*) FROM meetings WHERE other_user_id = :userId AND timestamp > :since"
+    )
+    suspend fun countIncomingSince(userId: UUID, since: java.sql.Timestamp): Long
+
     @Modifying
     @Query(
         "insert into meetings(user_id, other_user_id, other_user_lat, other_user_lon, distance, timestamp) " +

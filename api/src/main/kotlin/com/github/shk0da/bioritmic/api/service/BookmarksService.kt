@@ -47,7 +47,8 @@ class BookmarksService(
                     bookmarkRepository.insert(bookmark.userId!!, bookmark.otherUserId!!, bookmark.timestamp)
                 }
             } catch (ex: DataAccessException) {
-                log.error("Failed save bookmarks for userId [{}]: {}", userId, ex.message)
+                log.error("Failed save bookmarks for userId [{}]: {}", userId, ex.message, ex)
+                throw ex
             }
         }
         val usersByBookmarks = bookmarkRepository
@@ -61,7 +62,8 @@ class BookmarksService(
         try {
             bookmarkRepository.deleteByUserIdAndOtherUserId(userId, otherUserId)
         } catch (ex: DataAccessException) {
-            log.error("Failed delete bookmarks for userId [{}]: {}", userId, ex.message)
+            log.error("Failed delete bookmarks for userId [{}]: {}", userId, ex.message, ex)
+            throw ex
         }
         val usersByBookmarks = bookmarkRepository
             .findAllByUserId(userId, defaultPageable.pageSize, defaultPageable.offset)
@@ -78,7 +80,12 @@ class BookmarksService(
 
     @Transactional(readOnly = true)
     suspend fun countMatches(userId: UUID): Int {
-        return bookmarkRepository.findMutualBookmarkUserIds(userId).size
+        return bookmarkRepository.countMutualBookmarks(userId).toInt()
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun isBookmarked(userId: UUID, otherUserId: UUID): Boolean {
+        return bookmarkRepository.existsByUserIdAndOtherUserId(userId, otherUserId)
     }
 
     @Transactional

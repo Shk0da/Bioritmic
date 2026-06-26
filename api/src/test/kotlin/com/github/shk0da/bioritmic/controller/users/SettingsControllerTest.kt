@@ -26,7 +26,7 @@ class SettingsControllerTest : ApiApplicationTests() {
         defaultUserModel = UserModel(
             name = "Settings Test User",
             email = "settings_test_${uniqueId}@gmail.com",
-            password = "12345",
+            password = "Test12345",
             birthday = "1989-01-14"
         )
 

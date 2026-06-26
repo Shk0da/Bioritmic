@@ -50,8 +50,14 @@ class MailboxService(
         mailboxRepository.deleteAllMailByBetweenTwoUserId(currentUserId, userId)
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     suspend fun getConversation(currentUserId: UUID, otherUserId: UUID): List<UserMail> {
         return mailboxRepository.findConversationBetweenUsers(currentUserId, otherUserId)
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun countUnreadSenders(userId: UUID, sinceMs: Long): Long {
+        val since = java.sql.Timestamp(sinceMs)
+        return mailboxRepository.countUnreadSenders(userId, since)
     }
 }

@@ -55,6 +55,7 @@ class ApiApplicationTests {
             "profile_boosts",
             "subscriptions",
             "reports",
+            "admin_audit_log",
             "bans",
             "user_interests",
             "user_blocks",

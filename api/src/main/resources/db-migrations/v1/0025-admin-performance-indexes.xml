@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0025-admin-performance-indexes" author="bioritmic">
+        <comment>Indexes for admin dashboard pagination and counts.</comment>
+        <sql>CREATE INDEX IF NOT EXISTS idx_users_register_date ON users(register_date DESC);</sql>
+        <sql>CREATE INDEX IF NOT EXISTS idx_users_is_verified ON users(is_verified);</sql>
+    </changeSet>
+</databaseChangeLog>

@@ -30,7 +30,7 @@ class BiorhythmControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(mapOf(
                 "name" to "Bio Test User 1",
                 "email" to email1,
-                "password" to "12345",
+                "password" to "Test12345",
                 "birthday" to "1990-01-01"
             )))
             .accept(MediaType.APPLICATION_JSON)
@@ -44,7 +44,7 @@ class BiorhythmControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(mapOf(
                 "name" to "Bio Test User 2",
                 "email" to email2,
-                "password" to "12345",
+                "password" to "Test12345",
                 "birthday" to "1995-06-15"
             )))
             .accept(MediaType.APPLICATION_JSON)
@@ -55,7 +55,7 @@ class BiorhythmControllerTest : ApiApplicationTests() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(AuthorizationModel(email1, "12345")))
+            .body(BodyInserters.fromValue(AuthorizationModel(email1, "Test12345")))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk
@@ -69,7 +69,7 @@ class BiorhythmControllerTest : ApiApplicationTests() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(AuthorizationModel(email2, "12345")))
+            .body(BodyInserters.fromValue(AuthorizationModel(email2, "Test12345")))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk

@@ -34,6 +34,44 @@ services:
       timeout: 3s
       retries: 10
 
+  mailpit:
+    profiles: ["mailpit"]
+    image: axllent/mailpit:latest
+    container_name: bioritmic-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8025"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mail:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: bioritmic-mail
+    hostname: mail.bioritmic.ru
+    ports:
+      - "25:25"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - bioritmic-mail-data:/var/mail
+      - bioritmic-mail-state:/var/mail-state
+      - bioritmic-mail-logs:/var/log/mail
+      - ./docker/mail/config:/tmp/docker-mailserver
+    env_file:
+      - ./docker/mail/mailserver.env
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ss -lntp | grep -q ':587'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
   api:
     build:
       context: .
@@ -44,10 +82,25 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      mail:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
     environment:
       SPRING_DATASOURCE_MASTER_HOST: postgres
       S3_ENDPOINT: http://minio:9000
       APP_BASE_URL: http://localhost:8080
+      APP_FRONTEND_URL: http://localhost:4200
+      MAIL_HOST: ${MAIL_HOST:-mail}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-noreply@bioritmic.ru}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-changeme}
+      MAIL_FROM: ${MAIL_FROM:-noreply@bioritmic.ru}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_STARTTLS_ENABLE: ${MAIL_STARTTLS_ENABLE:-true}
+      MAIL_STARTTLS_REQUIRED: ${MAIL_STARTTLS_REQUIRED:-false}
+      MAIL_SSL_TRUST: ${MAIL_SSL_TRUST:-mail.bioritmic.ru,mail}
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
     ports:
       - "8080:8080"
@@ -78,3 +131,6 @@ services:
 volumes:
   bioritmic-pgdata:
   bioritmic-minio-data:
+  bioritmic-mail-data:
+  bioritmic-mail-state:
+  bioritmic-mail-logs:

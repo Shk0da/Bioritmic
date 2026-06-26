@@ -17,7 +17,7 @@ class AuthControllerTest : ApiApplicationTests() {
     private val defaultUserModel = UserModel(
         name = "Name 1",
         email = "test1@gmail.com",
-        password = "12345",
+        password = "Test12345",
         birthday = "1989-01-14"
     )
 
@@ -110,7 +110,7 @@ class AuthControllerTest : ApiApplicationTests() {
     fun authorizationWithNonExistentEmail() {
         val authorizationModel = AuthorizationModel(
             email = "nonexistent@gmail.com",
-            password = "12345"
+            password = "Test12345"
         )
 
         webTestClient.post()
@@ -142,7 +142,7 @@ class AuthControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(recoveryModel))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().is5xxServerError
+            .expectStatus().isOk
     }
 
     @Test
@@ -155,7 +155,7 @@ class AuthControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(recoveryModel))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().is4xxClientError
+            .expectStatus().isOk
     }
 
     @Test

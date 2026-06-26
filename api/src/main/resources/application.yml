@@ -2,6 +2,24 @@ server.port: 8080
 
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:4200}
+  cors:
+    allowed-origins:
+      - http://localhost:4200
+      - http://127.0.0.1:4200
+  security:
+    headers:
+      enabled: true
+    cookies:
+      secure: false
+    login-lockout:
+      max-attempts: 5
+      lock-minutes: 15
+    admin-email: ${ADMIN_EMAIL:}
+  mail:
+    from: ${MAIL_FROM:noreply@bioritmic.ru}
+    from-name: ${MAIL_FROM_NAME:Bioritmic}
+    mode: ${MAIL_MODE:smtp}
 
 info.app.name: ${spring.application.basic-name}
 info.app.description: ${spring.application.description}
@@ -13,9 +31,9 @@ server.error.whitelabel.enabled: false
 
 management:
   server.port: 8081
-  endpoint.health.show-details: always
+  endpoint.health.show-details: when_authorized
   endpoints.web.base-path: "/management/actuator"
-  endpoints.web.exposure.include: configprops,env,health,info,threaddump,logfile,metrics,refresh,loggers
+  endpoints.web.exposure.include: health,info,metrics
   metrics: # DropWizard Metrics configuration, used by MetricsConfiguration
     logs: # Reports Dropwizard metrics in the logs
       enabled: false
@@ -62,17 +80,24 @@ spring:
     change-log: classpath:db-migrations/changelog.xml
     enabled: true
   mail:
-    host: email-smtp.us-west-2.amazonaws.com
-    username: <login user to smtp server>
-    password: <login password to smtp server>
-    mail:
-      host: smtp.bioritmic.com
-      username: admin@bioritmic.com
-      password: admin
-      properties:
-        mail.smtp.port: 25
-        mail.smtp.auth: true
-        mail.smtp.starttls.enable: false
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:noreply@bioritmic.ru}
+    password: ${MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_STARTTLS_ENABLE:true}
+            required: ${MAIL_STARTTLS_REQUIRED:false}
+          ssl:
+            enable: ${MAIL_SSL_ENABLE:false}
+            trust: ${MAIL_SSL_TRUST:}
+          connectiontimeout: ${MAIL_CONNECTION_TIMEOUT:10000}
+          timeout: ${MAIL_TIMEOUT:10000}
+          writetimeout: ${MAIL_WRITE_TIMEOUT:10000}
 
 s3:
   endpoint: http://localhost:9340
@@ -86,6 +111,24 @@ firebase:
 
 rate-limit:
   enabled: true
+  public-auth:
+    max-requests: 10
+    window-seconds: 60
+  global-ip:
+    max-requests: 300
+    window-seconds: 60
+  user-default:
+    max-requests: 120
+    window-seconds: 60
+  user-write:
+    max-requests: 30
+    window-seconds: 60
+  cleanup-interval-seconds: 300
+  excluded-path-prefixes:
+    - /management/
+    - /swagger-ui
+    - /v3/api-docs
+    - /error
 
 premium:
   free-for-all: true

@@ -84,6 +84,14 @@ export class UserService {
     return this.http.get<{ blocked: boolean }>(`${this.apiUrl}/${userId}/is-blocked-by`);
   }
 
+  isBlocked(userId: string): Observable<{ blocked: boolean }> {
+    return this.http.get<{ blocked: boolean }>(`${this.apiUrl}/${userId}/is-blocked`);
+  }
+
+  getBlockedCount(): Observable<{ count: number }> {
+    return this.http.get<{ count: number }>(`${this.apiUrl}/blocked/count`);
+  }
+
   getGisData(): Observable<GisData> {
     return this.http.get<GisData>(`${this.apiUrl}/me/gis`);
   }

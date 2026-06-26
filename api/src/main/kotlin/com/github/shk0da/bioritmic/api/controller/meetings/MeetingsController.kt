@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
 import java.util.UUID
@@ -71,5 +72,17 @@ class MeetingsController(val meetingsService: MeetingsService) {
             "success" to true,
             "status" to (meeting.status as Any)
         )
+    }
+
+    @GetMapping(value = ["/{userId}/sent"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun hasSentMeeting(@PathVariable userId: UUID): Map<String, Boolean> {
+        val currentUserId = getUserId()
+        return mapOf("sent" to meetingsService.hasSentMeeting(currentUserId, userId))
+    }
+
+    @GetMapping(value = ["/badge"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun newMeetingsBadge(@RequestParam(defaultValue = "0") since: Long): Map<String, Long> {
+        val userId = getUserId()
+        return mapOf("count" to meetingsService.countIncomingSince(userId, since))
     }
 }

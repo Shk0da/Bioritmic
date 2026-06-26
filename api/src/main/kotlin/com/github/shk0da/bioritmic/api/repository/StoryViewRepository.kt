@@ -7,6 +7,7 @@ import io.r2dbc.spi.ConnectionFactory
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.r2dbc.core.DatabaseClient
+import org.springframework.data.r2dbc.repository.Modifying
 import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.stereotype.Repository
@@ -16,6 +17,13 @@ import java.util.UUID
 @Repository
 @Transactional(transactionManager = transactionManager)
 interface StoryViewRepository : CoroutineCrudRepository<StoryView, Long> {
+
+    @Modifying
+    @Query(
+        "INSERT INTO story_views (story_id, viewer_id, viewed_at) VALUES (:storyId, :viewerId, NOW()) " +
+            "ON CONFLICT (story_id, viewer_id) DO NOTHING"
+    )
+    suspend fun recordView(storyId: Long, viewerId: UUID): Int
 
     @Transactional(readOnly = true)
     @Query("SELECT * FROM story_views WHERE story_id = :storyId AND viewer_id = :viewerId LIMIT 1")

@@ -25,6 +25,12 @@ interface ReportRepository : CoroutineCrudRepository<Report, Long> {
     @Query("UPDATE reports SET status = :status WHERE id = :reportId")
     suspend fun updateStatus(reportId: Long, status: String)
 
+    @Query("SELECT COUNT(*) FROM reports WHERE status = 'PENDING'")
+    suspend fun countAllPending(): Long
+
+    @Query("SELECT * FROM reports WHERE status = 'PENDING' ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
+    suspend fun findPendingPaginated(limit: Int, offset: Long): List<Report>
+
     @Query("SELECT * FROM reports WHERE status = 'PENDING' ORDER BY created_at DESC")
     suspend fun findAllPending(): List<Report>
 }

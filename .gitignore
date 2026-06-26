@@ -91,3 +91,4 @@ Thumbs.db
 .nessy
 .kotlin
 /minio-project/
+.env

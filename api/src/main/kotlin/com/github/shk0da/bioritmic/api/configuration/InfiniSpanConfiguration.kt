@@ -40,6 +40,13 @@ class InfiniSpanConfiguration {
     }
 
     @Bean
+    fun rateLimitCache(cacheManager: DefaultCacheManager): Cache<String, Long> {
+        return cacheManager.administration()
+            .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
+            .getOrCreateCache("rateLimitCache", customTimeCache(2, TimeUnit.MINUTES))
+    }
+
+    @Bean
     fun cacheManager(): DefaultCacheManager {
         val global = GlobalConfigurationBuilder
             .defaultClusteredBuilder()

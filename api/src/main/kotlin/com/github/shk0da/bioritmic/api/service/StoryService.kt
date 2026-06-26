@@ -2,7 +2,6 @@ package com.github.shk0da.bioritmic.api.service
 
 import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager
 import com.github.shk0da.bioritmic.api.domain.Story
-import com.github.shk0da.bioritmic.api.domain.StoryView
 import com.github.shk0da.bioritmic.api.repository.StoryRepository
 import com.github.shk0da.bioritmic.api.repository.StoryViewBatchRepository
 import com.github.shk0da.bioritmic.api.repository.StoryViewRepository
@@ -23,6 +22,7 @@ class StoryService(
 
     companion object {
         private const val STORY_EXPIRY_HOURS = 24L
+        private const val FEED_STORY_LIMIT = 200
     }
 
     private val log = LoggerFactory.getLogger(StoryService::class.java)
@@ -41,7 +41,7 @@ class StoryService(
 
     @Transactional(readOnly = true, transactionManager = transactionManager)
     suspend fun getFeed(currentUserId: UUID): List<Map<String, Any?>> {
-        val stories = storyRepository.findAllActive()
+        val stories = storyRepository.findAllActive(FEED_STORY_LIMIT)
         if (stories.isEmpty()) return emptyList()
 
         val storyIds = stories.mapNotNull { it.id }
@@ -65,14 +65,7 @@ class StoryService(
 
     @Transactional(transactionManager = transactionManager)
     suspend fun viewStory(storyId: Long, viewerId: UUID) {
-        val alreadyViewed = storyViewRepository.existsByStoryIdAndViewerId(storyId, viewerId)
-        if (!alreadyViewed) {
-            val storyView = StoryView()
-            storyView.storyId = storyId
-            storyView.viewerId = viewerId
-            storyView.viewedAt = Timestamp(System.currentTimeMillis())
-            storyViewRepository.save(storyView)
-        }
+        storyViewRepository.recordView(storyId, viewerId)
     }
 
     @Transactional(transactionManager = transactionManager)

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0026-security-hardening" author="bioritmic">
+        <addColumn tableName="users">
+            <column name="failed_login_attempts" type="int" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="locked_until" type="timestamp"/>
+        </addColumn>
+
+        <createTable tableName="admin_audit_log">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="admin_user_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="target_user_id" type="uuid"/>
+            <column name="details" type="text"/>
+            <column name="client_ip" type="varchar(64)"/>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="admin_audit_log" indexName="idx_admin_audit_created_at">
+            <column name="created_at" descending="true"/>
+        </createIndex>
+        <createIndex tableName="admin_audit_log" indexName="idx_admin_audit_admin_user">
+            <column name="admin_user_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

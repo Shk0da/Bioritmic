@@ -122,6 +122,18 @@ class UserController(
         return mapOf("blocked" to blocked)
     }
 
+    @GetMapping(value = ["/{id}/is-blocked"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun isBlocked(@PathVariable id: UUID): Map<String, Boolean> {
+        val currentUserId = getUserId()
+        return mapOf("blocked" to userService.hasBlocked(currentUserId, id))
+    }
+
+    @GetMapping(value = ["/blocked/count"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun blockedCount(): Map<String, Long> {
+        val userId = getUserId()
+        return mapOf("count" to userService.countBlockedUsers(userId))
+    }
+
     // GET /me/gis <- GIS
     @GetMapping(value = ["/me/gis"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun meGis(): GisDataModel {

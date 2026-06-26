@@ -24,7 +24,7 @@ class SyncControllerTest : ApiApplicationTests() {
         defaultUserModel = UserModel(
             name = "Sync Test User",
             email = "sync_test_${uniqueId}@gmail.com",
-            password = "12345",
+            password = "Test12345",
             birthday = "1989-01-14"
         )
 

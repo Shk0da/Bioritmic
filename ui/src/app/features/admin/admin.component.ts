@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { AdminService, AdminDashboard, Report, AdminUser, SystemMetrics, PaginatedUsersResponse } from '../../core/services/admin.service';
 import { ModalService } from '../../core/services/modal.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -77,12 +77,12 @@ import { NgClass, DecimalPipe } from '@angular/common';
       <!-- Tabs -->
       <ul class="nav nav-tabs mb-4">
         <li class="nav-item">
-          <button class="nav-link" [class.active]="activeTab === 'users'" (click)="activeTab = 'users'">
+          <button class="nav-link" [class.active]="activeTab === 'users'" (click)="setActiveTab('users')">
             <i class="bi bi-people me-1"></i>Пользователи
           </button>
         </li>
         <li class="nav-item">
-          <button class="nav-link" [class.active]="activeTab === 'reports'" (click)="activeTab = 'reports'">
+          <button class="nav-link" [class.active]="activeTab === 'reports'" (click)="setActiveTab('reports')">
             <i class="bi bi-flag me-1"></i>Жалобы
             @if (reports.length > 0) {
               <span class="badge bg-danger ms-1">{{ reports.length }}</span>
@@ -90,7 +90,7 @@ import { NgClass, DecimalPipe } from '@angular/common';
           </button>
         </li>
         <li class="nav-item">
-          <button class="nav-link" [class.active]="activeTab === 'metrics'" (click)="activeTab = 'metrics'; loadMetrics()">
+          <button class="nav-link" [class.active]="activeTab === 'metrics'" (click)="setActiveTab('metrics')">
             <i class="bi bi-speedometer me-1"></i>Метрики
           </button>
         </li>
@@ -109,11 +109,11 @@ import { NgClass, DecimalPipe } from '@angular/common';
                 <div class="col-md-6">
                   <label class="form-label form-label-sm mb-0">Поиск</label>
                   <input type="text" class="form-control form-control-sm" placeholder="Имя или email..."
-                    [(ngModel)]="filterSearch" (ngModelChange)="applyFilters()">
+                    [(ngModel)]="filterSearch" (ngModelChange)="onFilterChange()">
                 </div>
                 <div class="col-md-4">
                   <label class="form-label form-label-sm mb-0">Роль</label>
-                  <select class="form-select form-select-sm" [(ngModel)]="filterRole" (ngModelChange)="applyFilters()">
+                  <select class="form-select form-select-sm" [(ngModel)]="filterRole" (ngModelChange)="onFilterChange()">
                     <option value="">Все роли</option>
                     <option value="ADMIN">ADMIN</option>
                     <option value="USER">USER</option>
@@ -123,14 +123,14 @@ import { NgClass, DecimalPipe } from '@angular/common';
                 </div>
                 <div class="col-md-2">
                   <label class="form-label form-label-sm mb-0">Верификация</label>
-                  <select class="form-select form-select-sm" [(ngModel)]="filterVerified" (ngModelChange)="applyFilters()">
+                  <select class="form-select form-select-sm" [(ngModel)]="filterVerified" (ngModelChange)="onFilterChange()">
                     <option value="">Все</option>
                     <option value="verified">Верифицированы</option>
                     <option value="unverified">Не верифицированы</option>
                   </select>
                 </div>
                 <div class="col-md-2">
-                  <button class="btn btn-sm btn-outline-secondary w-100" (click)="filterSearch = ''; filterRole = ''; filterVerified = ''; applyFilters()">
+                  <button class="btn btn-sm btn-outline-secondary w-100" (click)="filterSearch = ''; filterRole = ''; filterVerified = ''; onFilterChange()">
                     <i class="bi bi-x-lg me-1"></i>Сброс
                   </button>
                 </div>
@@ -381,7 +381,9 @@ import { NgClass, DecimalPipe } from '@angular/common';
 })
 export class AdminComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  private filterChange$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
+  private reportsLoaded = false;
 
   activeTab: 'users' | 'reports' | 'metrics' = 'users';
   loadingUsers = false;
@@ -410,9 +412,19 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.filterChange$.pipe(debounceTime(200), takeUntil(this.destroy$)).subscribe(() => this.applyFilters());
     this.loadDashboard();
     this.loadUsers();
-    this.loadReports();
+  }
+
+  setActiveTab(tab: 'users' | 'reports' | 'metrics'): void {
+    this.activeTab = tab;
+    if (tab === 'reports' && !this.reportsLoaded) {
+      this.loadReports();
+    }
+    if (tab === 'metrics') {
+      this.loadMetrics();
+    }
   }
 
   ngOnDestroy(): void {
@@ -422,6 +434,10 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   get totalPages(): number {
     return Math.ceil(this.totalUsers / this.pageSize);
+  }
+
+  onFilterChange(): void {
+    this.filterChange$.next();
   }
 
   applyFilters(): void {
@@ -472,7 +488,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   private loadReports(): void {
     this.loadingReports = true;
     this.adminService.getPendingReports().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (reports) => { this.reports = reports; this.loadingReports = false; },
+      next: (reports) => {
+        this.reports = reports;
+        this.reportsLoaded = true;
+        this.loadingReports = false;
+      },
       error: (err) => {
         this.loadingReports = false;
         if (err.status === 403) this.accessDenied = true;

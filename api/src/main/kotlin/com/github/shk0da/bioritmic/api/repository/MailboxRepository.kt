@@ -40,4 +40,10 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
             "(m.to_user_id = :userId and m.from_user_id = :currentUserId)"
     )
     suspend fun deleteAllMailByBetweenTwoUserId(currentUserId: UUID, userId: UUID)
+
+    @Query(
+        "SELECT COUNT(DISTINCT from_user_id) FROM mailbox " +
+            "WHERE to_user_id = :userId AND from_user_id != :userId AND timestamp > :since"
+    )
+    suspend fun countUnreadSenders(userId: UUID, since: java.sql.Timestamp): Long
 }

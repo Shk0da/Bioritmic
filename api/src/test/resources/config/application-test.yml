@@ -6,13 +6,11 @@ logging.level.com.github.shk0da.bioritmic: debug
 spring:
   liquibase.contexts: test
   mail:
-    host: smtp.bioritmic.com
-    username: admin@bioritmic.com
-    password: admin
-    properties:
-      mail.smtp.port: 25
-      mail.smtp.auth: true
-      mail.smtp.starttls.enable: false
+    host: localhost
+    port: 1025
+app:
+  mail:
+    mode: log
   datasource:
     host: 127.0.0.1
     port: 5432

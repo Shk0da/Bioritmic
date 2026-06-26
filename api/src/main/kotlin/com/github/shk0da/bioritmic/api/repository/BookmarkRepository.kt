@@ -42,6 +42,13 @@ interface BookmarkRepository : CoroutineCrudRepository<Bookmark, Bookmark.Primar
     )
     suspend fun findMutualBookmarkUserIds(userId: UUID): List<UUID>
 
+    @Query(
+        "SELECT COUNT(*) FROM bookmarks b1 " +
+            "JOIN bookmarks b2 ON b1.other_user_id = b2.user_id AND b2.other_user_id = b1.user_id " +
+            "WHERE b1.user_id = :userId"
+    )
+    suspend fun countMutualBookmarks(userId: UUID): Long
+
     @Query("SELECT EXISTS(SELECT 1 FROM bookmarks WHERE user_id = :userId AND other_user_id = :otherUserId)")
     suspend fun existsByUserIdAndOtherUserId(userId: UUID, otherUserId: UUID): Boolean
 }

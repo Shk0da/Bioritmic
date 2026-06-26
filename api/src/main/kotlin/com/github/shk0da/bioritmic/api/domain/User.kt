@@ -51,6 +51,12 @@ class User {
     @Column("is_verified")
     var isVerified: Boolean = false
 
+    @Column("failed_login_attempts")
+    var failedLoginAttempts: Int = 0
+
+    @Column("locked_until")
+    var lockedUntil: java.sql.Timestamp? = null
+
     @Transient
     var userSettings: UserSettings? = null
 

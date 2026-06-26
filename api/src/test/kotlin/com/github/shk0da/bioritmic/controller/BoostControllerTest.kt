@@ -27,7 +27,7 @@ class BoostControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(mapOf(
                 "name" to "Boost Test User",
                 "email" to email,
-                "password" to "12345",
+                "password" to "Test12345",
                 "birthday" to "1990-01-01"
             )))
             .accept(MediaType.APPLICATION_JSON)
@@ -38,7 +38,7 @@ class BoostControllerTest : ApiApplicationTests() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(AuthorizationModel(email, "12345")))
+            .body(BodyInserters.fromValue(AuthorizationModel(email, "Test12345")))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk

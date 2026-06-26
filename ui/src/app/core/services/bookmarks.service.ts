@@ -29,4 +29,8 @@ export class BookmarksService {
   deleteBookmark(userId: string): Observable<UserInfo[]> {
     return this.http.delete<UserInfo[]>(`${this.apiUrl}/${userId}`);
   }
+
+  isBookmarked(userId: string): Observable<{ bookmarked: boolean }> {
+    return this.http.get<{ bookmarked: boolean }>(`${this.apiUrl}/${userId}/exists`);
+  }
 }

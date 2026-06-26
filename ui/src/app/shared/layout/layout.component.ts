@@ -229,57 +229,33 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   private isLoadingUnread = false;
+  private isLoadingMeetings = false;
   private loadUnreadCount(): void {
     if (this.isLoadingUnread) return;
     this.isLoadingUnread = true;
-    this.mailboxService.getMailbox({ page: 0, size: 100 }).subscribe({
-      next: (messages) => {
+    const lastReadTime = localStorage.getItem('mailbox_last_read');
+    const since = lastReadTime ? parseInt(lastReadTime, 10) : 0;
+    this.mailboxService.getBadgeCount(since).subscribe({
+      next: (res) => {
         this.isLoadingUnread = false;
-        const lastReadTime = localStorage.getItem('mailbox_last_read');
-        const lastRead = lastReadTime ? parseInt(lastReadTime, 10) : 0;
-        const unread = messages.filter(m => {
-          if (!m.timestamp) return false;
-          const msgTime = this.parseTimestamp(m.timestamp);
-          return msgTime > lastRead && m.from !== this.currentUser?.id;
-        });
-        const uniqueSenders = new Set(unread.map(m => m.from));
-        this.unreadCount = uniqueSenders.size;
+        this.unreadCount = res.count;
       },
       error: () => { this.isLoadingUnread = false; }
     });
   }
 
-  private isLoadingMeetings = false;
   private loadNewMeetingsCount(): void {
     if (this.isLoadingMeetings) return;
     this.isLoadingMeetings = true;
-    this.meetingsService.getMeetings({ page: 0, size: 100 }).subscribe({
-      next: (meetings) => {
+    const lastReadTime = localStorage.getItem('meetings_last_read');
+    const since = lastReadTime ? parseInt(lastReadTime, 10) : 0;
+    this.meetingsService.getBadgeCount(since).subscribe({
+      next: (res) => {
         this.isLoadingMeetings = false;
-        const lastReadTime = localStorage.getItem('meetings_last_read');
-        const lastRead = lastReadTime ? parseInt(lastReadTime, 10) : 0;
-        const newMeetings = meetings.filter(m => {
-          if (!m.timestamp) return false;
-          const mTime = this.parseTimestamp(m.timestamp);
-          return mTime > lastRead && m.userId !== this.currentUser?.id;
-        });
-        this.newMeetingsCount = newMeetings.length;
+        this.newMeetingsCount = res.count;
       },
       error: () => { this.isLoadingMeetings = false; }
     });
-  }
-
-  private parseTimestamp(timestamp: any): number {
-    if (!timestamp) return 0;
-    if (typeof timestamp === 'string') {
-      return new Date(timestamp).getTime();
-    }
-    if (typeof timestamp === 'number') {
-      return timestamp > 1e12 ? timestamp : timestamp * 1000;
-    }
-    if (timestamp.seconds) return timestamp.seconds * 1000;
-    if (timestamp.time) return timestamp.time * 1000;
-    return 0;
   }
 
   private markMessagesAsRead(): void {
@@ -308,7 +284,15 @@ export class LayoutComponent implements OnInit, OnDestroy {
     if (event) {
       event.preventDefault();
     }
-    this.authService.clearAuth();
-    this.router.navigate(['/auth/login']);
+    this.authService.logout().subscribe({
+      complete: () => {
+        this.authService.clearAuth();
+        this.router.navigate(['/auth/login']);
+      },
+      error: () => {
+        this.authService.clearAuth();
+        this.router.navigate(['/auth/login']);
+      }
+    });
   }
 }

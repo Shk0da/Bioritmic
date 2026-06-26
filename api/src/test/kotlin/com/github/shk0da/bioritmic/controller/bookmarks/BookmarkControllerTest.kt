@@ -25,7 +25,7 @@ class BookmarkControllerTest : ApiApplicationTests() {
         defaultUserModel = UserModel(
             name = "Bookmark Test User",
             email = "bookmark_test_${uniqueId}@gmail.com",
-            password = "12345",
+            password = "Test12345",
             birthday = "1989-01-14"
         )
 

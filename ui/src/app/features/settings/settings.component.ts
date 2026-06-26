@@ -176,11 +176,9 @@ export class SettingsComponent implements OnInit {
   }
 
   private loadBlockedCount(): void {
-    this.userService.getBlockedUsers({ page: 0, size: 1 }).subscribe({
-      next: () => {},
-      error: () => {
-        this.blockedCount = 0;
-      }
+    this.userService.getBlockedCount().subscribe({
+      next: (res) => { this.blockedCount = res.count; },
+      error: () => { this.blockedCount = 0; }
     });
   }
 

@@ -16,6 +16,9 @@ interface UserBlockRepository : CoroutineCrudRepository<UserBlock, UserBlock.Pri
 
     suspend fun findByUserIdAndOtherUserId(userId: UUID, otherUserId: UUID): UserBlock?
 
+    @Query("select count(*) from user_blocks where user_id = :userId")
+    suspend fun countByUserId(userId: UUID): Long
+
     @Query("select * from user_blocks where user_id = :userId order by timestamp desc limit :limit offset :offset")
     suspend fun findAllByUserId(userId: UUID, limit: Int, offset: Long): List<UserBlock>
 

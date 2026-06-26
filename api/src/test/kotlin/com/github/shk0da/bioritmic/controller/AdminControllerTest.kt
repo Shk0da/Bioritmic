@@ -28,7 +28,7 @@ class AdminControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(mapOf(
                 "name" to "Admin Test User",
                 "email" to email,
-                "password" to "12345",
+                "password" to "Test12345",
                 "birthday" to "1990-01-01"
             )))
             .accept(MediaType.APPLICATION_JSON)
@@ -39,7 +39,7 @@ class AdminControllerTest : ApiApplicationTests() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(AuthorizationModel(email, "12345")))
+            .body(BodyInserters.fromValue(AuthorizationModel(email, "Test12345")))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk
@@ -101,7 +101,7 @@ class AdminControllerTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(mapOf(
                 "name" to "Regular User",
                 "email" to email2,
-                "password" to "12345",
+                "password" to "Test12345",
                 "birthday" to "1995-06-15"
             )))
             .accept(MediaType.APPLICATION_JSON)
@@ -112,7 +112,7 @@ class AdminControllerTest : ApiApplicationTests() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(AuthorizationModel(email2, "12345")))
+            .body(BodyInserters.fromValue(AuthorizationModel(email2, "Test12345")))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk

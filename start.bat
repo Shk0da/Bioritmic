@@ -10,7 +10,7 @@ echo   Bioritmic - Starting project
 echo ========================================
 
 echo.
-echo [1/5] Starting PostgreSQL (Docker)...
+echo [1/6] Starting PostgreSQL (Docker)...
 docker compose up -d postgres
 echo   Waiting for PostgreSQL to be ready...
 for /l %%i in (1,1,60) do (
@@ -24,7 +24,7 @@ exit /b 1
 echo   PostgreSQL is ready (port 5432)
 
 echo.
-echo [2/5] Starting MinIO (S3 storage)...
+echo [2/6] Starting MinIO (S3 storage)...
 docker compose up -d minio >nul 2>&1
 echo   Waiting for MinIO to be ready...
 for /l %%i in (1,1,60) do (
@@ -38,8 +38,21 @@ exit /b 1
 echo   MinIO is ready (port 9341^)
 
 echo.
-echo [3/5] Starting Backend (Kotlin/Spring Boot on :8080^)...
+echo [3/6] Starting Mail server (mail.bioritmic.ru^)...
 cd /d "%ROOT_DIR%"
+if exist "%ROOT_DIR%.env" (
+    for /f "usebackq eol=# delims=" %%i in ("%ROOT_DIR%.env") do set "%%i"
+)
+if not defined MAIL_PASSWORD set MAIL_PASSWORD=changeme
+powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT_DIR%scripts\init-mail.ps1" -Password "%MAIL_PASSWORD%"
+if errorlevel 1 (
+    echo   Mail server failed to start. Check: docker compose logs mail
+    exit /b 1
+)
+echo   Mail server is ready (SMTP localhost:587^)
+
+echo.
+echo [4/6] Starting Backend (Kotlin/Spring Boot on :8080^)...
 if not defined JAVA_HOME (
     if exist "C:\Program Files\OpenJDK\jdk-21\bin\java.exe" (
         set "JAVA_HOME=C:\Program Files\OpenJDK\jdk-21"
@@ -77,7 +90,7 @@ if "!API_OK!"=="0" (
 echo   Backend is ready (http://localhost:8080^)
 
 echo.
-echo [4/5] Starting Frontend (Angular on :4200^)...
+echo [5/6] Starting Frontend (Angular on :4200^)...
 cd /d "%UI_DIR%"
 start "bioritmic-ui" cmd /c "npx ng serve --proxy-config proxy.conf.json --open > %TEMP%\bioritmic-ui.log 2>&1"
 echo   Waiting for frontend to compile...
@@ -108,6 +121,7 @@ echo   Backend:    http://localhost:8080
 echo   Swagger:    http://localhost:8080/swagger-ui.html
 echo   PostgreSQL: localhost:5432  (postgres/postgres^)
 echo   MinIO:      http://localhost:9341  (bioritmic/bioritmic^)
+echo   Mail:       localhost:587  (noreply@bioritmic.ru^)
 echo   Actuator:   http://localhost:8080/management/actuator/health
 echo.
 echo   API logs:   type %TEMP%\bioritmic-api.log

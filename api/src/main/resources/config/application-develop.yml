@@ -15,11 +15,25 @@ logging.level.io.swagger.models.parameters: error
 
 spring:
   liquibase.contexts: develop
+  profiles:
+    include: swagger
   mail:
-    host: smtp.bioritmic.com
-    username: admin@bioritmic.com
-    password: admin
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:noreply@bioritmic.ru}
+    password: ${MAIL_PASSWORD:changeme}
     properties:
-      mail.smtp.port: 25
-      mail.smtp.auth: true
-      mail.smtp.starttls.enable: false
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_STARTTLS_ENABLE:true}
+            required: ${MAIL_STARTTLS_REQUIRED:false}
+          ssl:
+            trust: ${MAIL_SSL_TRUST:localhost,mail.bioritmic.ru}
+            checkserveridentity: false
+
+app:
+  mail:
+    from: ${MAIL_FROM:noreply@bioritmic.ru}
+    mode: ${MAIL_MODE:smtp}

@@ -69,4 +69,10 @@ class BookmarkController(
         val isMatch = bookmarksService.isMatch(currentUserId, userId)
         return mapOf("isMatch" to isMatch)
     }
+
+    @GetMapping(value = ["/{userId}/exists"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun isBookmarked(@PathVariable userId: UUID): Map<String, Boolean> {
+        val currentUserId = getUserId()
+        return mapOf("bookmarked" to bookmarksService.isBookmarked(currentUserId, userId))
+    }
 }

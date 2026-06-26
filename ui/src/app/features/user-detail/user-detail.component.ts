@@ -713,35 +713,23 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadBookmarkStatus(userId: string): void {
-    this.bookmarksService.getBookmarks({ page: 0, size: 100 }).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (bookmarks: UserInfo[]) => {
-        this.isBookmarked = bookmarks.some(b => b.id === userId);
-      },
-      error: () => {
-        this.isBookmarked = false;
-      }
+    this.bookmarksService.isBookmarked(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res) => { this.isBookmarked = res.bookmarked; },
+      error: () => { this.isBookmarked = false; }
     });
   }
 
   private loadBlockStatus(userId: string): void {
-    this.userService.getBlockedUsers({ page: 0, size: 100 }).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (blockedUsers) => {
-        this.isBlocked = blockedUsers.some(u => u.id === userId);
-      },
-      error: () => {
-        this.isBlocked = false;
-      }
+    this.userService.isBlocked(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res) => { this.isBlocked = res.blocked; },
+      error: () => { this.isBlocked = false; }
     });
   }
 
   private loadMeetingStatus(userId: string): void {
-    this.meetingsService.getMeetings({ page: 0, size: 100 }).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (meetings) => {
-        this.meetingSent = meetings.some(m => m.userId === userId);
-      },
-      error: () => {
-        this.meetingSent = false;
-      }
+    this.meetingsService.hasSentMeeting(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res) => { this.meetingSent = res.sent; },
+      error: () => { this.meetingSent = false; }
     });
   }
 

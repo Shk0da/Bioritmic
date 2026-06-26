@@ -44,8 +44,26 @@ interface UserRepository : CoroutineCrudRepository<User, UUID> {
     suspend fun countUnverified(): Long
 
     @Query("SELECT COUNT(*) FROM users WHERE email = :email AND id != :excludeId")
-    suspend fun countByEmailExcludingId(@Param("email") email: String, @Param("excludeId") excludeId: Long): Long
+    suspend fun countByEmailExcludingId(@Param("email") email: String, @Param("excludeId") excludeId: UUID): Long
 
-    @Query("SELECT * FROM users ORDER BY id LIMIT :size OFFSET :offset")
+    @Query("SELECT * FROM users ORDER BY register_date DESC LIMIT :size OFFSET :offset")
     suspend fun findAllPaginated(@Param("size") size: Int, @Param("offset") offset: Long): List<User>
+
+    @Query("SELECT * FROM users WHERE id IN (:userIds)")
+    suspend fun findByIdIn(@Param("userIds") userIds: Collection<UUID>): List<User>
+
+    @Modifying
+    @Query("UPDATE users SET failed_login_attempts = failed_login_attempts + 1 WHERE id = :userId")
+    suspend fun incrementFailedLoginAttempts(userId: UUID)
+
+    @Query("SELECT failed_login_attempts FROM users WHERE id = :userId")
+    suspend fun getFailedLoginAttempts(userId: UUID): Int?
+
+    @Modifying
+    @Query("UPDATE users SET locked_until = :lockedUntil WHERE id = :userId")
+    suspend fun setLockedUntil(userId: UUID, lockedUntil: java.sql.Timestamp)
+
+    @Modifying
+    @Query("UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = :userId")
+    suspend fun resetLoginLockout(userId: UUID)
 }

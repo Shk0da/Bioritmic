@@ -240,7 +240,7 @@ class MissingEndpointsCoverageTest : ApiApplicationTests() {
                     UserModel(
                         name = name,
                         email = email,
-                        password = "12345",
+                        password = "Test12345",
                         birthday = "1990-01-01"
                     )
                 )
@@ -258,7 +258,7 @@ class MissingEndpointsCoverageTest : ApiApplicationTests() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(AuthorizationModel(email = email, password = "12345")))
+            .body(BodyInserters.fromValue(AuthorizationModel(email = email, password = "Test12345")))
             .exchange()
             .expectStatus().isOk
             .expectBody()

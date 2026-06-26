@@ -3,37 +3,32 @@ import {
   HttpInterceptorFn,
   HttpRequest,
   HttpHandlerFn,
-  HttpEvent,
-  HttpErrorResponse
+  HttpErrorResponse,
+  HttpEvent
 } from '@angular/common/http';
 import { Observable, throwError, BehaviorSubject } from 'rxjs';
 import { catchError, filter, take, switchMap } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
-import { CookieService } from '../services/cookie.service';
 import { UserToken } from '../models/user.model';
 
 let isRefreshing = false;
-const refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(null);
+const refreshTokenSubject: BehaviorSubject<UserToken | null> = new BehaviorSubject<UserToken | null>(null);
 
-export const authInterceptor: HttpInterceptorFn = (req, next) => {
+export const authInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEvent<unknown>> => {
   const authService = inject(AuthService);
-  const cookieService = inject(CookieService);
-  
   const token = authService.getToken();
-  
-  // Добавляем токен только если его ещё нет в заголовках
+
+  let authReq = req.clone({ withCredentials: true });
   if (token && !req.headers.has('Authorization')) {
-    req = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`
-      }
+    authReq = authReq.clone({
+      setHeaders: { Authorization: `Bearer ${token}` }
     });
   }
 
-  return next(req).pipe(
+  return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401 || error.status === 403) {
-        return handle401Error(req, next, authService, cookieService);
+        return handle401Error(authReq, next, authService);
       }
       return throwError(() => error);
     })
@@ -41,38 +36,36 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 };
 
 function handle401Error(
-  request: HttpRequest<any>,
+  request: HttpRequest<unknown>,
   next: HttpHandlerFn,
-  authService: AuthService,
-  cookieService: CookieService
-): Observable<any> {
+  authService: AuthService
+): Observable<HttpEvent<unknown>> {
   if (!isRefreshing) {
     isRefreshing = true;
     refreshTokenSubject.next(null);
 
-    const refreshToken = cookieService.get('refresh_token');
-    const userStr = cookieService.get('current_user');
-    
-    if (refreshToken && userStr) {
-      const user = JSON.parse(userStr);
-      const token: UserToken = {
-        accessToken: '',
-        refreshToken: refreshToken,
+    const user = authService.getCurrentUser();
+    if (user?.email) {
+      const token: Partial<UserToken> = {
+        email: user.email,
         name: user.name || '',
-        email: user.email || '',
+        accessToken: '',
+        refreshToken: '',
         expireTime: 0
       };
-      
+
       return authService.refreshToken(token).pipe(
         switchMap((newToken: UserToken) => {
           isRefreshing = false;
           authService.setAuth(newToken);
           refreshTokenSubject.next(newToken);
-          return next(request.clone({
-            setHeaders: {
-              Authorization: `Bearer ${newToken.accessToken}`
-            }
-          }));
+          const retry = request.clone({ withCredentials: true });
+          if (newToken.accessToken) {
+            return next(retry.clone({
+              setHeaders: { Authorization: `Bearer ${newToken.accessToken}` }
+            }));
+          }
+          return next(retry);
         }),
         catchError((error) => {
           isRefreshing = false;
@@ -80,20 +73,24 @@ function handle401Error(
           return throwError(() => error);
         })
       );
-    } else {
-      isRefreshing = false;
-      authService.clearAuth();
-      return throwError(() => new Error('No refresh token'));
     }
-  } else {
-    return refreshTokenSubject.pipe(
-      filter(token => token != null),
-      take(1),
-      switchMap(token => next(request.clone({
-        setHeaders: {
-          Authorization: `Bearer ${token.accessToken}`
-        }
-      })))
-    );
+
+    isRefreshing = false;
+    authService.clearAuth();
+    return throwError(() => new Error('No refresh session'));
   }
+
+  return refreshTokenSubject.pipe(
+    filter((token): token is UserToken => token != null),
+    take(1),
+    switchMap(token => {
+      const retry = request.clone({ withCredentials: true });
+      if (token.accessToken) {
+        return next(retry.clone({
+          setHeaders: { Authorization: `Bearer ${token.accessToken}` }
+        }));
+      }
+      return next(retry);
+    })
+  );
 }

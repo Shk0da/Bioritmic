@@ -64,7 +64,8 @@ class MeetingsService(
                     ).fetch().rowsUpdated().awaitFirstOrNull()
                 }
             } catch (ex: DataAccessException) {
-                log.error("Failed save meetings for userId [{}]: {}", userId, ex.message)
+                log.error("Failed save meetings for userId [{}]: {}", userId, ex.message, ex)
+                throw ex
             }
         }
         return meetingsRepository.findAllByUserId(userId, defaultPageable.pageSize, defaultPageable.offset)
@@ -75,7 +76,8 @@ class MeetingsService(
         try {
             meetingsRepository.deleteByUserIdAndOtherUserId(currentUserId, userId)
         } catch (ex: DataAccessException) {
-            log.error("Failed delete meetings for userId [{}]: {}", userId, ex.message)
+            log.error("Failed delete meetings for userId [{}]: {}", userId, ex.message, ex)
+            throw ex
         }
         return meetingsRepository.findAllByUserId(currentUserId, defaultPageable.pageSize, defaultPageable.offset)
     }
@@ -138,5 +140,15 @@ class MeetingsService(
         val result = meetingsRepository.findByUserPair(otherUserId, currentUserId)
         log.info("acceptMeeting: result status={}", result?.status)
         return result
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun hasSentMeeting(userId: UUID, otherUserId: UUID): Boolean {
+        return meetingsRepository.existsByUserIdAndOtherUserId(userId, otherUserId)
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun countIncomingSince(userId: UUID, sinceMs: Long): Long {
+        return meetingsRepository.countIncomingSince(userId, java.sql.Timestamp(sinceMs))
     }
 }

@@ -33,4 +33,9 @@ export class MailboxService {
   getConversation(userId: string): Observable<UserMail[]> {
     return this.http.get<UserMail[]>(`${this.apiUrl}/conversation/${userId}`);
   }
+
+  getBadgeCount(sinceMs: number): Observable<{ count: number }> {
+    const params = new HttpParams().set('since', sinceMs.toString());
+    return this.http.get<{ count: number }>(`${this.apiUrl}/badge`, { params });
+  }
 }

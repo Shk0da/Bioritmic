@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
 import java.util.UUID
@@ -51,5 +52,11 @@ class MailboxController(val mailboxService: MailboxService) {
     suspend fun conversation(@PathVariable userId: UUID): List<UserMailModel> {
         val currentUserId = getUserId()
         return mailboxService.getConversation(currentUserId, userId).map { UserMailModel.of(it) }
+    }
+
+    @GetMapping(value = ["/badge"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun unreadBadge(@RequestParam(defaultValue = "0") since: Long): Map<String, Long> {
+        val userId = getUserId()
+        return mapOf("count" to mailboxService.countUnreadSenders(userId, since))
     }
 }

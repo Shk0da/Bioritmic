@@ -37,4 +37,13 @@ export class MeetingsService {
   acceptMeeting(userId: string): Observable<any> {
     return this.http.put(`${this.apiUrl}/${userId}/accept`, {});
   }
+
+  hasSentMeeting(userId: string): Observable<{ sent: boolean }> {
+    return this.http.get<{ sent: boolean }>(`${this.apiUrl}/${userId}/sent`);
+  }
+
+  getBadgeCount(sinceMs: number): Observable<{ count: number }> {
+    const params = new HttpParams().set('since', sinceMs.toString());
+    return this.http.get<{ count: number }>(`${this.apiUrl}/badge`, { params });
+  }
 }
