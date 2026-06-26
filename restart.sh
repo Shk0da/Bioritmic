@@ -9,19 +9,33 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+kill_by_port() {
+    local port=$1
+    local pids
+    pids=$(lsof -ti :"$port" 2>/dev/null)
+    if [ -n "$pids" ]; then
+        echo "$pids" | xargs kill -15 2>/dev/null || true
+        sleep 1
+        pids=$(lsof -ti :"$port" 2>/dev/null)
+        [ -n "$pids" ] && echo "$pids" | xargs kill -9 2>/dev/null || true
+    fi
+}
+
 echo -e "${CYAN}=== Bioritmic Restart ===${NC}"
 echo ""
 
-# --- Kill old processes ---
-echo -e "${YELLOW}[1/5] Stopping old processes...${NC}"
-pkill -f "bootRun\|bioritmic.*\.jar" 2>/dev/null && echo -e "  ${GREEN}Old backend stopped${NC}" || echo -e "  Backend was not running"
-pkill -f "ng serve" 2>/dev/null && echo -e "  ${GREEN}Old frontend stopped${NC}" || echo -e "  Frontend was not running"
-pkill -f "minio server" 2>/dev/null || true
-sleep 1
+# --- Kill by port ---
+echo -e "${YELLOW}[1/6] Killing old processes...${NC}"
+kill_by_port 8080
+kill_by_port 4200
+kill_by_port 9340
+kill_by_port 9341
+pkill -f "GradleWorkerMain" 2>/dev/null || true
+echo -e "  ${GREEN}All old processes stopped${NC}"
 
-# --- Docker ---
+# --- Docker fresh start ---
 echo ""
-echo -e "${YELLOW}[2/5] Restarting Docker containers...${NC}"
+echo -e "${YELLOW}[2/6] Restarting Docker containers...${NC}"
 cd "$ROOT_DIR"
 docker rm -f bioritmic-postgres >/dev/null 2>&1 || true
 docker compose up -d postgres
@@ -39,9 +53,30 @@ for i in $(seq 1 30); do
     sleep 1
 done
 
+# --- MinIO ---
+echo ""
+echo -e "${YELLOW}[3/6] Starting MinIO...${NC}"
+pkill -f "minio server /tmp/bioritmic-minio" 2>/dev/null || true
+sleep 1
+if command -v minio &> /dev/null; then
+    MINIO_ROOT_USER=bioritmic MINIO_ROOT_PASSWORD=bioritmic \
+        minio server /tmp/bioritmic-minio --address ":9340" --console-address ":9341" > /tmp/bioritmic-minio.log 2>&1 &
+    sleep 2
+    echo -e "  ${GREEN}MinIO started${NC}"
+else
+    echo -e "  ${RED}MinIO not found, skipping${NC}"
+fi
+
+# --- Clean rebuild backend ---
+echo ""
+echo -e "${YELLOW}[4/6] Clean building backend...${NC}"
+cd "$ROOT_DIR"
+./gradlew clean :api:build -x test > /tmp/bioritmic-build.log 2>&1
+echo -e "  ${GREEN}Backend built successfully${NC}"
+
 # --- Backend ---
 echo ""
-echo -e "${YELLOW}[3/5] Starting backend...${NC}"
+echo -e "${YELLOW}[5/6] Starting backend...${NC}"
 cd "$ROOT_DIR"
 ./gradlew :api:bootRun > /tmp/bioritmic-api.log 2>&1 &
 API_PID=$!
@@ -72,7 +107,7 @@ fi
 
 # --- Frontend ---
 echo ""
-echo -e "${YELLOW}[4/5] Starting frontend...${NC}"
+echo -e "${YELLOW}[6/6] Starting frontend...${NC}"
 cd "$ROOT_DIR/ui"
 npm start > /tmp/bioritmic-ui.log 2>&1 &
 UI_PID=$!
@@ -111,10 +146,10 @@ echo ""
 echo -e "  Frontend:   ${GREEN}http://localhost:4200${NC}"
 echo -e "  Backend:    ${GREEN}http://localhost:8080${NC}"
 echo -e "  PostgreSQL: ${GREEN}localhost:5432${NC}"
-echo -e ""
+echo ""
 echo -e "  API logs:   ${YELLOW}tail -f /tmp/bioritmic-api.log${NC}"
 echo -e "  UI logs:    ${YELLOW}tail -f /tmp/bioritmic-ui.log${NC}"
-echo -e ""
+echo ""
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 echo ""
 
