@@ -1,8 +1,6 @@
 # Docker Compose stack: -Dspring.profiles.active=docker
 spring:
   liquibase.contexts: develop
-  profiles:
-    include: swagger
   datasource:
     master:
       host: postgres

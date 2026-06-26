@@ -1,0 +1,2 @@
+docker/mail/config/* text eol=lf
+docker/mail/config/ssl/*.pem binary

@@ -55,11 +55,11 @@ services:
       - NET_ADMIN
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "ss -lntp | grep -q ':587'"]
+      test: ["CMD-SHELL", "ss -lntp | grep -q ':587' || ss -lntp | grep -q ':25'"]
       interval: 10s
       timeout: 5s
-      retries: 30
-      start_period: 120s
+      retries: 45
+      start_period: 180s
 
   mail-init:
     image: ghcr.io/docker-mailserver/docker-mailserver:latest
@@ -99,7 +99,7 @@ services:
       - path: .env
         required: false
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: docker,swagger
       MAIL_PASSWORD: ${MAIL_PASSWORD:-changeme}
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
     ports:
