@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { Router, UrlTree } from '@angular/router';
+import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { authGuard } from './auth.guard';
+
+const route = {} as ActivatedRouteSnapshot;
 
 describe('authGuard', () => {
   let authService: jasmine.SpyObj<AuthService>;
@@ -27,7 +29,7 @@ describe('authGuard', () => {
     authService.getCurrentUser.and.returnValue({ id: '1', name: 'Test', email: 't@t.com' });
 
     TestBed.runInInjectionContext(() => {
-      const result = authGuard();
+      const result = authGuard(route, { url: '/swipe' } as RouterStateSnapshot);
       expect(result).toBeTrue();
     });
   });
@@ -38,7 +40,7 @@ describe('authGuard', () => {
     router.createUrlTree.and.returnValue(urlTree);
 
     TestBed.runInInjectionContext(() => {
-      const result = authGuard();
+      const result = authGuard(route, { url: '/profile/me' } as RouterStateSnapshot);
       expect(result).toBe(urlTree);
       expect(router.createUrlTree).toHaveBeenCalledWith(['/auth/login']);
     });
@@ -51,9 +53,42 @@ describe('authGuard', () => {
     router.createUrlTree.and.returnValue(urlTree);
 
     TestBed.runInInjectionContext(() => {
-      const result = authGuard();
+      const result = authGuard(route, { url: '/swipe' } as RouterStateSnapshot);
       expect(authService.clearAuth).toHaveBeenCalled();
       expect(result).toBe(urlTree);
+    });
+  });
+
+  it('should allow unverified user to navigate to swipe', () => {
+    authService.isAuthenticated.and.returnValue(true);
+    authService.getCurrentUser.and.returnValue({
+      id: '1',
+      name: 'Test',
+      email: 't@t.com',
+      isVerified: false
+    });
+
+    TestBed.runInInjectionContext(() => {
+      const result = authGuard(route, { url: '/swipe' } as RouterStateSnapshot);
+      expect(result).toBeTrue();
+    });
+  });
+
+  it('should redirect unverified user away from profile to swipe', () => {
+    authService.isAuthenticated.and.returnValue(true);
+    authService.getCurrentUser.and.returnValue({
+      id: '1',
+      name: 'Test',
+      email: 't@t.com',
+      isVerified: false
+    });
+    const urlTree = {} as UrlTree;
+    router.createUrlTree.and.returnValue(urlTree);
+
+    TestBed.runInInjectionContext(() => {
+      const result = authGuard(route, { url: '/profile/me' } as RouterStateSnapshot);
+      expect(result).toBe(urlTree);
+      expect(router.createUrlTree).toHaveBeenCalledWith(['/swipe']);
     });
   });
 });
