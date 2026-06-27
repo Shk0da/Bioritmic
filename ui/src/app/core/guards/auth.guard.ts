@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
-const UNVERIFIED_ALLOWED_ROUTES = ['/swipe', '/auth'];
+const UNVERIFIED_ALLOWED_ROUTES = ['/swipe', '/auth', '/profile'];
 
 export const authGuard: CanActivateFn = (_route, state): boolean | UrlTree => {
   const authService = inject(AuthService);

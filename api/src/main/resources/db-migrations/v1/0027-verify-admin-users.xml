@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0027-verify-admin-users" author="bioritmic">
+        <comment>Mark all admin users as verified</comment>
+        <sql>
+            UPDATE users
+            SET is_verified = true
+            WHERE id IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

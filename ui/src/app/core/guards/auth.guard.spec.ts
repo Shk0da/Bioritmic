@@ -74,7 +74,22 @@ describe('authGuard', () => {
     });
   });
 
-  it('should redirect unverified user away from profile to swipe', () => {
+  it('should allow unverified user to view and edit own profile', () => {
+    authService.isAuthenticated.and.returnValue(true);
+    authService.getCurrentUser.and.returnValue({
+      id: '1',
+      name: 'Test',
+      email: 't@t.com',
+      isVerified: false
+    });
+
+    TestBed.runInInjectionContext(() => {
+      expect(authGuard(route, { url: '/profile/me' } as RouterStateSnapshot)).toBeTrue();
+      expect(authGuard(route, { url: '/profile/me/edit' } as RouterStateSnapshot)).toBeTrue();
+    });
+  });
+
+  it('should redirect unverified user away from restricted routes to swipe', () => {
     authService.isAuthenticated.and.returnValue(true);
     authService.getCurrentUser.and.returnValue({
       id: '1',
@@ -86,7 +101,7 @@ describe('authGuard', () => {
     router.createUrlTree.and.returnValue(urlTree);
 
     TestBed.runInInjectionContext(() => {
-      const result = authGuard(route, { url: '/profile/me' } as RouterStateSnapshot);
+      const result = authGuard(route, { url: '/settings' } as RouterStateSnapshot);
       expect(result).toBe(urlTree);
       expect(router.createUrlTree).toHaveBeenCalledWith(['/swipe']);
     });

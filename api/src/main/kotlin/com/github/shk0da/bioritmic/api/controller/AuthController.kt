@@ -71,10 +71,12 @@ class AuthController(
         when {
             adminEmail.isNotBlank() && newUser.email.equals(adminEmail, ignoreCase = true) -> {
                 userRoleRepository.addRole(userId, ROLE_ADMIN)
+                userRepository.setVerified(userId, true)
                 log.info("User {} assigned ADMIN role (configured admin email)", userId)
             }
             adminEmail.isBlank() && userRepository.countAll() <= 1 -> {
                 userRoleRepository.addRole(userId, ROLE_ADMIN)
+                userRepository.setVerified(userId, true)
                 log.info("User {} assigned ADMIN role (first user)", userId)
             }
             else -> userRoleRepository.addRole(userId, ROLE_USER)

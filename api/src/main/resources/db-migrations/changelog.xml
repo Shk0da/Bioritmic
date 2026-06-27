@@ -12,6 +12,7 @@
     <include file="v1/0024-fix-uuid-entity-schema.xml" relativeToChangelogFile="true"/>
     <include file="v1/0025-admin-performance-indexes.xml" relativeToChangelogFile="true"/>
     <include file="v1/0026-security-hardening.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0027-verify-admin-users.xml" relativeToChangelogFile="true"/>
     <!-- -->
 
     <!--  Seeding  -->

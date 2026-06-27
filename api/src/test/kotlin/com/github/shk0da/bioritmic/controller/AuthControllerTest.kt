@@ -3,14 +3,17 @@ package com.github.shk0da.bioritmic.controller
 import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_ADMIN
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.RecoveryModel
 import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.domain.UserModel
 import org.junit.jupiter.api.Test
 
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
+import java.util.UUID
 
 class AuthControllerTest : ApiApplicationTests() {
 
@@ -49,6 +52,47 @@ class AuthControllerTest : ApiApplicationTests() {
             .jsonPath("$.errors.length()").isEqualTo(1)
             .jsonPath("$.errors[0].errorCode").isEqualTo(ErrorCode.USER_EXISTS.code)
             .jsonPath("$.errors[0].message").isEqualTo(ErrorCode.USER_EXISTS.message)
+    }
+
+    @Test
+    fun firstRegisteredUserShouldBeAdminAndVerified() {
+        val userModel = defaultUserModel.copy(
+            email = "first_admin_${UUID.randomUUID()}@gmail.com"
+        )
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(userModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+
+        val authorizationModel = AuthorizationModel(
+            email = userModel.email,
+            password = userModel.password!!
+        )
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(authorizationModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val auth = authTokenCache.entries.find { it.value.userId != null }?.value
+        val token = "Bearer ${auth?.accessToken}"
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.isVerified").isEqualTo(true)
+            .jsonPath("$.role").isEqualTo(ROLE_ADMIN)
     }
 
     @Test
