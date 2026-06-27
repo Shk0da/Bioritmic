@@ -8,7 +8,7 @@ import { ModalComponent } from '../../core/services/modal.service';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { Subscription, filter } from 'rxjs';
+import { Subject, Subscription, filter, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-layout',
@@ -206,6 +206,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopPolling();
+    this.destroy$.next();
+    this.destroy$.complete();
     this.routerSubscription?.unsubscribe();
     this.userSubscription?.unsubscribe();
     UserService.revokePhotoUrl(this.userPhoto);
@@ -228,6 +230,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     }
   }
 
+  private destroy$ = new Subject<void>();
   private isLoadingUnread = false;
   private isLoadingMeetings = false;
   private loadUnreadCount(): void {
@@ -235,7 +238,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.isLoadingUnread = true;
     const lastReadTime = localStorage.getItem('mailbox_last_read');
     const since = lastReadTime ? parseInt(lastReadTime, 10) : 0;
-    this.mailboxService.getBadgeCount(since).subscribe({
+    this.mailboxService.getBadgeCount(since).pipe(takeUntil(this.destroy$)).subscribe({
       next: (res) => {
         this.isLoadingUnread = false;
         this.unreadCount = res.count;
@@ -249,7 +252,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.isLoadingMeetings = true;
     const lastReadTime = localStorage.getItem('meetings_last_read');
     const since = lastReadTime ? parseInt(lastReadTime, 10) : 0;
-    this.meetingsService.getBadgeCount(since).subscribe({
+    this.meetingsService.getBadgeCount(since).pipe(takeUntil(this.destroy$)).subscribe({
       next: (res) => {
         this.isLoadingMeetings = false;
         this.newMeetingsCount = res.count;

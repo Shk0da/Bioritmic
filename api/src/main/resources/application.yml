@@ -94,7 +94,7 @@ spring:
             required: ${MAIL_STARTTLS_REQUIRED:false}
           ssl:
             enable: ${MAIL_SSL_ENABLE:false}
-            trust: ${MAIL_SSL_TRUST:}
+            trust: ${MAIL_SSL_TRUST:*}
           connectiontimeout: ${MAIL_CONNECTION_TIMEOUT:10000}
           timeout: ${MAIL_TIMEOUT:10000}
           writetimeout: ${MAIL_WRITE_TIMEOUT:10000}

@@ -32,7 +32,8 @@ echo ""
 echo -e "${YELLOW}[2/6] Restarting Docker containers...${NC}"
 cd "$ROOT_DIR"
 docker rm -f bioritmic-postgres >/dev/null 2>&1 || true
-docker compose up -d postgres
+docker rm -f bioritmic-mail >/dev/null 2>&1 || true
+docker compose up -d postgres mail
 
 echo -e "  Waiting for PostgreSQL..."
 for i in $(seq 1 30); do
@@ -65,14 +66,14 @@ fi
 echo ""
 echo -e "${YELLOW}[4/6] Clean building backend...${NC}"
 cd "$ROOT_DIR"
-./gradlew clean :api:build -x test > /tmp/bioritmic-build.log 2>&1
+./gradlew clean :api:build -x test -x detekt > /tmp/bioritmic-build.log 2>&1
 echo -e "  ${GREEN}Backend built successfully${NC}"
 
 # --- Backend ---
 echo ""
 echo -e "${YELLOW}[5/6] Starting backend...${NC}"
 cd "$ROOT_DIR"
-./gradlew :api:bootRun > /tmp/bioritmic-api.log 2>&1 &
+SPRING_PROFILES_ACTIVE=develop,swagger ./gradlew :api:bootRun > /tmp/bioritmic-api.log 2>&1 &
 API_PID=$!
 echo -e "  PID: $API_PID"
 

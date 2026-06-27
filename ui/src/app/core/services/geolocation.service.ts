@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { UserService } from './user.service';
 import { GisData } from '../models/user.model';
 import { AuthService } from './auth.service';
@@ -6,15 +7,20 @@ import { AuthService } from './auth.service';
 @Injectable({
   providedIn: 'root'
 })
-export class GeolocationService {
+export class GeolocationService implements OnDestroy {
   private watchId: number | null = null;
   private readonly UPDATE_INTERVAL = 60000; // 1 минута
   private lastUpdate: number = 0;
+  private locationSubscription: Subscription | null = null;
 
   constructor(
     private userService: UserService,
     private authService: AuthService
   ) {}
+
+  ngOnDestroy(): void {
+    this.stopTracking();
+  }
 
   /**
    * Запускает периодическую отправку координат
@@ -62,6 +68,10 @@ export class GeolocationService {
       navigator.geolocation.clearWatch(this.watchId);
       this.watchId = null;
     }
+    if (this.locationSubscription) {
+      this.locationSubscription.unsubscribe();
+      this.locationSubscription = null;
+    }
   }
 
   /**
@@ -101,7 +111,8 @@ export class GeolocationService {
       lon
     };
 
-    this.userService.saveGisData(gisData).subscribe({
+    this.locationSubscription?.unsubscribe();
+    this.locationSubscription = this.userService.saveGisData(gisData).subscribe({
       next: () => {
         console.log('Location updated:', lat, lon);
       },

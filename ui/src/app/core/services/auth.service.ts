@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap, catchError, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, tap, catchError, throwError, timeout } from 'rxjs';
 import { User, UserToken, AuthorizationModel, Gender, UserInfo } from '../models/user.model';
 
 const USER_KEY = 'current_user';
@@ -13,18 +13,15 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<UserInfo | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   private legacyToken: string | null = null;
+  private authSubscriptions: Subscription[] = [];
 
   constructor(private http: HttpClient) {
-    this.loadUserFromStorage();
-  }
-
-  private loadUserFromStorage(): void {
     const userStr = sessionStorage.getItem(USER_KEY);
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
         this.currentUserSubject.next(user);
-        this.http.get<UserInfo>(`${this.apiUrl}/user/me`).subscribe({
+        const sub = this.http.get<UserInfo>(`${this.apiUrl}/user/me`).subscribe({
           next: (user) => {
             sessionStorage.setItem(USER_KEY, JSON.stringify(user));
             this.currentUserSubject.next(user);
@@ -35,6 +32,7 @@ export class AuthService {
             }
           }
         });
+        this.authSubscriptions.push(sub);
       } catch {
         this.clearAuth();
       }
@@ -50,7 +48,7 @@ export class AuthService {
   }
 
   logout(): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/logout`);
+    return this.http.delete<void>(`${this.apiUrl}/logout`).pipe(timeout(10000));
   }
 
   refreshToken(userToken: Partial<UserToken>): Observable<UserToken> {
@@ -81,6 +79,8 @@ export class AuthService {
     this.legacyToken = null;
     sessionStorage.removeItem(USER_KEY);
     this.currentUserSubject.next(null);
+    this.authSubscriptions.forEach(s => s.unsubscribe());
+    this.authSubscriptions = [];
   }
 
   setAuth(token: UserToken): void {
