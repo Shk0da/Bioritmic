@@ -73,6 +73,49 @@ describe('AuthService', () => {
     });
   });
 
+  describe('current user polling', () => {
+    beforeEach(() => {
+      jasmine.clock().install();
+    });
+
+    afterEach(() => {
+      jasmine.clock().uninstall();
+    });
+
+    it('should poll /user/me and update verification status', () => {
+      service.loadCurrentUser().subscribe();
+      httpMock.expectOne('/api/v1/user/me').flush({ id: '1', name: 'John', email: 'j@t.com', isVerified: false });
+
+      jasmine.clock().tick(30_000);
+
+      const req = httpMock.expectOne('/api/v1/user/me');
+      expect(req.request.method).toBe('GET');
+      req.flush({ id: '1', name: 'John', email: 'j@t.com', isVerified: true });
+      expect(service.getCurrentUser()?.isVerified).toBeTrue();
+    });
+
+    it('should poll /user/me and update role', () => {
+      service.loadCurrentUser().subscribe();
+      httpMock.expectOne('/api/v1/user/me').flush({ id: '1', name: 'John', email: 'j@t.com', role: 'USER', isVerified: true });
+
+      jasmine.clock().tick(30_000);
+
+      const req = httpMock.expectOne('/api/v1/user/me');
+      req.flush({ id: '1', name: 'John', email: 'j@t.com', role: 'ADMIN', isVerified: true });
+      expect(service.getCurrentUser()?.role).toBe('ADMIN');
+    });
+
+    it('should stop polling after logout', () => {
+      service.loadCurrentUser().subscribe();
+      httpMock.expectOne('/api/v1/user/me').flush({ id: '1', name: 'John', email: 'j@t.com', isVerified: true });
+
+      service.clearAuth();
+
+      jasmine.clock().tick(60_000);
+      httpMock.expectNone('/api/v1/user/me');
+    });
+  });
+
   describe('loadCurrentUser', () => {
     it('should GET /api/v1/user/me and update user', () => {
       const user: UserInfo = { id: '1', name: 'Loaded', email: 'l@t.com' };
