@@ -22,16 +22,14 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
-kill_by_port() {
-    local port=$1
-    local pids
-    pids=$(lsof -ti :"$port" 2>/dev/null)
-    if [ -n "$pids" ]; then
-        echo "$pids" | xargs kill -15 2>/dev/null || true
-        sleep 1
-        pids=$(lsof -ti :"$port" 2>/dev/null)
-        [ -n "$pids" ] && echo "$pids" | xargs kill -9 2>/dev/null || true
-    fi
+kill_processes() {
+    pkill -f "gradlew.*bootRun" 2>/dev/null && echo "  Backend stopped" || true
+    pkill -f "ng serve" 2>/dev/null && echo "  Frontend stopped" || true
+    pkill -f "GradleWorkerMain" 2>/dev/null || true
+    pkill -f "minio server /tmp/bioritmic-minio" 2>/dev/null || true
+    sleep 2
+    pkill -9 -f "gradlew.*bootRun" 2>/dev/null || true
+    pkill -9 -f "ng serve" 2>/dev/null || true
 }
 
 echo -e "${CYAN}========================================${NC}"
@@ -41,9 +39,7 @@ echo -e "${CYAN}========================================${NC}"
 # --- Kill old processes ---
 echo ""
 echo -e "${YELLOW}[1/7] Stopping old processes...${NC}"
-kill_by_port 8080
-kill_by_port 4200
-pkill -f "GradleWorkerMain" 2>/dev/null || true
+kill_processes
 echo -e "  ${GREEN}Done${NC}"
 
 # --- Infrastructure: PostgreSQL (Docker) ---
