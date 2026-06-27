@@ -6,7 +6,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_
 
 object PasswordValidator {
 
-    private val PASSWORD_PATTERN = Regex("^(?=.*[A-Za-z])(?=.*\\d).{8,128}$")
+    private val PASSWORD_PATTERN = Regex("^.{5,128}$")
 
     fun validate(password: String?) {
         if (password.isNullOrBlank() || !PASSWORD_PATTERN.matches(password)) {
