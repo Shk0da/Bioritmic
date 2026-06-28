@@ -49,4 +49,11 @@ describe('StoryService', () => {
     expect(req.request.body).toEqual({ reaction: 'FIRE' });
     req.flush({ reaction: 'FIRE', reactionCounts: { FIRE: 1 } });
   });
+
+  it('deleteStory should DELETE /{id}', () => {
+    service.deleteStory(5).subscribe();
+    const req = httpMock.expectOne('/api/v1/stories/5');
+    expect(req.request.method).toBe('DELETE');
+    req.flush({ success: true });
+  });
 });

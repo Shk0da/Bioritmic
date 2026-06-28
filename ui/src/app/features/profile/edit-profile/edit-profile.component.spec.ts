@@ -23,11 +23,12 @@ describe('EditProfileComponent', () => {
 
   beforeEach(async () => {
     userService = jasmine.createSpyObj('UserService', [
-      'getCurrentUser', 'getPhoto', 'getUserPhotos', 'updateUser', 'uploadPhoto', 'deletePhoto'
+      'getCurrentUser', 'getUserPhotos', 'resolveProfilePhotoUrl', 'updateUser', 'uploadPhoto', 'deletePhoto', 'getProfilePhotoUrl'
     ]);
     userService.getCurrentUser.and.returnValue(of(mockUser));
-    userService.getPhoto.and.returnValue(of(new Uint8Array([1, 2, 3])));
     userService.getUserPhotos.and.returnValue(of([{ photoOrder: 0 }]));
+    userService.resolveProfilePhotoUrl.and.returnValue(of('/api/v1/user/1/photo?v=1'));
+    userService.getProfilePhotoUrl.and.returnValue('/api/v1/user/1/photo?v=2');
     userService.updateUser.and.returnValue(of(mockUser));
     userService.uploadPhoto.and.returnValue(of(void 0));
     userService.deletePhoto.and.returnValue(of(void 0));
@@ -47,9 +48,10 @@ describe('EditProfileComponent', () => {
   it('should load profile and photo on init', () => {
     fixture.detectChanges();
     expect(userService.getCurrentUser).toHaveBeenCalled();
-    expect(userService.getPhoto).toHaveBeenCalled();
+    expect(userService.resolveProfilePhotoUrl).toHaveBeenCalledWith('1');
     expect(component.user.name).toBe('Test User');
     expect(component.user.bio).toBe('Hello world');
+    expect(component.photoDataUrl).toBe('/api/v1/user/1/photo?v=1');
   });
 
   it('should save name, birthday, gender and bio', () => {

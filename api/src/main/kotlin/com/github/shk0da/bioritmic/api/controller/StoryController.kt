@@ -5,6 +5,7 @@ import com.github.shk0da.bioritmic.api.service.StoryService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.springframework.http.MediaType
 import org.springframework.http.codec.multipart.FilePart
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -56,5 +57,12 @@ class StoryController(
     ): Map<String, Any?> {
         val userId = getUserId()
         return storyService.reactToStory(id, userId, request.reaction)
+    }
+
+    @DeleteMapping("/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun deleteStory(@PathVariable id: Long): Map<String, Boolean> {
+        val userId = getUserId()
+        storyService.deleteStory(id, userId)
+        return mapOf("success" to true)
     }
 }

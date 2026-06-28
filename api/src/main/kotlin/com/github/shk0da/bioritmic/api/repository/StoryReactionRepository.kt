@@ -35,6 +35,10 @@ interface StoryReactionRepository : CoroutineCrudRepository<StoryReaction, Long>
     @Modifying
     @Query("DELETE FROM story_reactions WHERE story_id = :storyId AND viewer_id = :viewerId")
     suspend fun deleteByStoryIdAndViewerId(storyId: Long, viewerId: UUID): Int
+
+    @Modifying
+    @Query("DELETE FROM story_reactions WHERE story_id = :storyId")
+    suspend fun deleteByStoryId(storyId: Long): Int
 }
 
 @Repository

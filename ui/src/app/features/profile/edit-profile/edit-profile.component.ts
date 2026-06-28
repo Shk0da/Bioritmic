@@ -27,7 +27,7 @@ import { Subject, takeUntil } from 'rxjs';
           </div>
           <div class="card-body">
             <!-- Фото профиля -->
-            <div class="text-center mb-4">
+            <div class="text-center mb-4 d-flex flex-column align-items-center">
               <div class="position-relative d-inline-block">
                 @if (saving) {
                   <div class="photo-loading-overlay">
@@ -248,7 +248,6 @@ export class EditProfileComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadProfile();
-    this.loadPhoto();
   }
 
   ngOnDestroy(): void {
@@ -262,6 +261,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
       next: (user: UserInfo) => {
         this.user = { ...user };
         if (user.id) {
+          this.loadPhoto(user.id);
           this.loadPhotoStatus(user.id);
         }
       }
@@ -279,12 +279,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadPhoto(): void {
-    const userId = this.user.id;
-    if (!userId) {
-      return;
-    }
-
+  private loadPhoto(userId: string): void {
     this.userService.resolveProfilePhotoUrl(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (url) => {
         UserService.revokePhotoUrl(this.photoDataUrl);

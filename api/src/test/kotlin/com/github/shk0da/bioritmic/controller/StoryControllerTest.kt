@@ -194,6 +194,47 @@ class StoryControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun `author can delete own story`() {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData(storyMultipartBody().build()))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        var storyId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].id")
+            .value { id: Any -> storyId = (id as Number).toLong() }
+
+        webTestClient.delete()
+            .uri("$API_WITH_VERSION_1/stories/$storyId")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.success").isEqualTo(true)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.length()").isEqualTo(0)
+    }
+
+    @Test
     fun `should return 401 without auth token`() {
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/stories")

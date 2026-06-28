@@ -36,6 +36,10 @@ interface StoryViewRepository : CoroutineCrudRepository<StoryView, Long> {
     @Transactional(readOnly = true)
     @Query("SELECT COUNT(*) FROM story_views WHERE story_id = :storyId")
     suspend fun countViewersByStoryId(storyId: Long): Int
+
+    @Modifying
+    @Query("DELETE FROM story_views WHERE story_id = :storyId")
+    suspend fun deleteByStoryId(storyId: Long): Int
 }
 
 @Repository

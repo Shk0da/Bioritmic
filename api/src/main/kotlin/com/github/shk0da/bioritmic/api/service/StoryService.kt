@@ -162,6 +162,23 @@ class StoryService(
     }
 
     @Transactional(transactionManager = transactionManager)
+    suspend fun deleteStory(storyId: Long, currentUserId: UUID) {
+        val story = storyRepository.findById(storyId)
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Story not found"))
+        val authorId = story.userId
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Story not found"))
+        if (authorId != currentUserId) {
+            throw ApiException(ErrorCode.ACCESS_DENIED)
+        }
+
+        storyReactionRepository.deleteByStoryId(storyId)
+        storyViewRepository.deleteByStoryId(storyId)
+        storyRepository.deleteById(storyId)
+
+        extractS3Key(story.mediaUrl)?.let { s3Service.deletePhoto(it) }
+    }
+
+    @Transactional(transactionManager = transactionManager)
     suspend fun deleteExpiredStories() {
         storyRepository.deleteExpired(Timestamp(System.currentTimeMillis()))
     }
@@ -195,6 +212,18 @@ class StoryService(
             ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         if (!user.isVerified) {
             throw ApiException(ErrorCode.USER_NOT_VERIFIED)
+        }
+    }
+
+    private fun extractS3Key(mediaUrl: String?): String? {
+        if (mediaUrl.isNullOrBlank()) {
+            return null
+        }
+        val prefix = "/api/v1/photos/s3/"
+        return if (mediaUrl.startsWith(prefix)) {
+            mediaUrl.removePrefix(prefix)
+        } else {
+            null
         }
     }
 }

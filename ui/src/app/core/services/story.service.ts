@@ -67,4 +67,8 @@ export class StoryService {
   reactToStory(id: number, reaction: StoryReactionType): Observable<StoryReactionResponse> {
     return this.http.post<StoryReactionResponse>(`${this.apiUrl}/${id}/react`, { reaction });
   }
+
+  deleteStory(id: number): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(`${this.apiUrl}/${id}`);
+  }
 }
