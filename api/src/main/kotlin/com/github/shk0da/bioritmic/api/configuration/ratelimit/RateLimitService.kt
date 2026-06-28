@@ -90,7 +90,8 @@ class RateLimitService(
             path.startsWith("/api/v1/authorization") ||
             path.startsWith("/api/v1/recovery") ||
             path.startsWith("/api/v1/refresh-token") ||
-            path.startsWith("/api/v1/reset-password")
+            path.startsWith("/api/v1/reset-password") ||
+            path.startsWith("/api/v1/verify-email") && !path.startsWith("/api/v1/verify-email/resend")
     }
 
     private fun isWriteHeavy(path: String, method: String): Boolean {

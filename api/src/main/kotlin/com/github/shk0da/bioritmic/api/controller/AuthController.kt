@@ -11,6 +11,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.RecoveryModel
 import com.github.shk0da.bioritmic.api.model.ResetPasswordRequest
+import com.github.shk0da.bioritmic.api.model.VerifyEmailRequest
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.api.service.AuthService
@@ -69,18 +70,31 @@ class AuthController(
         val userId = newUser.id ?: throw ApiException(INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "user")))
 
         val adminEmail = appSecurityProperties.security.adminEmail
-        when {
+        val autoVerified = when {
             adminEmail.isNotBlank() && newUser.email.equals(adminEmail, ignoreCase = true) -> {
                 userRoleRepository.addRole(userId, ROLE_ADMIN)
                 userRepository.setVerified(userId, true)
                 log.info("User {} assigned ADMIN role (configured admin email)", userId)
+                true
             }
             assignFirstUserAdmin -> {
                 userRoleRepository.addRole(userId, ROLE_ADMIN)
                 userRepository.setVerified(userId, true)
                 log.info("User {} assigned ADMIN role (first user)", userId)
+                true
             }
-            else -> userRoleRepository.addRole(userId, ROLE_USER)
+            else -> {
+                userRoleRepository.addRole(userId, ROLE_USER)
+                false
+            }
+        }
+
+        if (!autoVerified) {
+            try {
+                authService.sendVerificationEmail(userId)
+            } catch (ex: Exception) {
+                log.error("Failed to send verification email for user {}", userId, ex)
+            }
         }
 
         log.debug("Created new {}", newUser)
@@ -101,6 +115,19 @@ class AuthController(
     @PostMapping(value = ["/reset-password"], produces = [APPLICATION_JSON_VALUE])
     suspend fun resetPassword(@RequestBody @Valid request: ResetPasswordRequest) {
         authService.resetPasswordWithCode(request.code, request.password)
+    }
+
+    @ResponseStatus(HttpStatus.OK)
+    @PostMapping(value = ["/verify-email"], produces = [APPLICATION_JSON_VALUE])
+    suspend fun verifyEmail(@RequestBody @Valid request: VerifyEmailRequest) {
+        authService.verifyEmailWithCode(request.code)
+    }
+
+    @ResponseStatus(HttpStatus.OK)
+    @PostMapping(value = ["/verify-email/resend"], produces = [APPLICATION_JSON_VALUE])
+    suspend fun resendVerificationEmail() {
+        val userId = getUserId()
+        authService.sendVerificationEmail(userId)
     }
 
     @GetMapping(value = ["/update-email"], produces = [APPLICATION_JSON_VALUE])

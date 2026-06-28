@@ -22,6 +22,14 @@ import { Gender, User } from '../../../core/models/user.model';
             <h2 class="gradient-text mb-1">Создать аккаунт</h2>
             <p class="text-muted">Начните поиск своей половинки</p>
           </div>
+
+          @if (registered) {
+            <div class="success-toast mb-3">
+              <i class="bi bi-envelope-check me-2"></i>
+              Аккаунт создан! Мы отправили письмо с кодом подтверждения на {{ user.email }}.
+              <a routerLink="/auth/verify-email" class="ms-1">Подтвердить email</a>
+            </div>
+          }
           
           <form (ngSubmit)="onSubmit()">
             <div class="mb-3">
@@ -158,6 +166,18 @@ import { Gender, User } from '../../../core/models/user.model';
       animation: slideIn 0.3s ease;
     }
 
+    .success-toast {
+      background: rgba(34, 197, 94, 0.1);
+      color: #16a34a;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: flex-start;
+      animation: slideIn 0.3s ease;
+    }
+
     @keyframes slideIn {
       from { opacity: 0; transform: translateY(-8px); }
       to { opacity: 1; transform: translateY(0); }
@@ -181,6 +201,7 @@ export class RegistrationComponent {
   };
   error = '';
   loading = false;
+  registered = false;
 
   constructor(
     private authService: AuthService,
@@ -207,6 +228,7 @@ export class RegistrationComponent {
     this.loading = true;
     this.authService.register(this.user).subscribe({
       next: () => {
+        this.registered = true;
         this.authService.login({ email: this.user.email!, password: this.user.password! }).subscribe({
           next: (token) => {
             this.authService.setAuth(token);

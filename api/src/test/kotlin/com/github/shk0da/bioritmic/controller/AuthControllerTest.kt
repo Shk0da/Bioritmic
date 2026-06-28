@@ -262,6 +262,84 @@ class AuthControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun registrationShouldSendVerificationCodeForRegularUser() {
+        val userModel = defaultUserModel.copy(email = "verify_reg_${UUID.randomUUID()}@gmail.com")
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(userModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+
+        val recoveryCode = liquibaseDataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "SELECT recovery_code, is_verified FROM users WHERE email = ?"
+            ).use { statement ->
+                statement.setString(1, userModel.email)
+                statement.executeQuery().use { resultSet ->
+                    check(resultSet.next()) { "User not found for ${userModel.email}" }
+                    check(!resultSet.getBoolean("is_verified")) { "User should be unverified" }
+                    resultSet.getString("recovery_code")
+                }
+            }
+        }
+        check(!recoveryCode.isNullOrBlank()) { "Verification code should be set after registration" }
+    }
+
+    @Test
+    fun verifyEmailShouldMarkUserAsVerified() {
+        val userModel = defaultUserModel.copy(email = "verify_flow_${UUID.randomUUID()}@gmail.com")
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(userModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+
+        val recoveryCode = liquibaseDataSource.connection.use { connection ->
+            connection.prepareStatement("SELECT recovery_code FROM users WHERE email = ?").use { statement ->
+                statement.setString(1, userModel.email)
+                statement.executeQuery().use { resultSet ->
+                    check(resultSet.next())
+                    resultSet.getString("recovery_code")
+                }
+            }
+        }
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/verify-email")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("code" to recoveryCode)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(email = userModel.email, password = userModel.password!!)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val auth = authTokenCache.entries.find { it.value.userId != null }?.value
+        val token = "Bearer ${auth?.accessToken}"
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.isVerified").isEqualTo(true)
+    }
+
+    @Test
     fun refreshTokenTest() {
         val userModel = defaultUserModel.copy(email = "refresh_test@gmail.com")
 

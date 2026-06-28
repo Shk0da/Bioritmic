@@ -3,6 +3,7 @@ import { LoginComponent } from './login/login.component';
 import { RegistrationComponent } from './registration/registration.component';
 import { RecoveryComponent } from './recovery/recovery.component';
 import { ResetPasswordComponent } from './reset-password/reset-password.component';
+import { VerifyEmailComponent } from './verify-email/verify-email.component';
 
 export const AUTH_ROUTES: Routes = [
   {
@@ -25,5 +26,9 @@ export const AUTH_ROUTES: Routes = [
   {
     path: 'reset-password',
     component: ResetPasswordComponent
+  },
+  {
+    path: 'verify-email',
+    component: VerifyEmailComponent
   }
 ];

@@ -110,6 +110,43 @@ class AuthService(
         emailService.sendRecoveryLink(user.email!!, user.recoveryCode!!)
     }
 
+    @Transactional
+    suspend fun sendVerificationEmail(userId: UUID) {
+        val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        sendVerificationEmail(user)
+    }
+
+    @Transactional
+    suspend fun sendVerificationEmail(user: User) {
+        if (user.isVerified) {
+            return
+        }
+        if (user.id == null || user.email == null) {
+            throw ApiException(ErrorCode.USER_NOT_FOUND)
+        }
+        user.setRecoveryCode()
+        userRepository.save(user)
+        emailService.sendVerificationEmail(user.email!!, user.recoveryCode!!)
+    }
+
+    @Transactional
+    suspend fun verifyEmailWithCode(code: String) {
+        val user = findUserByRecoveryCode(code) ?: throw ApiException(ErrorCode.INVALID_RECOVERY_CODE)
+        if (user.recoveryCodeExpireTime == null ||
+            user.recoveryCodeExpireTime!!.time < System.currentTimeMillis()
+        ) {
+            throw ApiException(ErrorCode.INVALID_RECOVERY_CODE)
+        }
+        if (user.id == null) {
+            throw ApiException(ErrorCode.USER_NOT_FOUND)
+        }
+        user.resetRecoveryCode()
+        if (!user.isVerified) {
+            user.isVerified = true
+        }
+        userRepository.save(user)
+    }
+
     @Transactional(readOnly = true, transactionManager = transactionManager)
     suspend fun findUserByRecoveryCode(code: String): User? {
         return userRepository.findByRecoveryCode(code)

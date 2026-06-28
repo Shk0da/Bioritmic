@@ -72,10 +72,23 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
         <div class="alert alert-warning verification-alert d-flex align-items-center mb-3" role="alert">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
           <div class="flex-grow-1">
-            <strong>Аккаунт не верифицирован.</strong> Подтвердите email для полного доступа к функционалу.
-            <a routerLink="/settings" class="alert-link ms-1">Параметры поиска</a>
+            <strong>Подтвердите email.</strong>
+            Мы отправили письмо с кодом — перейдите по ссылке или введите код на странице подтверждения.
+            <a routerLink="/auth/verify-email" class="alert-link ms-1">Подтвердить email</a>
             ·
-            <a routerLink="/settings/location" class="alert-link">Местоположение</a>
+            <button
+              type="button"
+              class="btn btn-link btn-sm p-0 align-baseline alert-link"
+              [disabled]="resendLoading || resendCooldown > 0"
+              (click)="resendVerificationEmail()">
+              @if (resendLoading) {
+                <span class="spinner-border spinner-border-sm"></span>
+              } @else if (resendCooldown > 0) {
+                Повторить через {{ resendCooldown }}с
+              } @else {
+                Отправить письмо повторно
+              }
+            </button>
           </div>
         </div>
       }
@@ -172,6 +185,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
   newMeetingsCount = 0;
   isUserAdmin = false;
   isUserVerified = true;
+  resendLoading = false;
+  resendCooldown = 0;
+  private resendCooldownInterval: ReturnType<typeof setInterval> | null = null;
   private pollingIntervalId: ReturnType<typeof setInterval> | null = null;
   private routerSubscription: Subscription | null = null;
   private userSubscription: Subscription | null = null;
@@ -216,6 +232,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopPolling();
+    if (this.resendCooldownInterval) {
+      clearInterval(this.resendCooldownInterval);
+    }
     this.destroy$.next();
     this.destroy$.complete();
     this.routerSubscription?.unsubscribe();
@@ -306,6 +325,32 @@ export class LayoutComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.userPhoto = null;
+      }
+    });
+  }
+
+  resendVerificationEmail(): void {
+    if (this.resendLoading || this.resendCooldown > 0) {
+      return;
+    }
+    this.resendLoading = true;
+    this.authService.resendVerificationEmail().pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.resendLoading = false;
+        this.resendCooldown = 60;
+        if (this.resendCooldownInterval) {
+          clearInterval(this.resendCooldownInterval);
+        }
+        this.resendCooldownInterval = setInterval(() => {
+          this.resendCooldown--;
+          if (this.resendCooldown <= 0 && this.resendCooldownInterval) {
+            clearInterval(this.resendCooldownInterval);
+            this.resendCooldownInterval = null;
+          }
+        }, 1000);
+      },
+      error: () => {
+        this.resendLoading = false;
       }
     });
   }

@@ -76,4 +76,16 @@ class EmailService(
             "Для подтверждения смены email перейдите по ссылке:\n$link"
         )
     }
+
+    suspend fun sendVerificationEmail(email: String, code: String) {
+        val link = "${appSecurityProperties.frontendUrl}/auth/verify-email?code=$code"
+        sendTextEmail(
+            email,
+            "Подтверждение email — Bioritmic",
+            "Добро пожаловать в Bioritmic!\n\n" +
+                "Подтвердите ваш email, перейдя по ссылке:\n$link\n\n" +
+                "Если ссылка не открывается, введите код на странице подтверждения: $code\n\n" +
+                "Ссылка действует 15 минут."
+        )
+    }
 }

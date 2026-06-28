@@ -45,6 +45,7 @@ class SecurityConfiguration(
         "$API_WITH_VERSION_1/refresh-token",
         "$API_WITH_VERSION_1/recovery",
         "$API_WITH_VERSION_1/reset-password",
+        "$API_WITH_VERSION_1/verify-email",
         "$API_WITH_VERSION_1/authorization",
         "$API_WITH_VERSION_1/update-email",
         "$API_WITH_VERSION_1/config/client",

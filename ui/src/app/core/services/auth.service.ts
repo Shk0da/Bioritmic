@@ -82,6 +82,14 @@ export class AuthService implements OnDestroy {
     return this.http.post<void>(`${this.apiUrl}/reset-password`, { code, password });
   }
 
+  verifyEmail(code: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/verify-email`, { code });
+  }
+
+  resendVerificationEmail(): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/verify-email/resend`, {});
+  }
+
   isAuthenticated(): boolean {
     return this.currentUserSubject.value != null;
   }
