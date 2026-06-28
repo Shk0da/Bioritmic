@@ -32,7 +32,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     MAIL_FROM_NAME=Bioritmic
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates certbot curl gosu locales nginx openssl openjdk-21-jre-headless postfix postgresql-16 supervisor \
+    ca-certificates curl gosu locales nginx openssl openjdk-21-jre-headless postfix postgresql-16 python3-pip supervisor \
+    && pip3 install --break-system-packages 'certbot>=5.3' \
     && locale-gen en_US.UTF-8 C.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -47,6 +48,7 @@ COPY docker/monolith/nginx-ssl-redirect-map.conf /etc/nginx/conf.d/bioritmic-ssl
 RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default \
     && rm -f /etc/nginx/sites-enabled/default.bak \
     && echo 'include /etc/nginx/bioritmic-locations.conf;' > /etc/nginx/bioritmic-port80-extra.conf \
+    && touch /etc/nginx/bioritmic-https.conf \
     && postconf compatibility_level=3.6 \
     && newaliases \
     && postfix check
@@ -57,6 +59,8 @@ COPY docker/monolith/init-postgres.sh /usr/local/bin/init-postgres.sh
 COPY docker/monolith/minio-init.sh /usr/local/bin/minio-init.sh
 COPY docker/monolith/start-api.sh /usr/local/bin/start-api.sh
 COPY docker/monolith/generate-ssl-cert.sh /usr/local/bin/generate-ssl-cert.sh
+COPY docker/monolith/ssl-env.sh /usr/local/bin/ssl-env.sh
+COPY docker/monolith/ssl-ip-fallback.sh /usr/local/bin/ssl-ip-fallback.sh
 COPY docker/monolith/configure-nginx.sh /usr/local/bin/configure-nginx.sh
 COPY docker/monolith/certbot-init.sh /usr/local/bin/certbot-init.sh
 COPY docker/monolith/certbot-renew.sh /usr/local/bin/certbot-renew.sh
@@ -64,6 +68,7 @@ COPY docker/monolith/certbot-renew-once.sh /usr/local/bin/certbot-renew-once.sh
 COPY docker/monolith/sync-letsencrypt-certs.sh /usr/local/bin/sync-letsencrypt-certs.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/init-postgres.sh \
     /usr/local/bin/minio-init.sh /usr/local/bin/start-api.sh /usr/local/bin/generate-ssl-cert.sh \
+    /usr/local/bin/ssl-env.sh /usr/local/bin/ssl-ip-fallback.sh \
     /usr/local/bin/configure-nginx.sh \
     /usr/local/bin/certbot-init.sh /usr/local/bin/certbot-renew.sh /usr/local/bin/certbot-renew-once.sh \
     /usr/local/bin/sync-letsencrypt-certs.sh \

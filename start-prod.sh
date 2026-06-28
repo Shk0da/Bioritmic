@@ -38,6 +38,10 @@ if [[ -z "${SSL_DOMAIN:-}" && "${APP_FRONTEND_URL:-}" =~ ^https?://([^/:]+) ]]; 
   fi
 fi
 
+if [[ -z "${SSL_PUBLIC_IP:-}" && "${APP_FRONTEND_URL:-}" =~ ^https?://([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) ]]; then
+  export SSL_PUBLIC_IP="${BASH_REMATCH[1]}"
+fi
+
 export APP_FRONTEND_URL="${APP_FRONTEND_URL:-https://localhost}"
 if [[ "${APP_FRONTEND_URL}" =~ ^http:// ]]; then
   export APP_FRONTEND_URL="https://${APP_FRONTEND_URL#http://}"
@@ -45,6 +49,41 @@ fi
 export APP_BASE_URL="${APP_BASE_URL:-$APP_FRONTEND_URL}"
 if [[ "${APP_BASE_URL}" =~ ^http:// ]]; then
   export APP_BASE_URL="https://${APP_BASE_URL#http://}"
+fi
+
+if [[ -z "${APP_CORS_ALLOWED_ORIGINS:-}" ]]; then
+  _cors_origins=()
+  _add_cors_origin() {
+    local value="${1:-}"
+    [[ -z "$value" ]] && return
+    local existing
+    for existing in "${_cors_origins[@]}"; do
+      [[ "$existing" == "$value" ]] && return
+    done
+    _cors_origins+=("$value")
+  }
+  _add_cors_origin "${APP_FRONTEND_URL}"
+  _add_cors_origin "${APP_BASE_URL}"
+  if [[ -n "${SSL_PUBLIC_IP:-}" ]]; then
+    _add_cors_origin "https://${SSL_PUBLIC_IP}"
+  fi
+  if [[ -n "${SSL_DOMAIN:-}" ]]; then
+    _add_cors_origin "https://${SSL_DOMAIN}"
+  fi
+  if [[ -n "${SSL_EXTRA_DOMAINS:-}" ]]; then
+    IFS=',' read -ra _ssl_extra_domains <<< "${SSL_EXTRA_DOMAINS}"
+    for _domain in "${_ssl_extra_domains[@]}"; do
+      _domain="${_domain// /}"
+      [[ -n "$_domain" ]] && _add_cors_origin "https://${_domain}"
+    done
+  fi
+  if [[ ${#_cors_origins[@]} -gt 0 ]]; then
+    APP_CORS_ALLOWED_ORIGINS="$(
+      IFS=,
+      echo "${_cors_origins[*]}"
+    )"
+    export APP_CORS_ALLOWED_ORIGINS
+  fi
 fi
 
 if [[ "$UI_PORT" == "80" ]] && [[ "$(id -u)" -ne 0 ]] && command -v docker >/dev/null 2>&1; then
@@ -58,6 +97,9 @@ fi
 echo "  HTTP:            http://localhost:${UI_PORT}"
 echo "  HTTPS:           https://localhost:${UI_HTTPS_PORT}"
 echo "  Public URL:      ${APP_FRONTEND_URL}"
+if [[ -n "${APP_CORS_ALLOWED_ORIGINS:-}" ]]; then
+  echo "  CORS origins:    ${APP_CORS_ALLOWED_ORIGINS}"
+fi
 echo "  Stack:           single container (PostgreSQL, MinIO, Postfix, API, UI)"
 echo "  Profile:         docker,production,monolith (Swagger off)"
 if [[ "${PROD_LOWMEM:-0}" == "1" ]]; then
@@ -65,6 +107,9 @@ if [[ "${PROD_LOWMEM:-0}" == "1" ]]; then
 fi
 if [[ -n "${CERTBOT_EMAIL:-}" && -n "${SSL_DOMAIN:-}" ]]; then
   echo "  TLS:             Let's Encrypt (certbot) for ${SSL_DOMAIN}"
+  if [[ -n "${SSL_PUBLIC_IP:-}" ]]; then
+    echo "  TLS IP:          Let's Encrypt short-lived for ${SSL_PUBLIC_IP}"
+  fi
   if [[ "${CERTBOT_STAGING:-false}" == "true" ]]; then
     echo "  Certbot:         staging mode"
   fi
@@ -125,7 +170,7 @@ echo "  Logs:    docker compose logs -f bioritmic"
 echo "  Stop:    ./stop-prod.sh"
 echo
 echo "  Custom domain + Let's Encrypt:"
-echo "    CERTBOT_EMAIL=admin@bioritmic.ru SSL_DOMAIN=bioritmic.ru APP_FRONTEND_URL=https://bioritmic.ru ./start-prod.sh"
+echo "    SSL_DOMAIN=bioritmic.ru SSL_PUBLIC_IP=158.160.194.159 CERTBOT_EMAIL=admin@bioritmic.ru APP_FRONTEND_URL=https://bioritmic.ru ./start-prod.sh"
 echo "  Access by server IP (add to .env before start):"
 echo "    APP_FRONTEND_URL=https://YOUR_IP APP_CORS_ALLOWED_ORIGINS=https://YOUR_IP,https://bioritmic.ru"
 echo "  Low RAM (2 GB VPS):"

@@ -27,4 +27,25 @@ class CorsOriginResolverTest {
         assertTrue(origins.contains("https://api.example.com"))
         assertTrue(origins.contains("https://158.160.194.159"))
     }
+
+    @Test
+    fun `should include ssl public ip and domain hosts`() {
+        val properties = AppSecurityProperties(
+            frontendUrl = "https://bioritmic.ru",
+            cors = AppSecurityProperties.Cors(
+                allowedOrigins = listOf("https://bioritmic.ru")
+            )
+        )
+        val environment = MockEnvironment().apply {
+            setProperty("SSL_PUBLIC_IP", "158.160.194.159")
+            setProperty("SSL_DOMAIN", "bioritmic.ru")
+            setProperty("SSL_EXTRA_DOMAINS", "www.bioritmic.ru")
+        }
+
+        val origins = CorsOriginResolver(properties, environment).resolve()
+
+        assertTrue(origins.contains("https://158.160.194.159"))
+        assertTrue(origins.contains("https://bioritmic.ru"))
+        assertTrue(origins.contains("https://www.bioritmic.ru"))
+    }
 }
