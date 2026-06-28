@@ -5,15 +5,20 @@ spring:
       host: 127.0.0.1
       port: 5432
   mail:
-    host: 127.0.0.1
-    port: 25
+    host: ${MAIL_HOST:127.0.0.1}
+    port: ${MAIL_PORT:25}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
-          auth: false
+          auth: ${MAIL_SMTP_AUTH:false}
           starttls:
-            enable: false
-            required: false
+            enable: ${MAIL_STARTTLS_ENABLE:false}
+            required: ${MAIL_STARTTLS_REQUIRED:false}
+          ssl:
+            trust: ${MAIL_SSL_TRUST:}
+            checkserveridentity: false
 
 s3:
   endpoint: http://127.0.0.1:9000

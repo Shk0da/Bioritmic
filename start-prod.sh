@@ -5,11 +5,18 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml"
+if [[ "${PROD_MAIL:-1}" == "1" ]]; then
+  export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.mail.yml"
+fi
 export APP_FRONTEND_URL="${APP_FRONTEND_URL:-http://localhost}"
 export APP_BASE_URL="${APP_BASE_URL:-$APP_FRONTEND_URL}"
 
 if [[ "${PROD_LOWMEM:-0}" == "1" ]]; then
-  export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml:docker-compose.lowmem.yml"
+  export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml"
+  if [[ "${PROD_MAIL:-1}" == "1" ]]; then
+    export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.mail.yml"
+  fi
+  export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.lowmem.yml"
 fi
 
 echo "========================================"
@@ -100,7 +107,7 @@ echo "  Public URL:      ${APP_FRONTEND_URL}"
 if [[ -n "${APP_CORS_ALLOWED_ORIGINS:-}" ]]; then
   echo "  CORS origins:    ${APP_CORS_ALLOWED_ORIGINS}"
 fi
-echo "  Stack:           single container (PostgreSQL, MinIO, Postfix, API, UI)"
+echo "  Stack:           monolith + mail server (set PROD_MAIL=0 to skip mail)"
 echo "  Profile:         docker,production,monolith (Swagger off)"
 if [[ "${PROD_LOWMEM:-0}" == "1" ]]; then
   echo "  Memory:          lowmem overlay enabled"
@@ -127,7 +134,11 @@ echo "[2/2] Waiting for services..."
 READY=0
 for i in $(seq 1 120); do
   hc="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' bioritmic 2>/dev/null || echo missing)"
-  if [[ "$hc" == "healthy" ]]; then
+  mail_hc="skipped"
+  if [[ "${PROD_MAIL:-1}" == "1" ]]; then
+    mail_hc="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' bioritmic-mail 2>/dev/null || echo missing)"
+  fi
+  if [[ "$hc" == "healthy" && ( "$mail_hc" == "healthy" || "$mail_hc" == "skipped" ) ]]; then
     READY=1
     break
   fi
@@ -142,7 +153,7 @@ for i in $(seq 1 120); do
     exit 1
   fi
   if (( i % 5 == 0 )); then
-    echo "  ... still starting ($((i * 3))s, health=${hc})"
+    echo "  ... still starting ($((i * 3))s, app=${hc}, mail=${mail_hc})"
   fi
   sleep 3
 done
@@ -168,7 +179,13 @@ echo "  HTTPS:   https://localhost:${UI_HTTPS_PORT}"
 echo "  Health:  ${APP_FRONTEND_URL}/api/v1/ (via UI proxy)"
 echo
 echo "  Logs:    docker compose logs -f bioritmic"
+echo "  Mail:    docker compose logs -f mail"
 echo "  Stop:    ./stop-prod.sh"
+echo
+if [[ "${PROD_MAIL:-1}" == "1" ]]; then
+  echo "  Mail DNS + DKIM:  ./scripts/setup-mail-prod.sh"
+  echo "  Change password:  set MAIL_PASSWORD in .env before ./start-prod.sh"
+fi
 echo
 echo "  Custom domain + Let's Encrypt:"
 echo "    SSL_DOMAIN=bioritmic.ru SSL_PUBLIC_IP=158.160.194.159 CERTBOT_EMAIL=admin@bioritmic.ru APP_FRONTEND_URL=https://bioritmic.ru ./start-prod.sh"

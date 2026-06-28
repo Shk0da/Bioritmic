@@ -17,4 +17,5 @@ fi
 /usr/local/bin/init-postgres.sh
 /usr/local/bin/generate-ssl-cert.sh
 /usr/local/bin/configure-nginx.sh
+/usr/local/bin/configure-supervisord.sh
 exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf

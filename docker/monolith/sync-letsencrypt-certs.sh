@@ -11,11 +11,12 @@ IP_CERT_NAME="$(ssl_ip_cert_name)"
 
 mkdir -p "${CERT_DIR}"
 
+DOMAIN_LE="/etc/letsencrypt/live/${DOMAIN}"
+
 sync_le_domain() {
-  local le_live="/etc/letsencrypt/live/${DOMAIN}"
-  if [[ -n "${SSL_DOMAIN:-}" && -s "${le_live}/fullchain.pem" ]]; then
-    cp -L "${le_live}/fullchain.pem" "${CERT_DIR}/fullchain.pem"
-    cp -L "${le_live}/privkey.pem" "${CERT_DIR}/privkey.pem"
+  if [[ -n "${SSL_DOMAIN:-}" && -s "${DOMAIN_LE}/fullchain.pem" ]]; then
+    cp -L "${DOMAIN_LE}/fullchain.pem" "${CERT_DIR}/fullchain.pem"
+    cp -L "${DOMAIN_LE}/privkey.pem" "${CERT_DIR}/privkey.pem"
     chmod 644 "${CERT_DIR}/fullchain.pem"
     chmod 600 "${CERT_DIR}/privkey.pem"
     return 0
@@ -46,6 +47,14 @@ if ! sync_le_domain; then
 fi
 
 echo "[certbot] Domain certificate synced for ${DOMAIN}"
+
+if [[ -d /mail-ssl-sync && -s "${DOMAIN_LE}/fullchain.pem" ]]; then
+  cp -L "${DOMAIN_LE}/fullchain.pem" /mail-ssl-sync/fullchain.pem
+  cp -L "${DOMAIN_LE}/privkey.pem" /mail-ssl-sync/privkey.pem
+  chmod 644 /mail-ssl-sync/fullchain.pem
+  chmod 600 /mail-ssl-sync/privkey.pem
+  echo "[certbot] Mail SMTP TLS certificate synced to shared volume"
+fi
 
 sync_le_ip || /usr/local/bin/ssl-ip-fallback.sh || true
 

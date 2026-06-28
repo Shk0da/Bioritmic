@@ -1,0 +1,88 @@
+# Production mail server (docker-mailserver) alongside the monolith.
+# Included by ./start-prod.sh (disable with PROD_MAIL=0).
+
+services:
+  mail:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: bioritmic-mail
+    hostname: mail.bioritmic.ru
+    ports:
+      - "${MAIL_PLAIN_PORT:-25}:25"
+      - "${MAIL_PORT:-587}:587"
+      - "${MAIL_IMAP_PORT:-993}:993"
+    volumes:
+      - bioritmic-mail-data:/var/mail
+      - bioritmic-mail-state:/var/mail-state
+      - bioritmic-mail-logs:/var/log/mail
+      - ./docker/mail/config:/tmp/docker-mailserver
+      - bioritmic-mail-ssl:/tmp/mail-ssl:ro
+    env_file:
+      - ./docker/mail/mailserver.env
+    environment:
+      SSL_TYPE: manual
+      SSL_CERT_PATH: /tmp/mail-ssl/fullchain.pem
+      SSL_KEY_PATH: /tmp/mail-ssl/privkey.pem
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ss -lntp | grep -q ':587' || ss -lntp | grep -q ':25'"]
+      interval: 10s
+      timeout: 5s
+      retries: 45
+      start_period: 180s
+
+  mail-init:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: bioritmic-mail-init
+    depends_on:
+      mail:
+        condition: service_healthy
+    volumes:
+      - ./docker/mail/config:/tmp/docker-mailserver
+      - bioritmic-mail-data:/var/mail
+      - bioritmic-mail-state:/var/mail-state
+      - bioritmic-mail-ssl:/mail-ssl
+    env_file:
+      - ./docker/mail/mailserver.env
+    environment:
+      MAILBOX_PASSWORD: ${MAIL_PASSWORD:-changeme}
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-bioritmic.ru}
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        set -euo pipefail;
+        mkdir -p /mail-ssl;
+        if [[ ! -s /mail-ssl/fullchain.pem ]]; then
+          cp /tmp/docker-mailserver/ssl/mail.bioritmic.ru-cert.pem /mail-ssl/fullchain.pem;
+          cp /tmp/docker-mailserver/ssl/mail.bioritmic.ru-key.pem /mail-ssl/privkey.pem;
+          chmod 644 /mail-ssl/fullchain.pem;
+          chmod 600 /mail-ssl/privkey.pem;
+        fi;
+        setup email add "noreply@$${MAIL_DOMAIN}" "$$MAILBOX_PASSWORD" 2>/dev/null
+          || setup email update "noreply@$${MAIL_DOMAIN}" "$$MAILBOX_PASSWORD" 2>/dev/null
+          || true;
+        setup config dkim domain "$${MAIL_DOMAIN}" 2>/dev/null || true
+    restart: "no"
+
+  bioritmic:
+    depends_on:
+      mail-init:
+        condition: service_completed_successfully
+    volumes:
+      - bioritmic-mail-ssl:/mail-ssl-sync
+    environment:
+      MAIL_HOST: mail
+      MAIL_PORT: 587
+      MAIL_USERNAME: noreply@${MAIL_DOMAIN:-bioritmic.ru}
+      MAIL_SMTP_AUTH: "true"
+      MAIL_STARTTLS_ENABLE: "true"
+      MAIL_STARTTLS_REQUIRED: "false"
+      MAIL_SSL_TRUST: mail.${MAIL_DOMAIN:-bioritmic.ru},mail
+      MAIL_FROM: noreply@${MAIL_DOMAIN:-bioritmic.ru}
+
+volumes:
+  bioritmic-mail-data:
+  bioritmic-mail-state:
+  bioritmic-mail-logs:
+  bioritmic-mail-ssl:

@@ -14,6 +14,12 @@ MAIL_PORT="${MAIL_PORT:-2587}"
 
 cd "$ROOT"
 
+COMPOSE_FILES="${COMPOSE_FILE:-docker-compose.yml}"
+if [[ "$COMPOSE_FILES" != *"docker-compose.mail.yml"* ]]; then
+  COMPOSE_FILES="${COMPOSE_FILES}:docker-compose.mail.yml"
+fi
+export COMPOSE_FILE="$COMPOSE_FILES"
+
 echo "Starting mail server..."
 docker compose up -d mail
 

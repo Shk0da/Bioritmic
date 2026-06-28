@@ -24,6 +24,7 @@ fi
 if [[ -s "${FULLCHAIN}" && -s "${PRIVKEY}" ]]; then
   if ssl_certbot_enabled && ssl_is_self_signed "${FULLCHAIN}"; then
     echo "Self-signed TLS certificate present; certbot will replace it for ${SSL_DOMAIN}"
+    exit 0
   elif [[ -z "$IP" ]] || ssl_has_ip_certificate; then
     echo "TLS certificates already present in ${CERT_DIR}"
     exit 0

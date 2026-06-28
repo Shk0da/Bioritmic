@@ -5,9 +5,16 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml"
+if [[ "${PROD_MAIL:-1}" == "1" ]]; then
+  export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.mail.yml"
+fi
 
 if [[ "${PROD_LOWMEM:-0}" == "1" ]]; then
-  export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml:docker-compose.lowmem.yml"
+  export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml"
+  if [[ "${PROD_MAIL:-1}" == "1" ]]; then
+    export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.mail.yml"
+  fi
+  export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.lowmem.yml"
 fi
 
 echo "========================================"

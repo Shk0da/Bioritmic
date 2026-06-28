@@ -15,13 +15,37 @@ IP_CERT_NAME="$(ssl_ip_cert_name)"
 LE_LIVE="/etc/letsencrypt/live/${DOMAIN}"
 LE_IP_LIVE="/etc/letsencrypt/live/${IP_CERT_NAME}"
 
+domain_in_args() {
+  local name="$1"
+  local i
+  for ((i= 1; i < ${#DOMAIN_ARGS[@]}; i += 2)); do
+    [[ "${DOMAIN_ARGS[$i]}" == "$name" ]] && return 0
+  done
+  return 1
+}
+
+add_domain_if_challengable() {
+  local name="${1// /}"
+  [[ -z "$name" ]] && return
+  domain_in_args "$name" && return
+  local resolved=""
+  resolved="$(getent ahosts "$name" 2>/dev/null | awk '{print $1; exit}')"
+  if [[ -z "$resolved" ]]; then
+    echo "[certbot] Skipping ${name} (no DNS A/AAAA record)"
+    return
+  fi
+  if [[ -n "$IP" && "$resolved" != "$IP" ]]; then
+    echo "[certbot] Skipping ${name} (DNS ${resolved} != server IP ${IP})"
+    return
+  fi
+  DOMAIN_ARGS+=(-d "${name}")
+}
+
 DOMAIN_ARGS=(-d "${DOMAIN}")
+add_domain_if_challengable "mail.${DOMAIN}"
 local_extra=""
 for local_extra in $(ssl_extra_domains_csv | tr ',' ' '); do
-  local_extra="${local_extra// /}"
-  if [[ -n "$local_extra" && "$local_extra" != "$DOMAIN" ]]; then
-    DOMAIN_ARGS+=(-d "${local_extra}")
-  fi
+  add_domain_if_challengable "${local_extra// /}"
 done
 
 need_domain=false

@@ -62,6 +62,7 @@ COPY docker/monolith/generate-ssl-cert.sh /usr/local/bin/generate-ssl-cert.sh
 COPY docker/monolith/ssl-env.sh /usr/local/bin/ssl-env.sh
 COPY docker/monolith/ssl-ip-fallback.sh /usr/local/bin/ssl-ip-fallback.sh
 COPY docker/monolith/configure-nginx.sh /usr/local/bin/configure-nginx.sh
+COPY docker/monolith/configure-supervisord.sh /usr/local/bin/configure-supervisord.sh
 COPY docker/monolith/certbot-init.sh /usr/local/bin/certbot-init.sh
 COPY docker/monolith/certbot-renew.sh /usr/local/bin/certbot-renew.sh
 COPY docker/monolith/certbot-renew-once.sh /usr/local/bin/certbot-renew-once.sh
@@ -69,7 +70,7 @@ COPY docker/monolith/sync-letsencrypt-certs.sh /usr/local/bin/sync-letsencrypt-c
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/init-postgres.sh \
     /usr/local/bin/minio-init.sh /usr/local/bin/start-api.sh /usr/local/bin/generate-ssl-cert.sh \
     /usr/local/bin/ssl-env.sh /usr/local/bin/ssl-ip-fallback.sh \
-    /usr/local/bin/configure-nginx.sh \
+    /usr/local/bin/configure-nginx.sh /usr/local/bin/configure-supervisord.sh \
     /usr/local/bin/certbot-init.sh /usr/local/bin/certbot-renew.sh /usr/local/bin/certbot-renew-once.sh \
     /usr/local/bin/sync-letsencrypt-certs.sh \
     && mkdir -p /var/log/supervisor /data/minio /app/api /usr/share/nginx/html /etc/nginx/certs /var/www/certbot \
