@@ -3,7 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { ModalService } from '../services/modal.service';
-import { isMutationMethod, resolveHttpErrorMessage } from '../utils/http-error.util';
+import { resolveHttpErrorMessage } from '../utils/http-error.util';
 
 /** Set on a request to skip redirect to /error/500 (e.g. badge polling). */
 export const SKIP_SERVER_ERROR_REDIRECT = new HttpContextToken<boolean>(() => false);
@@ -65,15 +65,12 @@ function shouldShowErrorAlert(error: HttpErrorResponse, req: HttpRequest<unknown
     return true;
   }
 
-  if (isMutationMethod(req.method)) {
-    return status >= 400;
-  }
-
+  // GET 5xx: redirect to /error/500 is enough.
   if (req.method === 'GET' && status >= 500) {
     return false;
   }
 
-  return status === 413 || status === 429 || status === 408;
+  return status >= 400;
 }
 
 export const serverErrorInterceptor: HttpInterceptorFn = (req, next) => {
