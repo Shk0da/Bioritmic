@@ -126,6 +126,8 @@ echo "  Stop:    ./stop-prod.sh"
 echo
 echo "  Custom domain + Let's Encrypt:"
 echo "    CERTBOT_EMAIL=admin@bioritmic.ru SSL_DOMAIN=bioritmic.ru APP_FRONTEND_URL=https://bioritmic.ru ./start-prod.sh"
+echo "  Access by server IP (add to .env before start):"
+echo "    APP_FRONTEND_URL=https://YOUR_IP APP_CORS_ALLOWED_ORIGINS=https://YOUR_IP,https://bioritmic.ru"
 echo "  Low RAM (2 GB VPS):"
 echo "    PROD_LOWMEM=1 ./start-prod.sh"
 echo

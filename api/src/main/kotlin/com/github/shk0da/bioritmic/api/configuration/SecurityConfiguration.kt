@@ -38,6 +38,7 @@ class SecurityConfiguration(
     private val userRoleRepository: UserRoleRepository,
     private val reportService: ReportService,
     private val appSecurityProperties: AppSecurityProperties,
+    private val corsOriginResolver: CorsOriginResolver,
     private val environment: Environment
 ) : WebFluxConfigurer {
 
@@ -70,7 +71,7 @@ class SecurityConfiguration(
     )
 
     override fun addCorsMappings(registry: CorsRegistry) {
-        val origins = appSecurityProperties.cors.allowedOrigins.toTypedArray()
+        val origins = corsOriginResolver.resolve().toTypedArray()
         registry
             .addMapping("/**")
             .allowedOrigins(*origins)
@@ -81,7 +82,7 @@ class SecurityConfiguration(
 
     @Bean
     fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain? {
-        val origins = appSecurityProperties.cors.allowedOrigins
+        val origins = corsOriginResolver.resolve()
         http
             .cors { cors ->
                 cors.configurationSource {

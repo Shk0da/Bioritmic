@@ -6,6 +6,7 @@ services:
       SPRING_LIQUIBASE_CONTEXTS: default
       APP_FRONTEND_URL: ${APP_FRONTEND_URL:-https://localhost}
       APP_BASE_URL: ${APP_BASE_URL:-https://localhost}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-}
       SSL_DOMAIN: ${SSL_DOMAIN:-}
       CERTBOT_EMAIL: ${CERTBOT_EMAIL:-}
       CERTBOT_STAGING: ${CERTBOT_STAGING:-false}
