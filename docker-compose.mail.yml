@@ -64,18 +64,13 @@ services:
       - ./docker/mail/config:/tmp/docker-mailserver
       - bioritmic-mail-data:/var/mail
       - bioritmic-mail-state:/var/mail-state
+      - ./docker/mail/mail-init.sh:/usr/local/bin/mail-init.sh:ro
     env_file:
       - ./docker/mail/mailserver.env
     environment:
       MAILBOX_PASSWORD: ${MAIL_PASSWORD:-changeme}
       MAIL_DOMAIN: ${MAIL_DOMAIN:-bioritmic.ru}
-    entrypoint: ["/bin/bash", "-c"]
-    command:
-      - >-
-        setup email add "noreply@$${MAIL_DOMAIN}" "$$MAILBOX_PASSWORD" 2>/dev/null
-          || setup email update "noreply@$${MAIL_DOMAIN}" "$$MAILBOX_PASSWORD" 2>/dev/null
-          || true;
-        setup config dkim domain "$${MAIL_DOMAIN}" 2>/dev/null || true
+    entrypoint: ["/bin/bash", "/usr/local/bin/mail-init.sh"]
     restart: "no"
 
   bioritmic:
