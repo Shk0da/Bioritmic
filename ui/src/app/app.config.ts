@@ -1,5 +1,5 @@
 import { ApplicationConfig } from '@angular/core';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withPreloading, PreloadAllModules } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { routes } from './app.routes';
@@ -8,7 +8,7 @@ import { serverErrorInterceptor } from './core/interceptors/server-error.interce
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideRouter(routes, withComponentInputBinding()),
+    provideRouter(routes, withPreloading(PreloadAllModules), withComponentInputBinding()),
     provideHttpClient(withInterceptors([authInterceptor, serverErrorInterceptor]))
   ]
 };

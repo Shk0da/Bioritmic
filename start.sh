@@ -150,6 +150,7 @@ fi
 echo ""
 echo -e "${YELLOW}[6/7] Starting Frontend (Angular on :${UI_PORT})...${NC}"
 cd "$UI_DIR"
+node scripts/inject-build-version.mjs
 npx ng serve --port "${UI_PORT}" --proxy-config proxy.conf.json --open > /tmp/bioritmic-ui.log 2>&1 &
 UI_PID=$!
 echo -e "  PID: $UI_PID"

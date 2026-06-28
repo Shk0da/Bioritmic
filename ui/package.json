@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "ng": "ng",
+    "prestart": "node scripts/inject-build-version.mjs",
     "start": "ng serve --port 2399 --proxy-config proxy.conf.json",
+    "prebuild": "node scripts/inject-build-version.mjs",
     "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
@@ -20,6 +22,7 @@
     "@angular/platform-browser-dynamic": "^17.0.0",
     "@angular/router": "^17.0.0",
     "bootstrap": "^5.3.2",
+    "bootstrap-icons": "^1.11.1",
     "firebase": "^12.15.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

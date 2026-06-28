@@ -15,7 +15,7 @@ val npmCmd = if (System.getProperty("os.name").lowercase().contains("win")) "npm
 val buildUi = tasks.register<Exec>("buildUi") {
     dependsOn(tasks.npmInstall)
     inputs.files(fileTree("src"))
-    inputs.files("package.json", "package-lock.json", "angular.json", "tsconfig.json")
+    inputs.files("package.json", "package-lock.json", "angular.json", "tsconfig.json", "scripts/inject-build-version.mjs")
     outputs.dir("build/dist")
     commandLine(npmCmd, "run", "build")
     environment("PATH", System.getenv("PATH"))
