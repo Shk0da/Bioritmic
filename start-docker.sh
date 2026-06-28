@@ -33,18 +33,35 @@ docker compose up --build -d
 
 echo
 echo "[2/2] Waiting for health check..."
-for _ in $(seq 1 120); do
-  status="$(docker inspect -f '{{.State.Health.Status}}' bioritmic 2>/dev/null || echo starting)"
-  if [[ "$status" == "healthy" ]]; then
+READY=0
+for i in $(seq 1 120); do
+  hc="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' bioritmic 2>/dev/null || echo missing)"
+  if [[ "$hc" == "healthy" ]]; then
+    READY=1
     break
   fi
-  if [[ "$status" == "unhealthy" ]]; then
+  if curl -sf "http://127.0.0.1:${UI_PORT}/api/v1/config/client" >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  if [[ "$hc" == "unhealthy" ]]; then
     echo "Container became unhealthy. Logs:"
     docker compose logs --tail=50 bioritmic
     exit 1
   fi
+  if (( i % 5 == 0 )); then
+    echo "  ... still starting ($((i * 3))s, health=${hc})"
+  fi
   sleep 3
 done
+
+if [[ "$READY" -ne 1 ]]; then
+  echo
+  echo "Timed out waiting for the API. UI may respond before the backend is ready."
+  echo "Check logs: docker compose logs -f bioritmic"
+  docker compose logs --tail=50 bioritmic
+  exit 1
+fi
 
 echo
 docker compose ps

@@ -72,7 +72,7 @@ echo.
 echo   App:  %APP_FRONTEND_URL%
 echo.
 echo   Logs: docker compose logs -f
-echo   Stop: docker compose down
+echo   Stop: stop-prod.bat
 echo.
 echo   Custom domain: set APP_FRONTEND_URL=https://bioritmic.ru before running
 echo   Low RAM:       set PROD_LOWMEM=1

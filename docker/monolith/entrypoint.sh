@@ -2,8 +2,9 @@
 set -euo pipefail
 
 PGDATA="${PGDATA:-/var/lib/postgresql/data}"
-install -d -o postgres -g postgres "${PGDATA}"
+install -d -o postgres -g postgres -m 700 "${PGDATA}"
 chown -R postgres:postgres "${PGDATA}"
+chmod 700 "${PGDATA}"
 
 if [[ -s "${PGDATA}/PG_VERSION" ]]; then
   for key in lc_messages lc_monetary lc_numeric lc_time; do
@@ -15,4 +16,5 @@ fi
 
 /usr/local/bin/init-postgres.sh
 /usr/local/bin/generate-ssl-cert.sh
+/usr/local/bin/configure-nginx.sh
 exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf

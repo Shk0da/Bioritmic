@@ -39,7 +39,13 @@ if [[ -z "${SSL_DOMAIN:-}" && "${APP_FRONTEND_URL:-}" =~ ^https?://([^/:]+) ]]; 
 fi
 
 export APP_FRONTEND_URL="${APP_FRONTEND_URL:-https://localhost}"
+if [[ "${APP_FRONTEND_URL}" =~ ^http:// ]]; then
+  export APP_FRONTEND_URL="https://${APP_FRONTEND_URL#http://}"
+fi
 export APP_BASE_URL="${APP_BASE_URL:-$APP_FRONTEND_URL}"
+if [[ "${APP_BASE_URL}" =~ ^http:// ]]; then
+  export APP_BASE_URL="https://${APP_BASE_URL#http://}"
+fi
 
 if [[ "$UI_PORT" == "80" ]] && [[ "$(id -u)" -ne 0 ]] && command -v docker >/dev/null 2>&1; then
   if ! docker info 2>/dev/null | grep -q "rootless"; then
@@ -72,18 +78,36 @@ docker compose up --build -d
 
 echo
 echo "[2/2] Waiting for services..."
-for _ in $(seq 1 120); do
-  status="$(docker inspect -f '{{.State.Health.Status}}' bioritmic 2>/dev/null || echo starting)"
-  if [[ "$status" == "healthy" ]]; then
+READY=0
+for i in $(seq 1 120); do
+  hc="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' bioritmic 2>/dev/null || echo missing)"
+  if [[ "$hc" == "healthy" ]]; then
+    READY=1
     break
   fi
-  if [[ "$status" == "unhealthy" ]]; then
+  if curl -sf "http://127.0.0.1:${UI_PORT}/api/v1/config/client" >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  if [[ "$hc" == "unhealthy" ]]; then
+    echo
     echo "Container became unhealthy. Logs:"
     docker compose logs --tail=50 bioritmic
     exit 1
   fi
+  if (( i % 5 == 0 )); then
+    echo "  ... still starting ($((i * 3))s, health=${hc})"
+  fi
   sleep 3
 done
+
+if [[ "$READY" -ne 1 ]]; then
+  echo
+  echo "Timed out waiting for the API. UI may respond before the backend is ready."
+  echo "Check logs: docker compose logs -f bioritmic"
+  docker compose logs --tail=50 bioritmic
+  exit 1
+fi
 
 echo
 docker compose ps
@@ -98,7 +122,7 @@ echo "  HTTPS:   https://localhost:${UI_HTTPS_PORT}"
 echo "  Health:  ${APP_FRONTEND_URL}/api/v1/ (via UI proxy)"
 echo
 echo "  Logs:    docker compose logs -f bioritmic"
-echo "  Stop:    docker compose down"
+echo "  Stop:    ./stop-prod.sh"
 echo
 echo "  Custom domain + Let's Encrypt:"
 echo "    CERTBOT_EMAIL=admin@bioritmic.ru SSL_DOMAIN=bioritmic.ru APP_FRONTEND_URL=https://bioritmic.ru ./start-prod.sh"

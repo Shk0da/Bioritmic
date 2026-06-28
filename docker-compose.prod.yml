@@ -9,6 +9,7 @@ services:
       SSL_DOMAIN: ${SSL_DOMAIN:-}
       CERTBOT_EMAIL: ${CERTBOT_EMAIL:-}
       CERTBOT_STAGING: ${CERTBOT_STAGING:-false}
+      REDIRECT_HTTP_TO_HTTPS: "true"
     ports:
       - "${UI_PORT:-80}:80"
       - "${UI_HTTPS_PORT:-443}:443"

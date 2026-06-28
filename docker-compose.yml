@@ -22,7 +22,7 @@ services:
       - bioritmic-letsencrypt:/etc/letsencrypt
       - ${SSL_CERT_DIR:-./docker/monolith/certs}:/etc/nginx/certs
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:6046/management/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1/api/v1/config/client || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 20

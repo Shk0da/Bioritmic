@@ -6,6 +6,7 @@ PGDATA="${PGDATA:-/var/lib/postgresql/data}"
 
 if [[ -s "${PGDATA}/PG_VERSION" ]]; then
   chown -R postgres:postgres "${PGDATA}"
+  chmod 700 "${PGDATA}"
   exit 0
 fi
 

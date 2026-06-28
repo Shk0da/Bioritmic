@@ -43,8 +43,10 @@ RUN curl -fsSL https://dl.min.io/server/minio/release/linux-amd64/minio -o /usr/
 COPY docker/monolith/postfix/main.cf /etc/postfix/main.cf
 COPY docker/monolith/nginx.conf /etc/nginx/sites-available/default
 COPY docker/monolith/nginx-locations.conf /etc/nginx/bioritmic-locations.conf
+COPY docker/monolith/nginx-ssl-redirect-map.conf /etc/nginx/conf.d/bioritmic-ssl-redirect-map.conf
 RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default \
     && rm -f /etc/nginx/sites-enabled/default.bak \
+    && echo 'include /etc/nginx/bioritmic-locations.conf;' > /etc/nginx/bioritmic-port80-extra.conf \
     && postconf compatibility_level=3.6 \
     && newaliases \
     && postfix check
@@ -55,12 +57,14 @@ COPY docker/monolith/init-postgres.sh /usr/local/bin/init-postgres.sh
 COPY docker/monolith/minio-init.sh /usr/local/bin/minio-init.sh
 COPY docker/monolith/start-api.sh /usr/local/bin/start-api.sh
 COPY docker/monolith/generate-ssl-cert.sh /usr/local/bin/generate-ssl-cert.sh
+COPY docker/monolith/configure-nginx.sh /usr/local/bin/configure-nginx.sh
 COPY docker/monolith/certbot-init.sh /usr/local/bin/certbot-init.sh
 COPY docker/monolith/certbot-renew.sh /usr/local/bin/certbot-renew.sh
 COPY docker/monolith/certbot-renew-once.sh /usr/local/bin/certbot-renew-once.sh
 COPY docker/monolith/sync-letsencrypt-certs.sh /usr/local/bin/sync-letsencrypt-certs.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/init-postgres.sh \
     /usr/local/bin/minio-init.sh /usr/local/bin/start-api.sh /usr/local/bin/generate-ssl-cert.sh \
+    /usr/local/bin/configure-nginx.sh \
     /usr/local/bin/certbot-init.sh /usr/local/bin/certbot-renew.sh /usr/local/bin/certbot-renew-once.sh \
     /usr/local/bin/sync-letsencrypt-certs.sh \
     && mkdir -p /var/log/supervisor /data/minio /app/api /usr/share/nginx/html /etc/nginx/certs /var/www/certbot \
@@ -72,6 +76,6 @@ COPY --from=ui-build /app/build/dist/browser/ /usr/share/nginx/html/
 EXPOSE 80 443
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=120s --retries=20 \
-  CMD curl -sf http://127.0.0.1:6046/management/actuator/health || exit 1
+  CMD curl -sf http://127.0.0.1/api/v1/config/client || exit 1
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
