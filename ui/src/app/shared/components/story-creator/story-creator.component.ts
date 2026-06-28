@@ -204,6 +204,8 @@ import { StoryService } from '../../../core/services/story.service';
   `]
 })
 export class StoryCreatorComponent implements OnDestroy {
+  private static readonly MAX_FILE_BYTES = 5 * 1024 * 1024;
+
   @Input() visible = false;
   @Output() closed = new EventEmitter<void>();
   @Output() storyCreated = new EventEmitter<void>();
@@ -228,7 +230,13 @@ export class StoryCreatorComponent implements OnDestroy {
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.selectedFile = input.files[0];
+      const file = input.files[0];
+      if (file.size > StoryCreatorComponent.MAX_FILE_BYTES) {
+        alert('Файл слишком большой. Максимальный размер — 5 МБ.');
+        input.value = '';
+        return;
+      }
+      this.selectedFile = file;
       const reader = new FileReader();
       reader.onload = () => {
         this.previewUrl = reader.result as string;

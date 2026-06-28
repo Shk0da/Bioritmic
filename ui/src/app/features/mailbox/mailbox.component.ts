@@ -520,9 +520,7 @@ export class MailboxComponent implements OnInit, OnDestroy {
         }
         this.loadMessages();
       },
-      error: () => {
-        this.modalService.alert('Ошибка удаления', 'Ошибка');
-      }
+      error: () => { /* shown by HTTP interceptor */ }
     });
   }
 

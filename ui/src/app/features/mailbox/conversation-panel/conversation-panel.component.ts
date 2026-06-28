@@ -508,9 +508,6 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       error: (error) => {
         if (error.status === 412) {
           this.isBlocked = true;
-          this.modalService.alert('К сожалению, пользователь ограничил с вами общение', 'Ошибка');
-        } else {
-          this.modalService.alert('Ошибка отправки сообщения', 'Ошибка');
         }
         this.sending = false;
       }

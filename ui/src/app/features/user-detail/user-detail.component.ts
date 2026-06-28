@@ -868,7 +868,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
         this.meetingSent = true;
         this.modalService.alert('Предложение встречи отправлено!');
       },
-      error: () => { this.modalService.alert('Ошибка отправки предложения встречи', 'Ошибка'); }
+      error: () => { /* shown by HTTP interceptor */ }
     });
   }
 
@@ -886,7 +886,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
         this.meetingSent = false;
         this.modalService.alert('Предложение встречи отменено');
       },
-      error: () => { this.modalService.alert('Ошибка отмены встречи', 'Ошибка'); }
+      error: () => { /* shown by HTTP interceptor */ }
     });
   }
 
@@ -896,14 +896,14 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     if (this.isBlocked) {
       this.userService.unblockUser(this.user.id).pipe(takeUntil(this.destroy$)).subscribe({
         next: () => { this.isBlocked = false; this.modalService.alert('Пользователь разблокирован'); },
-        error: () => { this.modalService.alert('Ошибка разблокировки', 'Ошибка'); }
+        error: () => { /* shown by HTTP interceptor */ }
       });
     } else {
       this.modalService.confirm('Вы уверены, что хотите заблокировать этого пользователя?', 'Блокировка').then(confirmed => {
         if (confirmed && this.user?.id) {
           this.userService.blockUser(this.user.id).pipe(takeUntil(this.destroy$)).subscribe({
             next: () => { this.isBlocked = true; this.modalService.alert('Пользователь заблокирован'); },
-            error: () => { this.modalService.alert('Ошибка блокировки', 'Ошибка'); }
+            error: () => { /* shown by HTTP interceptor */ }
           });
         }
       });

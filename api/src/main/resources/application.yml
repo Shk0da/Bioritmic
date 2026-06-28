@@ -52,6 +52,12 @@ spring:
     description: Bitoritmic app
   main.allow-bean-definition-overriding: true
   devtools.add-properties: false
+  codec:
+    max-in-memory-size: 15MB
+  webflux:
+    multipart:
+      max-in-memory-size: 15MB
+      max-disk-usage-per-part: 20MB
   datasource:
     master:
       host: 127.0.0.1
