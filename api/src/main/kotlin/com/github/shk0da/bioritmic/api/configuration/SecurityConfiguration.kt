@@ -26,9 +26,6 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken
 import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter
-import org.springframework.web.cors.CorsConfiguration
-import org.springframework.web.reactive.config.CorsRegistry
-import org.springframework.web.reactive.config.WebFluxConfigurer
 import reactor.core.publisher.Mono
 
 @Configuration
@@ -37,14 +34,9 @@ class SecurityConfiguration(
     private val authService: AuthService,
     private val userRoleRepository: UserRoleRepository,
     private val reportService: ReportService,
-    private val appSecurityProperties: AppSecurityProperties,
-    private val corsOriginResolver: CorsOriginResolver,
+    private val corsConfigurationFactory: CorsConfigurationFactory,
     private val environment: Environment
-) : WebFluxConfigurer {
-
-    companion object {
-        private const val CORS_MAX_AGE_SECONDS = 3600L
-    }
+) {
 
     private val log = LoggerFactory.getLogger(SecurityConfiguration::class.java)
 
@@ -70,30 +62,12 @@ class SecurityConfiguration(
         "/v3/api-docs/**"
     )
 
-    override fun addCorsMappings(registry: CorsRegistry) {
-        val origins = corsOriginResolver.resolve().toTypedArray()
-        registry
-            .addMapping("/**")
-            .allowedOrigins(*origins)
-            .allowedMethods("*")
-            .allowedHeaders("*")
-            .allowCredentials(true)
-    }
-
     @Bean
     fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain? {
-        val origins = corsOriginResolver.resolve()
         http
             .cors { cors ->
-                cors.configurationSource {
-                    CorsConfiguration().apply {
-                        allowedOrigins = origins
-                        allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-                        allowedHeaders = listOf("*")
-                        exposedHeaders = listOf(HttpHeaders.SET_COOKIE)
-                        maxAge = CORS_MAX_AGE_SECONDS
-                        allowCredentials = true
-                    }
+                cors.configurationSource { exchange ->
+                    corsConfigurationFactory.create(exchange.request)
                 }
             }
             .csrf { it.disable() }

@@ -1,9 +1,11 @@
 package com.github.shk0da.bioritmic.api.configuration
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.mock.env.MockEnvironment
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest
 
 class CorsOriginResolverTest {
 
@@ -47,5 +49,28 @@ class CorsOriginResolverTest {
         assertTrue(origins.contains("https://158.160.194.159"))
         assertTrue(origins.contains("https://bioritmic.ru"))
         assertTrue(origins.contains("https://www.bioritmic.ru"))
+    }
+
+    @Test
+    fun `should allow origin that matches request host`() {
+        val properties = AppSecurityProperties(
+            frontendUrl = "https://bioritmic.ru",
+            cors = AppSecurityProperties.Cors(allowedOrigins = listOf("https://bioritmic.ru"))
+        )
+        val environment = MockEnvironment()
+        val request = MockServerHttpRequest.post("https://158.160.194.159/api/v1/refresh-token")
+            .header("Origin", "https://158.160.194.159")
+            .header("Host", "158.160.194.159")
+            .build()
+
+        val origins = CorsOriginResolver(properties, environment).resolve(request)
+
+        assertTrue(origins.contains("https://158.160.194.159"))
+    }
+
+    @Test
+    fun `matchesRequestHost should compare host without port`() {
+        assertTrue(CorsOriginResolver.matchesRequestHost("https://158.160.194.159", "158.160.194.159:443"))
+        assertFalse(CorsOriginResolver.matchesRequestHost("https://evil.example", "158.160.194.159:443"))
     }
 }
