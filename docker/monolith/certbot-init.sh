@@ -60,9 +60,18 @@ if [[ -n "$IP" && ! -s "${LE_IP_LIVE}/fullchain.pem" ]]; then
   need_ip=true
 fi
 
+sync_domain_cert() {
+  if [[ -s "${LE_LIVE}/fullchain.pem" ]] && ! ssl_is_self_signed "${LE_LIVE}/fullchain.pem"; then
+    /usr/local/bin/sync-letsencrypt-certs.sh
+    return 0
+  fi
+  echo "[certbot] Domain certificate not ready in ${LE_LIVE}"
+  return 1
+}
+
 if [[ "$need_domain" == false && "$need_ip" == false ]]; then
   echo "[certbot] Using existing certificates for ${DOMAIN}${IP:+, ${IP}}"
-  /usr/local/bin/sync-letsencrypt-certs.sh
+  sync_domain_cert
   exit 0
 fi
 
@@ -87,18 +96,30 @@ if [[ "$need_domain" == true ]]; then
     --email "${CERTBOT_EMAIL}" \
     --agree-tos --non-interactive --no-eff-email \
     "${STAGING_ARGS[@]}"
+  sync_domain_cert
 fi
 
 if [[ "$need_ip" == true ]]; then
-  echo "[certbot] Requesting short-lived IP certificate for ${IP}..."
-  certbot certonly --webroot -w /var/www/certbot \
+  echo "[certbot] Requesting short-lived IP certificate for ${IP} (optional)..."
+  if certbot certonly --webroot -w /var/www/certbot \
     --preferred-profile shortlived \
     --ip-address "${IP}" \
     --cert-name "${IP_CERT_NAME}" \
     --email "${CERTBOT_EMAIL}" \
     --agree-tos --non-interactive --no-eff-email \
-    "${STAGING_ARGS[@]}"
+    "${STAGING_ARGS[@]}"; then
+    echo "[certbot] IP certificate issued for ${IP}"
+  else
+    echo "[certbot] WARNING: IP certificate failed — https://${IP}/ may show a warning (domain HTTPS is unaffected)"
+  fi
+  /usr/local/bin/ssl-ip-fallback.sh || true
 fi
 
-/usr/local/bin/sync-letsencrypt-certs.sh
-echo "[certbot] Certificates issued for ${DOMAIN}${IP:+, ${IP}}"
+CERT_DIR="$(ssl_cert_dir)"
+if [[ -s "${CERT_DIR}/fullchain.pem" ]] && ! ssl_is_self_signed "${CERT_DIR}/fullchain.pem"; then
+  echo "[certbot] Trusted domain certificate active for ${DOMAIN}"
+else
+  sync_domain_cert || true
+fi
+
+echo "[certbot] Done for ${DOMAIN}"

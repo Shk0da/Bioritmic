@@ -166,6 +166,21 @@ if [[ "$READY" -ne 1 ]]; then
   exit 1
 fi
 
+if [[ -n "${CERTBOT_EMAIL:-}" && -n "${SSL_DOMAIN:-}" ]]; then
+  LIVE_ISSUER="$(echo | openssl s_client -connect "${SSL_DOMAIN}:443" -servername "${SSL_DOMAIN}" 2>/dev/null \
+    | openssl x509 -noout -issuer 2>/dev/null || true)"
+  if ! echo "$LIVE_ISSUER" | grep -qi "Let's Encrypt"; then
+    echo
+    echo "[3/3] Installing trusted TLS certificate (Let's Encrypt)..."
+    if [[ -x "${ROOT}/scripts/issue-letsencrypt.sh" ]]; then
+      "${ROOT}/scripts/issue-letsencrypt.sh" || echo "  Certbot failed — run ./scripts/issue-letsencrypt.sh manually"
+    else
+      docker exec bioritmic /usr/local/bin/certbot-init.sh \
+        || echo "  Certbot failed — check: docker compose logs bioritmic | grep certbot"
+    fi
+  fi
+fi
+
 echo
 docker compose ps
 echo
