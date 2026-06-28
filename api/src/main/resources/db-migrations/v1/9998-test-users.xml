@@ -5,44 +5,24 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <changeSet id="9998" author="test-data" runOnChange="true" runAlways="true">
+    <changeSet id="9998" author="test-data" runOnChange="false" runAlways="false">
+        <validCheckSum>ANY</validCheckSum>
 
-        <comment>Insert 100 test users with UUIDs</comment>
-
-        <sql endDelimiter=";">
-            DELETE FROM story_views;
-            DELETE FROM stories;
-            DELETE FROM user_prompt_answers;
-            DELETE FROM profile_boosts;
-            DELETE FROM subscriptions;
-            DELETE FROM reports;
-            DELETE FROM bans;
-            DELETE FROM user_interests;
-            DELETE FROM user_push_tokens;
-            DELETE FROM user_roles;
-            DELETE FROM user_photos;
-            DELETE FROM authorizations;
-            DELETE FROM gis_data;
-            DELETE FROM user_settings;
-            DELETE FROM user_blocks;
-            DELETE FROM meetings;
-            DELETE FROM mailbox;
-            DELETE FROM bookmarks;
-            DELETE FROM users;
-        </sql>
+        <comment>Seed test users once (develop). Password: Test123456. Does not delete existing users.</comment>
 
         <sql endDelimiter=";">
             INSERT INTO users (id, name, email, password, birthday, gender, register_date) VALUES
-            ('a0000000-0000-0000-0000-000000000001', 'Александр', 'testuser1@example.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1995-03-15 00:00:00.000', 0, NOW()),
-            ('a0000000-0000-0000-0000-000000000002', 'Анна', 'testuser2@example.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1998-07-22 00:00:00.000', 1, NOW()),
-            ('a0000000-0000-0000-0000-000000000003', 'Дмитрий', 'testuser3@example.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1992-11-08 00:00:00.000', 0, NOW()),
-            ('a0000000-0000-0000-0000-000000000004', 'Мария', 'testuser4@example.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '2000-01-30 00:00:00.000', 1, NOW()),
-            ('a0000000-0000-0000-0000-000000000005', 'Сергей', 'testuser5@example.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1994-06-18 00:00:00.000', 0, NOW()),
-            ('a0000000-0000-0000-0000-000000000006', 'Елена', 'testuser6@example.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1997-09-05 00:00:00.000', 1, NOW()),
-            ('a0000000-0000-0000-0000-000000000007', 'Михаил', 'testuser7@example.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1991-04-12 00:00:00.000', 0, NOW()),
-            ('a0000000-0000-0000-0000-000000000008', 'Дарья', 'testuser8@example.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1999-12-25 00:00:00.000', 1, NOW()),
-            ('a0000000-0000-0000-0000-000000000009', 'Андрей', 'testuser9@example.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1993-08-03 00:00:00.000', 0, NOW()),
-            ('a0000000-0000-0000-0000-000000000010', 'Алина', 'testuser10@example.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '2001-02-14 00:00:00.000', 1, NOW());
+            ('a0000000-0000-0000-0000-000000000001', 'Александр', 'testuser1@example.com', '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK', '1995-03-15 00:00:00.000', 0, NOW()),
+            ('a0000000-0000-0000-0000-000000000002', 'Анна', 'testuser2@example.com', '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK', '1998-07-22 00:00:00.000', 1, NOW()),
+            ('a0000000-0000-0000-0000-000000000003', 'Дмитрий', 'testuser3@example.com', '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK', '1992-11-08 00:00:00.000', 0, NOW()),
+            ('a0000000-0000-0000-0000-000000000004', 'Мария', 'testuser4@example.com', '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK', '2000-01-30 00:00:00.000', 1, NOW()),
+            ('a0000000-0000-0000-0000-000000000005', 'Сергей', 'testuser5@example.com', '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK', '1994-06-18 00:00:00.000', 0, NOW()),
+            ('a0000000-0000-0000-0000-000000000006', 'Елена', 'testuser6@example.com', '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK', '1997-09-05 00:00:00.000', 1, NOW()),
+            ('a0000000-0000-0000-0000-000000000007', 'Михаил', 'testuser7@example.com', '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK', '1991-04-12 00:00:00.000', 0, NOW()),
+            ('a0000000-0000-0000-0000-000000000008', 'Дарья', 'testuser8@example.com', '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK', '1999-12-25 00:00:00.000', 1, NOW()),
+            ('a0000000-0000-0000-0000-000000000009', 'Андрей', 'testuser9@example.com', '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK', '1993-08-03 00:00:00.000', 0, NOW()),
+            ('a0000000-0000-0000-0000-000000000010', 'Алина', 'testuser10@example.com', '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK', '2001-02-14 00:00:00.000', 1, NOW())
+            ON CONFLICT (id) DO NOTHING;
         </sql>
 
         <sql endDelimiter=";">
@@ -56,7 +36,8 @@
             ('a0000000-0000-0000-0000-000000000007', 59.9650, 30.3380, NOW()),
             ('a0000000-0000-0000-0000-000000000008', 59.9700, 30.3385, NOW()),
             ('a0000000-0000-0000-0000-000000000009', 59.9750, 30.3390, NOW()),
-            ('a0000000-0000-0000-0000-000000000010', 59.9800, 30.3395, NOW());
+            ('a0000000-0000-0000-0000-000000000010', 59.9800, 30.3395, NOW())
+            ON CONFLICT (user_id) DO NOTHING;
         </sql>
 
         <sql endDelimiter=";">
@@ -70,12 +51,20 @@
             ('a0000000-0000-0000-0000-000000000007', 1, 18, 35, 30.0),
             ('a0000000-0000-0000-0000-000000000008', 0, 18, 35, 30.0),
             ('a0000000-0000-0000-0000-000000000009', 1, 18, 35, 30.0),
-            ('a0000000-0000-0000-0000-000000000010', 0, 18, 35, 30.0);
+            ('a0000000-0000-0000-0000-000000000010', 0, 18, 35, 30.0)
+            ON CONFLICT (user_id) DO NOTHING;
         </sql>
 
         <sql endDelimiter=";">
             INSERT INTO user_roles (user_id, role) VALUES
-            ('a0000000-0000-0000-0000-000000000001', 'ROLE_ADMIN');
+            ('a0000000-0000-0000-0000-000000000001', 'ROLE_ADMIN')
+            ON CONFLICT (user_id, role) DO NOTHING;
+        </sql>
+
+        <sql endDelimiter=";">
+            UPDATE users
+            SET is_verified = true
+            WHERE id IN (SELECT user_id FROM user_roles WHERE role = 'ROLE_ADMIN');
         </sql>
 
     </changeSet>

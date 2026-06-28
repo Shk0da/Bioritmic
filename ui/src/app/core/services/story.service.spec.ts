@@ -26,11 +26,12 @@ describe('StoryService', () => {
     req.flush([]);
   });
 
-  it('createStory should POST', () => {
-    service.createStory('http://media.url', 'caption').subscribe();
+  it('createStory should POST multipart form', () => {
+    const file = new File(['image'], 'story.jpg', { type: 'image/jpeg' });
+    service.createStory(file, 'caption').subscribe();
     const req = httpMock.expectOne('/api/v1/stories');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ mediaUrl: 'http://media.url', caption: 'caption' });
+    expect(req.request.body instanceof FormData).toBeTrue();
     req.flush({ id: 1 });
   });
 
@@ -39,5 +40,13 @@ describe('StoryService', () => {
     const req = httpMock.expectOne('/api/v1/stories/5/view');
     expect(req.request.method).toBe('POST');
     req.flush({ success: true });
+  });
+
+  it('reactToStory should POST /{id}/react', () => {
+    service.reactToStory(5, 'FIRE').subscribe();
+    const req = httpMock.expectOne('/api/v1/stories/5/react');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ reaction: 'FIRE' });
+    req.flush({ reaction: 'FIRE', reactionCounts: { FIRE: 1 } });
   });
 });

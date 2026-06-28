@@ -25,7 +25,9 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               "src/favicon.ico",
-              "src/assets"
+              "src/assets",
+              { "glob": "manifest.webmanifest", "input": "src", "output": "/" },
+              { "glob": "firebase-messaging-sw.js", "input": "src", "output": "/" }
             ],
             "styles": [
               "node_modules/bootstrap/dist/css/bootstrap.min.css",
@@ -64,6 +66,9 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "port": 2399
+          },
           "configurations": {
             "production": {
               "buildTarget": "bioritmic-ui:build:production"

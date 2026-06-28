@@ -203,6 +203,65 @@ class AuthControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun resetPasswordTest() {
+        val userModel = defaultUserModel.copy(email = "reset_pw_${UUID.randomUUID()}@gmail.com")
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(userModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/recovery")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(RecoveryModel(email = userModel.email)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val recoveryCode = liquibaseDataSource.connection.use { connection ->
+            connection.prepareStatement("SELECT recovery_code FROM users WHERE email = ?").use { statement ->
+                statement.setString(1, userModel.email)
+                statement.executeQuery().use { resultSet ->
+                    check(resultSet.next()) { "Recovery code not found for ${userModel.email}" }
+                    resultSet.getString("recovery_code")
+                }
+            }
+        }
+
+        val newPassword = "NewPass99"
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/reset-password")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("code" to recoveryCode, "password" to newPassword)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(email = userModel.email, password = newPassword)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+    }
+
+    @Test
+    fun resetPasswordWithInvalidCode() {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/reset-password")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("code" to "invalid-code", "password" to "NewPass99")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().is4xxClientError
+    }
+
+    @Test
     fun refreshTokenTest() {
         val userModel = defaultUserModel.copy(email = "refresh_test@gmail.com")
 

@@ -19,7 +19,8 @@ import java.util.UUID
 class MailboxService(
     val userService: UserService,
     val mailboxRepository: MailboxRepository,
-    val userBlockRepository: UserBlockRepository
+    val userBlockRepository: UserBlockRepository,
+    private val pushNotificationService: PushNotificationService
 ) {
 
     private val defaultPageable = PageableRequest(1, 10, by(Sort.Direction.DESC, "timestamp"))
@@ -40,6 +41,11 @@ class MailboxService(
         userMailModel.from = userId
         val userMail = UserMail.of(userMailModel)
         mailboxRepository.save(userMail)
+
+        val sender = userService.findUserById(userId)
+        val senderName = sender?.name?.takeIf { it.isNotBlank() } ?: "Пользователь"
+        pushNotificationService.notifyNewMessage(userMail.toUserId!!, senderName, userMail.message ?: "")
+
         return mailboxRepository
             .findAllByFromUserIdAndToUserId(userMail.fromUserId!!, userMail.toUserId!!, defaultPageable)
             .toList()

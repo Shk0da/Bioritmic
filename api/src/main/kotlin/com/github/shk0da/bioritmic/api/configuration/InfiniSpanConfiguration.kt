@@ -36,7 +36,7 @@ class InfiniSpanConfiguration {
     fun authTokenCache(cacheManager: DefaultCacheManager): Cache<String, Auth> {
         return cacheManager.administration()
             .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
-            .getOrCreateCache("authTokenCache", customTimeCache(Auth.lifetimeInMinutes, TimeUnit.MINUTES))
+            .getOrCreateCache("authTokenCache", customTimeCache(Auth.SESSION_LIFETIME_DAYS, TimeUnit.DAYS))
     }
 
     @Bean

@@ -46,18 +46,18 @@ class ApiApplicationTests {
     fun clearDatabase() {
         // Clear database tables
         val tables = listOf(
+            "story_reactions",
             "story_views",
             "stories",
-            "user_prompt_answers",
             "user_push_tokens",
             "user_roles",
             "user_photos",
             "profile_boosts",
             "subscriptions",
             "reports",
+            "user_feedback",
             "admin_audit_log",
             "bans",
-            "user_interests",
             "user_blocks",
             "meetings",
             "mailbox",

@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { BehaviorSubject, Observable, Subscription, tap, catchError, throwError, timeout } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, of, tap, catchError, throwError, timeout, map, shareReplay } from 'rxjs';
 import { User, UserToken, AuthorizationModel, UserInfo } from '../models/user.model';
 
 const USER_KEY = 'current_user';
@@ -16,6 +16,8 @@ export class AuthService implements OnDestroy {
   private legacyToken: string | null = null;
   private authSubscriptions: Subscription[] = [];
   private userPollIntervalId: ReturnType<typeof setInterval> | null = null;
+  private sessionRestoreDone = false;
+  private sessionRestore$?: Observable<boolean>;
   private readonly onVisibilityChange = () => {
     if (document.visibilityState === 'visible' && this.isAuthenticated()) {
       this.refreshCurrentUser();
@@ -24,30 +26,36 @@ export class AuthService implements OnDestroy {
 
   constructor(private http: HttpClient) {
     document.addEventListener('visibilitychange', this.onVisibilityChange);
-    const userStr = sessionStorage.getItem(USER_KEY);
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        this.currentUserSubject.next(user);
-        this.syncUserPolling(user);
-        const sub = this.http.get<UserInfo>(`${this.apiUrl}/user/me`).subscribe({
-          next: (user) => this.applyCurrentUser(user),
-          error: (error: HttpErrorResponse) => {
-            if (error.status === 404 || error.status === 401 || error.status === 403) {
-              this.clearAuth();
-            }
-          }
-        });
-        this.authSubscriptions.push(sub);
-      } catch {
-        this.clearAuth();
-      }
-    }
+    this.restoreUserFromStorage();
   }
 
   ngOnDestroy(): void {
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.stopUserPolling();
+  }
+
+  /** Restores session from httpOnly cookies via /user/me. Safe to call multiple times. */
+  ensureSessionRestored(): Observable<boolean> {
+    if (this.sessionRestoreDone) {
+      return of(this.isAuthenticated());
+    }
+    if (!this.sessionRestore$) {
+      this.sessionRestore$ = this.http.get<UserInfo>(`${this.apiUrl}/user/me`).pipe(
+        tap(user => this.applyCurrentUser(user)),
+        map(() => true),
+        catchError((error: HttpErrorResponse) => {
+          if (error.status === 401 || error.status === 403 || error.status === 404) {
+            this.clearAuth();
+          }
+          return of(false);
+        }),
+        tap(() => {
+          this.sessionRestoreDone = true;
+        }),
+        shareReplay(1)
+      );
+    }
+    return this.sessionRestore$;
   }
 
   login(credentials: AuthorizationModel): Observable<UserToken> {
@@ -88,15 +96,18 @@ export class AuthService implements OnDestroy {
 
   clearAuth(): void {
     this.legacyToken = null;
-    sessionStorage.removeItem(USER_KEY);
+    localStorage.removeItem(USER_KEY);
     this.currentUserSubject.next(null);
     this.stopUserPolling();
     this.authSubscriptions.forEach(s => s.unsubscribe());
     this.authSubscriptions = [];
+    this.sessionRestoreDone = false;
+    this.sessionRestore$ = undefined;
   }
 
   setAuth(token: UserToken): void {
     this.legacyToken = token.accessToken ?? null;
+    this.sessionRestoreDone = true;
     const user = { name: token.name, email: token.email };
     this.applyCurrentUser(user);
   }
@@ -113,8 +124,22 @@ export class AuthService implements OnDestroy {
     );
   }
 
+  private restoreUserFromStorage(): void {
+    const userStr = localStorage.getItem(USER_KEY);
+    if (!userStr) {
+      return;
+    }
+    try {
+      const user = JSON.parse(userStr) as UserInfo;
+      this.currentUserSubject.next(user);
+      this.syncUserPolling(user);
+    } catch {
+      localStorage.removeItem(USER_KEY);
+    }
+  }
+
   private applyCurrentUser(user: UserInfo): void {
-    sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
     this.currentUserSubject.next(user);
     this.syncUserPolling(user);
   }

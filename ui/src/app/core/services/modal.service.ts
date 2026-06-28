@@ -1,4 +1,4 @@
-import { Injectable, Component, Input, Output, EventEmitter } from '@angular/core';
+import { Injectable, Component, Output, EventEmitter, HostBinding, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export interface ModalConfig {
@@ -55,11 +55,10 @@ export class ModalService {
     });
   }
 
-  async alert(message: string, title: string = 'Информация'): Promise<void> {
+  async alert(message: string, title: string = ''): Promise<void> {
     await this.show({
       title,
       message,
-      icon: 'info',
       confirmText: 'OK',
       cancelText: undefined
     });
@@ -72,13 +71,19 @@ export class ModalService {
   imports: [CommonModule],
   template: `
     @if (isVisible) {
-      <div class="modal-overlay" (click)="onCancel()">
+      <div class="modal-overlay" (click)="onOverlayClick()">
         <div class="modal-content" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <i class="bi {{ getIconClass() }} modal-icon"></i>
-            <h5 class="modal-title">{{ config?.title }}</h5>
-          </div>
-          <div class="modal-body">
+          @if (config?.icon || config?.title) {
+            <div class="modal-header">
+              @if (config?.icon) {
+                <i class="bi {{ getIconClass() }} modal-icon"></i>
+              }
+              @if (config?.title) {
+                <h5 class="modal-title">{{ config?.title }}</h5>
+              }
+            </div>
+          }
+          <div class="modal-body" [class.modal-body-only]="!config?.icon && !config?.title">
             <p>{{ config?.message }}</p>
           </div>
           <div class="modal-footer">
@@ -96,16 +101,34 @@ export class ModalService {
     }
   `,
   styles: [`
-    .modal-overlay {
+    :host {
+      display: block;
+    }
+
+    :host(.modal-host-open) {
       position: fixed;
       inset: 0;
+      z-index: 10000;
+      pointer-events: none;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 100dvh;
       background: rgba(0, 0, 0, 0.6);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 9999;
+      z-index: 10000;
       padding: 1rem;
-      backdrop-filter: blur(4px);
+      padding-top: calc(1rem + env(safe-area-inset-top));
+      padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+      pointer-events: auto;
       animation: fadeIn 0.2s ease;
     }
 
@@ -162,6 +185,10 @@ export class ModalService {
       margin: 0;
     }
 
+    .modal-body-only {
+      padding-top: 2rem;
+    }
+
     .modal-footer {
       padding: 1rem 1.5rem 1.5rem;
       display: flex;
@@ -210,9 +237,14 @@ export class ModalService {
     .modal-icon.bi-info-circle { color: #3b82f6; }
   `]
 })
-export class ModalComponent {
+export class ModalComponent implements OnDestroy {
   isVisible = false;
   config: ModalConfig | null = null;
+
+  @HostBinding('class.modal-host-open')
+  get modalHostOpen(): boolean {
+    return this.isVisible;
+  }
 
   @Output() confirm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
@@ -221,18 +253,30 @@ export class ModalComponent {
   private originalOnCancel: (() => void) | null = null;
 
   constructor(private modalService: ModalService) {
-    window.addEventListener('modal:show', (event: any) => {
-      this.config = event.detail.config;
-      this.originalOnConfirm = event.detail.onConfirm;
-      this.originalOnCancel = event.detail.onCancel;
-      this.isVisible = true;
-    });
-
-    window.addEventListener('modal:close', () => {
-      this.isVisible = false;
-      this.config = null;
-    });
+    window.addEventListener('modal:show', this.onModalShow);
+    window.addEventListener('modal:close', this.onModalClose);
   }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('modal:show', this.onModalShow);
+    window.removeEventListener('modal:close', this.onModalClose);
+    document.body.classList.remove('modal-open');
+  }
+
+  private readonly onModalShow = (event: Event): void => {
+    const detail = (event as CustomEvent).detail;
+    this.config = detail.config;
+    this.originalOnConfirm = detail.onConfirm;
+    this.originalOnCancel = detail.onCancel;
+    this.isVisible = true;
+    document.body.classList.add('modal-open');
+  };
+
+  private readonly onModalClose = (): void => {
+    this.isVisible = false;
+    this.config = null;
+    document.body.classList.remove('modal-open');
+  };
 
   onConfirm(): void {
     this.confirm.emit();
@@ -244,6 +288,14 @@ export class ModalComponent {
     this.cancel.emit();
     this.originalOnCancel?.();
     this.modalService.close();
+  }
+
+  onOverlayClick(): void {
+    if (this.config?.cancelText) {
+      this.onCancel();
+    } else {
+      this.onConfirm();
+    }
   }
 
   getIconClass(): string {

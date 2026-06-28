@@ -86,7 +86,7 @@ describe('ModalService', () => {
     it('should show info alert and resolve on confirm', (done) => {
       const showHandler = (e: any) => {
         window.removeEventListener('modal:show', showHandler);
-        expect(e.detail.config.icon).toBe('info');
+        expect(e.detail.config.icon).toBeUndefined();
         expect(e.detail.config.cancelText).toBeUndefined();
         e.detail.onConfirm();
       };

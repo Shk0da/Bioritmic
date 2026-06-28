@@ -1,16 +1,14 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
-import { NgClass } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-edit-profile',
   standalone: true,
-  imports: [RouterLink, FormsModule, NgClass],
+  imports: [RouterLink, FormsModule],
   template: `
     @if (saving) {
       <div class="saving-overlay">
@@ -38,10 +36,18 @@ import { Subject, takeUntil } from 'rxjs';
                     </div>
                   </div>
                 }
-                <img
-                  [src]="photoDataUrl || ''"
-                  class="profile-avatar rounded-circle"
-                  style="width: 150px; height: 150px; object-fit: cover;">
+                @if (photoDataUrl) {
+                  <img
+                    [src]="photoDataUrl"
+                    class="profile-avatar rounded-circle"
+                    style="width: 150px; height: 150px; object-fit: cover;">
+                } @else {
+                  <div
+                    class="profile-avatar rounded-circle d-flex align-items-center justify-content-center bg-light text-muted"
+                    style="width: 150px; height: 150px;">
+                    <i class="bi bi-person-fill fs-1"></i>
+                  </div>
+                }
                 <label for="photoUpload" class="btn btn-primary btn-sm position-absolute" style="bottom: 0; right: 0; border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                     <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
@@ -57,6 +63,11 @@ import { Subject, takeUntil } from 'rxjs';
               </div>
               @if (photoFile) {
                 <p class="text-muted small mt-2">Новое фото выбрано: {{ photoFile.name }}</p>
+              }
+              @if (hasUploadedPhoto) {
+                <button type="button" class="btn btn-outline-danger btn-sm mt-2" (click)="deletePhoto()" [disabled]="saving">
+                  Удалить фото
+                </button>
               }
             </div>
 
@@ -79,12 +90,49 @@ import { Subject, takeUntil } from 'rxjs';
                     type="email"
                     class="form-control"
                     id="email"
-                    [(ngModel)]="user.email"
+                    [ngModel]="user.email"
                     name="email"
                     required
                     disabled>
-                  <small class="text-muted">Email нельзя изменить</small>
                 </div>
+              </div>
+
+              <div class="row mb-3">
+                <div class="col-md-8">
+                  <label for="newEmail" class="form-label">Сменить email</label>
+                  <input
+                    type="email"
+                    class="form-control"
+                    id="newEmail"
+                    [(ngModel)]="newEmail"
+                    name="newEmail"
+                    placeholder="Новый email">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                  <button type="button" class="btn btn-outline-primary w-100" (click)="requestEmailChange()" [disabled]="!newEmail || savingEmail">
+                    @if (savingEmail) {
+                      <span class="spinner-border spinner-border-sm"></span>
+                    } @else {
+                      Запросить смену
+                    }
+                  </button>
+                </div>
+              </div>
+              @if (emailChangeMessage) {
+                <div class="alert alert-info py-2 small">{{ emailChangeMessage }}</div>
+              }
+
+              <div class="mb-3">
+                <label for="bio" class="form-label">Обо мне</label>
+                <textarea
+                  class="form-control"
+                  id="bio"
+                  rows="4"
+                  maxlength="500"
+                  [(ngModel)]="user.bio"
+                  name="bio"
+                  placeholder="Расскажите о себе — это увидят другие пользователи"></textarea>
+                <div class="form-text text-end">{{ (user.bio || '').length }}/500</div>
               </div>
 
               <div class="row">
@@ -184,15 +232,18 @@ export class EditProfileComponent implements OnInit, OnDestroy {
   user: Partial<UserInfo> = {};
   photoFile: File | null = null;
   photoDataUrl: string | null = null;
+  newEmail = '';
+  emailChangeMessage = '';
+  savingEmail = false;
   Gender = Gender;
   saving = false;
   uploadingPhoto = false;
+  hasUploadedPhoto = false;
   private destroy$ = new Subject<void>();
 
   constructor(
     private userService: UserService,
-    private router: Router,
-    private sanitizer: DomSanitizer
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -210,17 +261,37 @@ export class EditProfileComponent implements OnInit, OnDestroy {
     this.userService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe({
       next: (user: UserInfo) => {
         this.user = { ...user };
+        if (user.id) {
+          this.loadPhotoStatus(user.id);
+        }
+      }
+    });
+  }
+
+  private loadPhotoStatus(userId: string): void {
+    this.userService.getUserPhotos(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (photos) => {
+        this.hasUploadedPhoto = photos.length > 0;
+      },
+      error: () => {
+        this.hasUploadedPhoto = false;
       }
     });
   }
 
   private loadPhoto(): void {
-    this.userService.getPhoto().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (bytes: Uint8Array) => {
+    const userId = this.user.id;
+    if (!userId) {
+      return;
+    }
+
+    this.userService.resolveProfilePhotoUrl(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (url) => {
         UserService.revokePhotoUrl(this.photoDataUrl);
-        this.photoDataUrl = UserService.createPhotoUrl(bytes);
+        this.photoDataUrl = url;
       },
       error: () => {
+        UserService.revokePhotoUrl(this.photoDataUrl);
         this.photoDataUrl = null;
       }
     });
@@ -239,23 +310,71 @@ export class EditProfileComponent implements OnInit, OnDestroy {
     }
   }
 
+  requestEmailChange(): void {
+    if (!this.newEmail) return;
+    this.savingEmail = true;
+    this.emailChangeMessage = '';
+    this.userService.updateUser({ ...this.user, email: this.newEmail }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.savingEmail = false;
+        this.emailChangeMessage = 'Письмо с подтверждением отправлено на текущий email.';
+        this.newEmail = '';
+      },
+      error: () => {
+        this.savingEmail = false;
+        this.emailChangeMessage = 'Не удалось запросить смену email. Возможно, адрес уже занят.';
+      }
+    });
+  }
+
+  deletePhoto(): void {
+    if (!confirm('Удалить фото профиля?')) return;
+    this.saving = true;
+    this.userService.deletePhoto().pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        UserService.revokePhotoUrl(this.photoDataUrl);
+        this.photoDataUrl = null;
+        this.photoFile = null;
+        this.hasUploadedPhoto = false;
+        this.saving = false;
+      },
+      error: () => {
+        this.saving = false;
+        alert('Не удалось удалить фото');
+      }
+    });
+  }
+
   isFormValid(): boolean {
     return !!(this.user.name && this.user.email && this.user.birthday && this.user.gender);
   }
 
   save(): void {
     this.saving = true;
-    this.userService.updateUser(this.user).subscribe({
+    const bio = this.user.bio?.trim();
+    this.userService.updateUser({
+      name: this.user.name,
+      birthday: this.user.birthday,
+      gender: this.user.gender,
+      bio: bio || ''
+    }).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         if (this.photoFile) {
           this.uploadingPhoto = true;
-          this.userService.uploadPhoto(this.photoFile).subscribe({
+          this.userService.uploadPhoto(this.photoFile).pipe(takeUntil(this.destroy$)).subscribe({
             next: () => {
+              this.hasUploadedPhoto = true;
+              UserService.revokePhotoUrl(this.photoDataUrl);
+              const userId = this.user.id;
+              this.photoDataUrl = userId
+                ? this.userService.getProfilePhotoUrl(userId, Date.now())
+                : null;
+              this.photoFile = null;
               this.saving = false;
               this.uploadingPhoto = false;
               this.router.navigate(['/profile/me']);
             },
-            error: (error: any) => {
+            error: () => {
               this.saving = false;
               this.uploadingPhoto = false;
               alert('Профиль сохранён, но фото не загружено');
@@ -267,7 +386,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
           this.router.navigate(['/profile/me']);
         }
       },
-      error: (error: any) => {
+      error: () => {
         this.saving = false;
         alert('Ошибка сохранения профиля');
       }

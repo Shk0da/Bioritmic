@@ -22,7 +22,7 @@ describe('AdminService', () => {
   it('getDashboard should GET /api/v1/admin/dashboard', () => {
     service.getDashboard().subscribe(d => expect(d.totalUsers).toBe(10));
     const req = httpMock.expectOne('/api/v1/admin/dashboard');
-    req.flush({ totalUsers: 10, verifiedUsers: 8, unverifiedUsers: 2, pendingReports: 0 });
+    req.flush({ totalUsers: 10, verifiedUsers: 8, unverifiedUsers: 2, pendingReports: 0, newFeedback: 0 });
   });
 
   it('getUsers should GET /api/v1/admin/users', () => {
@@ -32,6 +32,12 @@ describe('AdminService', () => {
     });
     const req = httpMock.expectOne('/api/v1/admin/users?page=0&size=50');
     req.flush({ users: [{ id: '1' }, { id: '2' }], total: 2, page: 0, size: 50 });
+  });
+
+  it('getUsers should GET /api/v1/admin/users with search', () => {
+    service.getUsers(0, 50, '9794c247').subscribe(u => expect(u.users.length).toBe(1));
+    const req = httpMock.expectOne('/api/v1/admin/users?page=0&size=50&search=9794c247');
+    req.flush({ users: [{ id: '9794c247-6d72-4769-ab1a-a23939f15ede' }], total: 1, page: 0, size: 50 });
   });
 
   it('banUser should POST', () => {
@@ -122,10 +128,13 @@ describe('AdminService', () => {
     req.flush({ success: true });
   });
 
-  it('resetPassword should POST and return newPassword', () => {
-    service.resetPassword('5').subscribe(r => expect(r.newPassword).toBe('ABC123'));
+  it('resetPassword should POST and return success', () => {
+    service.resetPassword('5').subscribe(r => {
+      expect(r.success).toBe(true);
+      expect(r.userId).toBe('5');
+    });
     const req = httpMock.expectOne('/api/v1/admin/users/5/reset-password');
     expect(req.request.method).toBe('POST');
-    req.flush({ success: true, userId: '5', newPassword: 'ABC123' });
+    req.flush({ success: true, userId: '5' });
   });
 });

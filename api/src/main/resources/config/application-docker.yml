@@ -32,12 +32,12 @@ s3:
   region: us-east-1
 
 app:
-  base-url: http://localhost:4200
-  frontend-url: http://localhost:4200
+  base-url: http://localhost:2399
+  frontend-url: http://localhost:2399
   cors:
     allowed-origins:
-      - http://localhost:4200
-      - http://127.0.0.1:4200
+      - http://localhost:2399
+      - http://127.0.0.1:2399
   mail:
     from: noreply@bioritmic.ru
     from-name: Bioritmic

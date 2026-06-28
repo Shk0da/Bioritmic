@@ -13,6 +13,10 @@
     <include file="v1/0025-admin-performance-indexes.xml" relativeToChangelogFile="true"/>
     <include file="v1/0026-security-hardening.xml" relativeToChangelogFile="true"/>
     <include file="v1/0027-verify-admin-users.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0028-drop-swipe-history.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0029-create-user-feedback.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0030-drop-interests-prompts.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0031-create-story-reactions.xml" relativeToChangelogFile="true"/>
     <!-- -->
 
     <!--  Seeding  -->

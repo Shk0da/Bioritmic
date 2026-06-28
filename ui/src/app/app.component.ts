@@ -3,12 +3,16 @@ import { RouterOutlet } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { GeolocationService } from './core/services/geolocation.service';
 import { AuthService } from './core/services/auth.service';
+import { ModalComponent } from './core/services/modal.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
-  template: '<router-outlet></router-outlet>'
+  imports: [RouterOutlet, ModalComponent],
+  template: `
+    <router-outlet></router-outlet>
+    <app-modal></app-modal>
+  `
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'Bioritmic';

@@ -12,7 +12,7 @@ async function run() {
   const page = await ctx.newPage();
 
   // Set localStorage before navigating
-  await page.goto('http://localhost:4200/', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/', { waitUntil: 'load', timeout: 15000 });
   await page.evaluate(() => {
     localStorage.setItem('access_token', 'fake-token');
     localStorage.setItem('refresh_token', 'fake-refresh');
@@ -26,7 +26,7 @@ async function run() {
 
   // LIGHT MODE
   // Go to profile
-  await page.goto('http://localhost:4200/profile', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/profile', { waitUntil: 'load', timeout: 15000 });
   await page.waitForTimeout(2000);
   console.log('URL:', page.url());
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '30-profile-light.png'), fullPage: true });
@@ -40,31 +40,31 @@ async function run() {
   console.log('✓ 31-header-light');
 
   // Swipe
-  await page.goto('http://localhost:4200/swipe', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/swipe', { waitUntil: 'load', timeout: 15000 });
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '32-swipe-light.png'), fullPage: true });
   console.log('✓ 32-swipe-light');
 
   // Settings
-  await page.goto('http://localhost:4200/settings', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/settings', { waitUntil: 'load', timeout: 15000 });
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '33-settings-light.png'), fullPage: true });
   console.log('✓ 33-settings-light');
 
   // Bookmarks
-  await page.goto('http://localhost:4200/bookmarks', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/bookmarks', { waitUntil: 'load', timeout: 15000 });
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '34-bookmarks-light.png'), fullPage: true });
   console.log('✓ 34-bookmarks-light');
 
   // MAILBOX
-  await page.goto('http://localhost:4200/mailbox', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/mailbox', { waitUntil: 'load', timeout: 15000 });
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '35-mailbox-light.png'), fullPage: true });
   console.log('✓ 35-mailbox-light');
 
   // ADMIN
-  await page.goto('http://localhost:4200/admin', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/admin', { waitUntil: 'load', timeout: 15000 });
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '36-admin-light.png'), fullPage: true });
   console.log('✓ 36-admin-light');
@@ -76,7 +76,7 @@ async function run() {
   });
 
   // Profile dark
-  await page.goto('http://localhost:4200/profile', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/profile', { waitUntil: 'load', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '37-profile-dark.png'), fullPage: true });
@@ -90,35 +90,35 @@ async function run() {
   console.log('✓ 38-header-dark');
 
   // Swipe dark
-  await page.goto('http://localhost:4200/swipe', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/swipe', { waitUntil: 'load', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '39-swipe-dark.png'), fullPage: true });
   console.log('✓ 39-swipe-dark');
 
   // Settings dark
-  await page.goto('http://localhost:4200/settings', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/settings', { waitUntil: 'load', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '40-settings-dark.png'), fullPage: true });
   console.log('✓ 40-settings-dark');
 
   // Bookmarks dark
-  await page.goto('http://localhost:4200/bookmarks', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/bookmarks', { waitUntil: 'load', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '41-bookmarks-dark.png'), fullPage: true });
   console.log('✓ 41-bookmarks-dark');
 
   // Mailbox dark
-  await page.goto('http://localhost:4200/mailbox', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/mailbox', { waitUntil: 'load', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '42-mailbox-dark.png'), fullPage: true });
   console.log('✓ 42-mailbox-dark');
 
   // Admin dark
-  await page.goto('http://localhost:4200/admin', { waitUntil: 'load', timeout: 15000 });
+  await page.goto('http://localhost:2399/admin', { waitUntil: 'load', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(2000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '43-admin-dark.png'), fullPage: true });
@@ -133,7 +133,7 @@ async function run() {
   });
   const pM = await ctxM.newPage();
 
-  await pM.goto('http://localhost:4200/', { waitUntil: 'load', timeout: 15000 });
+  await pM.goto('http://localhost:2399/', { waitUntil: 'load', timeout: 15000 });
   await pM.evaluate(() => {
     localStorage.setItem('access_token', 'fake-token');
     localStorage.setItem('current_user', JSON.stringify({
@@ -141,7 +141,7 @@ async function run() {
     }));
   });
 
-  await pM.goto('http://localhost:4200/swipe', { waitUntil: 'load', timeout: 15000 });
+  await pM.goto('http://localhost:2399/swipe', { waitUntil: 'load', timeout: 15000 });
   await pM.waitForTimeout(2000);
   await pM.screenshot({ path: path.join(SCREENSHOT_DIR, '44-swipe-mobile-light.png'), fullPage: true });
   console.log('✓ 44-swipe-mobile-light');
@@ -150,7 +150,7 @@ async function run() {
     document.documentElement.setAttribute('data-theme', 'dark');
     localStorage.setItem('bioritmic_theme', 'dark');
   });
-  await pM.goto('http://localhost:4200/swipe', { waitUntil: 'load', timeout: 15000 });
+  await pM.goto('http://localhost:2399/swipe', { waitUntil: 'load', timeout: 15000 });
   await pM.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await pM.waitForTimeout(2000);
   await pM.screenshot({ path: path.join(SCREENSHOT_DIR, '45-swipe-mobile-dark.png'), fullPage: true });

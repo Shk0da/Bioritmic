@@ -108,12 +108,12 @@ export interface UserInfo {
   lon?: number;
   name?: string;
   bio?: string;
-  interests?: Interest[];
   isOnline?: boolean;
   lastActiveAt?: string;
   isVerified?: boolean;
   isPro?: boolean;
   role?: string;
+  isBanned?: boolean;
 }
 
 export interface PageableRequest {
@@ -149,12 +149,4 @@ export interface SwipeCard {
   photos?: UserPhoto[];
   isLiked?: boolean;
   isSuperLiked?: boolean;
-  promptAnswers?: Array<{ promptText?: string; answer?: string }>;
-}
-
-export interface Interest {
-  id?: number;
-  name?: string;
-  category?: string;
-  icon?: string;
 }

@@ -56,7 +56,7 @@ class PhotoS3ControllerTest : ApiApplicationTests() {
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.IMAGE_JPEG)
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().isNotFound
     }
 
     @Test
@@ -65,6 +65,15 @@ class PhotoS3ControllerTest : ApiApplicationTests() {
             .uri("$API_WITH_VERSION_1/photos/s3/invalid-key.jpg")
             .accept(MediaType.IMAGE_JPEG)
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().isNotFound
+    }
+
+    @Test
+    fun `should handle nested S3 key path for feedback attachments`() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/photos/s3/feedback/1/test-attachment.jpg")
+            .accept(MediaType.IMAGE_JPEG)
+            .exchange()
+            .expectStatus().isNotFound
     }
 }

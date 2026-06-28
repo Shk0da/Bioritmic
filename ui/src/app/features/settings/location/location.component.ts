@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { UserService } from '../../../core/services/user.service';
+import { GeolocationService } from '../../../core/services/geolocation.service';
 import { GisData } from '../../../core/models/user.model';
 
 @Component({
@@ -102,7 +103,10 @@ export class LocationComponent implements OnInit {
   loading = true;
   error = false;
 
-  constructor(private userService: UserService) {}
+  constructor(
+    private userService: UserService,
+    private geolocationService: GeolocationService
+  ) {}
 
   ngOnInit(): void {
     this.loadLocation();
@@ -111,8 +115,14 @@ export class LocationComponent implements OnInit {
   private loadLocation(): void {
     this.userService.getGisData().subscribe({
       next: (data) => {
-        this.gisData = data;
-        this.formData = { ...data };
+        if (data) {
+          this.gisData = data;
+          this.formData = { ...data };
+          this.error = false;
+        } else {
+          this.gisData = null;
+          this.error = true;
+        }
         this.loading = false;
       },
       error: () => {
@@ -123,22 +133,16 @@ export class LocationComponent implements OnInit {
   }
 
   getCurrentLocation(): void {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          this.formData = {
-            lat: position.coords.latitude,
-            lon: position.coords.longitude
-          };
-        },
-        (error) => {
-          alert('Не удалось получить местоположение. Введите координаты вручную.');
-          console.error('Geolocation error:', error);
-        }
-      );
-    } else {
-      alert('Ваш браузер не поддерживает геолокацию.');
-    }
+    void this.geolocationService.getCurrentPosition()
+      .then((coords) => {
+        this.formData = {
+          lat: coords.latitude,
+          lon: coords.longitude
+        };
+      })
+      .catch((error: Error) => {
+        alert(error.message);
+      });
   }
 
   saveLocation(): void {
@@ -151,6 +155,7 @@ export class LocationComponent implements OnInit {
       next: (data) => {
         this.gisData = data;
         this.error = false;
+        this.geolocationService.startTracking();
         alert('Местоположение сохранено!');
       },
       error: (error) => {
@@ -161,12 +166,22 @@ export class LocationComponent implements OnInit {
   }
 
   deleteLocation(): void {
-    if (confirm('Вы уверены, что хотите удалить своё местоположение?')) {
-      // API не поддерживает удаление, просто очищаем локально
-      this.gisData = null;
-      this.formData = {};
-      alert('Местоположение удалено.');
+    if (!confirm('Вы уверены, что хотите удалить своё местоположение?')) {
+      return;
     }
+    this.userService.deleteGisData().subscribe({
+      next: () => {
+        this.geolocationService.stopTracking();
+        this.gisData = null;
+        this.formData = {};
+        this.error = true;
+        alert('Местоположение удалено.');
+      },
+      error: (error) => {
+        console.error('Failed to delete location', error);
+        alert('Ошибка удаления местоположения.');
+      }
+    });
   }
 
   getTimestamp(): string {

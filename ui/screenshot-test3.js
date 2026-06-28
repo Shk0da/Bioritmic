@@ -17,7 +17,7 @@ async function run() {
   const page = await ctx.newPage();
 
   // Navigate to login and inject fake auth state
-  await page.goto('http://localhost:4200/auth/login', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/auth/login', { waitUntil: 'networkidle', timeout: 15000 });
   await page.waitForTimeout(500);
 
   // Inject cookies to simulate logged-in state
@@ -41,7 +41,7 @@ async function run() {
   });
 
   // Try to go to profile
-  await page.goto('http://localhost:4200/swipe', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/swipe', { waitUntil: 'networkidle', timeout: 15000 });
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '20-header-check.png'), fullPage: true });
   console.log('✓ 20-header-check');
@@ -62,7 +62,7 @@ async function run() {
     localStorage.setItem('bioritmic_theme', 'dark');
   });
   await page.waitForTimeout(500);
-  await page.goto('http://localhost:4200/swipe', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/swipe', { waitUntil: 'networkidle', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '22-swipe-dark-with-header.png'), fullPage: true });
@@ -75,14 +75,14 @@ async function run() {
   console.log('✓ 23-header-only-dark');
 
   // Also check profile dark
-  await page.goto('http://localhost:4200/profile', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/profile', { waitUntil: 'networkidle', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '24-profile-dark-full.png'), fullPage: true });
   console.log('✓ 24-profile-dark-full');
 
   // Settings dark
-  await page.goto('http://localhost:4200/settings', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/settings', { waitUntil: 'networkidle', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '25-settings-dark-full.png'), fullPage: true });

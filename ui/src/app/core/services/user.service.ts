@@ -1,21 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { User, UserInfo, GisData, PageableRequest, UserSettings, UserPhoto, Interest } from '../models/user.model';
-import { AuthService } from './auth.service';
-
-export interface Prompt {
-  id?: number;
-  text?: string;
-  category?: string;
-}
-
-export interface PromptAnswer {
-  promptId?: number;
-  answer?: string;
-  promptText?: string;
-}
+import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
+import { Observable, of, throwError } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+import { User, UserInfo, GisData, PageableRequest, UserSettings, UserPhoto } from '../models/user.model';
 
 export interface BiorhythmCycle {
   name: string;
@@ -45,8 +32,7 @@ export class UserService {
   private readonly apiUrl = '/api/v1/user';
 
   constructor(
-    private http: HttpClient,
-    private authService: AuthService
+    private http: HttpClient
   ) {}
 
   getCurrentUser(): Observable<UserInfo> {
@@ -92,12 +78,21 @@ export class UserService {
     return this.http.get<{ count: number }>(`${this.apiUrl}/blocked/count`);
   }
 
-  getGisData(): Observable<GisData> {
-    return this.http.get<GisData>(`${this.apiUrl}/me/gis`);
+  getGisData(): Observable<GisData | null> {
+    return this.http.get<GisData>(`${this.apiUrl}/me/gis`, { observe: 'response' }).pipe(
+      map((response) => (response.status === 204 ? null : response.body)),
+      catchError((error: HttpErrorResponse) =>
+        error.status === 404 || error.status === 204 ? of(null) : throwError(() => error)
+      )
+    );
   }
 
   saveGisData(gisData: GisData): Observable<GisData> {
     return this.http.post<GisData>(`${this.apiUrl}/me/gis`, gisData);
+  }
+
+  deleteGisData(): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/me/gis`);
   }
 
   getPhoto(userId?: string): Observable<Uint8Array> {
@@ -109,6 +104,18 @@ export class UserService {
 
   getUserPhotos(userId: string): Observable<UserPhoto[]> {
     return this.http.get<UserPhoto[]>(`${this.apiUrl}/${userId}/photos`);
+  }
+
+  getProfilePhotoUrl(userId: string, cacheBuster?: number): string {
+    const version = cacheBuster ?? Date.now();
+    return `${this.apiUrl}/${userId}/photo?v=${version}`;
+  }
+
+  resolveProfilePhotoUrl(userId: string, cacheBuster?: number): Observable<string | null> {
+    return this.getUserPhotos(userId).pipe(
+      map((photos) => (photos.length > 0 ? this.getProfilePhotoUrl(userId, cacheBuster) : null)),
+      catchError(() => of(null))
+    );
   }
 
   getPhotoFromS3(s3Key: string): Observable<Uint8Array> {
@@ -133,36 +140,6 @@ export class UserService {
 
   saveUserSettings(settings: UserSettings): Observable<UserSettings> {
     return this.http.post<UserSettings>(`${this.apiUrl}/settings`, settings);
-  }
-
-  getAllInterests(): Observable<Interest[]> {
-    return this.http.get<Interest[]>(`${this.apiUrl}/interests`);
-  }
-
-  getUserInterests(): Observable<Interest[]> {
-    return this.http.get<Interest[]>(`${this.apiUrl}/me/interests`);
-  }
-
-  setUserInterests(interestIds: number[]): Observable<Interest[]> {
-    return this.http.put<Interest[]>(`${this.apiUrl}/me/interests`, interestIds);
-  }
-
-  getRandomPrompts(count: number = 3): Observable<Prompt[]> {
-    return this.http.get<Prompt[]>(`/api/v1/prompts/random?count=${count}`);
-  }
-
-  getUserPromptAnswers(): Observable<PromptAnswer[]> {
-    return this.http.get<PromptAnswer[]>('/api/v1/prompts/answers');
-  }
-
-  savePromptAnswer(promptId: number, answer: string): Observable<PromptAnswer> {
-    return this.http.post<PromptAnswer>('/api/v1/prompts/answers', { prompt_id: promptId, answer });
-  }
-
-  requestVerification(file: File): Observable<{ success: boolean; status: string }> {
-    const formData = new FormData();
-    formData.append('photo', file);
-    return this.http.post<{ success: boolean; status: string }>(`${this.apiUrl}/me/verify`, formData);
   }
 
   getBiorhythmDetail(userId: string): Observable<BiorhythmDetail> {

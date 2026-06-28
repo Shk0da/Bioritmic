@@ -29,7 +29,7 @@ USER spring:spring
 
 COPY --from=build /app/api/build/libs/*.jar app.jar
 
-EXPOSE 8080 8081
+EXPOSE 6045 6046
 
 ENTRYPOINT ["java", \
     "--add-opens", "java.base/java.lang=ALL-UNNAMED", \

@@ -33,14 +33,16 @@ class Auth : Serializable {
     companion object {
 
         private const val serialVersionUID = 1L
-        const val lifetimeInMinutes = 60L
+        const val SESSION_LIFETIME_DAYS = 30L
 
         fun createFrom(user: User): Auth {
             return with(Auth()) {
                 userId = user.id
                 accessToken = UUID.randomUUID().toString()
                 refreshToken = UUID.randomUUID().toString()
-                expireTime = Timestamp(LocalDateTime.now().plusHours(1).toInstant(defaultZone).toEpochMilli())
+                expireTime = Timestamp(
+                    LocalDateTime.now().plusDays(SESSION_LIFETIME_DAYS).toInstant(defaultZone).toEpochMilli()
+                )
                 this
             }
         }
@@ -48,7 +50,9 @@ class Auth : Serializable {
 
     fun refresh(): Auth {
         accessToken = UUID.randomUUID().toString()
-        expireTime = Timestamp(LocalDateTime.now().plusMinutes(lifetimeInMinutes).toInstant(defaultZone).toEpochMilli())
+        expireTime = Timestamp(
+            LocalDateTime.now().plusDays(SESSION_LIFETIME_DAYS).toInstant(defaultZone).toEpochMilli()
+        )
         return this
     }
 

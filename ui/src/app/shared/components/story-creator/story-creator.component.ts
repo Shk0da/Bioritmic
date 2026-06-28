@@ -246,26 +246,18 @@ export class StoryCreatorComponent implements OnDestroy {
     if (!this.selectedFile) return;
 
     this.uploading = true;
-
-    // For now, we send the file as base64 data URL
-    // In production, you'd upload to S3 first and send the URL
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      this.storyService.createStory(dataUrl, this.caption || undefined)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.uploading = false;
-            this.storyCreated.emit();
-            this.close();
-          },
-          error: () => {
-            this.uploading = false;
-          }
-        });
-    };
-    reader.readAsDataURL(this.selectedFile);
+    this.storyService.createStory(this.selectedFile, this.caption || undefined)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.uploading = false;
+          this.storyCreated.emit();
+          this.close();
+        },
+        error: () => {
+          this.uploading = false;
+        }
+      });
   }
 
   close(): void {

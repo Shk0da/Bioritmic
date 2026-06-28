@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AuthorizationModel } from '../../../core/models/user.model';
 
@@ -51,6 +51,12 @@ import { AuthorizationModel } from '../../../core/models/user.model';
                 required
                 placeholder="Введите пароль">
             </div>
+
+            @if (success) {
+              <div class="success-toast">
+                <i class="bi bi-check-circle me-2"></i>{{ success }}
+              </div>
+            }
 
             @if (error) {
               <div class="error-toast">
@@ -132,6 +138,19 @@ import { AuthorizationModel } from '../../../core/models/user.model';
       animation: slideIn 0.3s ease;
     }
 
+    .success-toast {
+      background: rgba(34, 197, 94, 0.1);
+      color: #16a34a;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      animation: slideIn 0.3s ease;
+    }
+
     @keyframes slideIn {
       from { opacity: 0; transform: translateY(-8px); }
       to { opacity: 1; transform: translateY(0); }
@@ -175,18 +194,32 @@ import { AuthorizationModel } from '../../../core/models/user.model';
     }
   `]
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   credentials: AuthorizationModel = {
     email: '',
     password: ''
   };
   error = '';
+  success = '';
   loading = false;
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
+
+  ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.get('reset') === 'success') {
+      this.success = 'Пароль успешно изменён. Войдите с новым паролем.';
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { reset: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true
+      });
+    }
+  }
 
   onSubmit(): void {
     this.error = '';

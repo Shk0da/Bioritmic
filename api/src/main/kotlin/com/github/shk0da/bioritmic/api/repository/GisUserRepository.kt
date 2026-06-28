@@ -48,6 +48,19 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
                 ORDER BY distance
             ) AS gis
             WHERE gis.user_id <> :userId AND gis.distance <= :distance AND usr.id = gis.user_id AND usr.is_verified = true
+              AND EXISTS (
+                SELECT 1 FROM user_photos up
+                WHERE up.user_id = usr.id
+                  AND (up.s3_key IS NOT NULL OR up.photo_bytes IS NOT NULL)
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_roles ur
+                WHERE ur.user_id = usr.id AND ur.role IN ('ROLE_BANNED', 'BANNED')
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM bans b
+                WHERE b.user_id = usr.id AND (b.permanent = true OR b.banned_until > NOW())
+              )
         """.trimIndent()
 
         val params = mutableMapOf<String, Any>(

@@ -1,40 +1,46 @@
-import { Component, EventEmitter, OnInit, OnDestroy, Output, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
 import { StoryService, Story } from '../../../core/services/story.service';
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { ModalService } from '../../../core/services/modal.service';
+import { StoryCreatorComponent } from '../story-creator/story-creator.component';
+import { StoryViewerComponent } from '../story-viewer/story-viewer.component';
 
 @Component({
   selector: 'app-stories-bar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, StoryCreatorComponent, StoryViewerComponent],
   template: `
     <div class="stories-bar">
       <div class="stories-scroll">
-        <!-- Current user story creator -->
-        <div class="story-item my-story" (click)="openCreator()">
+        <div
+          class="story-item my-story"
+          [class.my-story-disabled]="!canCreateStory"
+          (click)="openCreator()"
+        >
           <div class="story-avatar-wrapper">
             <div class="story-avatar" [style.backgroundImage]="currentUserPhoto ? 'url(' + currentUserPhoto + ')' : ''">
               @if (!currentUserPhoto) {
                 <i class="bi bi-person-fill"></i>
               }
             </div>
-            <div class="add-story-btn">
-              <i class="bi bi-plus-lg"></i>
-            </div>
+            @if (canCreateStory) {
+              <div class="add-story-btn">
+                <i class="bi bi-plus-lg"></i>
+              </div>
+            }
           </div>
           <span class="story-name">Ваша история</span>
         </div>
 
-        <!-- Other users' stories -->
         @for (group of storyGroups; track group.userId) {
-          <div class="story-item" (click)="openViewer(group)">
+          <div class="story-item" [class.viewed]="group.viewedByCurrentUser" (click)="openViewer(group)">
             <div class="story-avatar-wrapper" [class.viewed]="group.viewedByCurrentUser">
               <div class="story-avatar" [style.backgroundImage]="group.userPhoto ? 'url(' + group.userPhoto + ')' : ''">
                 @if (!group.userPhoto) {
-                  <span class="avatar-initial">{{ group.userName?.charAt(0) || '?' }}</span>
+                  <span class="avatar-initial">{{ group.userName.charAt(0) || '?' }}</span>
                 }
               </div>
             </div>
@@ -43,6 +49,21 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
         }
       </div>
     </div>
+
+    <app-story-creator
+      [visible]="creatorVisible"
+      (closed)="creatorVisible = false"
+      (storyCreated)="onStoryCreated()">
+    </app-story-creator>
+
+    <app-story-viewer
+      [visible]="viewerVisible"
+      [stories]="viewerStories"
+      [userId]="viewerUserId"
+      [userName]="viewerUserName"
+      [userPhoto]="viewerUserPhoto"
+      (closed)="onViewerClosed()">
+    </app-story-viewer>
   `,
   styles: [`
     .stories-bar {
@@ -82,7 +103,17 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
     }
 
     .story-avatar-wrapper.viewed {
-      background: var(--text-muted, #ccc);
+      background: #bdbdbd;
+    }
+
+    .story-avatar-wrapper.viewed .story-avatar {
+      opacity: 0.5;
+      filter: grayscale(40%);
+    }
+
+    .story-item.viewed .story-name {
+      opacity: 0.55;
+      color: var(--text-muted, #999);
     }
 
     .story-avatar {
@@ -126,6 +157,15 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
       color: white;
     }
 
+    .my-story-disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .my-story-disabled .story-avatar-wrapper {
+      background: var(--text-muted, #ccc);
+    }
+
     .story-name {
       font-size: 0.7rem;
       color: var(--text-secondary, #666);
@@ -138,11 +178,14 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
   `]
 })
 export class StoriesBarComponent implements OnInit, OnDestroy {
-  @Output() openViewerEvent = new EventEmitter<StoryGroup>();
-  @Output() openCreatorEvent = new EventEmitter<void>();
-
   storyGroups: StoryGroup[] = [];
   currentUserPhoto: string | null = null;
+  creatorVisible = false;
+  viewerVisible = false;
+  viewerStories: Story[] = [];
+  viewerUserId = '';
+  viewerUserName = '';
+  viewerUserPhoto: string | null = null;
 
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
@@ -151,9 +194,13 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
     private storyService: StoryService,
     private userService: UserService,
     private authService: AuthService,
-    private sanitizer: DomSanitizer
+    private modalService: ModalService
   ) {
     this.destroyRef.onDestroy(() => this.destroy$.next());
+  }
+
+  get canCreateStory(): boolean {
+    return this.authService.getCurrentUser()?.isVerified !== false;
   }
 
   ngOnInit(): void {
@@ -167,18 +214,51 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
   }
 
   openCreator(): void {
-    this.openCreatorEvent.emit();
+    if (!this.canCreateStory) {
+      void this.modalService.alert(
+        'Публикация историй доступна только верифицированным пользователям.'
+      );
+      return;
+    }
+    this.creatorVisible = true;
   }
 
   openViewer(group: StoryGroup): void {
-    this.openViewerEvent.emit(group);
+    if (!group.stories.length) {
+      return;
+    }
+    this.viewerStories = [...group.stories];
+    this.viewerUserId = group.userId;
+    this.viewerUserName = group.userName;
+    this.viewerUserPhoto = group.userPhoto;
+    this.viewerVisible = true;
+  }
+
+  onViewerClosed(): void {
+    this.viewerVisible = false;
+    this.viewerStories = [];
+    this.viewerUserId = '';
+    this.viewerUserName = '';
+    this.viewerUserPhoto = null;
+    this.loadStories();
+  }
+
+  onStoryCreated(): void {
+    this.creatorVisible = false;
+    this.loadStories();
+    this.loadCurrentUserPhoto();
   }
 
   private loadCurrentUserPhoto(): void {
-    this.userService.getPhoto().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (bytes: Uint8Array) => {
-        UserService.revokePhotoUrl(this.currentUserPhoto);
-        this.currentUserPhoto = UserService.createPhotoUrl(bytes);
+    const userId = this.authService.getCurrentUser()?.id;
+    if (!userId) {
+      this.currentUserPhoto = null;
+      return;
+    }
+
+    this.userService.resolveProfilePhotoUrl(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (url) => {
+        this.currentUserPhoto = url;
       },
       error: () => {
         this.currentUserPhoto = null;
@@ -190,7 +270,7 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
     this.storyService.getFeed().pipe(takeUntil(this.destroy$)).subscribe({
       next: (stories: Story[]) => {
         this.groupStoriesByUser(stories);
-        this.loadUserPhotos();
+        this.loadUserProfiles();
       },
       error: () => {
         this.storyGroups = [];
@@ -206,40 +286,42 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
         grouped.set(story.userId, {
           userId: story.userId,
           stories: [],
-          viewedByCurrentUser: story.viewedByCurrentUser,
+          viewedByCurrentUser: false,
           userName: '',
           userPhoto: null
         });
       }
-      const group = grouped.get(story.userId)!;
-      group.stories.push(story);
-      if (story.viewedByCurrentUser) {
-        group.viewedByCurrentUser = true;
-      }
+      grouped.get(story.userId)!.stories.push(story);
     }
 
-    this.storyGroups = Array.from(grouped.values());
+    this.storyGroups = Array.from(grouped.values()).map((group) => ({
+      ...group,
+      viewedByCurrentUser: group.stories.length > 0 &&
+        group.stories.every((story) => story.viewedByCurrentUser)
+    }));
   }
 
-  private loadUserPhotos(): void {
+  private loadUserProfiles(): void {
     for (const group of this.storyGroups) {
       this.userService.getUserById(group.userId).pipe(takeUntil(this.destroy$)).subscribe({
         next: (user) => {
           group.userName = user.name || '';
         },
-        error: () => {}
+        error: () => {
+          group.userName = '';
+        }
       });
 
-      this.userService.getPhoto(group.userId).pipe(takeUntil(this.destroy$)).subscribe({
-        next: (bytes: Uint8Array) => {
-          UserService.revokePhotoUrl(group.userPhoto);
-          group.userPhoto = UserService.createPhotoUrl(bytes);
+      this.userService.resolveProfilePhotoUrl(group.userId).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (url) => {
+          group.userPhoto = url;
         },
-        error: () => {}
+        error: () => {
+          group.userPhoto = null;
+        }
       });
     }
   }
-
 }
 
 export interface StoryGroup {

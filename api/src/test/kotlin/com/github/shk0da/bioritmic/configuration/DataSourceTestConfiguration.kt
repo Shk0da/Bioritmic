@@ -91,9 +91,21 @@ class DataSourceTestConfiguration(
     @Bean(destroyMethod = "stop")
     fun postgreSQLContainer(): PostgreSQLContainer<*> {
         val postgreSQLContainer: PostgreSQLContainer<*> = PostgreSQLContainer<Nothing>("postgres:12-alpine")
-        postgreSQLContainer.withDatabaseName(environment.getProperty("spring.datasource.database"))
-        postgreSQLContainer.withUsername(environment.getProperty("spring.datasource.username"))
-        postgreSQLContainer.withPassword(environment.getProperty("spring.datasource.password"))
+        postgreSQLContainer.withDatabaseName(
+            environment.getProperty("app.datasource.database")
+                ?: environment.getProperty("spring.datasource.master.database")
+                ?: "bioritmic"
+        )
+        postgreSQLContainer.withUsername(
+            environment.getProperty("app.datasource.username")
+                ?: environment.getProperty("spring.datasource.master.username")
+                ?: "postgres"
+        )
+        postgreSQLContainer.withPassword(
+            environment.getProperty("app.datasource.password")
+                ?: environment.getProperty("spring.datasource.master.password")
+                ?: "postgres"
+        )
         postgreSQLContainer.start()
         log.debug("PostgreSQLContainer jdbcUrl: {}", postgreSQLContainer.jdbcUrl)
         log.debug("PostgreSQLContainer exposedPorts: {}", postgreSQLContainer.exposedPorts)

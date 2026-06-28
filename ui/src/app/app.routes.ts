@@ -56,7 +56,16 @@ export const routes: Routes = [
     loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
   },
   {
+    path: 'subscription',
+    canActivate: [authGuard],
+    loadChildren: () => import('./features/subscription/subscription.routes').then(m => m.SUBSCRIPTION_ROUTES)
+  },
+  {
+    path: 'error',
+    loadChildren: () => import('./features/error/error.routes').then(m => m.ERROR_ROUTES)
+  },
+  {
     path: '**',
-    redirectTo: 'swipe'
+    redirectTo: 'error/404'
   }
 ];

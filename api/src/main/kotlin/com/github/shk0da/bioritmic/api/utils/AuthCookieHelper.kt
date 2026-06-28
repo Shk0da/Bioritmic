@@ -1,6 +1,7 @@
 package com.github.shk0da.bioritmic.api.utils
 
 import com.github.shk0da.bioritmic.api.configuration.AppSecurityProperties
+import com.github.shk0da.bioritmic.api.domain.Auth
 import org.springframework.http.ResponseCookie
 import java.time.Duration
 
@@ -49,7 +50,7 @@ object AuthCookieHelper {
             .build()
     }
 
-    fun cookieMaxAgeSeconds(): Long = 7L * 24 * 60 * 60
+    fun cookieMaxAgeSeconds(): Long = Auth.SESSION_LIFETIME_DAYS * 24 * 60 * 60
 
     fun isSecureCookies(appSecurityProperties: AppSecurityProperties): Boolean {
         return appSecurityProperties.security.cookies.secure

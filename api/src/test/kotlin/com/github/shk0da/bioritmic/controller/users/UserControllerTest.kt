@@ -99,13 +99,53 @@ class UserControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun updateMeBioTest() {
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("bio" to "Тестовое описание профиля")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.bio").isEqualTo("Тестовое описание профиля")
+    }
+
+    @Test
     fun getMeGisTest() {
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/user/me/gis")
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isNotFound
+            .expectStatus().isNoContent
+    }
+
+    @Test
+    fun deleteMeGisTest() {
+        val gis = mapOf("lat" to 55.7558, "lon" to 37.6173)
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/user/me/gis")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(gis))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.delete()
+            .uri("$API_WITH_VERSION_1/user/me/gis")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .exchange()
+            .expectStatus().isNoContent
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me/gis")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isNoContent
     }
 
     @Test
@@ -116,6 +156,45 @@ class UserControllerTest : ApiApplicationTests() {
             .accept(MediaType.IMAGE_JPEG)
             .exchange()
             .expectStatus().isOk
+    }
+
+    @Test
+    fun getUserByIdReturnsBannedFlagTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val email = "banned_profile_$suffix@gmail.com"
+        var targetId = ""
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf(
+                "name" to "Banned User",
+                "email" to email,
+                "password" to "Test12345",
+                "birthday" to "1990-01-01"
+            )))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+            .expectBody()
+            .jsonPath("$.id")
+            .value { id: Any -> targetId = id as String }
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$targetId/ban")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/$targetId")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.isBanned").isEqualTo(true)
     }
 
     @Test
@@ -136,5 +215,30 @@ class UserControllerTest : ApiApplicationTests() {
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk
+    }
+
+    @Test
+    fun deleteMeTest() {
+        webTestClient.delete()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isUnauthorized
+    }
+
+    @Test
+    fun deleteMePhotoTest() {
+        webTestClient.delete()
+            .uri("$API_WITH_VERSION_1/user/me/photo")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .exchange()
+            .expectStatus().isNoContent
     }
 }

@@ -46,7 +46,7 @@ async function measurePageLoad(driver, path, timeoutMs = 15000) {
 
 async function makeUserAdmin(token) {
   const resp = await fetch(
-    `${process.env.API_URL || 'http://localhost:8080'}/api/v1/admin/users`,
+    `${process.env.API_URL || 'http://localhost:6045'}/api/v1/admin/users`,
     {
       method: 'GET',
       headers: {
@@ -60,7 +60,7 @@ async function makeUserAdmin(token) {
   const targetUser = users.find((u) => u.email === USER_A.email);
   if (!targetUser || !targetUser.id) return false;
   const roleResp = await fetch(
-    `${process.env.API_URL || 'http://localhost:8080'}/api/v1/admin/users/${targetUser.id}/role`,
+    `${process.env.API_URL || 'http://localhost:6045'}/api/v1/admin/users/${targetUser.id}/role`,
     {
       method: 'POST',
       headers: {

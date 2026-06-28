@@ -16,7 +16,7 @@ async function run() {
   const page = await ctx.newPage();
 
   // Register
-  await page.goto('http://localhost:4200/auth/registration', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/auth/registration', { waitUntil: 'networkidle', timeout: 15000 });
   await page.waitForTimeout(500);
 
   // Fill registration form
@@ -33,7 +33,7 @@ async function run() {
   }
 
   // Navigate to login
-  await page.goto('http://localhost:4200/auth/login', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/auth/login', { waitUntil: 'networkidle', timeout: 15000 });
   await page.waitForTimeout(500);
 
   // Fill login form
@@ -55,25 +55,25 @@ async function run() {
   console.log('✓ 07-after-login-light');
 
   // Navigate to profile
-  await page.goto('http://localhost:4200/profile', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/profile', { waitUntil: 'networkidle', timeout: 15000 });
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '08-profile-light.png'), fullPage: true });
   console.log('✓ 08-profile-light');
 
   // Navigate to bookmarks
-  await page.goto('http://localhost:4200/bookmarks', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/bookmarks', { waitUntil: 'networkidle', timeout: 15000 });
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '09-bookmarks-light.png'), fullPage: true });
   console.log('✓ 09-bookmarks-light');
 
   // Navigate to settings
-  await page.goto('http://localhost:4200/settings', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/settings', { waitUntil: 'networkidle', timeout: 15000 });
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '10-settings-light.png'), fullPage: true });
   console.log('✓ 10-settings-light');
 
   // Navigate to swipe
-  await page.goto('http://localhost:4200/swipe', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/swipe', { waitUntil: 'networkidle', timeout: 15000 });
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '11-swipe-light.png'), fullPage: true });
   console.log('✓ 11-swipe-light');
@@ -86,25 +86,25 @@ async function run() {
   await page.waitForTimeout(500);
 
   // Take dark mode screenshots
-  await page.goto('http://localhost:4200/swipe', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/swipe', { waitUntil: 'networkidle', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '12-swipe-dark.png'), fullPage: true });
   console.log('✓ 12-swipe-dark');
 
-  await page.goto('http://localhost:4200/profile', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/profile', { waitUntil: 'networkidle', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '13-profile-dark.png'), fullPage: true });
   console.log('✓ 13-profile-dark');
 
-  await page.goto('http://localhost:4200/settings', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/settings', { waitUntil: 'networkidle', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '14-settings-dark.png'), fullPage: true });
   console.log('✓ 14-settings-dark');
 
-  await page.goto('http://localhost:4200/bookmarks', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto('http://localhost:2399/bookmarks', { waitUntil: 'networkidle', timeout: 15000 });
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, '15-bookmarks-dark.png'), fullPage: true });
@@ -129,7 +129,7 @@ async function run() {
   const pageM = await ctxMobile2.newPage();
 
   // Login again
-  await pageM.goto('http://localhost:4200/auth/login', { waitUntil: 'networkidle', timeout: 15000 });
+  await pageM.goto('http://localhost:2399/auth/login', { waitUntil: 'networkidle', timeout: 15000 });
   await pageM.waitForTimeout(500);
   await pageM.fill('input[name="email"]', 'test@test.com');
   await pageM.fill('input[name="password"]', 'test123');
@@ -139,7 +139,7 @@ async function run() {
     await pageM.waitForTimeout(3000);
   }
 
-  await pageM.goto('http://localhost:4200/swipe', { waitUntil: 'networkidle', timeout: 15000 });
+  await pageM.goto('http://localhost:2399/swipe', { waitUntil: 'networkidle', timeout: 15000 });
   await pageM.waitForTimeout(1000);
   await pageM.screenshot({ path: path.join(SCREENSHOT_DIR, '16-swipe-mobile-light.png'), fullPage: true });
   console.log('✓ 16-swipe-mobile-light');
@@ -148,7 +148,7 @@ async function run() {
     document.documentElement.setAttribute('data-theme', 'dark');
     localStorage.setItem('bioritmic_theme', 'dark');
   });
-  await pageM.goto('http://localhost:4200/swipe', { waitUntil: 'networkidle', timeout: 15000 });
+  await pageM.goto('http://localhost:2399/swipe', { waitUntil: 'networkidle', timeout: 15000 });
   await pageM.waitForTimeout(1000);
   await pageM.screenshot({ path: path.join(SCREENSHOT_DIR, '17-swipe-mobile-dark.png'), fullPage: true });
   console.log('✓ 17-swipe-mobile-dark');

@@ -1,7 +1,9 @@
+const assert = require('assert');
+const { execFileSync } = require('child_process');
 const { Builder, By, until, Key } = require('selenium-webdriver');
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:4200';
-const API_URL = process.env.API_URL || 'http://localhost:8080';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:2399';
+const API_URL = process.env.API_URL || 'http://localhost:6045';
 
 async function createDriver() {
   const driver = await new Builder()
@@ -152,9 +154,310 @@ async function getAuthToken(driver) {
 }
 
 async function getCurrentUserId(driver) {
-  return driver.executeScript(
-    'return parseInt(localStorage.getItem("bioritmic_user_id"));'
+  return driver.executeScript(`
+    try {
+      const raw = localStorage.getItem('current_user');
+      if (!raw) return null;
+      const user = JSON.parse(raw);
+      return user.id || null;
+    } catch (e) {
+      return null;
+    }
+  `);
+}
+
+async function getBodyText(driver) {
+  return driver.findElement(By.css('body')).getText();
+}
+
+async function assertNoRawJsonError(driver) {
+  const bodyText = await getBodyText(driver);
+  assert.ok(
+    !bodyText.includes('{"errors"'),
+    'Страница не должна показывать сырой JSON с ошибками'
   );
+  assert.ok(
+    !bodyText.includes('"errorCode"'),
+    'Страница не должна показывать errorCode в JSON'
+  );
+}
+
+/**
+ * Opens a route and checks URL + optional visible text. Fails if raw API JSON is shown.
+ */
+async function assertRouteAccessible(driver, path, options = {}) {
+  const {
+    expectedUrlIncludes = path,
+    expectedText,
+    forbiddenUrlIncludes = [],
+  } = options;
+
+  await navigateTo(driver, path);
+  const url = await driver.getCurrentUrl();
+  assert.ok(
+    url.includes(expectedUrlIncludes),
+    `Ожидался URL с "${expectedUrlIncludes}", получен: ${url}`
+  );
+  for (const forbidden of forbiddenUrlIncludes) {
+    assert.ok(!url.includes(forbidden), `URL не должен содержать "${forbidden}", получен: ${url}`);
+  }
+  await assertNoRawJsonError(driver);
+  if (expectedText) {
+    const bodyText = await getBodyText(driver);
+    assert.ok(
+      bodyText.includes(expectedText),
+      `На странице "${path}" ожидался текст "${expectedText}"`
+    );
+  }
+}
+
+const SEED_ADMIN = {
+  email: process.env.E2E_ADMIN_EMAIL || 'testuser1@example.com',
+  password: process.env.E2E_ADMIN_PASSWORD || 'Test123456',
+  id: 'a0000000-0000-0000-0000-000000000001',
+};
+
+const SEED_PASSWORDS = [
+  process.env.E2E_ADMIN_PASSWORD,
+  'Test123456',
+  'Test12345',
+].filter(Boolean);
+
+let cachedSeedAdminToken = null;
+let cachedSeedAdminCredentials = null;
+
+const SEED_PASSWORD_HASH = '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK';
+
+function resetSeedAdminLockout() {
+  const email = SEED_ADMIN.email.replace(/'/g, "''");
+  const hash = SEED_PASSWORD_HASH.replace(/'/g, "''");
+  const sql = `UPDATE users SET password = '${hash}', locked_until = NULL, failed_login_attempts = 0, is_verified = true WHERE email = '${email}';`;
+  const attempts = [
+    {
+      command: 'docker',
+      args: ['exec', 'bioritmic-postgres', 'psql', '-U', 'postgres', '-d', 'bioritmic', '-c', sql],
+    },
+    {
+      command: 'psql',
+      args: [
+        '-h', 'localhost',
+        '-p', String(process.env.POSTGRES_PORT || 5433),
+        '-U', 'postgres',
+        '-d', 'bioritmic',
+        '-c', sql,
+      ],
+      env: { ...process.env, PGPASSWORD: 'postgres' },
+    },
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      execFileSync(attempt.command, attempt.args, {
+        stdio: 'pipe',
+        timeout: 10000,
+        env: attempt.env || process.env,
+      });
+      return true;
+    } catch (_) {
+      // try next method
+    }
+  }
+  return false;
+}
+
+async function loginViaApi(email, password, retryOnLockout = true) {
+  const resp = await fetch(`${API_URL}/api/v1/authorization`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (resp.status === 423 && retryOnLockout && email === SEED_ADMIN.email) {
+    resetSeedAdminLockout();
+    return loginViaApi(email, password, false);
+  }
+  if (!resp.ok) {
+    throw new Error(`API login failed: ${resp.status}`);
+  }
+  const data = await resp.json();
+  return data.accessToken;
+}
+
+async function verifyUserViaApi(adminToken, userId) {
+  const resp = await fetch(`${API_URL}/api/v1/admin/users/${userId}/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: '{}',
+  });
+  if (!resp.ok) {
+    throw new Error(`Verify user failed: ${resp.status} for user ${userId}`);
+  }
+}
+
+async function clickHeaderNav(driver, title) {
+  await waitAndClick(driver, By.css(`a.nav-btn[title="${title}"]`));
+  await driver.sleep(1000);
+}
+
+async function resolveSeedAdminCredentials() {
+  if (cachedSeedAdminCredentials) {
+    return cachedSeedAdminCredentials;
+  }
+
+  resetSeedAdminLockout();
+
+  const email = process.env.E2E_ADMIN_EMAIL || SEED_ADMIN.email;
+  for (const password of SEED_PASSWORDS) {
+    try {
+      const token = await loginViaApi(email, password);
+      cachedSeedAdminCredentials = { email, password, token };
+      cachedSeedAdminToken = token;
+      return cachedSeedAdminCredentials;
+    } catch (_) {
+      // try next credential
+    }
+  }
+
+  throw new Error(
+    'Seed admin login failed. Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD or ensure develop seed users exist.'
+  );
+}
+
+async function loginSeedAdmin(driver) {
+  const credentials = await resolveSeedAdminCredentials();
+  resetSeedAdminLockout();
+  await clearSession(driver);
+  try {
+    await loginUser(driver, credentials.email, credentials.password);
+  } catch (error) {
+    resetSeedAdminLockout();
+    await loginUser(driver, credentials.email, credentials.password);
+  }
+}
+
+async function getAccessTokenFromCookies(driver) {
+  const cookies = await driver.manage().getCookies();
+  const access = cookies.find((cookie) => cookie.name === 'access_token');
+  return access?.value || null;
+}
+
+async function getSeedAdminToken(driver = null) {
+  if (cachedSeedAdminToken) {
+    return cachedSeedAdminToken;
+  }
+  if (driver) {
+    const cookieToken = await getAccessTokenFromCookies(driver);
+    if (cookieToken) {
+      cachedSeedAdminToken = cookieToken;
+      return cachedSeedAdminToken;
+    }
+  }
+  const credentials = await resolveSeedAdminCredentials();
+  return credentials.token;
+}
+
+async function grantAdminRole(adminToken, userId) {
+  const resp = await fetch(`${API_URL}/api/v1/admin/users/${userId}/role`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify({ role: 'ADMIN' }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Grant admin role failed: ${resp.status}`);
+  }
+}
+
+async function fetchUserMe(token) {
+  const resp = await fetch(`${API_URL}/api/v1/user/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) {
+    throw new Error(`fetchUserMe failed: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+function makeUser(overrides = {}) {
+  return {
+    name: 'Тест User',
+    email: generateUniqueEmail(),
+    password: 'TestPass123',
+    birthday: '1995-06-15',
+    gender: 'MAN',
+    ...overrides,
+  };
+}
+
+async function loginAsAdmin(driver) {
+  await loginSeedAdmin(driver);
+}
+
+async function clearSession(driver) {
+  await driver.get(BASE_URL);
+  await driver.manage().deleteAllCookies();
+  await driver.executeScript('try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}');
+}
+
+async function registerUserViaApi(user) {
+  const resp = await fetch(`${API_URL}/api/v1/registration`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: user.name,
+      email: user.email,
+      password: user.password,
+      birthday: user.birthday,
+      gender: user.gender,
+    }),
+  });
+  if (!resp.ok) {
+    throw new Error(`API registration failed: ${resp.status}`);
+  }
+  const data = await resp.json();
+  if (!data.id) {
+    throw new Error('API registration response missing user id');
+  }
+  return data.id;
+}
+
+async function waitForCurrentUserId(driver, timeout = 15000) {
+  await driver.wait(async () => {
+    const id = await getCurrentUserId(driver);
+    return Boolean(id);
+  }, timeout);
+  return getCurrentUserId(driver);
+}
+
+async function fetchUserMe(token) {
+  const resp = await fetch(`${API_URL}/api/v1/user/me`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!resp.ok) {
+    throw new Error(`Fetch /user/me failed: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+async function registerAndVerifyUser(driver, user) {
+  await resolveSeedAdminCredentials();
+  await clearSession(driver);
+  await registerUserViaApi(user);
+  const userToken = await loginViaApi(user.email, user.password, false);
+  const me = await fetchUserMe(userToken);
+  if (!me.id) {
+    throw new Error('Registered user id is missing in /user/me response');
+  }
+  await verifyUserViaApi(cachedSeedAdminToken, me.id);
+  await loginUser(driver, user.email, user.password);
+  return me.id;
 }
 
 module.exports = {
@@ -162,6 +465,7 @@ module.exports = {
   API_URL,
   USER_A,
   USER_B,
+  SEED_ADMIN,
   createDriver,
   quitDriver,
   waitAndClick,
@@ -170,12 +474,29 @@ module.exports = {
   waitForUrlContains,
   isElementPresent,
   getElementText,
+  getBodyText,
+  assertNoRawJsonError,
+  assertRouteAccessible,
   generateUniqueEmail,
   registerUser,
+  registerUserViaApi,
+  registerAndVerifyUser,
+  clearSession,
   loginUser,
+  loginViaApi,
+  resolveSeedAdminCredentials,
+  getSeedAdminToken,
+  verifyUserViaApi,
+  grantAdminRole,
+  loginAsAdmin,
+  loginSeedAdmin,
+  getAccessTokenFromCookies,
+  makeUser,
+  fetchUserMe,
   navigateTo,
   getUserById,
   getAuthToken,
   getCurrentUserId,
   sendApiRequest,
+  clickHeaderNav,
 };

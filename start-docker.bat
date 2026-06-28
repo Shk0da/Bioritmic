@@ -10,11 +10,23 @@ echo   Bioritmic - Docker (2 GB RAM profile)
 echo ========================================
 echo.
 
+set UI_PORT=2399
+set API_PORT=6045
+set POSTGRES_PORT=5433
+set MINIO_CONSOLE_PORT=19001
+set MAIL_PORT=2587
 if not exist ".env" (
     if exist ".env.example" (
         echo Creating .env from .env.example...
         copy /Y .env.example .env >nul
     )
+)
+if exist ".env" (
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in (`findstr /B "POSTGRES_PORT=" ".env"`) do set "POSTGRES_PORT=%%b"
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in (`findstr /B "UI_PORT=" ".env"`) do set "UI_PORT=%%b"
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in (`findstr /B "API_PORT=" ".env"`) do set "API_PORT=%%b"
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in (`findstr /B "MINIO_CONSOLE_PORT=" ".env"`) do set "MINIO_CONSOLE_PORT=%%b"
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in (`findstr /B "MAIL_PORT=" ".env"`) do set "MAIL_PORT=%%b"
 )
 
 echo Memory limits: API 640M, Postgres 160M, MinIO 128M, Mail 256M, UI 48M (~1.2 GB)
@@ -50,11 +62,12 @@ echo ========================================
 echo   Stack is running!
 echo ========================================
 echo.
-echo   App:        http://localhost:4200
-echo   API proxy:  http://localhost:4200/api/v1/
-echo   PostgreSQL: localhost:5432
-echo   MinIO:      http://localhost:9341
-echo   SMTP:       localhost:587
+echo   App:        http://localhost:%UI_PORT%
+echo   API proxy:  http://localhost:%UI_PORT%/api/v1/
+echo   API direct: http://localhost:%API_PORT%
+echo   PostgreSQL: localhost:%POSTGRES_PORT%
+echo   MinIO:      http://localhost:%MINIO_CONSOLE_PORT%
+echo   SMTP:       localhost:%MAIL_PORT%
 echo.
 echo   Logs:       docker compose logs -f
 echo   Stop:       docker compose down

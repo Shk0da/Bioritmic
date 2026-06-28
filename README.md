@@ -29,12 +29,13 @@ Without memory limits (dev machine with 4+ GB):
 docker compose up --build -d
 ```
 
-Open **http://localhost:4200** — the UI proxies `/api/` to the backend.
+Open **http://localhost:2399** — the UI proxies `/api/` to the backend.
 
 | Service | URL |
 |---------|-----|
-| App (UI + API proxy) | http://localhost:4200 |
-| Swagger | http://localhost:4200/swagger-ui.html |
+| App (UI + API proxy) | http://localhost:2399 |
+| API (direct) | http://localhost:6045 |
+| Swagger | http://localhost:2399/swagger-ui.html |
 | PostgreSQL | localhost:5432 |
 | MinIO console | http://localhost:9341 |
 | SMTP | localhost:587 |

@@ -12,12 +12,16 @@ import { UserInfo, Gender, UserSearch, UserSettings, SwipeDirection, SwipeCard }
 import { FormsModule } from '@angular/forms';
 import { NgClass, NgStyle } from '@angular/common';
 
+import { StoriesBarComponent } from '../../shared/components/stories-bar/stories-bar.component';
+
 @Component({
   selector: 'app-swipe',
   standalone: true,
-  imports: [RouterLink, FormsModule, NgClass, NgStyle],
+  imports: [RouterLink, FormsModule, NgClass, NgStyle, StoriesBarComponent],
   template: `
     <div class="swipe-container">
+      <app-stories-bar></app-stories-bar>
+
       <!-- Кнопка фильтров (мобильная) -->
       <div class="mobile-filters-btn">
         <button class="control-btn btn-filter" (click)="openFilters()">

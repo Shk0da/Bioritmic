@@ -5,53 +5,36 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <changeSet id="9999" author="scaffolding" runOnChange="true" runAlways="false">
+    <changeSet id="9999" author="scaffolding" runOnChange="false" runAlways="false">
+        <validCheckSum>ANY</validCheckSum>
 
-        <comment>Init develop data with UUIDs</comment>
-
-        <sql endDelimiter=";">
-            DELETE FROM story_views;
-            DELETE FROM stories;
-            DELETE FROM user_prompt_answers;
-            DELETE FROM profile_boosts;
-            DELETE FROM subscriptions;
-            DELETE FROM reports;
-            DELETE FROM bans;
-            DELETE FROM user_interests;
-            DELETE FROM user_push_tokens;
-            DELETE FROM user_roles;
-            DELETE FROM user_photos;
-            DELETE FROM authorizations;
-            DELETE FROM gis_data;
-            DELETE FROM user_settings;
-            DELETE FROM user_blocks;
-            DELETE FROM meetings;
-            DELETE FROM mailbox;
-            DELETE FROM bookmarks;
-            DELETE FROM users;
-        </sql>
+        <comment>Optional develop seed users (idempotent). Does not delete existing users.</comment>
 
         <sql endDelimiter=";">
             INSERT INTO users (id, name, email, password, birthday, gender, register_date) VALUES
             ('b0000000-0000-0000-0000-000000000001', 'Name 1', 'alxndrwht91@gmail.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1990-01-14 00:00:00.000', 0, NOW()),
             ('b0000000-0000-0000-0000-000000000002', 'SuperBoy', 'alxndrwht90@gmail.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1990-01-14 00:00:00.000', NULL, NOW()),
-            ('b0000000-0000-0000-0000-000000000003', 'SuperBoy2', 'alxndrwht92@gmail.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1990-01-14 00:00:00.000', NULL, NOW());
+            ('b0000000-0000-0000-0000-000000000003', 'SuperBoy2', 'alxndrwht92@gmail.com', '$2a$10$BHS7qg1STnEMkKHtegTlmePMY8iEcO1elOu0IIxMrUJHXL5k7M0x.', '1990-01-14 00:00:00.000', NULL, NOW())
+            ON CONFLICT (id) DO NOTHING;
         </sql>
 
         <sql endDelimiter=";">
             INSERT INTO gis_data (user_id, lat, lon, timestamp) VALUES
             ('b0000000-0000-0000-0000-000000000001', 59.983184, 30.218012, NOW()),
-            ('b0000000-0000-0000-0000-000000000002', 59.983184, 30.218012, NOW());
+            ('b0000000-0000-0000-0000-000000000002', 59.983184, 30.218012, NOW())
+            ON CONFLICT (user_id) DO NOTHING;
         </sql>
 
         <sql endDelimiter=";">
             INSERT INTO user_settings (user_id, gender, age_min, age_max, distance) VALUES
-            ('b0000000-0000-0000-0000-000000000001', 1, 19, 32, 30.0);
+            ('b0000000-0000-0000-0000-000000000001', 1, 19, 32, 30.0)
+            ON CONFLICT (user_id) DO NOTHING;
         </sql>
 
         <sql endDelimiter=";">
             INSERT INTO user_roles (user_id, role) VALUES
-            ('b0000000-0000-0000-0000-000000000001', 'ROLE_ADMIN');
+            ('b0000000-0000-0000-0000-000000000001', 'ROLE_ADMIN')
+            ON CONFLICT (user_id, role) DO NOTHING;
         </sql>
 
     </changeSet>

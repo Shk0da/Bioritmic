@@ -1,14 +1,18 @@
 package com.github.shk0da.bioritmic.api.controller
 
+import com.github.shk0da.bioritmic.api.model.story.StoryReactionRequest
 import com.github.shk0da.bioritmic.api.service.StoryService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.springframework.http.MediaType
+import org.springframework.http.codec.multipart.FilePart
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
+import javax.validation.Valid
 
 @RestController
 @RequestMapping(ApiRoutes.API_WITH_VERSION_1 + "/stories")
@@ -22,10 +26,13 @@ class StoryController(
         return storyService.getFeed(userId)
     }
 
-    @PostMapping(consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun createStory(@RequestBody request: CreateStoryRequest): Map<String, Any?> {
+    @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun createStory(
+        @RequestPart("file") file: FilePart,
+        @RequestPart("caption", required = false) caption: String?
+    ): Map<String, Any?> {
         val userId = getUserId()
-        val story = storyService.createStory(userId, request.mediaUrl, request.caption)
+        val story = storyService.createStory(userId, file, caption)
         return mapOf(
             "id" to story.id,
             "mediaUrl" to story.mediaUrl,
@@ -42,8 +49,12 @@ class StoryController(
         return mapOf("success" to true)
     }
 
-    data class CreateStoryRequest(
-        val mediaUrl: String,
-        val caption: String? = null
-    )
+    @PostMapping("/{id}/react", produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun reactToStory(
+        @PathVariable id: Long,
+        @RequestBody @Valid request: StoryReactionRequest
+    ): Map<String, Any?> {
+        val userId = getUserId()
+        return storyService.reactToStory(id, userId, request.reaction)
+    }
 }

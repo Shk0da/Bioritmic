@@ -54,8 +54,9 @@ class SecurityConfiguration(
         "$API_WITH_VERSION_1/reset-password",
         "$API_WITH_VERSION_1/authorization",
         "$API_WITH_VERSION_1/update-email",
+        "$API_WITH_VERSION_1/config/client",
         "$API_WITH_VERSION_1/user/*/photo",
-        "/api/v1/photos/s3/*",
+        "/api/v1/photos/s3/**",
         "/management/actuator/health",
         "/management/actuator/info"
     )

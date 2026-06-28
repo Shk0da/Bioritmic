@@ -8,16 +8,18 @@ import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.repository.AuthRepository
+import com.github.shk0da.bioritmic.api.repository.FeedbackRepository
 import com.github.shk0da.bioritmic.api.repository.ReportRepository
 import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.service.AdminAuditService
 import com.github.shk0da.bioritmic.api.service.EmailService
+import com.github.shk0da.bioritmic.api.service.FeedbackService
+import com.github.shk0da.bioritmic.api.service.S3Service
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.ClientIpUtils
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils
-import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
@@ -41,6 +43,9 @@ class AdminController(
     val userRoleRepository: UserRoleRepository,
     val authRepository: AuthRepository,
     val reportRepository: ReportRepository,
+    val feedbackRepository: FeedbackRepository,
+    val feedbackService: FeedbackService,
+    val s3Service: S3Service,
     val userService: UserService,
     val emailService: EmailService,
     val meterRegistry: MeterRegistry,
@@ -50,13 +55,14 @@ class AdminController(
     private val log = LoggerFactory.getLogger(AdminController::class.java)
 
     private suspend fun audit(
+        adminUserId: UUID,
         action: String,
         exchange: ServerWebExchange,
         targetUserId: UUID? = null,
         details: String? = null
     ) {
         adminAuditService.log(
-            adminUserId = getUserId(),
+            adminUserId = adminUserId,
             action = action,
             targetUserId = targetUserId,
             details = details,
@@ -64,10 +70,27 @@ class AdminController(
         )
     }
 
-    private fun requireAdmin() {
+    private fun requireAdminUserId(): UUID {
         val auth = SecurityContextHolder.getContext().authentication
-        if (auth == null || auth.authorities.none { it.authority == ROLE_ADMIN }) {
+            ?: throw ApiException(ErrorCode.ACCESS_DENIED)
+        if (auth.authorities.none { it.authority == ROLE_ADMIN }) {
             throw ApiException(ErrorCode.ACCESS_DENIED)
+        }
+        return auth.principal as UUID
+    }
+
+    private fun requireAdmin() {
+        requireAdminUserId()
+    }
+
+    private fun normalizeRole(role: String): String {
+        val canonical = role.trim().uppercase().removePrefix("ROLE_")
+        return when (canonical) {
+            "USER" -> ROLE_USER
+            "ADMIN" -> ROLE_ADMIN
+            "MODERATOR" -> UserRole.ROLE_MODERATOR
+            "BANNED" -> ROLE_BANNED
+            else -> throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Invalid role: $role"))
         }
     }
 
@@ -78,24 +101,33 @@ class AdminController(
         val verifiedUsers = userRepository.countVerified()
         val unverifiedUsers = userRepository.countUnverified()
         val pendingReports = reportRepository.countAllPending().toInt()
+        val newFeedback = feedbackRepository.countNew().toInt()
 
         return AdminDashboard(
             totalUsers = totalUsers,
             verifiedUsers = verifiedUsers,
             unverifiedUsers = unverifiedUsers,
-            pendingReports = pendingReports
+            pendingReports = pendingReports,
+            newFeedback = newFeedback
         )
     }
 
     @GetMapping(value = ["/users"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun listUsers(
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "50") size: Int
+        @RequestParam(defaultValue = "50") size: Int,
+        @RequestParam(required = false) search: String?
     ): PaginatedUsersResponse {
         requireAdmin()
         val pageSize = size.coerceIn(1, 100)
-        val total = userRepository.countAll()
-        val users = userRepository.findAllPaginated(pageSize, page.toLong() * pageSize)
+        val query = search?.trim()?.takeIf { it.isNotEmpty() }
+        val pattern = query?.let { "%$it%" }
+        val total = if (pattern != null) userRepository.countBySearch(pattern) else userRepository.countAll()
+        val users = if (pattern != null) {
+            userRepository.findBySearchPaginated(pattern, pageSize, page.toLong() * pageSize)
+        } else {
+            userRepository.findAllPaginated(pageSize, page.toLong() * pageSize)
+        }
         val userIds = users.mapNotNull { it.id }.toSet()
         val rolesByUser = if (userIds.isNotEmpty()) {
             userRoleRepository.findAllByUserIds(userIds).groupBy({ it.userId }, { it.role })
@@ -111,7 +143,7 @@ class AdminController(
 
     @PostMapping(value = ["/users/{userId}/ban"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun banUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        requireAdmin()
+        val adminUserId = requireAdminUserId()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
         if (ROLE_ADMIN in roles) {
@@ -119,38 +151,37 @@ class AdminController(
         }
         userRoleRepository.removeRole(userId, ROLE_USER)
         userRoleRepository.removeRole(userId, "USER")
+        userRoleRepository.removeRole(userId, "BANNED")
         userRoleRepository.addRole(userId, ROLE_BANNED)
-        userRoleRepository.addRole(userId, "BANNED")
         log.warn("Admin banned user {}", userId)
-        audit("BAN_USER", exchange, userId)
+        audit(adminUserId, "BAN_USER", exchange, userId)
         return mapOf("success" to true, "userId" to userId)
     }
 
     @PostMapping(value = ["/users/{userId}/unban"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun unbanUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        requireAdmin()
+        val adminUserId = requireAdminUserId()
         userRoleRepository.removeRole(userId, ROLE_BANNED)
         userRoleRepository.removeRole(userId, "BANNED")
         userRoleRepository.addRole(userId, ROLE_USER)
-        userRoleRepository.addRole(userId, "USER")
         log.info("Admin unbanned user {}", userId)
-        audit("UNBAN_USER", exchange, userId)
+        audit(adminUserId, "UNBAN_USER", exchange, userId)
         return mapOf("success" to true, "userId" to userId)
     }
 
     @PostMapping(value = ["/users/{userId}/verify"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun verifyUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        requireAdmin()
+        val adminUserId = requireAdminUserId()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         userRepository.setVerified(userId, true)
         log.info("Admin verified user {} ({})", userId, user.name)
-        audit("VERIFY_USER", exchange, userId)
+        audit(adminUserId, "VERIFY_USER", exchange, userId)
         return mapOf("success" to true, "userId" to userId)
     }
 
     @PostMapping(value = ["/users/{userId}/unverify"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun unverifyUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        requireAdmin()
+        val adminUserId = requireAdminUserId()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
         if (ROLE_ADMIN in roles) {
@@ -158,7 +189,7 @@ class AdminController(
         }
         userRepository.setVerified(userId, false)
         log.info("Admin unverified user {} ({})", userId, user.name)
-        audit("UNVERIFY_USER", exchange, userId)
+        audit(adminUserId, "UNVERIFY_USER", exchange, userId)
         return mapOf("success" to true, "userId" to userId)
     }
 
@@ -168,19 +199,14 @@ class AdminController(
         @RequestBody body: Map<String, String>,
         exchange: ServerWebExchange
     ): Map<String, Any> {
-        requireAdmin()
-        val newRole = body["role"] ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Role is required"))
-        val validRoles = setOf(ROLE_USER, ROLE_ADMIN, UserRole.ROLE_MODERATOR, ROLE_BANNED)
-        if (newRole !in validRoles) {
-            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Invalid role: $newRole"))
-        }
+        val adminUserId = requireAdminUserId()
+        val newRole = normalizeRole(body["role"] ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Role is required")))
 
-        val currentUserId = getUserId()
-        if (userId == currentUserId) {
+        if (userId == adminUserId) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot change your own role"))
         }
 
-        val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val currentRoles = userRoleRepository.findAllByUserId(userId).map { it.role }
         if (ROLE_ADMIN in currentRoles) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot change role of an admin"))
@@ -192,13 +218,13 @@ class AdminController(
         userRoleRepository.addRole(userId, newRole)
 
         log.warn("Admin changed role of user {} from {} to {}", userId, currentRoles.joinToString(","), newRole)
-        audit("CHANGE_ROLE", exchange, userId, "role=$newRole")
+        audit(adminUserId, "CHANGE_ROLE", exchange, userId, "role=$newRole")
         return mapOf("success" to true, "userId" to userId, "role" to newRole)
     }
 
     @PostMapping(value = ["/users/{userId}/reset-password"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun resetPassword(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        requireAdmin()
+        val adminUserId = requireAdminUserId()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
 
         val newPassword = SecurityUtils.generateRandomPassword(12)
@@ -214,20 +240,20 @@ class AdminController(
         }
 
         log.warn("Admin reset password for user {}", userId)
-        audit("RESET_PASSWORD", exchange, userId)
+        audit(adminUserId, "RESET_PASSWORD", exchange, userId)
         return mapOf("success" to true, "userId" to userId)
     }
 
     @DeleteMapping(value = ["/users/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun deleteUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        requireAdmin()
+        val adminUserId = requireAdminUserId()
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
         if (ROLE_ADMIN in roles) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot delete an admin"))
         }
         userService.deleteUserById(userId)
         log.warn("Admin deleted user {}", userId)
-        audit("DELETE_USER", exchange, userId)
+        audit(adminUserId, "DELETE_USER", exchange, userId)
         return mapOf("success" to true, "userId" to userId)
     }
 
@@ -261,11 +287,74 @@ class AdminController(
 
     @PostMapping(value = ["/reports/{reportId}/resolve"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun resolveReport(@PathVariable reportId: Long, exchange: ServerWebExchange): Map<String, Any> {
-        requireAdmin()
+        val adminUserId = requireAdminUserId()
         reportRepository.updateStatus(reportId, "RESOLVED")
         log.info("Admin resolved report {}", reportId)
-        audit("RESOLVE_REPORT", exchange, details = "reportId=$reportId")
+        audit(adminUserId, "RESOLVE_REPORT", exchange, details = "reportId=$reportId")
         return mapOf("success" to true, "reportId" to reportId)
+    }
+
+    @GetMapping(value = ["/feedback"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun listFeedback(
+        @RequestParam(required = false) status: String?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int
+    ): PaginatedFeedbackResponse {
+        requireAdmin()
+        val result = feedbackService.listForAdmin(status, page, size)
+        val userIds = result.items.map { it.userId }.toSet()
+        val usersById = if (userIds.isNotEmpty()) {
+            userRepository.findByIdIn(userIds).associateBy { it.id }
+        } else {
+            emptyMap()
+        }
+        val items = result.items.map { feedback ->
+            FeedbackAdminView(
+                id = feedback.id,
+                userId = feedback.userId,
+                userName = usersById[feedback.userId]?.name,
+                userEmail = usersById[feedback.userId]?.email,
+                topic = feedback.topic,
+                message = feedback.message,
+                status = feedback.status,
+                attachmentUrl = feedback.attachmentS3Key?.let { s3Service.getPhotoUrl(it) },
+                attachmentFilename = feedback.attachmentFilename,
+                createdAt = feedback.createdAt?.toString()
+            )
+        }
+        return PaginatedFeedbackResponse(
+            items = items,
+            total = result.total,
+            page = result.page,
+            size = result.size
+        )
+    }
+
+    @PostMapping(
+        value = ["/feedback/{feedbackId}/status"],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    suspend fun updateFeedbackStatus(
+        @PathVariable feedbackId: Long,
+        @RequestBody body: Map<String, String>,
+        exchange: ServerWebExchange
+    ): Map<String, Any> {
+        val adminUserId = requireAdminUserId()
+        val status = body["status"] ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Status is required"))
+        feedbackService.updateStatus(feedbackId, status)
+        log.info("Admin updated feedback {} status to {}", feedbackId, status)
+        audit(adminUserId, "UPDATE_FEEDBACK_STATUS", exchange, details = "feedbackId=$feedbackId,status=$status")
+        return mapOf("success" to true, "feedbackId" to feedbackId, "status" to status)
+    }
+
+    @DeleteMapping(value = ["/feedback/{feedbackId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun deleteFeedback(@PathVariable feedbackId: Long, exchange: ServerWebExchange): Map<String, Any> {
+        val adminUserId = requireAdminUserId()
+        feedbackService.deleteFeedback(feedbackId)
+        log.info("Admin deleted feedback {}", feedbackId)
+        audit(adminUserId, "DELETE_FEEDBACK", exchange, details = "feedbackId=$feedbackId")
+        return mapOf("success" to true, "feedbackId" to feedbackId)
     }
 
     @GetMapping(value = ["/metrics"], produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -354,7 +443,28 @@ data class AdminDashboard(
     val totalUsers: Long,
     val verifiedUsers: Long,
     val unverifiedUsers: Long,
-    val pendingReports: Int
+    val pendingReports: Int,
+    val newFeedback: Int = 0
+)
+
+data class FeedbackAdminView(
+    val id: Long?,
+    val userId: UUID?,
+    val userName: String?,
+    val userEmail: String?,
+    val topic: String?,
+    val message: String?,
+    val status: String?,
+    val attachmentUrl: String?,
+    val attachmentFilename: String?,
+    val createdAt: String?
+)
+
+data class PaginatedFeedbackResponse(
+    val items: List<FeedbackAdminView>,
+    val total: Long,
+    val page: Int,
+    val size: Int
 )
 
 data class ReportAdminView(

@@ -4,19 +4,17 @@ import { NgClass } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { UserInfo } from '../../core/models/user.model';
 import { UserService } from '../../core/services/user.service';
-import { ModalComponent } from '../../core/services/modal.service';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { PushNotificationService } from '../../core/services/push-notification.service';
 import { Subject, Subscription, filter, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [RouterLink, RouterOutlet, RouterLinkActive, ModalComponent, NgClass],
+  imports: [RouterLink, RouterOutlet, RouterLinkActive, NgClass],
   template: `
-    <app-modal></app-modal>
-    
     <header class="site-header">
       <div class="header-content">
         <a class="header-logo" routerLink="/swipe">
@@ -71,7 +69,7 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
 
     <main class="main-container">
       @if (!isUserVerified) {
-        <div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
+        <div class="alert alert-warning verification-alert d-flex align-items-center mb-3" role="alert">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
           <div>
             <strong>Аккаунт не верифицирован.</strong> Подтвердите email для полного доступа к функционалу.
@@ -166,9 +164,11 @@ export class LayoutComponent implements OnInit, OnDestroy {
   newMeetingsCount = 0;
   isUserAdmin = false;
   isUserVerified = true;
-  private pollingIntervalId: any = null;
+  private pollingIntervalId: ReturnType<typeof setInterval> | null = null;
   private routerSubscription: Subscription | null = null;
   private userSubscription: Subscription | null = null;
+  private prevUnreadCount = 0;
+  private prevMeetingsCount = 0;
 
   constructor(
     private authService: AuthService,
@@ -176,7 +176,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
     private mailboxService: MailboxService,
     private meetingsService: MeetingsService,
     private router: Router,
-    public themeService: ThemeService
+    public themeService: ThemeService,
+    private pushService: PushNotificationService
   ) {}
 
   ngOnInit(): void {
@@ -187,6 +188,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
       if (user?.id) {
         this.loadUserPhoto(user.id);
         this.startPolling();
+        void this.initPushNotifications();
       } else {
         this.stopPolling();
       }
@@ -211,6 +213,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.routerSubscription?.unsubscribe();
     this.userSubscription?.unsubscribe();
     UserService.revokePhotoUrl(this.userPhoto);
+  }
+
+  private async initPushNotifications(): Promise<void> {
+    this.pushService.syncEnabledWithPermission();
+    if (this.pushService.isActive()) {
+      await this.pushService.requestPermission();
+    }
   }
 
   private startPolling(): void {
@@ -241,6 +250,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.mailboxService.getBadgeCount(since).pipe(takeUntil(this.destroy$)).subscribe({
       next: (res) => {
         this.isLoadingUnread = false;
+        if (res.count > this.prevUnreadCount && this.prevUnreadCount > 0) {
+          this.pushService.showLocalNotification('Новое сообщение', 'У вас новые сообщения', 'mailbox');
+        }
+        this.prevUnreadCount = res.count;
         this.unreadCount = res.count;
       },
       error: () => { this.isLoadingUnread = false; }
@@ -255,6 +268,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.meetingsService.getBadgeCount(since).pipe(takeUntil(this.destroy$)).subscribe({
       next: (res) => {
         this.isLoadingMeetings = false;
+        if (res.count > this.prevMeetingsCount && this.prevMeetingsCount > 0) {
+          this.pushService.showLocalNotification('Новая встреча', 'У вас новые предложения встреч', 'meeting');
+        }
+        this.prevMeetingsCount = res.count;
         this.newMeetingsCount = res.count;
       },
       error: () => { this.isLoadingMeetings = false; }
@@ -264,11 +281,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private markMessagesAsRead(): void {
     localStorage.setItem('mailbox_last_read', Date.now().toString());
     this.unreadCount = 0;
+    this.prevUnreadCount = 0;
   }
 
   private markMeetingsAsRead(): void {
     localStorage.setItem('meetings_last_read', Date.now().toString());
     this.newMeetingsCount = 0;
+    this.prevMeetingsCount = 0;
   }
 
   private loadUserPhoto(userId: string): void {

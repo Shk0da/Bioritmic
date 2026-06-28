@@ -31,82 +31,40 @@ class MissingEndpointsCoverageTest : ApiApplicationTests() {
     }
 
     @Test
-    fun `prompt endpoints are covered`() {
-        val promptResponse = webTestClient.get()
-            .uri("$API_WITH_VERSION_1/prompts/random?count=1")
-            .header(HttpHeaders.AUTHORIZATION, aliceToken)
-            .exchange()
-            .expectStatus().isOk
-            .expectBodyList(Map::class.java)
-            .returnResult()
-            .responseBody ?: emptyList()
-
-        val promptId = (promptResponse.first()["id"] as Number).toLong()
-
-        webTestClient.post()
-            .uri("$API_WITH_VERSION_1/prompts/answers")
+    fun `bio field is covered`() {
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
             .header(HttpHeaders.AUTHORIZATION, aliceToken)
             .contentType(MediaType.APPLICATION_JSON)
-            .body(
-                BodyInserters.fromValue(
-                    mapOf(
-                        "prompt_id" to promptId,
-                        "answer" to "test answer"
-                    )
-                )
-            )
+            .body(BodyInserters.fromValue(mapOf("bio" to "Люблю путешествия и музыку")))
             .exchange()
             .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.bio").isEqualTo("Люблю путешествия и музыку")
 
         webTestClient.get()
-            .uri("$API_WITH_VERSION_1/prompts/answers")
-            .header(HttpHeaders.AUTHORIZATION, aliceToken)
+            .uri("$API_WITH_VERSION_1/user/$aliceId")
+            .header(HttpHeaders.AUTHORIZATION, bobToken)
             .exchange()
             .expectStatus().isOk
-    }
-
-    @Test
-    fun `interest endpoints are covered`() {
-        val interests = webTestClient.get()
-            .uri("$API_WITH_VERSION_1/user/interests")
-            .header(HttpHeaders.AUTHORIZATION, aliceToken)
-            .exchange()
-            .expectStatus().isOk
-            .expectBodyList(Map::class.java)
-            .returnResult()
-            .responseBody ?: emptyList()
-
-        val interestId = (interests.first()["id"] as Number).toLong()
-
-        webTestClient.put()
-            .uri("$API_WITH_VERSION_1/user/me/interests")
-            .header(HttpHeaders.AUTHORIZATION, aliceToken)
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(listOf(interestId)))
-            .exchange()
-            .expectStatus().isOk
-
-        webTestClient.get()
-            .uri("$API_WITH_VERSION_1/user/me/interests")
-            .header(HttpHeaders.AUTHORIZATION, aliceToken)
-            .exchange()
-            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.bio").isEqualTo("Люблю путешествия и музыку")
     }
 
     @Test
     fun `story endpoints are covered`() {
+        val imageBytes = javaClass.classLoader.getResourceAsStream("images/no_image.png")!!.readBytes()
+        val builder = MultipartBodyBuilder()
+        builder.part("file", ByteArrayResource(imageBytes))
+            .filename("story.png")
+            .contentType(MediaType.IMAGE_PNG)
+        builder.part("caption", "hello")
+
         val story = webTestClient.post()
             .uri("$API_WITH_VERSION_1/stories")
             .header(HttpHeaders.AUTHORIZATION, aliceToken)
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(
-                BodyInserters.fromValue(
-                    mapOf(
-                        "mediaUrl" to "https://example.org/story.jpg",
-                        "caption" to "hello"
-                    )
-                )
-            )
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData(builder.build()))
             .exchange()
             .expectStatus().isOk
             .expectBody(Map::class.java)
@@ -118,6 +76,14 @@ class MissingEndpointsCoverageTest : ApiApplicationTests() {
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/stories")
             .header(HttpHeaders.AUTHORIZATION, bobToken)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/bookmarks")
+            .header(HttpHeaders.AUTHORIZATION, bobToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(mapOf("userId" to aliceId))))
             .exchange()
             .expectStatus().isOk
 
@@ -147,26 +113,6 @@ class MissingEndpointsCoverageTest : ApiApplicationTests() {
             .body(BodyInserters.fromValue(request))
             .exchange()
             .expectStatus().isOk
-    }
-
-    @Test
-    fun `verify endpoint is covered`() {
-        val builder = MultipartBodyBuilder()
-        val resource = object : ByteArrayResource("fake-image".toByteArray()) {
-            override fun getFilename(): String = "selfie.jpg"
-        }
-        builder.part("photo", resource).contentType(MediaType.IMAGE_JPEG)
-
-        webTestClient.post()
-            .uri("$API_WITH_VERSION_1/user/me/verify")
-            .header(HttpHeaders.AUTHORIZATION, aliceToken)
-            .contentType(MediaType.MULTIPART_FORM_DATA)
-            .body(BodyInserters.fromMultipartData(builder.build()))
-            .exchange()
-            .expectStatus().isOk
-            .expectBody()
-            .jsonPath("$.success").isEqualTo(true)
-            .jsonPath("$.status").isEqualTo("PENDING")
     }
 
     @Test
@@ -227,7 +173,7 @@ class MissingEndpointsCoverageTest : ApiApplicationTests() {
             .header(HttpHeaders.AUTHORIZATION, aliceToken)
             .accept(MediaType.IMAGE_JPEG)
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().isNotFound
     }
 
     private fun register(email: String, name: String): UUID {

@@ -2,10 +2,11 @@ package com.github.shk0da.bioritmic.api.controller
 
 import com.github.shk0da.bioritmic.api.service.S3Service
 import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/photos")
@@ -13,8 +14,27 @@ class PhotoS3Controller(
     private val s3Service: S3Service
 ) {
 
-    @GetMapping(value = ["/s3/{s3Key}"], produces = [MediaType.IMAGE_JPEG_VALUE])
-    suspend fun getPhotoFromS3(@PathVariable s3Key: String): ByteArray {
-        return s3Service.downloadPhoto(s3Key) ?: ByteArray(0)
+    @GetMapping("/s3/**")
+    suspend fun getPhotoFromS3(exchange: ServerWebExchange): ResponseEntity<ByteArray> {
+        val requestPath = exchange.request.path.pathWithinApplication().value()
+        val s3Key = requestPath.removePrefix(S3_PATH_PREFIX)
+        if (s3Key.isBlank() || s3Key == requestPath) {
+            return ResponseEntity.notFound().build()
+        }
+        val bytes = s3Service.downloadPhoto(s3Key) ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok()
+            .contentType(mediaTypeForKey(s3Key))
+            .body(bytes)
+    }
+
+    private fun mediaTypeForKey(key: String): MediaType = when (key.substringAfterLast('.', "").lowercase()) {
+        "png" -> MediaType.IMAGE_PNG
+        "gif" -> MediaType.IMAGE_GIF
+        "webp" -> MediaType.parseMediaType("image/webp")
+        else -> MediaType.IMAGE_JPEG
+    }
+
+    companion object {
+        private val S3_PATH_PREFIX = "${ApiRoutes.API_WITH_VERSION_1}/photos/s3/"
     }
 }

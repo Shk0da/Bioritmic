@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0031-create-story-reactions" author="bioritmic">
+        <createTable tableName="story_reactions">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="story_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="viewer_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reaction" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reacted_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+        </createTable>
+        <createIndex tableName="story_reactions" indexName="idx_story_reactions_story_id">
+            <column name="story_id"/>
+        </createIndex>
+        <createIndex tableName="story_reactions" indexName="idx_story_reactions_viewer_id">
+            <column name="viewer_id"/>
+        </createIndex>
+        <addUniqueConstraint
+                tableName="story_reactions"
+                columnNames="story_id, viewer_id"
+                constraintName="uq_story_reactions_story_viewer"/>
+    </changeSet>
+
+</databaseChangeLog>

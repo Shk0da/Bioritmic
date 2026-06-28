@@ -4,14 +4,21 @@ import { UserService } from './user.service';
 import { GisData } from '../models/user.model';
 import { AuthService } from './auth.service';
 
+const GEOLOCATION_OPTIONS: PositionOptions = {
+  enableHighAccuracy: false,
+  timeout: 15000,
+  maximumAge: 300000
+};
+
 @Injectable({
   providedIn: 'root'
 })
 export class GeolocationService implements OnDestroy {
   private watchId: number | null = null;
-  private readonly UPDATE_INTERVAL = 60000; // 1 минута
-  private lastUpdate: number = 0;
+  private readonly UPDATE_INTERVAL = 60000;
+  private lastUpdate = 0;
   private locationSubscription: Subscription | null = null;
+  private unavailableLogged = false;
 
   constructor(
     private userService: UserService,
@@ -23,102 +30,107 @@ export class GeolocationService implements OnDestroy {
   }
 
   /**
-   * Запускает периодическую отправку координат
+   * Starts periodic location updates only when the user already saved coordinates.
    */
   startTracking(): void {
-    if (!this.authService.isAuthenticated()) {
+    if (!this.authService.isAuthenticated() || !navigator.geolocation) {
       return;
     }
 
     this.stopTracking();
 
-    // Отправляем координаты сразу
-    this.sendLocation();
-
-    // Затем отправляем периодически
-    if (navigator.geolocation) {
-      this.watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          const now = Date.now();
-          // Отправляем не чаще чем раз в UPDATE_INTERVAL
-          if (now - this.lastUpdate > this.UPDATE_INTERVAL) {
-            this.sendLocation(position.coords.latitude, position.coords.longitude);
-            this.lastUpdate = now;
-          }
-        },
-        (error) => {
-          if (error.code !== 3) {
-            console.error('Geolocation watch error:', error);
-          }
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: 10000,
-          maximumAge: 60000
+    this.userService.getGisData().subscribe({
+      next: (gis) => {
+        if (gis) {
+          this.beginWatch();
         }
-      );
-    }
+      }
+    });
   }
 
-  /**
-   * Останавливает отслеживание координат
-   */
   stopTracking(): void {
     if (this.watchId !== null) {
       navigator.geolocation.clearWatch(this.watchId);
       this.watchId = null;
     }
-    if (this.locationSubscription) {
-      this.locationSubscription.unsubscribe();
-      this.locationSubscription = null;
-    }
+    this.locationSubscription?.unsubscribe();
+    this.locationSubscription = null;
+    this.unavailableLogged = false;
   }
 
-  /**
-   * Отправляет координаты на сервер
-   */
-  private sendLocation(lat?: number, lon?: number): void {
+  getCurrentPosition(): Promise<GeolocationCoordinates> {
+    if (!navigator.geolocation) {
+      return Promise.reject(new Error('Ваш браузер не поддерживает геолокацию.'));
+    }
+
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => resolve(position.coords),
+        (error) => reject(new Error(this.describeGeolocationError(error))),
+        GEOLOCATION_OPTIONS
+      );
+    });
+  }
+
+  private beginWatch(): void {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    this.watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const now = Date.now();
+        if (now - this.lastUpdate > this.UPDATE_INTERVAL) {
+          this.sendLocation(position.coords.latitude, position.coords.longitude);
+          this.lastUpdate = now;
+        }
+      },
+      (error) => this.handleSilentGeolocationError(error),
+      GEOLOCATION_OPTIONS
+    );
+  }
+
+  private sendLocation(lat: number, lon: number): void {
     if (!this.authService.isAuthenticated()) {
       return;
     }
 
-    if (lat === undefined || lon === undefined) {
-      // Получаем текущее местоположение
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            this.doSendLocation(position.coords.latitude, position.coords.longitude);
-          },
-          (error) => {
-            if (error.code !== 3) {
-              console.error('Failed to get current location:', error);
-            }
-          }
-        );
-      }
-    } else {
-      this.doSendLocation(lat, lon);
-    }
-  }
-
-  /**
-   * Фактическая отправка координат на сервер
-   */
-  private doSendLocation(lat: number, lon: number): void {
     const gisData: GisData = {
-      userId: '', // Сервер определит по токену
+      userId: '',
       lat,
       lon
     };
 
     this.locationSubscription?.unsubscribe();
     this.locationSubscription = this.userService.saveGisData(gisData).subscribe({
-      next: () => {
-        console.log('Location updated:', lat, lon);
-      },
-      error: (error) => {
-        console.error('Failed to update location:', error);
+      error: () => {
+        // Location sync is best-effort; manual update remains available in settings.
       }
     });
+  }
+
+  private handleSilentGeolocationError(error: GeolocationPositionError): void {
+    if (error.code === error.PERMISSION_DENIED) {
+      this.stopTracking();
+      return;
+    }
+
+    if (error.code === error.POSITION_UNAVAILABLE && !this.unavailableLogged) {
+      this.unavailableLogged = true;
+      console.debug('Geolocation unavailable, automatic updates paused.');
+    }
+  }
+
+  private describeGeolocationError(error: GeolocationPositionError): string {
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        return 'Разрешите доступ к геолокации в настройках браузера или введите координаты вручную.';
+      case error.POSITION_UNAVAILABLE:
+        return 'Местоположение недоступно. Включите службы геолокации на устройстве или введите координаты вручную.';
+      case error.TIMEOUT:
+        return 'Не удалось определить местоположение вовремя. Попробуйте ещё раз или введите координаты вручную.';
+      default:
+        return 'Не удалось получить местоположение. Введите координаты вручную.';
+    }
   }
 }

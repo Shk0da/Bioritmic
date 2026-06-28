@@ -1,16 +1,30 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
+import { Observable, of } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { authGuard } from './auth.guard';
 
 const route = {} as ActivatedRouteSnapshot;
+
+function runGuard(url: string): Observable<boolean | UrlTree> {
+  return TestBed.runInInjectionContext(() =>
+    authGuard(route, { url } as RouterStateSnapshot)
+  ) as Observable<boolean | UrlTree>;
+}
 
 describe('authGuard', () => {
   let authService: jasmine.SpyObj<AuthService>;
   let router: jasmine.SpyObj<Router>;
 
   beforeEach(() => {
-    const authSpy = jasmine.createSpyObj('AuthService', ['isAuthenticated', 'getCurrentUser', 'clearAuth']);
+    const authSpy = jasmine.createSpyObj('AuthService', [
+      'isAuthenticated',
+      'getCurrentUser',
+      'clearAuth',
+      'ensureSessionRestored'
+    ]);
+    authSpy.ensureSessionRestored.and.returnValue(of(true));
+
     const routerSpy = jasmine.createSpyObj('Router', ['createUrlTree']);
 
     TestBed.configureTestingModule({
@@ -24,42 +38,42 @@ describe('authGuard', () => {
     router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
   });
 
-  it('should return true when authenticated and user exists', () => {
+  it('should return true when authenticated and user exists', (done) => {
     authService.isAuthenticated.and.returnValue(true);
     authService.getCurrentUser.and.returnValue({ id: '1', name: 'Test', email: 't@t.com' });
 
-    TestBed.runInInjectionContext(() => {
-      const result = authGuard(route, { url: '/swipe' } as RouterStateSnapshot);
-      expect(result).toBeTrue();
+    runGuard('/swipe').subscribe(value => {
+      expect(value).toBeTrue();
+      done();
     });
   });
 
-  it('should redirect to /auth/login when not authenticated', () => {
+  it('should redirect to /auth/login when not authenticated', (done) => {
     authService.isAuthenticated.and.returnValue(false);
     const urlTree = {} as UrlTree;
     router.createUrlTree.and.returnValue(urlTree);
 
-    TestBed.runInInjectionContext(() => {
-      const result = authGuard(route, { url: '/profile/me' } as RouterStateSnapshot);
-      expect(result).toBe(urlTree);
+    runGuard('/profile/me').subscribe(value => {
+      expect(value).toBe(urlTree);
       expect(router.createUrlTree).toHaveBeenCalledWith(['/auth/login']);
+      done();
     });
   });
 
-  it('should clear auth and redirect when authenticated but no user', () => {
+  it('should clear auth and redirect when authenticated but no user', (done) => {
     authService.isAuthenticated.and.returnValue(true);
     authService.getCurrentUser.and.returnValue(null);
     const urlTree = {} as UrlTree;
     router.createUrlTree.and.returnValue(urlTree);
 
-    TestBed.runInInjectionContext(() => {
-      const result = authGuard(route, { url: '/swipe' } as RouterStateSnapshot);
+    runGuard('/swipe').subscribe(value => {
       expect(authService.clearAuth).toHaveBeenCalled();
-      expect(result).toBe(urlTree);
+      expect(value).toBe(urlTree);
+      done();
     });
   });
 
-  it('should allow unverified user to navigate to swipe', () => {
+  it('should allow unverified user to navigate to swipe', (done) => {
     authService.isAuthenticated.and.returnValue(true);
     authService.getCurrentUser.and.returnValue({
       id: '1',
@@ -68,13 +82,13 @@ describe('authGuard', () => {
       isVerified: false
     });
 
-    TestBed.runInInjectionContext(() => {
-      const result = authGuard(route, { url: '/swipe' } as RouterStateSnapshot);
-      expect(result).toBeTrue();
+    runGuard('/swipe').subscribe(value => {
+      expect(value).toBeTrue();
+      done();
     });
   });
 
-  it('should allow unverified user to view and edit own profile', () => {
+  it('should allow unverified user to view and edit own profile', (done) => {
     authService.isAuthenticated.and.returnValue(true);
     authService.getCurrentUser.and.returnValue({
       id: '1',
@@ -83,13 +97,16 @@ describe('authGuard', () => {
       isVerified: false
     });
 
-    TestBed.runInInjectionContext(() => {
-      expect(authGuard(route, { url: '/profile/me' } as RouterStateSnapshot)).toBeTrue();
-      expect(authGuard(route, { url: '/profile/me/edit' } as RouterStateSnapshot)).toBeTrue();
+    runGuard('/profile/me').subscribe(value => {
+      expect(value).toBeTrue();
+      runGuard('/profile/me/edit').subscribe(value2 => {
+        expect(value2).toBeTrue();
+        done();
+      });
     });
   });
 
-  it('should redirect unverified user away from restricted routes to swipe', () => {
+  it('should redirect unverified user away from restricted routes to swipe', (done) => {
     authService.isAuthenticated.and.returnValue(true);
     authService.getCurrentUser.and.returnValue({
       id: '1',
@@ -100,10 +117,10 @@ describe('authGuard', () => {
     const urlTree = {} as UrlTree;
     router.createUrlTree.and.returnValue(urlTree);
 
-    TestBed.runInInjectionContext(() => {
-      const result = authGuard(route, { url: '/settings' } as RouterStateSnapshot);
-      expect(result).toBe(urlTree);
+    runGuard('/settings').subscribe(value => {
+      expect(value).toBe(urlTree);
       expect(router.createUrlTree).toHaveBeenCalledWith(['/swipe']);
+      done();
     });
   });
 });

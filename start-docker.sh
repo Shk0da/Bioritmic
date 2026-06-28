@@ -14,6 +14,17 @@ if [[ ! -f .env && -f .env.example ]]; then
   echo "Creating .env from .env.example..."
   cp .env.example .env
 fi
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
+POSTGRES_PORT="${POSTGRES_PORT:-5433}"
+UI_PORT="${UI_PORT:-2399}"
+API_PORT="${API_PORT:-6045}"
+MAIL_PORT="${MAIL_PORT:-2587}"
+MINIO_CONSOLE_PORT="${MINIO_CONSOLE_PORT:-19001}"
 
 echo "Memory limits: API 640M, Postgres 160M, MinIO 128M, Mail 256M, UI 48M (~1.2 GB)"
 echo
@@ -37,11 +48,12 @@ echo "========================================"
 echo "  Stack is running!"
 echo "========================================"
 echo
-echo "  App:        http://localhost:4200"
-echo "  API proxy:  http://localhost:4200/api/v1/"
-echo "  PostgreSQL: localhost:5432"
-echo "  MinIO:      http://localhost:9341"
-echo "  SMTP:       localhost:587"
+echo "  App:        http://localhost:${UI_PORT}"
+echo "  API proxy:  http://localhost:${UI_PORT}/api/v1/"
+echo "  API direct: http://localhost:${API_PORT}"
+echo "  PostgreSQL: localhost:${POSTGRES_PORT}"
+echo "  MinIO:      http://localhost:${MINIO_CONSOLE_PORT}"
+echo "  SMTP:       localhost:${MAIL_PORT}"
 echo
 echo "  Logs:  docker compose logs -f"
 echo "  Stop:  docker compose down"

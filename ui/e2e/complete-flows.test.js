@@ -157,17 +157,17 @@ describe('Форма восстановления пароля', function () {
     await quitDriver(driverA);
   });
 
-  it('Отображается поле email на шаге отправки кода', async function () {
+  it('Отображается поле email на шаге отправки ссылки', async function () {
     const emailInput = await isElementPresent(driverA, By.name('email'));
-    assert.ok(emailInput, 'Поле email должно отображаться на шаге отправки кода');
+    assert.ok(emailInput, 'Поле email должно отображаться на шаге отправки ссылки');
   });
 
-  it('Кнопка "Отправить код" отображается', async function () {
+  it('Кнопка "Отправить ссылку" отображается', async function () {
     const submitBtn = await isElementPresent(driverA, By.css('button[type="submit"]'));
-    assert.ok(submitBtn, 'Кнопка "Отправить код" должна отображаться');
+    assert.ok(submitBtn, 'Кнопка "Отправить ссылку" должна отображаться');
     const btnText = await driverA.findElement(By.css('button[type="submit"]')).getText();
     assert.ok(
-      btnText.includes('Отправить код') || btnText.includes('отправить'),
+      btnText.includes('Отправить ссылку') || btnText.includes('отправить'),
       `Текст кнопки: ${btnText}`
     );
   });
@@ -178,6 +178,27 @@ describe('Форма восстановления пароля', function () {
     await waitForUrlContains(driverA, '/auth/login', 10000);
     const url = await driverA.getCurrentUrl();
     assert.ok(url.includes('/auth/login'), 'Должен быть переход на /auth/login');
+  });
+});
+
+describe('Страница сброса пароля', function () {
+  this.timeout(90000);
+
+  before(async function () {
+    driverA = await createDriver();
+    await driverA.get(`${BASE_URL}/auth/reset-password?code=test-code`);
+    await driverA.wait(until.elementLocated(By.name('code')), 10000);
+  });
+
+  after(async function () {
+    await quitDriver(driverA);
+  });
+
+  it('Отображаются поля кода и пароля', async function () {
+    const codeInput = await isElementPresent(driverA, By.name('code'));
+    const passwordInput = await isElementPresent(driverA, By.name('password'));
+    assert.ok(codeInput, 'Поле code должно отображаться');
+    assert.ok(passwordInput, 'Поле password должно отображаться');
   });
 });
 

@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 import { LayoutComponent } from '../../shared/layout/layout.component';
 import { MailboxComponent } from './mailbox.component';
-import { ConversationComponent } from './conversation/conversation.component';
 
 export const MAILBOX_ROUTES: Routes = [
   {
@@ -14,7 +13,12 @@ export const MAILBOX_ROUTES: Routes = [
       },
       {
         path: 'conversation/:userId',
-        component: ConversationComponent
+        redirectTo: ':userId',
+        pathMatch: 'full'
+      },
+      {
+        path: ':userId',
+        component: MailboxComponent
       }
     ]
   }

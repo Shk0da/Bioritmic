@@ -7,6 +7,7 @@ export interface AdminDashboard {
   verifiedUsers: number;
   unverifiedUsers: number;
   pendingReports: number;
+  newFeedback: number;
 }
 
 export interface Report {
@@ -18,6 +19,28 @@ export interface Report {
   reason: string;
   status: string;
   createdAt?: string;
+}
+
+export type FeedbackStatus = 'NEW' | 'PROCESSED' | 'TRASH';
+
+export interface FeedbackItem {
+  id: number;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  topic: string;
+  message: string;
+  status: FeedbackStatus;
+  attachmentUrl?: string;
+  attachmentFilename?: string;
+  createdAt?: string;
+}
+
+export interface PaginatedFeedbackResponse {
+  items: FeedbackItem[];
+  total: number;
+  page: number;
+  size: number;
 }
 
 export interface AdminUser {
@@ -46,8 +69,9 @@ export class AdminService {
     return this.http.get<AdminDashboard>(`${this.apiUrl}/dashboard`);
   }
 
-  getUsers(page = 0, size = 50): Observable<PaginatedUsersResponse> {
-    return this.http.get<PaginatedUsersResponse>(`${this.apiUrl}/users?page=${page}&size=${size}`);
+  getUsers(page = 0, size = 50, search?: string): Observable<PaginatedUsersResponse> {
+    const searchParam = search?.trim() ? `&search=${encodeURIComponent(search.trim())}` : '';
+    return this.http.get<PaginatedUsersResponse>(`${this.apiUrl}/users?page=${page}&size=${size}${searchParam}`);
   }
 
   banUser(userId: string): Observable<any> {
@@ -68,6 +92,21 @@ export class AdminService {
 
   resolveReport(reportId: number): Observable<any> {
     return this.http.post(`${this.apiUrl}/reports/${reportId}/resolve`, {});
+  }
+
+  getFeedback(status?: FeedbackStatus, page = 0, size = 50): Observable<PaginatedFeedbackResponse> {
+    const statusParam = status ? `&status=${status}` : '';
+    return this.http.get<PaginatedFeedbackResponse>(
+      `${this.apiUrl}/feedback?page=${page}&size=${size}${statusParam}`
+    );
+  }
+
+  updateFeedbackStatus(feedbackId: number, status: FeedbackStatus): Observable<any> {
+    return this.http.post(`${this.apiUrl}/feedback/${feedbackId}/status`, { status });
+  }
+
+  deleteFeedback(feedbackId: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/feedback/${feedbackId}`);
   }
 
   getMetrics(): Observable<SystemMetrics> {
@@ -94,8 +133,8 @@ export class AdminService {
     return this.http.post(`${this.apiUrl}/users/${userId}/role`, { role });
   }
 
-  resetPassword(userId: string): Observable<{ success: boolean; userId: string; newPassword: string }> {
-    return this.http.post<{ success: boolean; userId: string; newPassword: string }>(`${this.apiUrl}/users/${userId}/reset-password`, {});
+  resetPassword(userId: string): Observable<{ success: boolean; userId: string }> {
+    return this.http.post<{ success: boolean; userId: string }>(`${this.apiUrl}/users/${userId}/reset-password`, {});
   }
 }
 

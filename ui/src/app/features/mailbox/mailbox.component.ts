@@ -1,118 +1,175 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { RouterLink, Router } from '@angular/router';
+import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { RouterLink, Router, ActivatedRoute } from '@angular/router';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { UserService } from '../../core/services/user.service';
 import { UserMail, PageableRequest, UserInfo } from '../../core/models/user.model';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ModalService } from '../../core/services/modal.service';
+import { ConversationPanelComponent } from './conversation-panel/conversation-panel.component';
 import { Subject, takeUntil } from 'rxjs';
-
-interface MessageWithUser extends UserMail {
-  userName?: string;
-  userPhotoUrl?: string | null;
-}
 
 interface UserConversation {
   userId: string;
   userName?: string;
   userPhotoUrl?: string | null;
   lastMessage: string;
-  lastMessageTime: any;
-  unreadCount?: number;
+  lastMessageTime: unknown;
 }
 
 @Component({
   selector: 'app-mailbox',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, ConversationPanelComponent],
   template: `
-    <div class="page-header mb-4">
+    <div class="page-header mb-3">
       <h1 class="page-title">
         <i class="bi bi-chat-heart me-2"></i>Сообщения
       </h1>
-      <p class="text-muted">Ваши диалоги</p>
+      <p class="text-muted mb-0">Ваши диалоги</p>
     </div>
 
-    @if (loading) {
-      <div class="card">
+    @if (loading && conversations.length === 0 && !selectedUserId) {
+      <div class="card mailbox-card">
         <div class="card-body text-center py-5">
           <div class="spinner-border" role="status">
             <span class="visually-hidden">Загрузка...</span>
           </div>
         </div>
       </div>
-    } @else if (conversations.length === 0) {
+    } @else if (!loading && conversations.length === 0 && !selectedUserId) {
       <div class="card empty-state">
         <div class="card-body text-center py-5">
           <i class="bi bi-chat-square-text display-1 text-muted mb-3"></i>
           <h4 class="text-muted">Нет сообщений</h4>
           <p class="text-muted">Перейдите в профиль пользователя, чтобы написать сообщение</p>
+          <a routerLink="/swipe" class="btn btn-primary mt-3">
+            <i class="bi bi-people me-2"></i>К поиску
+          </a>
         </div>
       </div>
     } @else {
-      <div class="card">
-        <div class="card-body p-0">
-          <div class="list-group list-group-flush">
+      <div class="mailbox-card" [class.chat-open]="!!selectedUserId">
+        <aside class="mailbox-list-panel">
+          <div class="list-panel-header">
+            <span class="list-panel-title">Диалоги</span>
+            <span class="list-panel-count">{{ conversations.length }}</span>
+          </div>
+          <div class="conversation-list">
             @for (conv of conversations; track conv.userId) {
-              <div class="list-group-item conversation-item" (click)="openConversation(conv.userId)">
-                <div class="d-flex align-items-center">
-                  <img
-                    [src]="conv.userPhotoUrl || ''"
-                    class="rounded-circle conversation-avatar"
-                    [alt]="conv.userName || 'User'">
-                  <div class="flex-grow-1 min-w-0">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                      <h6 class="mb-0 conversation-name">
-                        <a [routerLink]="['/user', conv.userId]" class="conversation-name-link" (click)="$event.stopPropagation()">{{ conv.userName || 'Пользователь #' + conv.userId }}</a>
-                      </h6>
-                      <small class="text-muted conversation-time">
-                        {{ getMessageDate(conv.lastMessageTime) }}
-                      </small>
-                    </div>
-                    <p class="conversation-preview text-truncate mb-0">
-                      {{ conv.lastMessage }}
-                    </p>
+              <div
+                class="conversation-item"
+                [class.active]="conv.userId === selectedUserId"
+                (click)="selectConversation(conv.userId)">
+                <img
+                  [src]="conv.userPhotoUrl || 'assets/img/default-avatar.svg'"
+                  class="conversation-avatar"
+                  [alt]="conv.userName || 'User'">
+                <div class="conversation-body min-w-0">
+                  <div class="conversation-top">
+                    <h6 class="conversation-name mb-0">{{ conv.userName || 'Пользователь' }}</h6>
+                    <small class="conversation-time">{{ getMessageDate(conv.lastMessageTime) }}</small>
                   </div>
-                  <button class="btn-delete" (click)="$event.stopPropagation(); deleteConversation(conv.userId)">
-                    <i class="bi bi-trash"></i>
-                  </button>
+                  <p class="conversation-preview text-truncate mb-0">{{ conv.lastMessage }}</p>
                 </div>
+                <button
+                  type="button"
+                  class="btn-delete"
+                  title="Удалить переписку"
+                  (click)="$event.stopPropagation(); deleteConversation(conv.userId)">
+                  <i class="bi bi-trash"></i>
+                </button>
               </div>
             }
           </div>
-        </div>
+        </aside>
+
+        <section class="mailbox-chat-panel">
+          @if (selectedUserId) {
+            <app-conversation-panel
+              [userId]="selectedUserId"
+              [showBackButton]="isMobileView"
+              (back)="closeChat()"
+              (messageSent)="onMessageSent()">
+            </app-conversation-panel>
+          } @else {
+            <div class="chat-placeholder">
+              <i class="bi bi-chat-dots"></i>
+              <h5>Выберите диалог</h5>
+              <p>Нажмите на переписку слева, чтобы открыть чат</p>
+            </div>
+          }
+        </section>
       </div>
     }
   `,
   styles: [`
-    .page-header {
-      padding: 1rem 0;
-    }
-
-    .page-title {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      background: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
     .empty-state {
       max-width: 500px;
       margin: 2rem auto;
     }
 
-    .conversation-item {
+    .mailbox-card {
+      display: grid;
+      grid-template-columns: 1fr;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      min-height: 420px;
+    }
+
+    .mailbox-list-panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border-color);
+      min-height: 0;
+      background: var(--card-bg);
+    }
+
+    .list-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       padding: 1rem 1.25rem;
-      border: none;
-      border-bottom: 1px solid var(--border-color, #e5e7eb);
+      border-bottom: 1px solid var(--border-color);
+      flex-shrink: 0;
+    }
+
+    .list-panel-title {
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .list-panel-count {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+    }
+
+    .conversation-list {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .conversation-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
       cursor: pointer;
-      transition: all 0.2s ease;
+      border-bottom: 1px solid var(--border-light);
+      transition: background 0.2s ease;
 
       &:hover {
-        background: linear-gradient(135deg, rgba(253, 41, 123, 0.03) 0%, rgba(255, 101, 91, 0.03) 100%);
+        background: var(--bg-hover);
+      }
+
+      &.active {
+        background: linear-gradient(135deg, rgba(253, 41, 123, 0.08) 0%, rgba(255, 101, 91, 0.06) 100%);
+        border-left: 3px solid var(--accent-pink);
+        padding-left: calc(1rem - 3px);
       }
 
       &:last-child {
@@ -121,86 +178,198 @@ interface UserConversation {
     }
 
     .conversation-avatar {
-      width: 56px;
-      height: 56px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
       object-fit: cover;
-      border: 2px solid white;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      margin-right: 1rem;
+      border: 2px solid var(--border-light);
+      flex-shrink: 0;
+    }
+
+    .conversation-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .conversation-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.5rem;
+      margin-bottom: 0.2rem;
     }
 
     .conversation-name {
       font-weight: 600;
-      color: var(--text-primary, #1f2937);
-    }
-
-    .conversation-name-link {
-      color: inherit;
-      text-decoration: none;
-      cursor: pointer;
-
-      &:hover {
-        color: #fd297b;
-        text-decoration: underline;
-      }
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .conversation-preview {
-      color: var(--text-secondary, #6b7280);
-      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
     }
 
     .conversation-time {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
       flex-shrink: 0;
-      margin-left: 1rem;
-      color: var(--text-muted, #9ca3af);
     }
 
     .btn-delete {
       background: transparent;
       border: none;
-      color: var(--text-muted, #9ca3af);
-      padding: 0.5rem;
-      margin-left: 1rem;
+      color: var(--text-muted);
+      padding: 0.35rem;
+      opacity: 0;
       transition: all 0.2s ease;
+      flex-shrink: 0;
+
+      .conversation-item:hover &,
+      .conversation-item.active & {
+        opacity: 1;
+      }
 
       &:hover {
-        color: #ef4444;
-        transform: scale(1.1);
+        color: var(--accent-red);
       }
     }
 
-    .min-w-0 {
+    .mailbox-chat-panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
       min-width: 0;
+      background: var(--bg-secondary);
+    }
+
+    .chat-placeholder {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+
+      i {
+        font-size: 3.5rem;
+        margin-bottom: 1rem;
+        opacity: 0.35;
+        color: var(--accent-pink);
+      }
+
+      h5 {
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+      }
+    }
+
+    .min-w-0 { min-width: 0; }
+
+    @media (min-width: 992px) {
+      .mailbox-card {
+        grid-template-columns: 320px 1fr;
+        height: calc(100dvh - var(--header-height) - 7.5rem);
+        max-height: 760px;
+        min-height: 520px;
+      }
+
+      .mailbox-list-panel,
+      .mailbox-chat-panel {
+        height: 100%;
+      }
+
+      .chat-placeholder {
+        display: flex;
+      }
+    }
+
+    @media (max-width: 991.98px) {
+      .mailbox-card:not(.chat-open) .mailbox-chat-panel {
+        display: none;
+      }
+
+      .mailbox-card.chat-open .mailbox-list-panel {
+        display: none;
+      }
+
+      .mailbox-card.chat-open {
+        min-height: calc(100dvh - var(--header-height) - 6rem);
+      }
+
+      .mailbox-card.chat-open .mailbox-chat-panel {
+        min-height: calc(100dvh - var(--header-height) - 6rem);
+      }
     }
   `]
 })
 export class MailboxComponent implements OnInit, OnDestroy {
   conversations: UserConversation[] = [];
-  messages: MessageWithUser[] = [];
   loading = false;
-  pageable: PageableRequest = { page: 0, size: 100 };
-  currentUserId?: string;
+  selectedUserId: string | null = null;
+  isMobileView = false;
+
+  private messages: UserMail[] = [];
+  private pageable: PageableRequest = { page: 0, size: 100 };
+  private currentUserId?: string;
   private destroy$ = new Subject<void>();
 
   constructor(
     private mailboxService: MailboxService,
     private userService: UserService,
-    private sanitizer: DomSanitizer,
     private router: Router,
+    private route: ActivatedRoute,
     private modalService: ModalService
   ) {}
 
+  @HostListener('window:resize')
+  onResize(): void {
+    this.updateMobileView();
+  }
+
   ngOnInit(): void {
-    this.loadCurrentUserId();
+    this.updateMobileView();
     localStorage.setItem('mailbox_last_read', Date.now().toString());
+    this.loadCurrentUserId();
+
+    this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      this.selectedUserId = params.get('userId');
+      if (this.selectedUserId) {
+        this.ensureSelectedConversationInList();
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
     this.conversations.forEach(conv => UserService.revokePhotoUrl(conv.userPhotoUrl));
+  }
+
+  selectConversation(userId: string): void {
+    this.router.navigate(['/mailbox', userId]);
+  }
+
+  closeChat(): void {
+    this.router.navigate(['/mailbox']);
+  }
+
+  onMessageSent(): void {
+    this.loadMessages();
+  }
+
+  private updateMobileView(): void {
+    this.isMobileView = typeof window !== 'undefined' && window.innerWidth < 992;
   }
 
   private loadCurrentUserId(): void {
@@ -223,66 +392,100 @@ export class MailboxComponent implements OnInit, OnDestroy {
         if (this.currentUserId) {
           this.groupByUsers();
         }
+        if (this.selectedUserId) {
+          this.ensureSelectedConversationInList();
+        }
         this.loading = false;
       },
       error: () => {
+        if (this.selectedUserId) {
+          this.ensureSelectedConversationInList();
+        }
         this.loading = false;
       }
     });
   }
 
   private groupByUsers(): void {
-    const userMap = new Map<string, MessageWithUser>();
+    const userMap = new Map<string, UserMail>();
 
     this.messages.forEach(message => {
       const otherUserId = message.from === this.currentUserId ? message.to : message.from;
-      
-      if (!otherUserId) return;
-      
+      if (!otherUserId) {
+        return;
+      }
       const existing = userMap.get(otherUserId);
       if (!existing || this.isNewer(message.timestamp, existing.timestamp)) {
         userMap.set(otherUserId, message);
       }
     });
 
+    const prevPhotos = new Map(this.conversations.map(c => [c.userId, c.userPhotoUrl]));
+    const prevNames = new Map(this.conversations.map(c => [c.userId, c.userName]));
+
     this.conversations = Array.from(userMap.entries()).map(([userId, message]) => ({
       userId,
+      userName: prevNames.get(userId),
+      userPhotoUrl: prevPhotos.get(userId) ?? null,
       lastMessage: message.message || '',
       lastMessageTime: message.timestamp
     }));
 
     this.conversations.sort((a, b) => {
-      const timeA = this.getTimestampSeconds(a.lastMessageTime);
-      const timeB = this.getTimestampSeconds(b.lastMessageTime);
-      return timeB - timeA;
+      return this.getTimestampSeconds(b.lastMessageTime) - this.getTimestampSeconds(a.lastMessageTime);
     });
 
     this.conversations.forEach(conv => {
-      this.userService.getUserById(conv.userId).pipe(takeUntil(this.destroy$)).subscribe({
-        next: (user: UserInfo) => {
-          conv.userName = user.name;
-          this.loadUserPhoto(conv.userId, conv);
-        },
-        error: () => {
-          conv.userName = 'Пользователь #' + conv.userId;
-        }
-      });
+      if (!conv.userName) {
+        this.userService.getUserById(conv.userId).pipe(takeUntil(this.destroy$)).subscribe({
+          next: (user: UserInfo) => {
+            conv.userName = user.name;
+            if (!conv.userPhotoUrl) {
+              this.loadUserPhoto(conv);
+            }
+          },
+          error: () => {
+            conv.userName = 'Пользователь #' + conv.userId;
+          }
+        });
+      }
+      if (!conv.userPhotoUrl) {
+        this.loadUserPhoto(conv);
+      }
     });
   }
 
-  private isNewer(timeA: any, timeB: any): boolean {
-    const secondsA = this.getTimestampSeconds(timeA);
-    const secondsB = this.getTimestampSeconds(timeB);
-    return secondsA > secondsB;
+  private ensureSelectedConversationInList(): void {
+    if (!this.selectedUserId) {
+      return;
+    }
+    if (this.conversations.some(conv => conv.userId === this.selectedUserId)) {
+      return;
+    }
+
+    const conv: UserConversation = {
+      userId: this.selectedUserId,
+      userName: undefined,
+      userPhotoUrl: null,
+      lastMessage: '',
+      lastMessageTime: { seconds: Math.floor(Date.now() / 1000) }
+    };
+    this.conversations = [conv, ...this.conversations];
+
+    this.userService.getUserById(this.selectedUserId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (user: UserInfo) => {
+        conv.userName = user.name;
+        this.loadUserPhoto(conv);
+      },
+      error: () => {
+        conv.userName = 'Пользователь #' + this.selectedUserId;
+      }
+    });
+    this.loadUserPhoto(conv);
   }
 
-  private getTimestampSeconds(timestamp: any): number {
-    if (!timestamp) return 0;
-    return timestamp.seconds || timestamp.time || 0;
-  }
-
-  private loadUserPhoto(userId: string, conv: UserConversation): void {
-    this.userService.getPhoto(userId).pipe(takeUntil(this.destroy$)).subscribe({
+  private loadUserPhoto(conv: UserConversation): void {
+    this.userService.getPhoto(conv.userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
         UserService.revokePhotoUrl(conv.userPhotoUrl);
         conv.userPhotoUrl = UserService.createPhotoUrl(bytes);
@@ -293,35 +496,50 @@ export class MailboxComponent implements OnInit, OnDestroy {
     });
   }
 
+  private isNewer(timeA: unknown, timeB: unknown): boolean {
+    return this.getTimestampSeconds(timeA) > this.getTimestampSeconds(timeB);
+  }
+
+  private getTimestampSeconds(timestamp: unknown): number {
+    if (!timestamp || typeof timestamp !== 'object') {
+      return 0;
+    }
+    const ts = timestamp as { seconds?: number; time?: number };
+    return ts.seconds || ts.time || 0;
+  }
+
   async deleteConversation(userId: string): Promise<void> {
     const confirmed = await this.modalService.confirm('Удалить переписку?', 'Подтверждение');
-    if (confirmed) {
-      this.mailboxService.deleteMail(userId).pipe(takeUntil(this.destroy$)).subscribe({
-        next: () => {
-          this.loadMessages();
-        },
-        error: () => {
-          this.modalService.alert('Ошибка удаления', 'Ошибка');
+    if (!confirmed) {
+      return;
+    }
+    this.mailboxService.deleteMail(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        if (this.selectedUserId === userId) {
+          this.closeChat();
         }
-      });
-    }
+        this.loadMessages();
+      },
+      error: () => {
+        this.modalService.alert('Ошибка удаления', 'Ошибка');
+      }
+    });
   }
 
-  getMessageDate(timestamp: any): string {
-    if (!timestamp) return '';
-    const seconds = timestamp.seconds || timestamp.time;
-    if (seconds) {
-      return new Date(seconds * 1000).toLocaleDateString('ru-RU', {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+  getMessageDate(timestamp: unknown): string {
+    if (!timestamp || typeof timestamp !== 'object') {
+      return '';
     }
-    return '';
-  }
-
-  openConversation(userId: string): void {
-    this.router.navigate(['/mailbox/conversation', userId]);
+    const ts = timestamp as { seconds?: number; time?: number };
+    const seconds = ts.seconds || ts.time;
+    if (!seconds) {
+      return '';
+    }
+    return new Date(seconds * 1000).toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 }

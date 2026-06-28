@@ -26,7 +26,9 @@ class MeetingsService(
     val meetingsRepository: MeetingsRepository,
     val meetingStatusUpdater: MeetingStatusUpdater,
     val mailboxRepository: MailboxRepository,
-    val databaseClient: DatabaseClient
+    val databaseClient: DatabaseClient,
+    private val userService: UserService,
+    private val pushNotificationService: PushNotificationService
 ) {
 
     private val log = LoggerFactory.getLogger(MeetingsService::class.java)
@@ -62,6 +64,14 @@ class MeetingsService(
                                distance = excluded.distance,
                                timestamp = excluded.timestamp"""
                     ).fetch().rowsUpdated().awaitFirstOrNull()
+
+                    val sender = userService.findUserById(userId)
+                    val senderName = sender?.name?.takeIf { it.isNotBlank() } ?: "Пользователь"
+                    specs.forEach { spec ->
+                        spec.otherUserId?.let { otherId ->
+                            pushNotificationService.notifyNewMeeting(otherId, senderName)
+                        }
+                    }
                 }
             } catch (ex: DataAccessException) {
                 log.error("Failed save meetings for userId [{}]: {}", userId, ex.message, ex)

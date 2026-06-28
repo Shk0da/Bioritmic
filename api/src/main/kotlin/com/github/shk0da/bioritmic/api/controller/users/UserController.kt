@@ -86,11 +86,13 @@ class UserController(
         val currentUserId = getUserId()
         val user = userService.findUserById(id) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val currentUser = userService.findUserById(currentUserId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        return if (null != user.birthday && null != currentUser.birthday) {
+        val isBanned = userService.isUserBanned(id)
+        val userInfo = if (null != user.birthday && null != currentUser.birthday) {
             ofWithCompare(user, Date(currentUser.birthday!!.toInstant().toEpochMilli()))
         } else {
             UserInfo.of(user)
         }
+        return userInfo.copy(isBanned = isBanned)
     }
 
     // GET /blocked <- UserInfo
@@ -136,11 +138,11 @@ class UserController(
 
     // GET /me/gis <- GIS
     @GetMapping(value = ["/me/gis"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun meGis(): GisDataModel {
+    suspend fun meGis(): ResponseEntity<GisDataModel> {
         val userId = getUserId()
-        val gisData = userService.getGis(userId)
+        val gisData = userService.findGis(userId) ?: return ResponseEntity.noContent().build()
         log.debug("User gisData: {}", gisData)
-        return GisDataModel.of(gisData)
+        return ResponseEntity.ok(GisDataModel.of(gisData))
     }
 
     // POST /me/gis -> UpdateGIS (+ anti SPAM in radius 100km[param] in hour)
@@ -150,6 +152,14 @@ class UserController(
         val gisData = userService.saveGis(userId, gisData)
         log.debug("New gisData: {}", gisData)
         return gisData
+    }
+
+    // DELETE /me/gis
+    @DeleteMapping(value = ["/me/gis"])
+    suspend fun meDeleteGis(): ResponseEntity<Void> {
+        val userId = getUserId()
+        userService.deleteGis(userId)
+        return ResponseEntity.noContent().build()
     }
 
     // GET /{id}/photo <- UserInfo
@@ -174,7 +184,7 @@ class UserController(
         val userId = getUserId(principal)
         val checkNotEmpty = checkNotEmpty(file.filename(), INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file")))
         val checkFileExtension = checkFileExtension(
-            file.filename(), arrayListOf("png", "jpg"),
+            file.filename(), arrayListOf("png", "jpg", "jpeg", "webp"),
             INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "file"))
         )
         if (!checkNotEmpty || !checkFileExtension) {

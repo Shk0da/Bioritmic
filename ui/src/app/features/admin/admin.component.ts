@@ -2,15 +2,15 @@ import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core'
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
-import { AdminService, AdminDashboard, Report, AdminUser, SystemMetrics, PaginatedUsersResponse } from '../../core/services/admin.service';
+import { AdminService, AdminDashboard, Report, AdminUser, SystemMetrics, PaginatedUsersResponse, FeedbackItem, FeedbackStatus } from '../../core/services/admin.service';
 import { ModalService } from '../../core/services/modal.service';
 import { ToastService } from '../../core/services/toast.service';
-import { NgClass, DecimalPipe } from '@angular/common';
+import { NgClass, DecimalPipe, DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [NgClass, DecimalPipe, RouterLink, FormsModule],
+  imports: [NgClass, DecimalPipe, DatePipe, RouterLink, FormsModule],
   template: `
     <div class="page-header mb-4">
       <h1 class="page-title">
@@ -71,6 +71,17 @@ import { NgClass, DecimalPipe } from '@angular/common';
               </div>
             </div>
           </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                <i class="bi bi-chat-left-text-fill"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value">{{ dashboard.newFeedback }}</span>
+                <span class="stat-label">Новых обращений</span>
+              </div>
+            </div>
+          </div>
         </div>
       }
 
@@ -86,6 +97,14 @@ import { NgClass, DecimalPipe } from '@angular/common';
             <i class="bi bi-flag me-1"></i>Жалобы
             @if (reports.length > 0) {
               <span class="badge bg-danger ms-1">{{ reports.length }}</span>
+            }
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" [class.active]="activeTab === 'feedback'" (click)="setActiveTab('feedback')">
+            <i class="bi bi-chat-left-text me-1"></i>Обратная связь
+            @if (newFeedbackCount > 0) {
+              <span class="badge bg-danger ms-1">{{ newFeedbackCount }}</span>
             }
           </button>
         </li>
@@ -108,12 +127,12 @@ import { NgClass, DecimalPipe } from '@angular/common';
               <div class="row g-2 align-items-end">
                 <div class="col-md-6">
                   <label class="form-label form-label-sm mb-0">Поиск</label>
-                  <input type="text" class="form-control form-control-sm" placeholder="Имя или email..."
-                    [(ngModel)]="filterSearch" (ngModelChange)="onFilterChange()">
+                  <input type="text" class="form-control form-control-sm" placeholder="Имя, email или ID..."
+                    [(ngModel)]="filterSearch" (ngModelChange)="onSearchChange()">
                 </div>
                 <div class="col-md-4">
                   <label class="form-label form-label-sm mb-0">Роль</label>
-                  <select class="form-select form-select-sm" [(ngModel)]="filterRole" (ngModelChange)="onFilterChange()">
+                  <select class="form-select form-select-sm" [(ngModel)]="filterRole" (ngModelChange)="applyFilters()">
                     <option value="">Все роли</option>
                     <option value="ADMIN">ADMIN</option>
                     <option value="USER">USER</option>
@@ -123,14 +142,14 @@ import { NgClass, DecimalPipe } from '@angular/common';
                 </div>
                 <div class="col-md-2">
                   <label class="form-label form-label-sm mb-0">Верификация</label>
-                  <select class="form-select form-select-sm" [(ngModel)]="filterVerified" (ngModelChange)="onFilterChange()">
+                  <select class="form-select form-select-sm" [(ngModel)]="filterVerified" (ngModelChange)="applyFilters()">
                     <option value="">Все</option>
                     <option value="verified">Верифицированы</option>
                     <option value="unverified">Не верифицированы</option>
                   </select>
                 </div>
                 <div class="col-md-2">
-                  <button class="btn btn-sm btn-outline-secondary w-100" (click)="filterSearch = ''; filterRole = ''; filterVerified = ''; onFilterChange()">
+                  <button class="btn btn-sm btn-outline-secondary w-100" (click)="resetFilters()">
                     <i class="bi bi-x-lg me-1"></i>Сброс
                   </button>
                 </div>
@@ -218,7 +237,7 @@ import { NgClass, DecimalPipe } from '@angular/common';
                 } @empty {
                   <tr>
                     <td colspan="7" class="text-center text-muted py-3">
-                      @if (filterSearch || filterRole) {
+                      @if (filterSearch || filterRole || filterVerified) {
                         <i class="bi bi-search fs-4 d-block mb-1"></i>Нет пользователей по фильтру
                       } @else {
                         <i class="bi bi-people fs-4 d-block mb-1"></i>Нет пользователей
@@ -276,8 +295,16 @@ import { NgClass, DecimalPipe } from '@angular/common';
                 @for (report of reports; track report.id) {
                   <tr>
                     <td>{{ report.id }}</td>
-                    <td>{{ report.reporterName || 'User #' + report.reporterId }}</td>
-                    <td>{{ report.targetName || 'User #' + report.targetId }}</td>
+                    <td>
+                      <a [routerLink]="['/user', report.reporterId]" class="text-decoration-none fw-semibold">
+                        {{ report.reporterName || ('User #' + report.reporterId) }}
+                      </a>
+                    </td>
+                    <td>
+                      <a [routerLink]="['/user', report.targetId]" class="text-decoration-none fw-semibold">
+                        {{ report.targetName || ('User #' + report.targetId) }}
+                      </a>
+                    </td>
                     <td class="text-truncate" style="max-width: 200px;">{{ report.reason }}</td>
                     <td>
                       <span class="badge" [ngClass]="getStatusClass(report.status)">{{ report.status }}</span>
@@ -286,6 +313,102 @@ import { NgClass, DecimalPipe } from '@angular/common';
                       <button class="btn btn-sm btn-success" (click)="resolveReport(report.id)">
                         <i class="bi bi-check-lg"></i> Решить
                       </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+
+      <!-- Feedback Tab -->
+      @if (activeTab === 'feedback') {
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <select class="form-select form-select-sm w-auto" [(ngModel)]="feedbackStatusFilter" (ngModelChange)="loadFeedback()">
+            <option value="">Все статусы</option>
+            <option value="NEW">Новые</option>
+            <option value="PROCESSED">Обработано</option>
+            <option value="TRASH">Мусор</option>
+          </select>
+        </div>
+
+        @if (loadingFeedback) {
+          <div class="text-center py-4">
+            <div class="spinner-border" role="status"></div>
+          </div>
+        } @else if (feedbackItems.length === 0) {
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            Нет обращений
+          </div>
+        } @else {
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Пользователь</th>
+                  <th>Тема</th>
+                  <th>Сообщение</th>
+                  <th>Вложение</th>
+                  <th>Статус</th>
+                  <th>Дата</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of feedbackItems; track item.id) {
+                  <tr>
+                    <td>{{ item.id }}</td>
+                    <td>
+                      @if (item.userId) {
+                        <a [routerLink]="['/user', item.userId]" class="text-decoration-none fw-semibold">
+                          {{ item.userName || ('User #' + item.userId) }}
+                        </a>
+                      } @else {
+                        <div>{{ item.userName || '—' }}</div>
+                      }
+                      <div class="small text-muted">{{ item.userEmail }}</div>
+                    </td>
+                    <td>{{ getFeedbackTopicLabel(item.topic) }}</td>
+                    <td class="text-truncate" style="max-width: 220px;" [title]="item.message">{{ item.message }}</td>
+                    <td>
+                      @if (item.attachmentUrl) {
+                        <a [href]="item.attachmentUrl" target="_blank" rel="noopener">
+                          <i class="bi bi-paperclip me-1"></i>{{ item.attachmentFilename || 'Файл' }}
+                        </a>
+                      } @else {
+                        <span class="text-muted">—</span>
+                      }
+                    </td>
+                    <td>
+                      <span class="badge" [ngClass]="getFeedbackStatusClass(item.status)">
+                        {{ getFeedbackStatusLabel(item.status) }}
+                      </span>
+                    </td>
+                    <td class="small text-muted">{{ item.createdAt | date:'dd.MM.yyyy HH:mm' }}</td>
+                    <td>
+                      <div class="d-flex flex-wrap gap-1">
+                        @if (item.status !== 'PROCESSED') {
+                          <button class="btn btn-sm btn-success" (click)="updateFeedbackStatus(item.id, 'PROCESSED')" title="Обработано">
+                            <i class="bi bi-check-lg"></i>
+                          </button>
+                        }
+                        @if (item.status !== 'TRASH') {
+                          <button class="btn btn-sm btn-outline-secondary" (click)="updateFeedbackStatus(item.id, 'TRASH')" title="В мусор">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        }
+                        @if (item.status !== 'NEW') {
+                          <button class="btn btn-sm btn-outline-primary" (click)="updateFeedbackStatus(item.id, 'NEW')" title="Новый">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                          </button>
+                        }
+                        <button class="btn btn-sm btn-outline-danger" (click)="deleteFeedbackItem(item.id)" title="Удалить">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 }
@@ -381,18 +504,23 @@ import { NgClass, DecimalPipe } from '@angular/common';
 })
 export class AdminComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
-  private filterChange$ = new Subject<void>();
+  private searchChange$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
   private reportsLoaded = false;
+  private feedbackLoaded = false;
 
-  activeTab: 'users' | 'reports' | 'metrics' = 'users';
+  activeTab: 'users' | 'reports' | 'feedback' | 'metrics' = 'users';
   loadingUsers = false;
   loadingReports = false;
+  loadingFeedback = false;
   loadingMetrics = false;
   accessDenied = false;
   dashboard: AdminDashboard | null = null;
   users: AdminUser[] = [];
   reports: Report[] = [];
+  feedbackItems: FeedbackItem[] = [];
+  feedbackStatusFilter: FeedbackStatus | '' = '';
+  newFeedbackCount = 0;
   metrics: SystemMetrics | null = null;
 
   filterSearch = '';
@@ -412,15 +540,18 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.filterChange$.pipe(debounceTime(200), takeUntil(this.destroy$)).subscribe(() => this.applyFilters());
+    this.searchChange$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe(() => this.loadUsers(0));
     this.loadDashboard();
     this.loadUsers();
   }
 
-  setActiveTab(tab: 'users' | 'reports' | 'metrics'): void {
+  setActiveTab(tab: 'users' | 'reports' | 'feedback' | 'metrics'): void {
     this.activeTab = tab;
     if (tab === 'reports' && !this.reportsLoaded) {
       this.loadReports();
+    }
+    if (tab === 'feedback' && !this.feedbackLoaded) {
+      this.loadFeedback();
     }
     if (tab === 'metrics') {
       this.loadMetrics();
@@ -436,26 +567,33 @@ export class AdminComponent implements OnInit, OnDestroy {
     return Math.ceil(this.totalUsers / this.pageSize);
   }
 
-  onFilterChange(): void {
-    this.filterChange$.next();
+  onSearchChange(): void {
+    this.searchChange$.next();
+  }
+
+  resetFilters(): void {
+    this.filterSearch = '';
+    this.filterRole = '';
+    this.filterVerified = '';
+    this.loadUsers(0);
   }
 
   applyFilters(): void {
     this.filteredUsers = this.users.filter(u => {
-      const matchSearch = !this.filterSearch ||
-        (u.name?.toLowerCase().includes(this.filterSearch.toLowerCase())) ||
-        (u.email?.toLowerCase().includes(this.filterSearch.toLowerCase()));
       const matchRole = !this.filterRole || (u.role?.includes(this.filterRole) ?? false);
       const matchVerified = this.filterVerified === '' || this.filterVerified === 'all' ||
         (this.filterVerified === 'verified' && u.isVerified === true) ||
         (this.filterVerified === 'unverified' && u.isVerified !== true);
-      return matchSearch && matchRole && matchVerified;
+      return matchRole && matchVerified;
     });
   }
 
   private loadDashboard(): void {
     this.adminService.getDashboard().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (d) => this.dashboard = d,
+      next: (d) => {
+        this.dashboard = d;
+        this.newFeedbackCount = d.newFeedback ?? 0;
+      },
       error: (err) => {
         if (err.status === 403) this.accessDenied = true;
       }
@@ -464,7 +602,8 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   private loadUsers(page = 0): void {
     this.loadingUsers = true;
-    this.adminService.getUsers(page, this.pageSize).pipe(takeUntil(this.destroy$)).subscribe({
+    const search = this.filterSearch.trim() || undefined;
+    this.adminService.getUsers(page, this.pageSize, search).pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         this.users = response.users;
         this.totalUsers = response.total;
@@ -539,7 +678,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       next: () => {
         this.toastService.success('Пользователь заблокирован');
         const idx = this.users.findIndex(u => u.id === user.id);
-        if (idx >= 0) { this.users[idx].role = 'BANNED'; this.applyFilters(); }
+        if (idx >= 0) { this.users[idx].role = 'ROLE_BANNED'; this.applyFilters(); }
       },
       error: () => this.toastService.error('Ошибка блокировки')
     });
@@ -556,7 +695,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       next: () => {
         this.toastService.success('Пользователь разблокирован');
         const idx = this.users.findIndex(u => u.id === user.id);
-        if (idx >= 0) { this.users[idx].role = 'USER'; this.applyFilters(); }
+        if (idx >= 0) { this.users[idx].role = 'ROLE_USER'; this.applyFilters(); }
       },
       error: () => this.toastService.error('Ошибка')
     });
@@ -627,10 +766,10 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (!confirmed) return;
 
     this.adminService.changeRole(user.id!, newRole).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => {
-        this.toastService.success(`Роль изменена на ${newRole}`);
+      next: (response) => {
+        this.toastService.success(`Роль изменена на ${response.role}`);
         const idx = this.users.findIndex(u => u.id === user.id);
-        if (idx >= 0) { this.users[idx].role = newRole; this.applyFilters(); }
+        if (idx >= 0) { this.users[idx].role = response.role; this.applyFilters(); }
       },
       error: (err) => this.toastService.error(err.error?.error || 'Ошибка смены роли')
     });
@@ -644,8 +783,8 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (!confirmed) return;
 
     this.adminService.resetPassword(user.id!).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (response) => {
-        this.toastService.success(`Новый пароль: ${response.newPassword}`);
+      next: () => {
+        this.toastService.success('Новый пароль отправлен на email пользователя');
       },
       error: () => this.toastService.error('Ошибка сброса пароля')
     });
@@ -669,5 +808,84 @@ export class AdminComponent implements OnInit, OnDestroy {
       },
       error: () => this.toastService.error('Ошибка')
     });
+  }
+
+  loadFeedback(): void {
+    this.loadingFeedback = true;
+    const status = this.feedbackStatusFilter || undefined;
+    this.adminService.getFeedback(status).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        this.feedbackItems = response.items;
+        this.feedbackLoaded = true;
+        this.loadingFeedback = false;
+      },
+      error: () => {
+        this.loadingFeedback = false;
+        this.toastService.error('Ошибка загрузки обращений');
+      }
+    });
+  }
+
+  updateFeedbackStatus(feedbackId: number, status: FeedbackStatus): void {
+    this.adminService.updateFeedbackStatus(feedbackId, status).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        const item = this.feedbackItems.find(f => f.id === feedbackId);
+        if (item) {
+          item.status = status;
+        }
+        if (this.feedbackStatusFilter && this.feedbackStatusFilter !== status) {
+          this.feedbackItems = this.feedbackItems.filter(f => f.id !== feedbackId);
+        }
+        this.toastService.success('Статус обновлён');
+        this.loadDashboard();
+      },
+      error: () => this.toastService.error('Ошибка обновления статуса')
+    });
+  }
+
+  async deleteFeedbackItem(feedbackId: number): Promise<void> {
+    const confirmed = await this.modalService.confirm(
+      'Удалить обращение безвозвратно?',
+      'Удаление'
+    );
+    if (!confirmed) {
+      return;
+    }
+    this.adminService.deleteFeedback(feedbackId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.feedbackItems = this.feedbackItems.filter(f => f.id !== feedbackId);
+        this.toastService.success('Обращение удалено');
+        this.loadDashboard();
+      },
+      error: () => this.toastService.error('Ошибка удаления')
+    });
+  }
+
+  getFeedbackTopicLabel(topic: string): string {
+    switch (topic) {
+      case 'BUG': return 'Ошибка';
+      case 'SUGGESTION': return 'Предложение';
+      case 'ACCOUNT': return 'Аккаунт';
+      case 'OTHER': return 'Другое';
+      default: return topic;
+    }
+  }
+
+  getFeedbackStatusLabel(status: FeedbackStatus): string {
+    switch (status) {
+      case 'NEW': return 'Новый';
+      case 'PROCESSED': return 'Обработано';
+      case 'TRASH': return 'Мусор';
+      default: return status;
+    }
+  }
+
+  getFeedbackStatusClass(status: FeedbackStatus): string {
+    switch (status) {
+      case 'NEW': return 'bg-primary';
+      case 'PROCESSED': return 'bg-success';
+      case 'TRASH': return 'bg-secondary';
+      default: return 'bg-secondary';
+    }
   }
 }

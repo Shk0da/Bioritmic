@@ -1,16 +1,26 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
+import { map } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 
 const UNVERIFIED_ALLOWED_ROUTES = ['/swipe', '/auth', '/profile'];
 
-export const authGuard: CanActivateFn = (_route, state): boolean | UrlTree => {
+export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.isAuthenticated()) {
-    const user = authService.getCurrentUser();
-    if (user) {
+  return authService.ensureSessionRestored().pipe(
+    map((): boolean | UrlTree => {
+      if (!authService.isAuthenticated()) {
+        return router.createUrlTree(['/auth/login']);
+      }
+
+      const user = authService.getCurrentUser();
+      if (!user) {
+        authService.clearAuth();
+        return router.createUrlTree(['/auth/login']);
+      }
+
       if (user.isVerified === false) {
         const targetUrl = state.url;
         const isAllowed = UNVERIFIED_ALLOWED_ROUTES.some(r => targetUrl.startsWith(r));
@@ -18,10 +28,8 @@ export const authGuard: CanActivateFn = (_route, state): boolean | UrlTree => {
           return router.createUrlTree(['/swipe']);
         }
       }
-      return true;
-    }
-    authService.clearAuth();
-  }
 
-  return router.createUrlTree(['/auth/login']);
+      return true;
+    })
+  );
 };

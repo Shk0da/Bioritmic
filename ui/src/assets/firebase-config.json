@@ -1,0 +1,10 @@
+{
+  "enabled": false,
+  "apiKey": "",
+  "authDomain": "",
+  "projectId": "",
+  "storageBucket": "",
+  "messagingSenderId": "",
+  "appId": "",
+  "vapidKey": ""
+}

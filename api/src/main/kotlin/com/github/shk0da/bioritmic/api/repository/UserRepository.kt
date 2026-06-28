@@ -49,6 +49,32 @@ interface UserRepository : CoroutineCrudRepository<User, UUID> {
     @Query("SELECT * FROM users ORDER BY register_date DESC LIMIT :size OFFSET :offset")
     suspend fun findAllPaginated(@Param("size") size: Int, @Param("offset") offset: Long): List<User>
 
+    @Query(
+        """
+        SELECT * FROM users
+        WHERE LOWER(COALESCE(name, '')) LIKE LOWER(:pattern)
+           OR LOWER(COALESCE(email, '')) LIKE LOWER(:pattern)
+           OR CAST(id AS TEXT) ILIKE :pattern
+        ORDER BY register_date DESC
+        LIMIT :size OFFSET :offset
+        """
+    )
+    suspend fun findBySearchPaginated(
+        @Param("pattern") pattern: String,
+        @Param("size") size: Int,
+        @Param("offset") offset: Long
+    ): List<User>
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM users
+        WHERE LOWER(COALESCE(name, '')) LIKE LOWER(:pattern)
+           OR LOWER(COALESCE(email, '')) LIKE LOWER(:pattern)
+           OR CAST(id AS TEXT) ILIKE :pattern
+        """
+    )
+    suspend fun countBySearch(@Param("pattern") pattern: String): Long
+
     @Query("SELECT * FROM users WHERE id IN (:userIds)")
     suspend fun findByIdIn(@Param("userIds") userIds: Collection<UUID>): List<User>
 

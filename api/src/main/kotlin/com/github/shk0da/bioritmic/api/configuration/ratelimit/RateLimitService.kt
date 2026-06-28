@@ -103,6 +103,7 @@ class RateLimitService(
             path.contains("/photo") ||
             path.startsWith("/api/v1/search") ||
             path.startsWith("/api/v1/report") ||
+            path.startsWith("/api/v1/feedback") ||
             path.startsWith("/api/v1/stories") ||
             path.startsWith("/api/v1/admin")
     }

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0030-drop-user-prompt-answers" author="bioritmic">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="user_prompt_answers"/>
+        </preConditions>
+        <dropTable tableName="user_prompt_answers" cascadeConstraints="true"/>
+    </changeSet>
+
+    <changeSet id="0030-drop-prompts" author="bioritmic">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="prompts"/>
+        </preConditions>
+        <dropTable tableName="prompts" cascadeConstraints="true"/>
+    </changeSet>
+
+    <changeSet id="0030-drop-user-interests" author="bioritmic">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="user_interests"/>
+        </preConditions>
+        <dropTable tableName="user_interests" cascadeConstraints="true"/>
+    </changeSet>
+
+    <changeSet id="0030-drop-interests" author="bioritmic">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="interests"/>
+        </preConditions>
+        <dropTable tableName="interests" cascadeConstraints="true"/>
+    </changeSet>
+
+</databaseChangeLog>

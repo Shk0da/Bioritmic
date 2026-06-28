@@ -588,17 +588,6 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .expectStatus().isOk
     }
 
-    // ===== PROMPTS =====
-
-    @Test
-    fun `get random prompts`() {
-        webTestClient.get()
-            .uri("$API_WITH_VERSION_1/prompts/random?count=3")
-            .headers(auth(aliceToken))
-            .exchange()
-            .expectStatus().isOk
-    }
-
     // ===== SUBSCRIPTION =====
 
     @Test

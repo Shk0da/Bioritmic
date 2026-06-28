@@ -45,7 +45,10 @@ data class UserInfo(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val role: String? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    val isVerified: Boolean? = null
+    val isVerified: Boolean? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val isBanned: Boolean? = null,
+    val bio: String? = null
 ) : BasicPresentation {
 
     companion object {
@@ -72,7 +75,8 @@ data class UserInfo(
                 gender = user.getGender(),
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
                 image = ImageUtils.getProfileImageUri(user.id!!),
-                isVerified = user.isVerified
+                isVerified = user.isVerified,
+                bio = user.bio
             )
         }
 
@@ -84,7 +88,8 @@ data class UserInfo(
                 gender = user.getGender(),
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
                 image = ImageUtils.getProfileImageUri(user.id!!),
-                isVerified = user.isVerified
+                isVerified = user.isVerified,
+                bio = user.bio
             )
         }
 
@@ -141,7 +146,8 @@ data class UserInfo(
                 isBioCompatible = isBioCompatible,
                 isHoroCompatible = isHoroCompatible,
                 isFullCompatible = isFullCompatible,
-                image = ImageUtils.getProfileImageUri(user.id!!)
+                image = ImageUtils.getProfileImageUri(user.id!!),
+                bio = user.bio
             )
         }
     }

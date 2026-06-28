@@ -22,8 +22,8 @@ class EmailService(
 
     private val log = LoggerFactory.getLogger(EmailService::class.java)
 
-    @Value("\${app.base-url:http://localhost:8080}")
-    private val baseUrl: String = "http://localhost:8080"
+    @Value("\${app.base-url:http://localhost:6045}")
+    private val baseUrl: String = "http://localhost:6045"
 
     suspend fun sendTextEmail(to: String, subject: String, text: String) {
         if (mailProperties.resolvedMode() == AppMailProperties.MailMode.LOG) {
@@ -58,11 +58,13 @@ class EmailService(
     }
 
     suspend fun sendRecoveryLink(email: String, code: String) {
-        val link = "${appSecurityProperties.frontendUrl}/auth/recovery?code=$code"
+        val link = "${appSecurityProperties.frontendUrl}/auth/reset-password?code=$code"
         sendTextEmail(
             email,
             "Восстановление пароля — Bioritmic",
-            "Перейдите по ссылке для сброса пароля:\n$link\n\nКод: $code\n\nСсылка действует 15 минут."
+            "Перейдите по ссылке для сброса пароля:\n$link\n\n" +
+                "Если ссылка не открывается, введите код вручную на странице сброса: $code\n\n" +
+                "Ссылка действует 15 минут."
         )
     }
 

@@ -1,12 +1,12 @@
-server.port: 8080
+server.port: ${API_PORT:6045}
 
 app:
-  base-url: ${APP_BASE_URL:http://localhost:8080}
-  frontend-url: ${APP_FRONTEND_URL:http://localhost:4200}
+  base-url: ${APP_BASE_URL:http://localhost:6045}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:2399}
   cors:
     allowed-origins:
-      - http://localhost:4200
-      - http://127.0.0.1:4200
+      - http://localhost:2399
+      - http://127.0.0.1:2399
   security:
     headers:
       enabled: true
@@ -30,7 +30,7 @@ server.error.whitelabel.enabled: false
 # spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration
 
 management:
-  server.port: 8081
+  server.port: ${API_ACTUATOR_PORT:6046}
   endpoint.health.show-details: when_authorized
   endpoints.web.base-path: "/management/actuator"
   endpoints.web.exposure.include: health,info,metrics
@@ -55,7 +55,7 @@ spring:
   datasource:
     master:
       host: 127.0.0.1
-      port: 5432
+      port: ${POSTGRES_PORT:5433}
       database: bioritmic
       r2dbc-url: r2dbc:postgresql://${spring.datasource.master.host}:${spring.datasource.master.port}/${spring.datasource.master.database}
       jpa-url: jdbc:postgresql://${spring.datasource.master.host}:${spring.datasource.master.port}/${spring.datasource.master.database}
@@ -81,7 +81,7 @@ spring:
     enabled: true
   mail:
     host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PORT:587}
+    port: ${MAIL_PORT:2587}
     username: ${MAIL_USERNAME:noreply@bioritmic.ru}
     password: ${MAIL_PASSWORD:}
     default-encoding: UTF-8
@@ -100,7 +100,7 @@ spring:
           writetimeout: ${MAIL_WRITE_TIMEOUT:10000}
 
 s3:
-  endpoint: http://localhost:9340
+  endpoint: http://localhost:${MINIO_API_PORT:19000}
   access-key: bioritmic
   secret-key: bioritmic
   bucket: bioritmic
@@ -108,6 +108,15 @@ s3:
 
 firebase:
   enabled: false
+  credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
+  web:
+    api-key: ${FIREBASE_WEB_API_KEY:}
+    auth-domain: ${FIREBASE_WEB_AUTH_DOMAIN:}
+    project-id: ${FIREBASE_WEB_PROJECT_ID:}
+    storage-bucket: ${FIREBASE_WEB_STORAGE_BUCKET:}
+    messaging-sender-id: ${FIREBASE_WEB_MESSAGING_SENDER_ID:}
+    app-id: ${FIREBASE_WEB_APP_ID:}
+    vapid-key: ${FIREBASE_VAPID_KEY:}
 
 rate-limit:
   enabled: true

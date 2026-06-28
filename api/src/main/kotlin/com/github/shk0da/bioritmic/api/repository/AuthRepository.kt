@@ -17,6 +17,9 @@ interface AuthRepository : CoroutineCrudRepository<Auth, Long> {
     suspend fun findByUserIdAndRefreshToken(userId: UUID, refreshToken: String): Auth?
 
     @Transactional(readOnly = true)
+    suspend fun findByRefreshToken(refreshToken: String): Auth?
+
+    @Transactional(readOnly = true)
     suspend fun findByAccessToken(token: String): Auth?
 
     @Transactional

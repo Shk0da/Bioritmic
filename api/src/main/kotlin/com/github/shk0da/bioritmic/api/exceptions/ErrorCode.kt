@@ -57,6 +57,7 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
     USER_IS_BLOCKED("API-412", "The user blocked you.", HttpStatus.PRECONDITION_FAILED),
 
     ACCESS_DENIED("API-403", "Access denied. Admin role required.", HttpStatus.FORBIDDEN),
+    USER_NOT_VERIFIED("API-403.1", "User is not verified.", HttpStatus.FORBIDDEN),
 
     ACCOUNT_LOCKED(
         "API-423",

@@ -7,6 +7,8 @@ import { ProfileComponent } from './profile.component';
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { BoostService } from '../../../core/services/boost.service';
+import { ShareService } from '../../../core/services/share.service';
+import { ModalService } from '../../../core/services/modal.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 
 describe('ProfileComponent', () => {
@@ -39,6 +41,12 @@ describe('ProfileComponent', () => {
     boostService = jasmine.createSpyObj('BoostService', ['activateBoost', 'getCurrentBoost']);
     boostService.getCurrentBoost.and.returnValue(of(null));
 
+    const shareService = jasmine.createSpyObj('ShareService', ['shareProfile']);
+    shareService.shareProfile.and.returnValue(Promise.resolve('copied'));
+
+    const modalService = jasmine.createSpyObj('ModalService', ['alert']);
+    modalService.alert.and.returnValue(Promise.resolve());
+
     await TestBed.configureTestingModule({
       imports: [ProfileComponent, RouterTestingModule],
       providers: [
@@ -46,7 +54,9 @@ describe('ProfileComponent', () => {
         provideHttpClientTesting(),
         { provide: AuthService, useValue: authService },
         { provide: UserService, useValue: userService },
-        { provide: BoostService, useValue: boostService }
+        { provide: BoostService, useValue: boostService },
+        { provide: ShareService, useValue: shareService },
+        { provide: ModalService, useValue: modalService }
       ]
     }).compileComponents();
 

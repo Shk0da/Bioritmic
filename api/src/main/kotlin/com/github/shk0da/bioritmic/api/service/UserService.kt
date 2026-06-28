@@ -16,9 +16,11 @@ import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
 import com.github.shk0da.bioritmic.api.repository.GisDataRepository
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_BANNED
 import com.github.shk0da.bioritmic.api.repository.UserBlockRepository
 import com.github.shk0da.bioritmic.api.repository.UserPhotoRepository
 import com.github.shk0da.bioritmic.api.repository.UserRepository
+import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.repository.UserSettingsRepository
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.ImageTag
@@ -45,11 +47,15 @@ class UserService(
     val userBlockRepository: UserBlockRepository,
     val emailService: EmailService,
     val s3Service: S3Service,
-    val userPhotoRepository: UserPhotoRepository
+    val userPhotoRepository: UserPhotoRepository,
+    val authService: AuthService,
+    val userRoleRepository: UserRoleRepository,
+    val reportService: ReportService
 ) {
 
     companion object {
         private const val CONTENT_TYPE_JPEG = "image/jpeg"
+        private const val BIO_MAX_LENGTH = 500
     }
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
@@ -70,9 +76,21 @@ class UserService(
     }
 
     @Transactional(readOnly = true)
+    suspend fun isUserBanned(userId: UUID): Boolean {
+        val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
+        if (roles.any { it == ROLE_BANNED || it == "BANNED" }) {
+            return true
+        }
+        return reportService.isUserBanned(userId)
+    }
+
+    @Transactional(transactionManager = transactionManager)
     suspend fun getPhoto(userId: UUID): ByteArray {
         if (!userRepository.existsById(userId)) {
             throw ApiException(ErrorCode.USER_NOT_FOUND)
+        }
+        if (userPhotoRepository.findAllByUserId(userId).isEmpty()) {
+            return ImageUtils.defaultNoImage()
         }
         val s3Key = ImageUtils.s3KeyForPhoto(userId, ImageTag.CROPP_250x250)
         return s3Service.downloadPhoto(s3Key) ?: ImageUtils.defaultNoImage()
@@ -141,6 +159,16 @@ class UserService(
             if (null != birthday) {
                 user.birthday = Timestamp(birthday.time)
             }
+            if (bio != null) {
+                val trimmed = bio.trim()
+                if (trimmed.length > BIO_MAX_LENGTH) {
+                    throw ApiException(
+                        ErrorCode.INVALID_PARAMETER,
+                        mapOf(Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME, "bio"))
+                    )
+                }
+                user.bio = trimmed.ifEmpty { null }
+            }
         }
         return userRepository.save(user)
     }
@@ -156,6 +184,7 @@ class UserService(
     @Transactional
     suspend fun deleteUserById(userId: UUID) {
         deleteUserS3Photos(userId)
+        authService.deleteAuthByUserId(userId)
         userRepository.deleteById(userId)
     }
 
@@ -166,8 +195,13 @@ class UserService(
     }
 
     @Transactional(readOnly = true)
+    suspend fun findGis(userId: UUID): GisData? {
+        return gisDataRepository.findById(userId)
+    }
+
+    @Transactional(readOnly = true)
     suspend fun getGis(userId: UUID): GisData {
-        return gisDataRepository.findById(userId) ?: throw ApiException(ErrorCode.COORDINATES_NOT_FOUND)
+        return findGis(userId) ?: throw ApiException(ErrorCode.COORDINATES_NOT_FOUND)
     }
 
     @Transactional
@@ -180,6 +214,11 @@ class UserService(
             gisData.timestamp,
         )
         return GisDataModel.of(gisData)
+    }
+
+    @Transactional
+    suspend fun deleteGis(userId: UUID) {
+        gisDataRepository.deleteById(userId)
     }
 
     @Transactional
@@ -217,39 +256,61 @@ class UserService(
         return userSettingsRepository.save(userSettings)
     }
 
+    @Transactional(transactionManager = transactionManager)
     suspend fun updatePhoto(userId: UUID, filePart: FilePart) {
-        try {
-            val originalBytes = withContext(Dispatchers.IO) {
+        val originalBytes = try {
+            withContext(Dispatchers.IO) {
                 val dataBuffer = filePart.content().reduce { a, b -> a.write(b) }.awaitSingle()
                 val bytes = ByteArray(dataBuffer.readableByteCount())
                 dataBuffer.read(bytes)
                 bytes
             }
+        } catch (ex: IOException) {
+            log.error("Failed to read photo for userId [{}]: {}", userId, ex.message, ex)
+            throw ApiException(ErrorCode.API_INTERNAL_ERROR)
+        }
 
-            val tagsToUpload = listOf(ImageTag.ORIGINAL, ImageTag.CROPP_100x100, ImageTag.CROPP_250x250)
-            tagsToUpload.forEach { tag ->
-                val cropped = ImageUtils.cropImageBytes(originalBytes, tag)
+        val tagsToUpload = listOf(ImageTag.ORIGINAL, ImageTag.CROPP_100x100, ImageTag.CROPP_250x250)
+        val croppedByTag = tagsToUpload.associateWith { tag ->
+            ImageUtils.cropImageBytes(originalBytes, tag)
+        }
+
+        try {
+            savePhotoMetadata(userId, tagsToUpload)
+        } catch (ex: Exception) {
+            log.error("Failed to save photo metadata for userId [{}]: {}", userId, ex.message, ex)
+            throw ApiException(ErrorCode.API_INTERNAL_ERROR)
+        }
+
+        try {
+            croppedByTag.forEach { (tag, cropped) ->
                 val s3Key = ImageUtils.s3KeyForPhoto(userId, tag)
                 s3Service.uploadPhoto(s3Key, cropped, CONTENT_TYPE_JPEG)
             }
-
-            userPhotoRepository.deleteAllByUserId(userId)
-            tagsToUpload.forEachIndexed { index, tag ->
-                userPhotoRepository.save(
-                    UserPhoto().apply {
-                        this.userId = userId
-                        photoOrder = index
-                        s3Key = ImageUtils.s3KeyForPhoto(userId, tag)
-                        contentType = CONTENT_TYPE_JPEG
-                        createdAt = Timestamp(currentTimeMillis())
-                    }
-                )
-            }
-
             log.info("Photos uploaded to S3 for userId: {}", userId)
-        } catch (ex: IOException) {
-            log.error("Failed to save photos for userId [{}]: {}", userId, ex.message, ex)
+        } catch (ex: Exception) {
+            log.error("Failed to upload photos to S3 for userId [{}]: {}", userId, ex.message, ex)
+            try {
+                userPhotoRepository.deleteAllByUserId(userId)
+            } catch (rollbackEx: Exception) {
+                log.error("Failed to rollback photo metadata for userId [{}]", userId, rollbackEx)
+            }
             throw ApiException(ErrorCode.API_INTERNAL_ERROR)
+        }
+    }
+
+    private suspend fun savePhotoMetadata(userId: UUID, tagsToUpload: List<ImageTag>) {
+        userPhotoRepository.deleteAllByUserId(userId)
+        tagsToUpload.forEachIndexed { index, tag ->
+            userPhotoRepository.save(
+                UserPhoto().apply {
+                    this.userId = userId
+                    photoOrder = index
+                    s3Key = ImageUtils.s3KeyForPhoto(userId, tag)
+                    contentType = CONTENT_TYPE_JPEG
+                    createdAt = Timestamp(currentTimeMillis())
+                }
+            )
         }
     }
 

@@ -22,6 +22,24 @@ interface StoryRepository : CoroutineCrudRepository<Story, Long> {
     @Query("SELECT * FROM stories WHERE expires_at > NOW() ORDER BY created_at DESC LIMIT :limit")
     suspend fun findAllActive(limit: Int = 200): List<Story>
 
+    @Transactional(readOnly = true)
+    @Query(
+        """
+        SELECT s.* FROM stories s
+        WHERE s.expires_at > NOW()
+          AND (
+            s.user_id = :viewerId
+            OR EXISTS (
+              SELECT 1 FROM bookmarks b
+              WHERE b.user_id = :viewerId AND b.other_user_id = s.user_id
+            )
+          )
+        ORDER BY s.created_at DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun findActiveBookmarkedByViewer(viewerId: UUID, limit: Int = 200): List<Story>
+
     @Modifying
     @Query("DELETE FROM stories WHERE expires_at < :now")
     suspend fun deleteExpired(now: Timestamp)

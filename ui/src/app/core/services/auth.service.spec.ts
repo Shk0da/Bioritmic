@@ -2,13 +2,14 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { AuthService } from './auth.service';
 import { UserToken, UserInfo, AuthorizationModel } from '../models/user.model';
+import { firstValueFrom } from 'rxjs';
 
 describe('AuthService', () => {
   let service: AuthService;
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
-    sessionStorage.clear();
+    localStorage.clear();
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [AuthService]
@@ -19,7 +20,7 @@ describe('AuthService', () => {
 
   afterEach(() => {
     httpMock.verify();
-    sessionStorage.clear();
+    localStorage.clear();
   });
 
   it('should be created', () => {
@@ -37,8 +38,18 @@ describe('AuthService', () => {
 
       const req = httpMock.expectOne('/api/v1/authorization');
       expect(req.request.method).toBe('POST');
-      expect(req.request.withCredentials).toBeTrue();
       req.flush(mockToken);
+    });
+  });
+
+  describe('recovery', () => {
+    it('should POST to /api/v1/recovery', () => {
+      service.recovery('user@test.com').subscribe();
+
+      const req = httpMock.expectOne('/api/v1/recovery');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ email: 'user@test.com' });
+      req.flush(null);
     });
   });
 
@@ -65,10 +76,31 @@ describe('AuthService', () => {
   });
 
   describe('setAuth and clearAuth', () => {
-    it('should store user in session and clear on logout', () => {
+    it('should store user in localStorage and clear on logout', () => {
       service.setAuth({ accessToken: 'at', refreshToken: 'rt', name: 'John', email: 'j@t.com', expireTime: 999 });
       expect(service.getCurrentUser()?.name).toBe('John');
+      expect(localStorage.getItem('current_user')).toContain('John');
       service.clearAuth();
+      expect(service.getCurrentUser()).toBeNull();
+      expect(localStorage.getItem('current_user')).toBeNull();
+    });
+  });
+
+  describe('ensureSessionRestored', () => {
+    it('should restore user from cookies via /user/me', async () => {
+      const restored = firstValueFrom(service.ensureSessionRestored());
+      const req = httpMock.expectOne('/api/v1/user/me');
+      req.flush({ id: '1', name: 'John', email: 'j@t.com', isVerified: true });
+      expect(await restored).toBeTrue();
+      expect(service.getCurrentUser()?.name).toBe('John');
+    });
+
+    it('should clear auth when session cookie is missing', async () => {
+      localStorage.setItem('current_user', JSON.stringify({ id: '1', name: 'John', email: 'j@t.com' }));
+      const restored = firstValueFrom(service.ensureSessionRestored());
+      const req = httpMock.expectOne('/api/v1/user/me');
+      req.flush(null, { status: 401, statusText: 'Unauthorized' });
+      expect(await restored).toBeFalse();
       expect(service.getCurrentUser()).toBeNull();
     });
   });

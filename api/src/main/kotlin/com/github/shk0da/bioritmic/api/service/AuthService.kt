@@ -9,7 +9,6 @@ import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.api.repository.AuthRepository
 import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
-import com.github.shk0da.bioritmic.api.utils.SecurityUtils.generateRandomPassword
 import org.infinispan.Cache
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -46,15 +45,32 @@ class AuthService(
 
     @Transactional
     suspend fun refreshToken(userToken: UserToken): UserToken {
-        val user = userRepository.findByEmail(userToken.email) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        val auth = authRepository.findByUserIdAndRefreshToken(
-            user.id!!, userToken.refreshToken
-        ) ?: throw ApiException(ErrorCode.AUTH_NOT_FOUND)
-        if (auth.isExpired()) {
-            auth.accessToken?.let { authTokenCache.remove(it) }
-            authRepository.deleteByUserId(user.id!!)
+        val refreshTokenValue = userToken.refreshToken
+        if (refreshTokenValue.isBlank()) {
             throw ApiException(ErrorCode.AUTH_NOT_FOUND)
         }
+
+        val auth = authRepository.findByRefreshToken(refreshTokenValue)
+            ?: run {
+                if (userToken.email.isBlank()) {
+                    null
+                } else {
+                    val user = userRepository.findByEmail(userToken.email)
+                        ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+                    authRepository.findByUserIdAndRefreshToken(user.id!!, refreshTokenValue)
+                }
+            }
+            ?: throw ApiException(ErrorCode.AUTH_NOT_FOUND)
+
+        if (auth.isExpired()) {
+            auth.accessToken?.let { authTokenCache.remove(it) }
+            authRepository.deleteByUserId(auth.userId!!)
+            throw ApiException(ErrorCode.AUTH_NOT_FOUND)
+        }
+
+        val user = userRepository.findById(auth.userId!!)
+            ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+
         val oldAccessToken = auth.accessToken
         auth.refresh()
         oldAccessToken?.let { authTokenCache.remove(it) }
@@ -115,23 +131,5 @@ class AuthService(
         user.password = passwordEncoder.encode(newPassword)
         userRepository.save(user)
         deleteAuthByUserId(user.id!!)
-    }
-
-    @Transactional
-    suspend fun resetPasswordAndSendEmail(user: User) {
-        if (null == user.id) {
-            throw ApiException("Id was not be empty!")
-        }
-        if (null == user.email) {
-            throw ApiException("Email was not be empty!")
-        }
-        user.resetRecoveryCode()
-        val newPassword = generateRandomPassword(10)
-        user.password = passwordEncoder.encode(newPassword)
-        userRepository.save(user)
-        val auth = authRepository.findByUserId(user.id!!)
-        authTokenCache.remove(auth?.accessToken)
-        authRepository.deleteByUserId(user.id!!)
-        emailService.sendNewPassword(user.email!!, newPassword)
     }
 }

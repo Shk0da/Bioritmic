@@ -45,39 +45,33 @@ function handle401Error(
     refreshTokenSubject.next(null);
 
     const user = authService.getCurrentUser();
-    if (user?.email) {
-      const token: Partial<UserToken> = {
-        email: user.email,
-        name: user.name || '',
-        accessToken: '',
-        refreshToken: '',
-        expireTime: 0
-      };
+    const token: Partial<UserToken> = {
+      email: user?.email || '',
+      name: user?.name || '',
+      accessToken: '',
+      refreshToken: '',
+      expireTime: 0
+    };
 
-      return authService.refreshToken(token).pipe(
-        switchMap((newToken: UserToken) => {
-          isRefreshing = false;
-          authService.setAuth(newToken);
-          refreshTokenSubject.next(newToken);
-          const retry = request.clone({ withCredentials: true });
-          if (newToken.accessToken) {
-            return next(retry.clone({
-              setHeaders: { Authorization: `Bearer ${newToken.accessToken}` }
-            }));
-          }
-          return next(retry);
-        }),
-        catchError((error) => {
-          isRefreshing = false;
-          authService.clearAuth();
-          return throwError(() => error);
-        })
-      );
-    }
-
-    isRefreshing = false;
-    authService.clearAuth();
-    return throwError(() => new Error('No refresh session'));
+    return authService.refreshToken(token).pipe(
+      switchMap((newToken: UserToken) => {
+        isRefreshing = false;
+        authService.setAuth(newToken);
+        refreshTokenSubject.next(newToken);
+        const retry = request.clone({ withCredentials: true });
+        if (newToken.accessToken) {
+          return next(retry.clone({
+            setHeaders: { Authorization: `Bearer ${newToken.accessToken}` }
+          }));
+        }
+        return next(retry);
+      }),
+      catchError((error) => {
+        isRefreshing = false;
+        authService.clearAuth();
+        return throwError(() => error);
+      })
+    );
   }
 
   return refreshTokenSubject.pipe(

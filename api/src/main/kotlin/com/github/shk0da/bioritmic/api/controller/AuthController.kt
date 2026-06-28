@@ -35,7 +35,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
@@ -64,6 +63,8 @@ class AuthController(
             PasswordValidator.validate(password)
             if (userService.isUserExists(userModel.email)) throw ApiException(USER_EXISTS)
         }
+        val assignFirstUserAdmin = appSecurityProperties.security.adminEmail.isBlank() &&
+            userRepository.countAll() == 0L
         val newUser = UserModel.of(userService.createNewUser(userModel))
         val userId = newUser.id ?: throw ApiException(INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "user")))
 
@@ -74,7 +75,7 @@ class AuthController(
                 userRepository.setVerified(userId, true)
                 log.info("User {} assigned ADMIN role (configured admin email)", userId)
             }
-            adminEmail.isBlank() && userRepository.countAll() <= 1 -> {
+            assignFirstUserAdmin -> {
                 userRoleRepository.addRole(userId, ROLE_ADMIN)
                 userRepository.setVerified(userId, true)
                 log.info("User {} assigned ADMIN role (first user)", userId)
@@ -100,17 +101,6 @@ class AuthController(
     @PostMapping(value = ["/reset-password"], produces = [APPLICATION_JSON_VALUE])
     suspend fun resetPassword(@RequestBody @Valid request: ResetPasswordRequest) {
         authService.resetPasswordWithCode(request.code, request.password)
-    }
-
-    @Deprecated("Use POST /reset-password")
-    @ResponseStatus(HttpStatus.OK)
-    @GetMapping(value = ["/reset-password"], produces = [APPLICATION_JSON_VALUE])
-    suspend fun resetPasswordLegacy(@RequestParam @Valid @NotEmpty code: String) {
-        val user = authService.findUserByRecoveryCode(code) ?: throw ApiException(INVALID_RECOVERY_CODE)
-        if (user.recoveryCodeExpireTime == null || user.recoveryCodeExpireTime!!.time < System.currentTimeMillis()) {
-            throw ApiException(INVALID_RECOVERY_CODE)
-        }
-        authService.resetPasswordAndSendEmail(user)
     }
 
     @GetMapping(value = ["/update-email"], produces = [APPLICATION_JSON_VALUE])

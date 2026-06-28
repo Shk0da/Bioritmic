@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { UserService } from './user.service';
 import { AuthService } from './auth.service';
+import { GisData } from '../models/user.model';
 
 describe('UserService', () => {
   let service: UserService;
@@ -57,6 +58,13 @@ describe('UserService', () => {
     req.flush([]);
   });
 
+  it('getBlockedCount should GET /api/v1/user/blocked/count', () => {
+    service.getBlockedCount().subscribe(r => expect(r.count).toBe(2));
+    const req = httpMock.expectOne('/api/v1/user/blocked/count');
+    expect(req.request.method).toBe('GET');
+    req.flush({ count: 2 });
+  });
+
   it('blockUser should PUT /api/v1/user/{id}/block', () => {
     service.blockUser('5').subscribe();
     const req = httpMock.expectOne('/api/v1/user/5/block');
@@ -79,10 +87,27 @@ describe('UserService', () => {
   });
 
   it('getGisData should GET /api/v1/user/me/gis', () => {
-    service.getGisData().subscribe();
+    let result: GisData | null | undefined;
+    service.getGisData().subscribe((data) => { result = data; });
     const req = httpMock.expectOne('/api/v1/user/me/gis');
     expect(req.request.method).toBe('GET');
     req.flush({ lat: 55.0, lon: 37.0 });
+    expect(result?.lat).toBe(55.0);
+  });
+
+  it('getGisData should return null when location is not set', () => {
+    let result: GisData | null | undefined;
+    service.getGisData().subscribe((data) => { result = data; });
+    const req = httpMock.expectOne('/api/v1/user/me/gis');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    expect(result).toBeNull();
+  });
+
+  it('deleteGisData should DELETE /api/v1/user/me/gis', () => {
+    service.deleteGisData().subscribe();
+    const req = httpMock.expectOne('/api/v1/user/me/gis');
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
   });
 
   it('saveGisData should POST /api/v1/user/me/gis', () => {
@@ -114,6 +139,22 @@ describe('UserService', () => {
     req.flush([]);
   });
 
+  it('resolveProfilePhotoUrl should return photo url when photos exist', () => {
+    let result: string | null | undefined;
+    service.resolveProfilePhotoUrl('42', 123).subscribe((url) => { result = url; });
+    const req = httpMock.expectOne('/api/v1/user/42/photos');
+    req.flush([{ photoOrder: 0 }]);
+    expect(result).toBe('/api/v1/user/42/photo?v=123');
+  });
+
+  it('resolveProfilePhotoUrl should return null when photos are missing', () => {
+    let result: string | null | undefined;
+    service.resolveProfilePhotoUrl('42').subscribe((url) => { result = url; });
+    const req = httpMock.expectOne('/api/v1/user/42/photos');
+    req.flush([]);
+    expect(result).toBeNull();
+  });
+
   it('uploadPhoto should POST FormData', () => {
     const file = new File([''], 'test.png', { type: 'image/png' });
     service.uploadPhoto(file).subscribe();
@@ -142,35 +183,6 @@ describe('UserService', () => {
     const req = httpMock.expectOne('/api/v1/user/settings');
     expect(req.request.method).toBe('POST');
     req.flush({});
-  });
-
-  it('getAllInterests should GET /api/v1/user/interests', () => {
-    service.getAllInterests().subscribe();
-    const req = httpMock.expectOne('/api/v1/user/interests');
-    expect(req.request.method).toBe('GET');
-    req.flush([]);
-  });
-
-  it('getUserInterests should GET /api/v1/user/me/interests', () => {
-    service.getUserInterests().subscribe();
-    const req = httpMock.expectOne('/api/v1/user/me/interests');
-    expect(req.request.method).toBe('GET');
-    req.flush([]);
-  });
-
-  it('setUserInterests should PUT /api/v1/user/me/interests', () => {
-    service.setUserInterests([1, 2, 3]).subscribe();
-    const req = httpMock.expectOne('/api/v1/user/me/interests');
-    expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual([1, 2, 3]);
-    req.flush([]);
-  });
-
-  it('getRandomPrompts should GET with count in URL', () => {
-    service.getRandomPrompts(5).subscribe();
-    const req = httpMock.expectOne(r => r.url.includes('/api/v1/prompts/random'));
-    expect(req.request.url).toContain('count=5');
-    req.flush([]);
   });
 
   it('getBiorhythmDetail should GET /api/v1/biorhythm/{id}/detail', () => {

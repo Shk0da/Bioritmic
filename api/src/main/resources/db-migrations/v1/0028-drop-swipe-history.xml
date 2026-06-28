@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0028-drop-swipe-history" author="bioritmic">
+        <comment>Remove unused swipe_history table (no application code references it).</comment>
+        <sql>DROP TABLE IF EXISTS swipe_history CASCADE;</sql>
+    </changeSet>
+
+</databaseChangeLog>

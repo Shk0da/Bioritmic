@@ -82,24 +82,18 @@ import { ModalService } from '../../core/services/modal.service';
           <!-- Bio -->
           @if (user.bio) {
             <div class="bio-section">
-              <h6 class="section-label">О себе</h6>
+              <h6 class="section-label">Обо мне</h6>
               <p class="bio-text">{{ user.bio }}</p>
             </div>
           }
 
-          <!-- Interests -->
-          @if (user.interests && user.interests.length > 0) {
-            <div class="interests-section">
-              <h6 class="section-label">Интересы</h6>
-              <div class="interests-tags">
-                @for (interest of user.interests; track interest.id) {
-                  <span class="interest-tag">{{ interest.name }}</span>
-                }
-              </div>
-            </div>
-          }
-
           <!-- Actions -->
+          @if (user.isBanned) {
+            <div class="banned-notice">
+              <i class="bi bi-shield-exclamation"></i>
+              <span>Пользователь нарушал правила и был забанен</span>
+            </div>
+          } @else {
           <div class="actions-grid">
             <button class="action-btn action-message" (click)="openChat()">
               <i class="bi bi-chat-dots-fill"></i>
@@ -136,6 +130,7 @@ import { ModalService } from '../../core/services/modal.service';
               </button>
             }
           </div>
+          }
 
           @if (showReportModal) {
             <div class="report-modal-overlay" (click)="closeReportModal()">
@@ -306,7 +301,6 @@ import { ModalService } from '../../core/services/modal.service';
 
     .compatibility-section,
     .bio-section,
-    .interests-section,
     .biorhythm-section {
       padding: 1.25rem 1.5rem;
       border-top: 1px solid var(--border-light, #f3f4f6);
@@ -362,19 +356,25 @@ import { ModalService } from '../../core/services/modal.service';
       margin: 0;
     }
 
-    .interests-tags {
+    .banned-notice {
       display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .interest-tag {
-      padding: 0.3rem 0.75rem;
-      background: linear-gradient(135deg, rgba(253, 41, 123, 0.08) 0%, rgba(255, 101, 91, 0.08) 100%);
-      color: #fd297b;
-      border-radius: 20px;
-      font-size: 0.8rem;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin: 1.25rem 1.5rem;
+      padding: 1rem 1.25rem;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #b91c1c;
+      font-size: 0.95rem;
       font-weight: 600;
+      text-align: center;
+
+      i {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+      }
     }
 
     .actions-grid {
@@ -691,7 +691,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
 
   openChat(): void {
     if (this.user?.id) {
-      this.router.navigate(['/mailbox/conversation', this.user.id]);
+      this.router.navigate(['/mailbox', this.user.id]);
     }
   }
 
@@ -700,9 +700,11 @@ export class UserDetailComponent implements OnInit, OnDestroy {
       next: (user) => {
         this.user = user;
         this.loadPhoto(userId);
-        this.loadBookmarkStatus(userId);
-        this.loadBlockStatus(userId);
-        this.loadMeetingStatus(userId);
+        if (!user.isBanned) {
+          this.loadBookmarkStatus(userId);
+          this.loadBlockStatus(userId);
+          this.loadMeetingStatus(userId);
+        }
         this.loading = false;
       },
       error: (err) => {
@@ -864,7 +866,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     this.meetingsService.createMeeting(meeting).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.meetingSent = true;
-        this.modalService.alert('Предложение встречи отправлено!', 'Готово');
+        this.modalService.alert('Предложение встречи отправлено!');
       },
       error: () => { this.modalService.alert('Ошибка отправки предложения встречи', 'Ошибка'); }
     });
@@ -882,7 +884,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     this.meetingsService.deleteMeeting(this.user.id).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.meetingSent = false;
-        this.modalService.alert('Предложение встречи отменено', 'Готово');
+        this.modalService.alert('Предложение встречи отменено');
       },
       error: () => { this.modalService.alert('Ошибка отмены встречи', 'Ошибка'); }
     });
@@ -893,14 +895,14 @@ export class UserDetailComponent implements OnInit, OnDestroy {
 
     if (this.isBlocked) {
       this.userService.unblockUser(this.user.id).pipe(takeUntil(this.destroy$)).subscribe({
-        next: () => { this.isBlocked = false; this.modalService.alert('Пользователь разблокирован', 'Готово'); },
+        next: () => { this.isBlocked = false; this.modalService.alert('Пользователь разблокирован'); },
         error: () => { this.modalService.alert('Ошибка разблокировки', 'Ошибка'); }
       });
     } else {
       this.modalService.confirm('Вы уверены, что хотите заблокировать этого пользователя?', 'Блокировка').then(confirmed => {
         if (confirmed && this.user?.id) {
           this.userService.blockUser(this.user.id).pipe(takeUntil(this.destroy$)).subscribe({
-            next: () => { this.isBlocked = true; this.modalService.alert('Пользователь заблокирован', 'Готово'); },
+            next: () => { this.isBlocked = true; this.modalService.alert('Пользователь заблокирован'); },
             error: () => { this.modalService.alert('Ошибка блокировки', 'Ошибка'); }
           });
         }

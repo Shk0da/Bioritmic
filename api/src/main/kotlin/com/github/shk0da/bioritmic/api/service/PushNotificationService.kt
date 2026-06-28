@@ -1,6 +1,8 @@
 package com.github.shk0da.bioritmic.api.service
 
 import com.github.shk0da.bioritmic.api.domain.UserPushToken
+import com.github.shk0da.bioritmic.api.exceptions.ApiException
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.repository.UserPushTokenRepository
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
@@ -41,7 +43,11 @@ class PushNotificationService(
     }
 
     @Transactional
-    suspend fun removeToken(token: String) {
+    suspend fun removeToken(userId: UUID, token: String) {
+        val existing = userPushTokenRepository.findByToken(token)
+        if (existing != null && existing.userId != userId) {
+            throw ApiException(ErrorCode.ACCESS_DENIED)
+        }
         userPushTokenRepository.deleteByToken(token)
     }
 
@@ -81,6 +87,25 @@ class PushNotificationService(
                 }
             }
         }
+    }
+
+    suspend fun notifyNewMessage(recipientId: UUID, senderName: String, preview: String) {
+        val body = if (preview.length > 80) preview.take(80) + "…" else preview
+        sendPushNotification(
+            recipientId,
+            "Новое сообщение",
+            "$senderName: $body",
+            mapOf("type" to "mailbox")
+        )
+    }
+
+    suspend fun notifyNewMeeting(recipientId: UUID, senderName: String) {
+        sendPushNotification(
+            recipientId,
+            "Новая встреча",
+            "$senderName предлагает встретиться",
+            mapOf("type" to "meeting")
+        )
     }
 
     private fun isFirebaseInitialized(): Boolean {

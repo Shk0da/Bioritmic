@@ -7,6 +7,8 @@ import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 import { BoostService, BoostInfo } from '../../../core/services/boost.service';
+import { ShareService } from '../../../core/services/share.service';
+import { ModalService } from '../../../core/services/modal.service';
 
 @Component({
   selector: 'app-profile',
@@ -30,9 +32,23 @@ import { BoostService, BoostInfo } from '../../../core/services/boost.service';
               [alt]="user?.name">
             <h4 class="mb-1">{{ user?.name }}</h4>
             <p class="text-muted small mb-3">{{ user?.email }}</p>
-            <a [routerLink]="['/profile/me/edit']" class="btn btn-outline-primary">
-              <i class="bi bi-pencil me-2"></i>Редактировать
-            </a>
+            <div class="profile-actions">
+              <a [routerLink]="['/profile/me/edit']" class="btn btn-outline-primary">
+                <i class="bi bi-pencil me-2"></i>Редактировать
+              </a>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                (click)="shareProfile()"
+                [disabled]="!user?.id || sharing">
+                @if (sharing) {
+                  <span class="spinner-border spinner-border-sm me-2"></span>
+                } @else {
+                  <i class="bi bi-share me-2"></i>
+                }
+                Поделиться
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -59,6 +75,14 @@ import { BoostService, BoostInfo } from '../../../core/services/boost.service';
                 </div>
               }
             </div>
+
+            @if (user?.bio) {
+              <hr class="my-4">
+              <div class="mb-0">
+                <label class="text-muted small d-block mb-2">Обо мне</label>
+                <p class="mb-0 bio-text">{{ user?.bio }}</p>
+              </div>
+            }
 
             @if (user?.isBioCompatible !== undefined || user?.isHoroCompatible !== undefined) {
               <hr class="my-4">
@@ -152,19 +176,14 @@ import { BoostService, BoostInfo } from '../../../core/services/boost.service';
       }
     }
 
-    .stat-item {
-      padding: 0.5rem;
+    .profile-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
 
-    .stat-value {
-      font-size: 1.75rem;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .stat-label {
-      margin-top: 0.25rem;
-      font-size: 0.75rem;
+    .profile-actions .btn {
+      width: 100%;
     }
 
     .boost-active {
@@ -196,14 +215,17 @@ export class ProfileComponent implements OnInit, OnDestroy {
   blockedCount = 0;
   activeBoost: BoostInfo | null = null;
   boostActivating = false;
+  sharing = false;
 
-  private boostCountdownInterval: any = null;
+  private boostCountdownInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private userService: UserService,
     private authService: AuthService,
     private sanitizer: DomSanitizer,
-    private boostService: BoostService
+    private boostService: BoostService,
+    private shareService: ShareService,
+    private modalService: ModalService
   ) {
     this.destroyRef.onDestroy(() => {
       this.destroy$.next();
@@ -246,12 +268,19 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   private loadPhoto(): void {
-    this.userService.getPhoto().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (bytes: Uint8Array) => {
+    const userId = this.user?.id;
+    if (!userId) {
+      this.photoDataUrl = null;
+      return;
+    }
+
+    this.userService.resolveProfilePhotoUrl(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (url) => {
         UserService.revokePhotoUrl(this.photoDataUrl);
-        this.photoDataUrl = UserService.createPhotoUrl(bytes);
+        this.photoDataUrl = url;
       },
       error: () => {
+        UserService.revokePhotoUrl(this.photoDataUrl);
         this.photoDataUrl = null;
       }
     });
@@ -295,6 +324,23 @@ export class ProfileComponent implements OnInit, OnDestroy {
     });
   }
 
+  async shareProfile(): Promise<void> {
+    if (!this.user?.id || this.sharing) {
+      return;
+    }
+    this.sharing = true;
+    try {
+      const result = await this.shareService.shareProfile(this.user.id, this.user.name || 'Профиль');
+      if (result === 'copied') {
+        await this.modalService.alert('Ссылка на профиль скопирована в буфер обмена');
+      } else if (result === 'failed') {
+        await this.modalService.alert('Не удалось поделиться профилем. Попробуйте ещё раз.');
+      }
+    } finally {
+      this.sharing = false;
+    }
+  }
+
   getBoostCountdown(): string {
     if (!this.activeBoost) return '';
     const now = Date.now();
@@ -313,7 +359,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.boostCountdownInterval = setInterval(() => {
       if (this.activeBoost && Date.now() >= this.activeBoost.expiresAt) {
         this.activeBoost = null;
-        clearInterval(this.boostCountdownInterval);
+        if (this.boostCountdownInterval) {
+          clearInterval(this.boostCountdownInterval);
+        }
         this.boostCountdownInterval = null;
       }
     }, 1000);

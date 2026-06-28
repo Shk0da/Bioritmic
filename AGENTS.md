@@ -69,7 +69,7 @@ Bioritmic/
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── .mocharc.yml
-│   ├── proxy.conf.json           # Dev proxy to backend :8080
+│   ├── proxy.conf.json           # Dev proxy to backend :6045
 │   ├── e2e/                      # Selenium E2E tests
 │   │   ├── helpers.js            # Shared utilities (createDriver, registerUser, etc.)
 │   │   ├── user-interaction.test.js
@@ -164,16 +164,16 @@ docker compose -f docker-compose.yml -f docker-compose.lowmem.yml up --build -d
 docker compose up --build -d
 ```
 
-Open **http://localhost:4200**. Nginx in the `ui` container proxies `/api/` and `/swagger-ui/` to the backend.
+Open **http://localhost:2399**. Nginx in the `ui` container proxies `/api/` and `/swagger-ui/` to the backend.
 
 | Service | URL |
 |---------|-----|
-| App | http://localhost:4200 |
-| API (direct) | http://localhost:8080 |
-| Actuator | http://localhost:8081/management/actuator/health |
-| PostgreSQL | localhost:5432 |
-| MinIO | http://localhost:9341 |
-| SMTP | localhost:587 |
+| App | http://localhost:2399 |
+| API (direct) | http://localhost:6045 |
+| Actuator | http://localhost:6046/management/actuator/health |
+| PostgreSQL | localhost:5433 (host; container 5432) |
+| MinIO console | http://localhost:19001 (API on :19000) |
+| SMTP | localhost:2587 |
 
 Stop: `docker compose down`
 
@@ -187,9 +187,9 @@ cp .env.example .env   # optional: change MAIL_PASSWORD from default "changeme"
 docker compose up -d
 ```
 This starts:
-- PostgreSQL on `localhost:5432` (user: `postgres`, password: `postgres`, db: `bioritmic`)
-- MinIO on `localhost:9340` (API) / `localhost:9341` (console)
-- **Mail server** (`mail` service) on `localhost:587` (SMTP), hostname `mail.bioritmic.ru`
+- PostgreSQL on `localhost:5433` by default (user: `postgres`, password: `postgres`, db: `bioritmic`). Override with `POSTGRES_PORT` in `.env` if needed.
+- MinIO on `localhost:19000` (API) / `localhost:19001` (console). Override with `MINIO_API_PORT` / `MINIO_CONSOLE_PORT`.
+- **Mail server** (`mail` service) on `localhost:2587` (SMTP submission), hostname `mail.bioritmic.ru`. Override with `MAIL_PORT`.
 
 On Windows, `start.bat` starts all services and runs mail initialization automatically.
 
@@ -201,9 +201,9 @@ Transactional email (password recovery, admin reset) is sent through an in-stack
 |------|-------|
 | Docker service | `mail` |
 | Hostname | `mail.bioritmic.ru` |
-| SMTP (submission) | `localhost:587` (dev on host) / `mail:587` (API in Docker) |
-| SMTP (plain) | port `25` |
-| IMAP | port `993` |
+| SMTP (submission) | `localhost:2587` (dev on host) / `mail:587` (API in Docker) |
+| SMTP (plain) | host `2525` / container `25` |
+| IMAP | host `2993` / container `993` |
 | Default sender | `noreply@bioritmic.ru` |
 | Config | `docker/mail/mailserver.env`, `docker/mail/config/` |
 
@@ -217,14 +217,14 @@ chmod +x scripts/init-mail.sh
 ./scripts/init-mail.sh
 ```
 
-The script starts the `mail` container, waits for port 587, and creates/updates the mailbox `noreply@bioritmic.ru` (password from `MAIL_PASSWORD` in `.env`, default `changeme`).
+The script starts the `mail` container, waits for port 2587 (or `MAIL_PORT` from `.env`), and creates/updates the mailbox `noreply@bioritmic.ru` (password from `MAIL_PASSWORD` in `.env`, default `changeme`).
 
 **Application mail settings** (see `.env.example`):
 
 | Variable | Dev default | Description |
 |----------|-------------|-------------|
 | `MAIL_HOST` | `localhost` | SMTP host (`mail` inside Docker Compose) |
-| `MAIL_PORT` | `587` | SMTP submission port |
+| `MAIL_PORT` | `2587` | SMTP submission port on host (container still uses 587) |
 | `MAIL_USERNAME` | `noreply@bioritmic.ru` | SMTP login |
 | `MAIL_PASSWORD` | `changeme` | Mailbox password (change in production) |
 | `MAIL_FROM` | `noreply@bioritmic.ru` | From address in outgoing mail |
@@ -236,7 +236,7 @@ Develop profile (`application-develop.yml`) uses these defaults. Backend tests u
 **Optional:** Mailpit for local capture only (not used by default):
 ```bash
 docker compose --profile mailpit up -d mailpit
-# UI: http://localhost:8025
+# UI: http://localhost:18025
 ```
 
 #### DNS for Production (`bioritmic.ru`)
@@ -265,7 +265,7 @@ Without correct DNS, the server may send mail locally but large providers can re
 ```bash
 ./gradlew :api:bootRun -Dspring-boot.run.profiles=develop
 ```
-Backend runs on `localhost:8080`. Actuator on `localhost:8081`.
+Backend runs on `localhost:6045`. Actuator on `localhost:6046`.
 
 ### Start Frontend (Dev)
 ```bash
@@ -273,7 +273,7 @@ cd ui
 npm install
 npm start
 ```
-Frontend runs on `localhost:4200` with proxy to backend.
+Frontend runs on `localhost:2399` with proxy to backend.
 
 ### Build All
 ```bash
@@ -494,10 +494,20 @@ describe('Feature', function () {
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BASE_URL` | `http://localhost:4200` | Frontend URL (for E2E tests) |
-| `API_URL` | `http://localhost:8080` | Backend URL (for E2E tests) |
+| `BASE_URL` | `http://localhost:2399` | Frontend URL (for E2E tests) |
+| `API_URL` | `http://localhost:6045` | Backend URL (for E2E tests) |
+| `API_PORT` | `6045` | Backend HTTP port |
+| `API_ACTUATOR_PORT` | `6046` | Actuator / management port |
+| `UI_PORT` | `2399` | Frontend dev server and Docker UI host port |
+| `POSTGRES_PORT` | `5433` | Host port for Docker PostgreSQL (avoids conflict with local Postgres on 5432) |
+| `MINIO_API_PORT` | `19000` | Host port for MinIO S3 API (avoids local MinIO on 9000) |
+| `MINIO_CONSOLE_PORT` | `19001` | Host port for MinIO web console |
+| `MAIL_PORT` | `2587` | Host SMTP submission port (avoids local mail on 587) |
+| `MAIL_PLAIN_PORT` | `2525` | Host SMTP plain port (maps to container 25) |
+| `MAIL_IMAP_PORT` | `2993` | Host IMAP port (maps to container 993) |
+| `MAILPIT_SMTP_PORT` | `11025` | Optional Mailpit SMTP on host |
+| `MAILPIT_UI_PORT` | `18025` | Optional Mailpit web UI on host |
 | `MAIL_HOST` | `localhost` | SMTP host (`mail` in Docker Compose) |
-| `MAIL_PORT` | `587` | SMTP port |
 | `MAIL_USERNAME` | `noreply@bioritmic.ru` | SMTP login |
 | `MAIL_PASSWORD` | `changeme` | Mailbox password |
 | `MAIL_FROM` | `noreply@bioritmic.ru` | Sender address |
@@ -505,7 +515,7 @@ describe('Feature', function () {
 | `MAIL_SMTP_AUTH` | `true` | SMTP authentication |
 | `MAIL_STARTTLS_ENABLE` | `true` | STARTTLS |
 | `MAIL_SSL_TRUST` | `localhost,mail.bioritmic.ru` | Trusted hosts (self-signed cert in dev) |
-| `APP_FRONTEND_URL` | `http://localhost:4200` | Used in recovery email links |
+| `APP_FRONTEND_URL` | `http://localhost:2399` | Used in recovery email links |
 
 ---
 
