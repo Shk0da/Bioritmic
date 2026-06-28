@@ -17,7 +17,7 @@ spring:
             enable: ${MAIL_STARTTLS_ENABLE:false}
             required: ${MAIL_STARTTLS_REQUIRED:false}
           ssl:
-            trust: ${MAIL_SSL_TRUST:}
+            trust: ${MAIL_SSL_TRUST:mail.bioritmic.ru,mail}
             checkserveridentity: false
 
 s3:

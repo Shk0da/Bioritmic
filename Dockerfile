@@ -32,7 +32,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     MAIL_FROM_NAME=Bioritmic
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl gosu locales nginx openssl openjdk-21-jre-headless postfix postgresql-16 python3-pip supervisor \
+    ca-certificates curl dnsutils gosu locales nginx openssl openjdk-21-jre-headless postfix postgresql-16 python3-pip supervisor \
     && pip3 install --break-system-packages 'certbot>=5.3' \
     && locale-gen en_US.UTF-8 C.UTF-8 \
     && rm -rf /var/lib/apt/lists/*

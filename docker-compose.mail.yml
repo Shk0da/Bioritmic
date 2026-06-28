@@ -88,6 +88,8 @@ services:
       MAIL_STARTTLS_REQUIRED: "false"
       MAIL_SSL_TRUST: mail.${MAIL_DOMAIN:-bioritmic.ru},mail
       MAIL_FROM: noreply@${MAIL_DOMAIN:-bioritmic.ru}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_TRUST: mail.${MAIL_DOMAIN:-bioritmic.ru},mail
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_CHECKSERVERIDENTITY: "false"
 
 volumes:
   bioritmic-mail-data:

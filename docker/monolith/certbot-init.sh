@@ -29,16 +29,21 @@ add_domain_if_challengable() {
   [[ -z "$name" ]] && return
   domain_in_args "$name" && return
   local resolved=""
-  resolved="$(getent ahosts "$name" 2>/dev/null | awk '{print $1; exit}')"
+  # Use public DNS — inside Docker getent may return the mail container IP (172.x).
+  resolved="$(dig +short A "${name}" @8.8.8.8 2>/dev/null | head -1)"
   if [[ -z "$resolved" ]]; then
-    echo "[certbot] Skipping ${name} (no DNS A/AAAA record)"
+    resolved="$(dig +short A "${name}" @1.1.1.1 2>/dev/null | head -1)"
+  fi
+  if [[ -z "$resolved" ]]; then
+    echo "[certbot] Skipping ${name} (no public DNS A record yet)"
     return
   fi
   if [[ -n "$IP" && "$resolved" != "$IP" ]]; then
-    echo "[certbot] Skipping ${name} (DNS ${resolved} != server IP ${IP})"
+    echo "[certbot] Skipping ${name} (public DNS ${resolved} != server IP ${IP})"
     return
   fi
   DOMAIN_ARGS+=(-d "${name}")
+  echo "[certbot] Including ${name} (public DNS ${resolved})"
 }
 
 DOMAIN_ARGS=(-d "${DOMAIN}")
