@@ -1,42 +1,54 @@
 package com.github.shk0da.bioritmic.api.configuration
 
-import org.springframework.beans.factory.config.BeanPostProcessor
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Primary
+import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.JavaMailSenderImpl
 import java.util.Properties
 
 @Configuration
 class MailConfiguration {
 
+    private val log = LoggerFactory.getLogger(MailConfiguration::class.java)
+
     @Bean
-    fun javaMailSenderSslTrustCustomizer(
-        @Value("\${spring.mail.host:localhost}") mailHost: String,
-        @Value("\${MAIL_SSL_TRUST:}") mailSslTrust: String,
-    ): BeanPostProcessor = object : BeanPostProcessor {
-        override fun postProcessAfterInitialization(bean: Any, beanName: String): Any {
-            if (bean !is JavaMailSenderImpl) {
-                return bean
-            }
+    @Primary
+    fun javaMailSender(
+        @Value("\${spring.mail.host:localhost}") host: String,
+        @Value("\${spring.mail.port:587}") port: Int,
+        @Value("\${spring.mail.username:}") username: String,
+        @Value("\${spring.mail.password:}") password: String,
+        @Value("\${MAIL_SMTP_AUTH:true}") smtpAuth: String,
+        @Value("\${MAIL_STARTTLS_ENABLE:true}") startTlsEnable: String,
+        @Value("\${MAIL_STARTTLS_REQUIRED:false}") startTlsRequired: String,
+        @Value("\${MAIL_CONNECTION_TIMEOUT:10000}") connectionTimeout: String,
+        @Value("\${MAIL_TIMEOUT:10000}") timeout: String,
+        @Value("\${MAIL_WRITE_TIMEOUT:10000}") writeTimeout: String,
+    ): JavaMailSender {
+        val sender = JavaMailSenderImpl()
+        sender.host = host
+        sender.port = port
+        sender.username = username.ifBlank { null }
+        sender.password = password.ifBlank { null }
+        sender.defaultEncoding = Charsets.UTF_8.name()
 
-            val props = Properties()
-            props.putAll(bean.javaMailProperties)
-            props["mail.smtp.ssl.trust"] = buildSslTrust(mailHost, mailSslTrust)
-            props["mail.smtp.ssl.checkserveridentity"] = "false"
-            bean.javaMailProperties = props
-            return bean
-        }
-    }
+        val props = Properties()
+        props["mail.transport.protocol"] = "smtp"
+        props["mail.smtp.auth"] = smtpAuth
+        props["mail.smtp.starttls.enable"] = startTlsEnable
+        props["mail.smtp.starttls.required"] = startTlsRequired
+        props["mail.smtp.connectiontimeout"] = connectionTimeout
+        props["mail.smtp.timeout"] = timeout
+        props["mail.smtp.writetimeout"] = writeTimeout
+        // API connects to docker host "mail"; SMTP cert is issued for mail.bioritmic.ru.
+        props["mail.smtp.ssl.trust"] = "*"
+        props["mail.smtp.ssl.checkserveridentity"] = "false"
 
-    private fun buildSslTrust(mailHost: String, configured: String): String {
-        val hosts = linkedSetOf(mailHost, "mail", "mail.bioritmic.ru", "localhost")
-        if (configured.isNotBlank()) {
-            configured.split(",")
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .forEach { hosts.add(it) }
-        }
-        return hosts.joinToString(",")
+        sender.javaMailProperties = props
+        log.info("JavaMailSender: host={}, port={}, ssl.trust=*", host, port)
+        return sender
     }
 }
