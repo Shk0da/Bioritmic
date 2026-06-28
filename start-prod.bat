@@ -35,7 +35,7 @@ if "%APP_BASE_URL%"=="" set "APP_BASE_URL=%APP_FRONTEND_URL%"
 
 echo   UI:              http://localhost:%UI_PORT%
 echo   Public URL:      %APP_FRONTEND_URL%
-echo   Profile:         docker,production (Swagger off)
+echo   Profile:         docker,production,monolith (Swagger off)
 if "%PROD_LOWMEM%"=="1" echo   Memory:          lowmem overlay enabled
 echo.
 

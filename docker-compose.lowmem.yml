@@ -1,46 +1,12 @@
-# Low-memory overlay for 2 GB RAM hosts (Linux VPS).
-# Usage: docker compose -f docker-compose.yml -f docker-compose.lowmem.yml up -d
-
+# Low-memory overlay for single-container hosts (~2 GB RAM).
 services:
-  postgres:
-    mem_limit: 160m
-    memswap_limit: 160m
-    command:
-      - postgres
-      - -c
-      - shared_buffers=48MB
-      - -c
-      - max_connections=40
-      - -c
-      - effective_cache_size=96MB
-      - -c
-      - maintenance_work_mem=16MB
-      - -c
-      - work_mem=2MB
-
-  minio:
-    mem_limit: 128m
-    memswap_limit: 128m
-
-  mail:
-    mem_limit: 256m
-    memswap_limit: 256m
+  bioritmic:
+    mem_limit: 1536m
+    memswap_limit: 1536m
     environment:
-      ENABLE_OPENDKIM: "0"
-      ENABLE_OPENDMARC: "0"
-
-  api:
-    mem_limit: 640m
-    memswap_limit: 640m
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
       JAVA_TOOL_OPTIONS: >-
         -XX:+UseContainerSupport
-        -XX:MaxRAMPercentage=75.0
+        -XX:MaxRAMPercentage=60.0
         -Xms128m
-        -Xmx448m
+        -Xmx512m
         -XX:+ExitOnOutOfMemoryError
-
-  ui:
-    mem_limit: 48m
-    memswap_limit: 48m

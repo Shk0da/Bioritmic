@@ -1,148 +1,35 @@
 services:
-  # Base stack. For 2 GB RAM hosts, also use docker-compose.lowmem.yml (see start-docker.bat).
-  postgres:
-    image: postgres:16-alpine
-    container_name: bioritmic-postgres
-    environment:
-      POSTGRES_DB: bioritmic
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "${POSTGRES_PORT:-5433}:5432"
-    volumes:
-      - bioritmic-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d bioritmic"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    restart: unless-stopped
-
-  minio:
-    image: minio/minio:latest
-    container_name: bioritmic-minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: bioritmic
-      MINIO_ROOT_PASSWORD: bioritmic
-    ports:
-      - "${MINIO_API_PORT:-19000}:9000"
-      - "${MINIO_CONSOLE_PORT:-19001}:9001"
-    volumes:
-      - bioritmic-minio-data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    restart: unless-stopped
-
-  mail:
-    image: ghcr.io/docker-mailserver/docker-mailserver:latest
-    container_name: bioritmic-mail
-    hostname: mail.bioritmic.ru
-    ports:
-      - "${MAIL_PLAIN_PORT:-2525}:25"
-      - "${MAIL_PORT:-2587}:587"
-      - "${MAIL_IMAP_PORT:-2993}:993"
-    volumes:
-      - bioritmic-mail-data:/var/mail
-      - bioritmic-mail-state:/var/mail-state
-      - bioritmic-mail-logs:/var/log/mail
-      - ./docker/mail/config:/tmp/docker-mailserver
-    env_file:
-      - ./docker/mail/mailserver.env
-    cap_add:
-      - NET_ADMIN
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "ss -lntp | grep -q ':587' || ss -lntp | grep -q ':25'"]
-      interval: 10s
-      timeout: 5s
-      retries: 45
-      start_period: 180s
-
-  mail-init:
-    image: ghcr.io/docker-mailserver/docker-mailserver:latest
-    container_name: bioritmic-mail-init
-    depends_on:
-      mail:
-        condition: service_healthy
-    volumes:
-      - ./docker/mail/config:/tmp/docker-mailserver
-      - bioritmic-mail-data:/var/mail
-      - bioritmic-mail-state:/var/mail-state
-    env_file:
-      - ./docker/mail/mailserver.env
-    environment:
-      MAILBOX_PASSWORD: ${MAIL_PASSWORD:-changeme}
-    entrypoint: ["/bin/bash", "-c"]
-    command:
-      - >-
-        setup email add noreply@bioritmic.ru "$$MAILBOX_PASSWORD" 2>/dev/null ||
-        setup email update noreply@bioritmic.ru "$$MAILBOX_PASSWORD" 2>/dev/null ||
-        true
-    restart: "no"
-
-  api:
+  bioritmic:
     build:
       context: .
-      dockerfile: api/Dockerfile
-    container_name: bioritmic-api
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      mail-init:
-        condition: service_completed_successfully
+      dockerfile: Dockerfile
+    container_name: bioritmic
     env_file:
       - path: .env
         required: false
     environment:
-      SPRING_PROFILES_ACTIVE: docker,swagger
+      SPRING_PROFILES_ACTIVE: docker,swagger,monolith
       MAIL_PASSWORD: ${MAIL_PASSWORD:-changeme}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:2399}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:2399}
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
     ports:
-      - "${API_PORT:-6045}:6045"
-      - "${API_ACTUATOR_PORT:-6046}:6046"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:6046/management/actuator/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 90s
-    restart: unless-stopped
-
-  ui:
-    build:
-      context: ui
-      dockerfile: Dockerfile
-    container_name: bioritmic-ui
-    depends_on:
-      api:
-        condition: service_healthy
-    ports:
       - "${UI_PORT:-2399}:80"
+      - "${UI_HTTPS_PORT:-2443}:443"
+    volumes:
+      - bioritmic-pgdata:/var/lib/postgresql/data
+      - bioritmic-minio-data:/data/minio
+      - bioritmic-letsencrypt:/etc/letsencrypt
+      - ${SSL_CERT_DIR:-./docker/monolith/certs}:/etc/nginx/certs
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
-      interval: 10s
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:6046/management/actuator/health || exit 1"]
+      interval: 15s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 120s
     restart: unless-stopped
-
-  # Optional: local SMTP catcher (not used by default stack)
-  mailpit:
-    profiles: ["mailpit"]
-    image: axllent/mailpit:latest
-    container_name: bioritmic-mailpit
-    ports:
-      - "${MAILPIT_SMTP_PORT:-11025}:1025"
-      - "${MAILPIT_UI_PORT:-18025}:8025"
 
 volumes:
   bioritmic-pgdata:
   bioritmic-minio-data:
-  bioritmic-mail-data:
-  bioritmic-mail-state:
-  bioritmic-mail-logs:
+  bioritmic-letsencrypt:

@@ -7,23 +7,22 @@
 .vscode
 *.iml
 
-# Build
+# Build artifacts
 api/build/
-ui/
+ui/node_modules/
+ui/build/
 
 # Logs
 *.log
 /tmp/
 
-# Docker
-docker-compose*.yml
-api/Dockerfile
-ui/Dockerfile
+# Legacy multi-container compose (not needed in image)
+docker-compose.multi.yml
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Test
+# Tests
 api/src/test/
 ui/e2e/

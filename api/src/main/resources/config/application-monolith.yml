@@ -1,0 +1,30 @@
+# Monolith profile: all infrastructure services run on localhost inside one container.
+spring:
+  datasource:
+    master:
+      host: 127.0.0.1
+      port: 5432
+  mail:
+    host: 127.0.0.1
+    port: 25
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+            required: false
+
+s3:
+  endpoint: http://127.0.0.1:9000
+
+app:
+  mail:
+    from: ${MAIL_FROM:noreply@bioritmic.ru}
+    from-name: ${MAIL_FROM_NAME:Bioritmic}
+    mode: smtp
+
+management:
+  health:
+    mail:
+      enabled: false
