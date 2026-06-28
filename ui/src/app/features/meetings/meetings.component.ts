@@ -47,8 +47,46 @@ interface MeetingWithUser extends UserMeeting {
         </div>
       </div>
     } @else {
+      @if (acceptedOutgoingMeetings.length > 0) {
+        <div class="accepted-meetings mb-4">
+          @for (meeting of acceptedOutgoingMeetings; track meeting.userId) {
+            <div class="accepted-meeting-banner">
+              <div class="accepted-meeting-icon">
+                <i class="bi bi-check-circle-fill"></i>
+              </div>
+              <img
+                [src]="meeting.userPhotoUrl || ''"
+                class="rounded-circle accepted-meeting-photo"
+                [alt]="meeting.userName || 'User'">
+              <div class="accepted-meeting-content flex-grow-1">
+                <div class="accepted-meeting-title">Встреча принята!</div>
+                <p class="accepted-meeting-text mb-1">
+                  <strong>{{ meeting.userName || 'Пользователь' }}</strong> принял(а) ваше предложение встречи.
+                </p>
+                <p class="accepted-meeting-meta mb-0">
+                  <i class="bi bi-signpost-2 me-1"></i>
+                  Расстояние: <strong>{{ meeting.distance.toFixed(1) }} км</strong>
+                </p>
+              </div>
+              <div class="accepted-meeting-actions d-flex gap-2">
+                <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-success btn-sm">
+                  <i class="bi bi-person me-1"></i>Профиль
+                </a>
+                <a [routerLink]="['/mailbox', meeting.userId]" class="btn btn-success btn-sm">
+                  <i class="bi bi-chat-heart me-1"></i>Написать
+                </a>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (incomingMeetings.length === 0 && acceptedOutgoingMeetings.length > 0) {
+        <p class="text-muted mb-4">Новых предложений встреч пока нет</p>
+      }
+
       <div class="row">
-        @for (meeting of meetings; track meeting.userId) {
+        @for (meeting of incomingMeetings; track meeting.userId) {
           @if (meeting.status !== 'DECLINED') {
           <div class="col-12 col-md-6 mb-4">
             <div class="card meeting-card h-100">
@@ -155,6 +193,56 @@ interface MeetingWithUser extends UserMeeting {
       border-radius: 8px;
       margin-bottom: 1rem;
     }
+
+    .accepted-meeting-banner {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      box-shadow: 0 4px 16px rgba(34, 197, 94, 0.08);
+    }
+
+    .accepted-meeting-icon {
+      color: #22c55e;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .accepted-meeting-photo {
+      width: 52px;
+      height: 52px;
+      object-fit: cover;
+      border: 2px solid #22c55e;
+      flex-shrink: 0;
+    }
+
+    .accepted-meeting-title {
+      font-weight: 700;
+      color: #15803d;
+      margin-bottom: 0.25rem;
+    }
+
+    .accepted-meeting-text,
+    .accepted-meeting-meta {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      .accepted-meeting-banner {
+        flex-wrap: wrap;
+      }
+
+      .accepted-meeting-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+    }
+
   `]
 })
 export class MeetingsComponent implements OnInit, OnDestroy {
@@ -162,6 +250,14 @@ export class MeetingsComponent implements OnInit, OnDestroy {
   loading = false;
   pageable: PageableRequest = { page: 0, size: 20 };
   private destroy$ = new Subject<void>();
+
+  get incomingMeetings(): MeetingWithUser[] {
+    return this.meetings.filter((meeting) => !meeting.outgoing);
+  }
+
+  get acceptedOutgoingMeetings(): MeetingWithUser[] {
+    return this.meetings.filter((meeting) => meeting.outgoing && meeting.status === 'ACCEPTED');
+  }
 
   constructor(
     private meetingsService: MeetingsService,

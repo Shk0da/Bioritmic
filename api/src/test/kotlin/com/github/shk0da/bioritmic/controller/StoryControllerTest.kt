@@ -171,6 +171,18 @@ class StoryControllerTest : ApiApplicationTests() {
             .jsonPath("$.reaction").isEqualTo("HEART")
             .jsonPath("$.reactionCounts.HEART").isEqualTo(1)
 
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/stories/$storyId/react")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("reaction" to "HEART")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.reaction").doesNotExist()
+            .jsonPath("$.reactionCounts.HEART").doesNotExist()
+
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/stories")
             .header(HttpHeaders.AUTHORIZATION, authToken)
@@ -178,7 +190,7 @@ class StoryControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$[0].currentUserReaction").isEqualTo("HEART")
+            .jsonPath("$[0].currentUserReaction").doesNotExist()
     }
 
     @Test

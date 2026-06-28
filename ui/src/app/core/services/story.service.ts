@@ -20,7 +20,7 @@ export interface Story {
 }
 
 export interface StoryReactionResponse {
-  reaction: StoryReactionType;
+  reaction: StoryReactionType | null;
   reactionCounts: StoryReactionCounts;
 }
 

@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { SearchService } from '../../core/services/search.service';
 import { UserService } from '../../core/services/user.service';
@@ -34,13 +34,21 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
         @if (cards.length === 0 && !loading) {
           <div class="no-cards">
             <div class="no-cards-icon">
-              <i class="bi bi-emoji-frown"></i>
+              <i class="bi" [ngClass]="locationRequired ? 'bi-geo-alt' : 'bi-emoji-frown'"></i>
             </div>
-            <h3>Пользователи закончились</h3>
-            <p class="text-muted">Попробуйте расширить параметры поиска</p>
-            <button class="btn btn-primary mt-3" (click)="openFilters()">
-              <i class="bi bi-funnel"></i> Изменить фильтры
-            </button>
+            @if (locationRequired) {
+              <h3>Укажите местоположение</h3>
+              <p class="text-muted">Для поиска людей рядом нужно добавить геолокацию</p>
+              <a routerLink="/settings/location" class="btn btn-primary mt-3">
+                <i class="bi bi-geo-alt"></i> Указать местоположение
+              </a>
+            } @else {
+              <h3>Пользователи закончились</h3>
+              <p class="text-muted">{{ searchError || 'Попробуйте расширить параметры поиска' }}</p>
+              <button class="btn btn-primary mt-3" (click)="openFilters()">
+                <i class="bi bi-funnel"></i> Изменить фильтры
+              </button>
+            }
           </div>
         } @else {
           @for (card of cards.slice(0, 2); track card.user.id; let i = $index) {
@@ -128,13 +136,21 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
         } @else if (cards.length === 0) {
           <div class="no-cards-desktop text-center py-5">
             <div class="no-cards-icon">
-              <i class="bi bi-emoji-frown"></i>
+              <i class="bi" [ngClass]="locationRequired ? 'bi-geo-alt' : 'bi-emoji-frown'"></i>
             </div>
-            <h3>Пользователи закончились</h3>
-            <p class="text-muted">Попробуйте расширить параметры поиска</p>
-            <button class="btn btn-primary mt-3" (click)="openFilters()">
-              <i class="bi bi-funnel"></i> Изменить фильтры
-            </button>
+            @if (locationRequired) {
+              <h3>Укажите местоположение</h3>
+              <p class="text-muted">Для поиска людей рядом нужно добавить геолокацию</p>
+              <a routerLink="/settings/location" class="btn btn-primary mt-3">
+                <i class="bi bi-geo-alt"></i> Указать местоположение
+              </a>
+            } @else {
+              <h3>Пользователи закончились</h3>
+              <p class="text-muted">{{ searchError || 'Попробуйте расширить параметры поиска' }}</p>
+              <button class="btn btn-primary mt-3" (click)="openFilters()">
+                <i class="bi bi-funnel"></i> Изменить фильтры
+              </button>
+            }
           </div>
         } @else {
           <div class="profiles-grid">
@@ -173,9 +189,14 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
                     <button class="btn btn-outline-warning" (click)="superLikeProfile(card)" title="Супер-лайк">
                       <i class="bi bi-star-fill"></i>
                     </button>
-                    <a [routerLink]="['/user', card.user.id]" class="btn btn-outline-primary" title="Профиль">
+                    <button
+                      type="button"
+                      class="btn btn-outline-primary"
+                      [disabled]="!isUserVerified"
+                      [title]="isUserVerified ? 'Профиль' : 'Доступно после верификации email'"
+                      (click)="openProfile(card)">
                       <i class="bi bi-person"></i>
-                    </a>
+                    </button>
                     <button class="btn btn-outline-success" (click)="likeProfile(card)" title="Нравится">
                       <i class="bi bi-heart"></i>
                     </button>
@@ -198,6 +219,14 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
         <button class="control-btn btn-superlike" (click)="manualSwipe(SwipeDirection.UP)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)" title="Супер-лайк">
           <i class="bi bi-star-fill"></i>
         </button>
+        <button
+          type="button"
+          class="control-btn btn-profile"
+          [disabled]="cards.length === 0 || !isUserVerified"
+          [title]="isUserVerified ? 'Профиль' : 'Доступно после верификации email'"
+          (click)="openProfile(cards[0])">
+          <i class="bi bi-person"></i>
+        </button>
         <button class="control-btn btn-like" (click)="manualSwipe(SwipeDirection.RIGHT)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)">
           <i class="bi bi-heart-fill"></i>
         </button>
@@ -211,9 +240,13 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
           } @else {
             <div class="swipe-limit-cta">
               <p class="cta-text">Обновите до Pro для неограниченных свайпов</p>
-              <a routerLink="/subscription" class="btn btn-pro">
-                <i class="bi bi-star-fill me-1"></i> Bioritmic Pro
-              </a>
+              @if (isUserVerified) {
+                <a routerLink="/subscription" class="btn btn-pro">
+                  <i class="bi bi-star-fill me-1"></i> Bioritmic Pro
+                </a>
+              } @else {
+                <span class="cta-hint">Подтвердите email для доступа к подписке</span>
+              }
             </div>
           }
         </div>
@@ -249,6 +282,10 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
             <label class="filter-label">Расстояние: {{ searchCriteria.distance }} км</label>
             <input type="range" class="form-range" [(ngModel)]="searchCriteria.distance" min="0.05" max="100" step="0.05">
           </div>
+
+          <a routerLink="/settings/location" class="filter-location-link" (click)="closeFilters()">
+            <i class="bi bi-geo-alt me-1"></i>Моё местоположение
+          </a>
         </div>
         <div class="filters-footer">
           <button class="btn btn-secondary" (click)="closeFilters()">Отмена</button>
@@ -265,6 +302,8 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   cards: SwipeCard[] = [];
   loading = false;
   showFilters = false;
+  searchError: string | null = null;
+  locationRequired = false;
   SwipeDirection = SwipeDirection;
   Gender = Gender;
   Math = Math;
@@ -294,6 +333,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   swipeLimit = -1;
   swipeRemaining = -1;
   isPro = false;
+  isUserVerified = true;
   swipeHistory: Array<{ direction: SwipeDirection; card: SwipeCard }> = [];
 
   constructor(
@@ -303,14 +343,17 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     private swipeService: SwipeService,
     private matchService: MatchService,
     private subscriptionService: SubscriptionService,
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
+    this.isUserVerified = this.authService.getCurrentUser()?.isVerified !== false;
     this.loadUserSettings();
     this.loadSwipeLimit();
 
     this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
+      this.isUserVerified = user?.isVerified !== false;
       if (user?.isPro !== undefined) {
         this.isPro = user.isPro;
         if (this.isPro) {
@@ -403,17 +446,24 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private search(): void {
     this.loading = true;
+    this.searchError = null;
+    this.locationRequired = false;
     this.searchService.searchByFilter(this.searchCriteria).subscribe({
       next: (users) => {
         this.swipeService.setCards(users);
         this.cards = this.swipeService.getCards();
-        // Загружаем фото только для первых двух карточек
         this.loadVisiblePhotos();
         this.loading = false;
       },
-      error: () => {
+      error: (err) => {
         this.loading = false;
         this.cards = [];
+        const message = err?.error?.errors?.[0]?.message || err?.error?.message || '';
+        if (err?.status === 404 && message.toLowerCase().includes('coordinates')) {
+          this.locationRequired = true;
+        } else {
+          this.searchError = message || 'Не удалось выполнить поиск';
+        }
       }
     });
   }
@@ -569,6 +619,13 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.swipeService.swipe(SwipeDirection.UP);
   }
 
+  openProfile(card?: SwipeCard): void {
+    if (!this.isUserVerified || !card?.user.id) {
+      return;
+    }
+    void this.router.navigate(['/user', card.user.id]);
+  }
+
   undoSwipe(): void {
     const card = this.swipeService.undo();
     if (card) {
@@ -718,8 +775,23 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   applyFilters(): void {
-    this.search();
-    this.closeFilters();
+    const settings: UserSettings = {
+      gender: this.searchCriteria.gender,
+      ageMin: this.searchCriteria.ageMin,
+      ageMax: this.searchCriteria.ageMax,
+      distance: this.searchCriteria.distance
+    };
+
+    this.userService.saveUserSettings(settings).subscribe({
+      next: () => {
+        this.search();
+        this.closeFilters();
+      },
+      error: () => {
+        this.search();
+        this.closeFilters();
+      }
+    });
   }
 
   onAgeMinChange(): void {

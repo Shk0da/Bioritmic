@@ -11,6 +11,7 @@ const SILENT_PATH_SUFFIXES = [
   '/synchronization',
   '/config/client',
   '/me/gis',
+  '/geo/',
   '/refresh-token'
 ];
 

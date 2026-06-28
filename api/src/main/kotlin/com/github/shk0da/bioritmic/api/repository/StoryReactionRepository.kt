@@ -25,6 +25,16 @@ interface StoryReactionRepository : CoroutineCrudRepository<StoryReaction, Long>
             "SET reaction = EXCLUDED.reaction, reacted_at = NOW()"
     )
     suspend fun upsert(storyId: Long, viewerId: UUID, reaction: String): Int
+
+    @Query(
+        "SELECT reaction FROM story_reactions " +
+            "WHERE story_id = :storyId AND viewer_id = :viewerId LIMIT 1"
+    )
+    suspend fun findReactionByStoryIdAndViewerId(storyId: Long, viewerId: UUID): String?
+
+    @Modifying
+    @Query("DELETE FROM story_reactions WHERE story_id = :storyId AND viewer_id = :viewerId")
+    suspend fun deleteByStoryIdAndViewerId(storyId: Long, viewerId: UUID): Int
 }
 
 @Repository

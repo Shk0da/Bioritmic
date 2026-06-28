@@ -71,8 +71,11 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
       @if (!isUserVerified) {
         <div class="alert alert-warning verification-alert d-flex align-items-center mb-3" role="alert">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
-          <div>
+          <div class="flex-grow-1">
             <strong>Аккаунт не верифицирован.</strong> Подтвердите email для полного доступа к функционалу.
+            <a routerLink="/settings" class="alert-link ms-1">Параметры поиска</a>
+            ·
+            <a routerLink="/settings/location" class="alert-link">Местоположение</a>
           </div>
         </div>
       }

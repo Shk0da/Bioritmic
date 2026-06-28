@@ -106,6 +106,24 @@ describe('authGuard', () => {
     });
   });
 
+  it('should allow unverified user to open search settings and location', (done) => {
+    authService.isAuthenticated.and.returnValue(true);
+    authService.getCurrentUser.and.returnValue({
+      id: '1',
+      name: 'Test',
+      email: 't@t.com',
+      isVerified: false
+    });
+
+    runGuard('/settings').subscribe(value => {
+      expect(value).toBeTrue();
+      runGuard('/settings/location').subscribe(value2 => {
+        expect(value2).toBeTrue();
+        done();
+      });
+    });
+  });
+
   it('should redirect unverified user away from restricted routes to swipe', (done) => {
     authService.isAuthenticated.and.returnValue(true);
     authService.getCurrentUser.and.returnValue({
@@ -117,7 +135,7 @@ describe('authGuard', () => {
     const urlTree = {} as UrlTree;
     router.createUrlTree.and.returnValue(urlTree);
 
-    runGuard('/settings').subscribe(value => {
+    runGuard('/bookmarks').subscribe(value => {
       expect(value).toBe(urlTree);
       expect(router.createUrlTree).toHaveBeenCalledWith(['/swipe']);
       done();

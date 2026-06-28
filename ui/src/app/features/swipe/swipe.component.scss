@@ -686,6 +686,12 @@
       color: white;
     }
   }
+
+  .cta-hint {
+    display: inline-block;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.75);
+  }
 }
 
 .control-btn {
@@ -740,6 +746,16 @@
 
     &:hover {
       background: #3b82f6;
+      color: white;
+    }
+  }
+
+  &.btn-profile {
+    background: var(--card-bg);
+    color: #6366f1;
+
+    &:hover:not(:disabled) {
+      background: #6366f1;
       color: white;
     }
   }
@@ -898,6 +914,20 @@
 
   &:last-child {
     margin-bottom: 0;
+  }
+}
+
+.filter-location-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.5rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 0.9rem;
+
+  &:hover {
+    color: white;
+    text-decoration: underline;
   }
 }
 

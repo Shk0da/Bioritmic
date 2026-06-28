@@ -3,7 +3,9 @@ package com.github.shk0da.bioritmic.controller.users
 import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
+import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
+import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
 import com.github.shk0da.bioritmic.domain.UserModel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -123,6 +125,15 @@ class UserControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun estimateMeGisRequiresAuthTest() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me/gis/estimate")
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isUnauthorized
+    }
+
+    @Test
     fun deleteMeGisTest() {
         val gis = mapOf("lat" to 55.7558, "lon" to 37.6173)
         webTestClient.post()
@@ -195,6 +206,81 @@ class UserControllerTest : ApiApplicationTests() {
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.isBanned").isEqualTo(true)
+    }
+
+    @Test
+    fun unverifiedUserCanSaveGisAndSearchSettings() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val unverifiedEmail = "unverified_gis_$suffix@gmail.com"
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf(
+                "name" to "Unverified GIS User",
+                "email" to unverifiedEmail,
+                "password" to "Test12345",
+                "birthday" to "1992-01-01"
+            )))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+
+        var unverifiedToken = ""
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(unverifiedEmail, "Test12345")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.accessToken")
+            .value { token: Any -> unverifiedToken = "Bearer ${token as String}" }
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, unverifiedToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.isVerified").isEqualTo(false)
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/user/me/gis")
+            .header(HttpHeaders.AUTHORIZATION, unverifiedToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("lat" to 55.7558, "lon" to 37.6173)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me/gis")
+            .header(HttpHeaders.AUTHORIZATION, unverifiedToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.lat").isEqualTo(55.7558)
+            .jsonPath("$.lon").isEqualTo(37.6173)
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/user/settings")
+            .header(HttpHeaders.AUTHORIZATION, unverifiedToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(UserSettingsModel(
+                gender = Gender.WOMAN,
+                ageMin = 21,
+                ageMax = 35,
+                distance = 25.0
+            )))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.distance").isEqualTo(25.0)
     }
 
     @Test

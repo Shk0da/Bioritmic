@@ -38,7 +38,15 @@ class MeetingsService(
 
     @Transactional
     suspend fun findAllMeetingsByUserId(userId: UUID, pageable: PageableRequest): List<Meeting> {
-        return meetingsRepository.findAllByUserId(userId, pageable.pageSize, pageable.offset)
+        val incoming = meetingsRepository.findIncomingByUserId(userId, pageable.pageSize, pageable.offset)
+        val acceptedOutgoing = meetingsRepository.findSentAcceptedByUserId(userId, pageable.pageSize, pageable.offset)
+        val seen = mutableSetOf<Pair<UUID?, UUID?>>()
+        return (incoming + acceptedOutgoing)
+            .filter { meeting ->
+                val key = meeting.userId to meeting.otherUserId
+                seen.add(key)
+            }
+            .sortedByDescending { it.timestamp?.time ?: 0L }
     }
 
     @Transactional
@@ -78,7 +86,7 @@ class MeetingsService(
                 throw ex
             }
         }
-        return meetingsRepository.findAllByUserId(userId, defaultPageable.pageSize, defaultPageable.offset)
+        return findAllMeetingsByUserId(userId, defaultPageable)
     }
 
     @Transactional
@@ -89,7 +97,7 @@ class MeetingsService(
             log.error("Failed delete meetings for userId [{}]: {}", userId, ex.message, ex)
             throw ex
         }
-        return meetingsRepository.findAllByUserId(currentUserId, defaultPageable.pageSize, defaultPageable.offset)
+        return findAllMeetingsByUserId(currentUserId, defaultPageable)
     }
 
     @Transactional

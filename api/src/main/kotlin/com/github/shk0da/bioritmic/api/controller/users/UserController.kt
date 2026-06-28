@@ -7,9 +7,11 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_PARAMETER
 import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
+import com.github.shk0da.bioritmic.api.model.gis.GisEstimateModel
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserInfo.Companion.ofWithCompare
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
+import com.github.shk0da.bioritmic.api.service.GeoIpService
 import com.github.shk0da.bioritmic.api.service.SubscriptionService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
@@ -23,6 +25,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
+import org.springframework.http.server.reactive.ServerHttpRequest
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -47,7 +50,8 @@ import javax.validation.constraints.NotNull
 class UserController(
     val userService: UserService,
     val subscriptionService: SubscriptionService,
-    val userRoleRepository: UserRoleRepository
+    val userRoleRepository: UserRoleRepository,
+    val geoIpService: GeoIpService
 ) {
 
     private val log = LoggerFactory.getLogger(UserController::class.java)
@@ -162,6 +166,13 @@ class UserController(
         return ResponseEntity.noContent().build()
     }
 
+    // GET /me/gis/estimate — approximate location by client IP (fallback when GPS is unavailable)
+    @GetMapping(value = ["/me/gis/estimate"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun meGisEstimate(request: ServerHttpRequest): GisEstimateModel {
+        getUserId()
+        return geoIpService.estimateLocation(resolveClientIp(request))
+    }
+
     // GET /{id}/photo <- UserInfo
     @GetMapping(value = ["/{id}/photo"], produces = [MediaType.IMAGE_JPEG_VALUE])
     suspend fun photo(@PathVariable id: UUID): ByteArray {
@@ -202,5 +213,15 @@ class UserController(
         userService.deletePhoto(userId)
         log.debug("Deleted all photo for userId: {}", userId)
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
+    }
+
+    private fun resolveClientIp(request: ServerHttpRequest): String? {
+        request.headers.getFirst("X-Forwarded-For")
+            ?.split(",")
+            ?.firstOrNull()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { return it }
+        return request.remoteAddress?.address?.hostAddress
     }
 }

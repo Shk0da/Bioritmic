@@ -18,7 +18,9 @@ data class UserMeeting(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     var status: String? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    var senderName: String? = null
+    var senderName: String? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    var outgoing: Boolean? = null
 ) : BasicPresentation {
 
     companion object {
@@ -38,6 +40,7 @@ data class UserMeeting(
                 distance = meeting.distance,
                 timestamp = meeting.timestamp,
                 status = meeting.status,
+                outgoing = isCurrentUserCreator,
             )
         }
     }

@@ -142,6 +142,16 @@ class StoryService(
         }
         val reactionType = StoryReactionType.parse(reaction)
             ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("reaction" to "reaction"))
+        val existingReaction = storyReactionRepository.findReactionByStoryIdAndViewerId(storyId, viewerId)
+        if (existingReaction == reactionType.name) {
+            storyReactionRepository.deleteByStoryIdAndViewerId(storyId, viewerId)
+            val counts = storyReactionBatchRepository.countReactionsByStoryIds(listOf(storyId))[storyId]
+                ?: emptyMap()
+            return mapOf(
+                "reaction" to null,
+                "reactionCounts" to counts
+            )
+        }
         storyReactionRepository.upsert(storyId, viewerId, reactionType.name)
         val counts = storyReactionBatchRepository.countReactionsByStoryIds(listOf(storyId))[storyId]
             ?: emptyMap()

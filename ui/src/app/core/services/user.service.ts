@@ -95,6 +95,10 @@ export class UserService {
     return this.http.delete<void>(`${this.apiUrl}/me/gis`);
   }
 
+  estimateGisLocation(): Observable<{ lat: number; lon: number; approximate: boolean }> {
+    return this.http.get<{ lat: number; lon: number; approximate: boolean }>(`${this.apiUrl}/me/gis/estimate`);
+  }
+
   getPhoto(userId?: string): Observable<Uint8Array> {
     const url = userId ? `${this.apiUrl}/${userId}/photo` : `${this.apiUrl}/me/photo`;
     return this.http.get(url, { responseType: 'arraybuffer' }).pipe(

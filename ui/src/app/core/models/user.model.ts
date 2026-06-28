@@ -85,6 +85,7 @@ export interface UserMeeting {
   timestamp?: Timestamp;
   status?: string;
   senderName?: string;
+  outgoing?: boolean;
 }
 
 export interface UserBookmark {

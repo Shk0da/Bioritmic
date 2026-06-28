@@ -22,7 +22,13 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
     suspend fun countByUserId(userId: UUID): Long
 
     @Query("select * from meetings where other_user_id = :userId and user_id != other_user_id and (status is null or status != 'DECLINED') order by timestamp desc limit :limit offset :offset")
-    suspend fun findAllByUserId(userId: UUID, limit: Int, offset: Long): List<Meeting>
+    suspend fun findIncomingByUserId(userId: UUID, limit: Int, offset: Long): List<Meeting>
+
+    @Query(
+        "select * from meetings where user_id = :userId and user_id != other_user_id " +
+            "and status = 'ACCEPTED' order by timestamp desc limit :limit offset :offset"
+    )
+    suspend fun findSentAcceptedByUserId(userId: UUID, limit: Int, offset: Long): List<Meeting>
 
     @Query("delete from meetings where user_id = :userId")
     suspend fun deleteAllByUserId(userId: UUID)

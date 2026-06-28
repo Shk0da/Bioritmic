@@ -248,6 +248,8 @@ describe('Маршруты неверифицированного пользов
     { path: '/swipe', url: '/swipe' },
     { path: '/profile/me', url: '/profile' },
     { path: '/profile/me/edit', url: '/profile/me/edit' },
+    { path: '/settings', url: '/settings' },
+    { path: '/settings/location', url: '/settings/location' },
   ];
 
   for (const route of allowedRoutes) {
@@ -263,7 +265,6 @@ describe('Маршруты неверифицированного пользов
     '/bookmarks',
     '/mailbox',
     '/meetings',
-    '/settings',
     '/subscription',
   ];
 

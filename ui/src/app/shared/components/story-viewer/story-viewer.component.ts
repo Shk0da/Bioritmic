@@ -420,8 +420,8 @@ export class StoryViewerComponent implements OnChanges, OnDestroy {
 
     this.storyService.reactToStory(this.currentStory.id, reaction).pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
-        this.selectedReaction = response.reaction;
-        this.currentStory!.currentUserReaction = response.reaction;
+        this.selectedReaction = response.reaction ?? null;
+        this.currentStory!.currentUserReaction = response.reaction ?? null;
         this.reactionCounts = { ...response.reactionCounts };
         this.currentStory!.reactionCounts = { ...response.reactionCounts };
       }
