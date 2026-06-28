@@ -20,9 +20,8 @@ spring:
           starttls:
             enable: true
             required: false
-          ssl:
-            trust: mail.bioritmic.ru,mail
-            checkserveridentity: false
+      "mail.smtp.ssl.trust": mail.bioritmic.ru,mail
+      "mail.smtp.ssl.checkserveridentity": "false"
 
 s3:
   endpoint: http://minio:9000

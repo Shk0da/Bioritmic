@@ -16,9 +16,8 @@ spring:
           starttls:
             enable: ${MAIL_STARTTLS_ENABLE:false}
             required: ${MAIL_STARTTLS_REQUIRED:false}
-          ssl:
-            trust: ${MAIL_SSL_TRUST:mail.bioritmic.ru,mail}
-            checkserveridentity: false
+      "mail.smtp.ssl.trust": ${MAIL_SSL_TRUST:mail.bioritmic.ru,mail}
+      "mail.smtp.ssl.checkserveridentity": "false"
 
 s3:
   endpoint: http://127.0.0.1:9000

@@ -92,10 +92,8 @@ spring:
           starttls:
             enable: ${MAIL_STARTTLS_ENABLE:true}
             required: ${MAIL_STARTTLS_REQUIRED:false}
-          ssl:
-            enable: ${MAIL_SSL_ENABLE:false}
-            trust: ${MAIL_SSL_TRUST:mail.bioritmic.ru,mail}
-            checkserveridentity: false
+      "mail.smtp.ssl.trust": ${MAIL_SSL_TRUST:mail.bioritmic.ru,mail}
+      "mail.smtp.ssl.checkserveridentity": "false"
           connectiontimeout: ${MAIL_CONNECTION_TIMEOUT:10000}
           timeout: ${MAIL_TIMEOUT:10000}
           writetimeout: ${MAIL_WRITE_TIMEOUT:10000}
