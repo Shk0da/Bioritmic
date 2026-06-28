@@ -7,11 +7,7 @@ cd "$ROOT"
 # shellcheck disable=SC1091
 source "${ROOT}/scripts/load-prod-env.sh"
 ensure_prod_env_file "$ROOT"
-
-export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml"
-if [[ "${PROD_MAIL:-1}" == "1" ]]; then
-  export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.mail.yml"
-fi
+configure_prod_compose_file "$ROOT"
 
 if [[ -z "${CERTBOT_EMAIL:-}" || -z "${SSL_DOMAIN:-}" ]]; then
   echo "Missing TLS settings. Create .env on the server:"

@@ -28,7 +28,27 @@ load_prod_env() {
   fi
 
   export SSL_DOMAIN SSL_PUBLIC_IP CERTBOT_EMAIL APP_FRONTEND_URL APP_BASE_URL
-  export SSL_EXTRA_DOMAINS CERTBOT_STAGING MAIL_DOMAIN MAIL_PASSWORD PROD_MAIL PROD_LOWMEM
+  export SSL_EXTRA_DOMAINS CERTBOT_STAGING MAIL_DOMAIN PROD_MAIL PROD_LOWMEM
+  export MAIL_HOST MAIL_PORT MAIL_USERNAME MAIL_PASSWORD MAIL_FROM MAIL_FROM_NAME
+  export MAIL_SMTP_AUTH MAIL_STARTTLS_ENABLE MAIL_STARTTLS_REQUIRED MAIL_SSL_TRUST
+}
+
+# Use docker-mailserver only when MAIL_HOST is the in-stack service name.
+configure_prod_compose_file() {
+  local root="${1:-.}"
+  load_prod_env "$root"
+
+  if [[ -n "${MAIL_HOST:-}" && "${MAIL_HOST}" != "mail" ]]; then
+    export PROD_MAIL=0
+  fi
+
+  export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml"
+  if [[ "${PROD_MAIL:-1}" == "1" ]]; then
+    export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.mail.yml"
+  fi
+  if [[ "${PROD_LOWMEM:-0}" == "1" ]]; then
+    export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.lowmem.yml"
+  fi
 }
 
 ensure_prod_env_file() {

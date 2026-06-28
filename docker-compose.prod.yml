@@ -14,6 +14,16 @@ services:
       CERTBOT_STAGING: ${CERTBOT_STAGING:-false}
       REDIRECT_HTTP_TO_HTTPS: "true"
       MAIL_DOMAIN: ${MAIL_DOMAIN:-bioritmic.ru}
+      MAIL_HOST: ${MAIL_HOST:-127.0.0.1}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@${MAIL_DOMAIN:-bioritmic.ru}}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Bioritmic}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_STARTTLS_ENABLE: ${MAIL_STARTTLS_ENABLE:-true}
+      MAIL_STARTTLS_REQUIRED: ${MAIL_STARTTLS_REQUIRED:-true}
+      MAIL_SSL_TRUST: ${MAIL_SSL_TRUST:-}
     ports:
       - "${UI_PORT:-80}:80"
       - "${UI_HTTPS_PORT:-443}:443"

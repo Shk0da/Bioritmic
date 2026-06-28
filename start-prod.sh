@@ -4,20 +4,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
-export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml"
-if [[ "${PROD_MAIL:-1}" == "1" ]]; then
-  export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.mail.yml"
-fi
+# shellcheck disable=SC1091
+source "${ROOT}/scripts/load-prod-env.sh"
+configure_prod_compose_file "$ROOT"
+
 export APP_FRONTEND_URL="${APP_FRONTEND_URL:-http://localhost}"
 export APP_BASE_URL="${APP_BASE_URL:-$APP_FRONTEND_URL}"
-
-if [[ "${PROD_LOWMEM:-0}" == "1" ]]; then
-  export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml"
-  if [[ "${PROD_MAIL:-1}" == "1" ]]; then
-    export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.mail.yml"
-  fi
-  export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.lowmem.yml"
-fi
 
 echo "========================================"
 echo "  Bioritmic - Production (Docker)"
@@ -107,7 +99,11 @@ echo "  Public URL:      ${APP_FRONTEND_URL}"
 if [[ -n "${APP_CORS_ALLOWED_ORIGINS:-}" ]]; then
   echo "  CORS origins:    ${APP_CORS_ALLOWED_ORIGINS}"
 fi
-echo "  Stack:           monolith + mail server (set PROD_MAIL=0 to skip mail)"
+if [[ "${PROD_MAIL:-1}" == "1" ]]; then
+  echo "  Stack:           monolith + docker-mailserver (MAIL_HOST=mail)"
+else
+  echo "  Stack:           monolith (SMTP: ${MAIL_HOST:-not set})"
+fi
 echo "  Profile:         docker,production,monolith (Swagger off)"
 if [[ "${PROD_LOWMEM:-0}" == "1" ]]; then
   echo "  Memory:          lowmem overlay enabled"
@@ -200,6 +196,8 @@ echo
 if [[ "${PROD_MAIL:-1}" == "1" ]]; then
   echo "  Mail DNS + DKIM:  ./scripts/setup-mail-prod.sh"
   echo "  Change password:  set MAIL_PASSWORD in .env before ./start-prod.sh"
+else
+  echo "  Outbound mail:   ${MAIL_HOST:-?}:${MAIL_PORT:-587} (Yandex Postbox / external SMTP)"
 fi
 echo
 echo "  Custom domain + Let's Encrypt:"

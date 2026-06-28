@@ -24,6 +24,7 @@ class MailConfiguration {
         @Value("\${MAIL_SMTP_AUTH:true}") smtpAuth: String,
         @Value("\${MAIL_STARTTLS_ENABLE:true}") startTlsEnable: String,
         @Value("\${MAIL_STARTTLS_REQUIRED:false}") startTlsRequired: String,
+        @Value("\${MAIL_SSL_TRUST:}") mailSslTrust: String,
         @Value("\${MAIL_CONNECTION_TIMEOUT:10000}") connectionTimeout: String,
         @Value("\${MAIL_TIMEOUT:10000}") timeout: String,
         @Value("\${MAIL_WRITE_TIMEOUT:10000}") writeTimeout: String,
@@ -43,12 +44,22 @@ class MailConfiguration {
         props["mail.smtp.connectiontimeout"] = connectionTimeout
         props["mail.smtp.timeout"] = timeout
         props["mail.smtp.writetimeout"] = writeTimeout
-        // API connects to docker host "mail"; SMTP cert is issued for mail.bioritmic.ru.
-        props["mail.smtp.ssl.trust"] = "*"
-        props["mail.smtp.ssl.checkserveridentity"] = "false"
+
+        if (isInternalDockerMailHost(host)) {
+            // docker-mailserver: API connects to hostname "mail" with a different cert CN.
+            props["mail.smtp.ssl.trust"] = "*"
+            props["mail.smtp.ssl.checkserveridentity"] = "false"
+            log.info("JavaMailSender: internal docker SMTP host={}, port={}", host, port)
+        } else {
+            props["mail.smtp.ssl.trust"] = mailSslTrust.ifBlank { host }
+            props["mail.smtp.ssl.checkserveridentity"] = "true"
+            log.info("JavaMailSender: external SMTP host={}, port={}", host, port)
+        }
 
         sender.javaMailProperties = props
-        log.info("JavaMailSender: host={}, port={}, ssl.trust=*", host, port)
         return sender
     }
+
+    private fun isInternalDockerMailHost(host: String): Boolean =
+        host == "mail" || host == "127.0.0.1" || host == "localhost"
 }
