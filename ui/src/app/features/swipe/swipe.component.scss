@@ -2,8 +2,11 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - 70px);
+  height: calc(100dvh - 70px);
   background: var(--bg-secondary);
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Кнопка фильтров (мобильная) */

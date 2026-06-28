@@ -114,7 +114,8 @@ if [[ -n "${CERTBOT_EMAIL:-}" && -n "${SSL_DOMAIN:-}" ]]; then
     echo "  Certbot:         staging mode"
   fi
 else
-  echo "  TLS:             self-signed (set CERTBOT_EMAIL + SSL_DOMAIN for Let's Encrypt)"
+  echo "  TLS:             self-signed (browsers will warn — set CERTBOT_EMAIL + SSL_DOMAIN)"
+  echo "  Fix:             ./scripts/issue-letsencrypt.sh"
 fi
 echo
 

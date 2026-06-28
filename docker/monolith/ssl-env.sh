@@ -52,3 +52,29 @@ ssl_has_ip_certificate() {
   cert_dir="$(ssl_cert_dir)"
   [[ -s "${cert_dir}/ip-fullchain.pem" && -s "${cert_dir}/ip-privkey.pem" ]]
 }
+
+ssl_is_self_signed() {
+  local cert_file="${1:-}"
+  [[ -s "$cert_file" ]] || return 1
+  local subject issuer
+  subject="$(openssl x509 -in "$cert_file" -noout -subject 2>/dev/null | sed 's/^subject=//')"
+  issuer="$(openssl x509 -in "$cert_file" -noout -issuer 2>/dev/null | sed 's/^issuer=//')"
+  [[ -n "$subject" && "$subject" == "$issuer" ]]
+}
+
+ssl_certbot_enabled() {
+  [[ -n "${CERTBOT_EMAIL:-}" && -n "${SSL_DOMAIN:-}" ]]
+}
+
+ssl_needs_letsencrypt_domain_cert() {
+  local domain="${SSL_DOMAIN:-}"
+  local cert_dir
+  cert_dir="$(ssl_cert_dir)"
+  local le_live="/etc/letsencrypt/live/${domain}/fullchain.pem"
+  local nginx_cert="${cert_dir}/fullchain.pem"
+
+  [[ -n "$domain" ]] || return 1
+  [[ -s "$le_live" ]] && ! ssl_is_self_signed "$le_live" && return 1
+  [[ -s "$nginx_cert" ]] && ! ssl_is_self_signed "$nginx_cert" && return 1
+  return 0
+}

@@ -22,7 +22,9 @@ if [[ -n "${SSL_DOMAIN:-}" && -s "/etc/letsencrypt/live/${SSL_DOMAIN}/fullchain.
 fi
 
 if [[ -s "${FULLCHAIN}" && -s "${PRIVKEY}" ]]; then
-  if [[ -z "$IP" ]] || ssl_has_ip_certificate; then
+  if ssl_certbot_enabled && ssl_is_self_signed "${FULLCHAIN}"; then
+    echo "Self-signed TLS certificate present; certbot will replace it for ${SSL_DOMAIN}"
+  elif [[ -z "$IP" ]] || ssl_has_ip_certificate; then
     echo "TLS certificates already present in ${CERT_DIR}"
     exit 0
   fi

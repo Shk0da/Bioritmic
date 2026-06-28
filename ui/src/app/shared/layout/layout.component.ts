@@ -86,6 +86,11 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
     :host {
       display: block;
       min-height: 100vh;
+      min-height: 100dvh;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: clip;
+      overscroll-behavior-x: none;
       background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
     }
 

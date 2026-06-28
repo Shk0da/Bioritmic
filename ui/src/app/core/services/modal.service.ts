@@ -114,12 +114,7 @@ export class ModalService {
 
     .modal-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh;
-      min-height: 100dvh;
+      inset: 0;
       background: rgba(0, 0, 0, 0.6);
       display: flex;
       align-items: center;

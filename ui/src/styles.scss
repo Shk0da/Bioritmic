@@ -75,6 +75,13 @@
 // ==========================================
 // Base
 // ==========================================
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+
 body {
   background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
   color: var(--text-primary);
@@ -83,7 +90,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   min-height: 100dvh;
-  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
   transition: background 0.3s ease, color 0.3s ease;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
@@ -91,6 +102,14 @@ body {
   &.modal-open {
     overflow: hidden;
   }
+}
+
+app-root {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
 }
 
 // ==========================================
@@ -391,6 +410,9 @@ option { background: var(--card-bg); color: var(--text-primary); }
   position: sticky;
   top: 0;
   z-index: 1000;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 
   .header-content {
     max-width: 1200px;
@@ -405,6 +427,8 @@ option { background: var(--card-bg); color: var(--text-primary); }
   .header-logo {
     display: flex; align-items: center; gap: 0.75rem; color: white; font-weight: 700; font-size: 1.5rem; text-decoration: none;
     transition: opacity 0.2s ease;
+    flex-shrink: 1;
+    min-width: 0;
     &:hover { opacity: 0.9; }
     .logo-couple {
       display: flex; align-items: center; gap: 2px; font-size: 1.5rem;
@@ -431,8 +455,18 @@ option { background: var(--card-bg); color: var(--text-primary); }
   padding: 1.5rem;
   padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
   background: transparent;
-  max-width: 100vw;
-  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  box-sizing: border-box;
+}
+
+.row {
+  max-width: 100%;
+}
+
+[class*="col-"] {
+  min-width: 0;
 }
 
 .verification-alert {
@@ -440,6 +474,8 @@ option { background: var(--card-bg); color: var(--text-primary); }
   border-radius: 12px;
   margin-left: 0;
   margin-right: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 // ==========================================

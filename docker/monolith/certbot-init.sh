@@ -27,7 +27,11 @@ done
 need_domain=false
 need_ip=false
 
-[[ ! -s "${LE_LIVE}/fullchain.pem" ]] && need_domain=true
+if ssl_certbot_enabled; then
+  ssl_needs_letsencrypt_domain_cert && need_domain=true
+else
+  [[ ! -s "${LE_LIVE}/fullchain.pem" ]] && need_domain=true
+fi
 if [[ -n "$IP" && ! -s "${LE_IP_LIVE}/fullchain.pem" ]]; then
   need_ip=true
 fi
