@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
@@ -171,12 +172,27 @@ class AuthController(
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping(value = ["/logout"], produces = [APPLICATION_JSON_VALUE])
-    suspend fun logout(): ResponseEntity<Void> {
-        val userId = getUserId()
-        authService.deleteAuthByUserId(userId)
-        log.debug("Delete User with ID: {}", userId)
+    @RequestMapping(
+        value = ["/logout"],
+        method = [RequestMethod.POST, RequestMethod.DELETE],
+        produces = [APPLICATION_JSON_VALUE]
+    )
+    suspend fun logout(exchange: ServerWebExchange): ResponseEntity<Void> {
+        resolveAccessToken(exchange)?.let { token ->
+            authService.deleteAuthByAccessToken(token)
+            log.debug("Logged out session ending with {}", token.takeLast(8))
+        }
         return clearAuthCookies()
+    }
+
+    private fun resolveAccessToken(exchange: ServerWebExchange): String? {
+        exchange.request.cookies.getFirst(AuthCookieHelper.ACCESS_TOKEN)?.value?.let { return it }
+        val bearer = "Bearer "
+        val header = exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION) ?: return null
+        if (header.length > bearer.length && header.startsWith(bearer)) {
+            return header.substring(bearer.length)
+        }
+        return null
     }
 
     private fun authResponse(userToken: UserToken): ResponseEntity<UserToken> {

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0032-allow-multiple-auth-sessions" author="bioritmic">
+        <sql>ALTER TABLE authorizations DROP CONSTRAINT IF EXISTS authorizations_user_id_key;</sql>
+        <sql>CREATE INDEX IF NOT EXISTS idx_authorizations_user_id ON authorizations(user_id);</sql>
+    </changeSet>
+
+</databaseChangeLog>

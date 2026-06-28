@@ -340,6 +340,69 @@ class AuthControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun logoutOnOneDeviceShouldNotInvalidateOtherSession() {
+        val userModel = defaultUserModel.copy(email = "multi_session_${UUID.randomUUID()}@gmail.com")
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(userModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+
+        val authorizationModel = AuthorizationModel(
+            email = userModel.email,
+            password = userModel.password!!
+        )
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(authorizationModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val deviceAToken = authTokenCache.entries
+            .find { it.value.userId != null }?.value?.accessToken
+            ?: error("Device A token missing")
+        val tokenA = "Bearer $deviceAToken"
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(authorizationModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val deviceBToken = authTokenCache.entries
+            .map { it.value }
+            .filter { it.accessToken != null && it.accessToken != deviceAToken }
+            .mapNotNull { it.accessToken }
+            .lastOrNull()
+            ?: error("Device B token missing")
+        val tokenB = "Bearer $deviceBToken"
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/logout")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isNoContent
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.email").isEqualTo(userModel.email)
+    }
+
+    @Test
     fun refreshTokenTest() {
         val userModel = defaultUserModel.copy(email = "refresh_test@gmail.com")
 

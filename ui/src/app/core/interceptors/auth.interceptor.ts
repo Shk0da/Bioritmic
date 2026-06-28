@@ -28,6 +28,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEv
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401 || error.status === 403) {
+        if (authReq.url.includes('/logout')) {
+          authService.clearAuth();
+          return throwError(() => error);
+        }
         return handle401Error(authReq, next, authService);
       }
       return throwError(() => error);

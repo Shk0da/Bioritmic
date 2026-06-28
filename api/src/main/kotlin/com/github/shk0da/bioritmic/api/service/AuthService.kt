@@ -24,21 +24,21 @@ class AuthService(
 
     @Transactional
     suspend fun deleteAuthByUserId(userId: UUID) {
-        val auth = authRepository.findByUserId(userId)
-        if (null != auth?.accessToken) {
-            authTokenCache.remove(auth.accessToken)
+        authRepository.findAllByUserId(userId).forEach { auth ->
+            auth.accessToken?.let { authTokenCache.remove(it) }
         }
         authRepository.deleteByUserId(userId)
     }
 
     @Transactional
+    suspend fun deleteAuthByAccessToken(accessToken: String) {
+        authTokenCache.remove(accessToken)
+        authRepository.deleteByAccessToken(accessToken)
+    }
+
+    @Transactional
     suspend fun createNewAuth(user: User): Auth {
         val newAuth = Auth.createFrom(user)
-        val currentAuth = authRepository.findByUserId(userId = user.id!!)
-        if (null != currentAuth) {
-            newAuth.id = currentAuth.id
-            currentAuth.accessToken?.let { authTokenCache.remove(it) }
-        }
         authTokenCache[newAuth.accessToken!!] = newAuth
         return authRepository.save(newAuth)
     }
@@ -64,7 +64,7 @@ class AuthService(
 
         if (auth.isExpired()) {
             auth.accessToken?.let { authTokenCache.remove(it) }
-            authRepository.deleteByUserId(auth.userId!!)
+            auth.id?.let { authRepository.deleteById(it) }
             throw ApiException(ErrorCode.AUTH_NOT_FOUND)
         }
 

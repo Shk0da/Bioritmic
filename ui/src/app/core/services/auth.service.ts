@@ -67,7 +67,7 @@ export class AuthService implements OnDestroy {
   }
 
   logout(): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/logout`).pipe(timeout(10000));
+    return this.http.post<void>(`${this.apiUrl}/logout`, {}).pipe(timeout(10000));
   }
 
   refreshToken(userToken: Partial<UserToken>): Observable<UserToken> {

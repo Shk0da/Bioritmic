@@ -17,12 +17,12 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
   template: `
     <header class="site-header">
       <div class="header-content">
-        <a class="header-logo" routerLink="/swipe">
+        <a class="header-logo" routerLink="/swipe" aria-label="Bioritmic">
           <div class="logo-couple">
             <i class="bi bi-person-heart"></i>
             <i class="bi bi-person-hearts"></i>
           </div>
-          <span>Bioritmic</span>
+          <span class="logo-text">Bioritmic</span>
         </a>
 
         <nav class="header-nav">

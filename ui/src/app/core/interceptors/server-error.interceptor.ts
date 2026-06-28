@@ -18,6 +18,7 @@ const SILENT_PATH_SUFFIXES = [
   '/me/gis',
   '/geo/',
   '/refresh-token',
+  '/logout',
 ];
 
 function isSilentPath(url: string, method: string): boolean {
