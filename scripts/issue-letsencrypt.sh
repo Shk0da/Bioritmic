@@ -4,24 +4,27 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# shellcheck disable=SC1091
+source "${ROOT}/scripts/load-prod-env.sh"
+ensure_prod_env_file "$ROOT"
+
 export COMPOSE_FILE="docker-compose.yml:docker-compose.prod.yml"
 if [[ "${PROD_MAIL:-1}" == "1" ]]; then
   export COMPOSE_FILE="${COMPOSE_FILE}:docker-compose.mail.yml"
 fi
 
-if [[ -f .env ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env
-  set +a
-fi
-
 if [[ -z "${CERTBOT_EMAIL:-}" || -z "${SSL_DOMAIN:-}" ]]; then
-  echo "Set CERTBOT_EMAIL and SSL_DOMAIN in .env first."
-  echo "Example:"
+  echo "Missing TLS settings. Create .env on the server:"
+  echo
+  echo "  cp .env.production.example .env"
+  echo "  nano .env   # set CERTBOT_EMAIL, MAIL_PASSWORD"
+  echo "  ./scripts/issue-letsencrypt.sh"
+  echo
+  echo "Or add manually:"
   echo "  SSL_DOMAIN=bioritmic.ru"
   echo "  SSL_PUBLIC_IP=158.160.194.159"
   echo "  CERTBOT_EMAIL=admin@bioritmic.ru"
+  echo "  APP_FRONTEND_URL=https://bioritmic.ru"
   exit 1
 fi
 
@@ -29,6 +32,12 @@ if ! docker ps --format '{{.Names}}' | grep -qx bioritmic; then
   echo "Container bioritmic is not running. Start with ./start-prod.sh"
   exit 1
 fi
+
+echo "TLS settings:"
+echo "  SSL_DOMAIN=${SSL_DOMAIN}"
+echo "  CERTBOT_EMAIL=${CERTBOT_EMAIL}"
+echo "  SSL_PUBLIC_IP=${SSL_PUBLIC_IP:-not set}"
+echo
 
 echo "Pre-flight checks for ${SSL_DOMAIN}..."
 RESOLVED_IP="$(getent ahosts "${SSL_DOMAIN}" 2>/dev/null | awk '{print $1; exit}')"
@@ -51,12 +60,23 @@ fi
 
 echo
 echo "Requesting Let's Encrypt certificate for ${SSL_DOMAIN}..."
-if ! docker exec bioritmic /usr/local/bin/certbot-init.sh; then
+if ! docker exec \
+  -e SSL_DOMAIN="${SSL_DOMAIN}" \
+  -e CERTBOT_EMAIL="${CERTBOT_EMAIL}" \
+  -e SSL_PUBLIC_IP="${SSL_PUBLIC_IP:-}" \
+  -e SSL_EXTRA_DOMAINS="${SSL_EXTRA_DOMAINS:-}" \
+  -e CERTBOT_STAGING="${CERTBOT_STAGING:-false}" \
+  -e REDIRECT_HTTP_TO_HTTPS="${REDIRECT_HTTP_TO_HTTPS:-true}" \
+  bioritmic /usr/local/bin/certbot-init.sh; then
   echo
   echo "Certbot failed. Recent logs:"
   docker compose logs --tail=80 bioritmic 2>/dev/null | grep -iE 'certbot|letsencrypt|challenge' || docker compose logs --tail=40 bioritmic
   exit 1
 fi
+
+echo
+echo "Persisting TLS settings in container (recreate with .env)..."
+docker compose up -d bioritmic
 
 echo
 echo "Checking certificate issuer..."
@@ -75,9 +95,10 @@ fi
 
 echo
 echo "Verifying live site..."
+sleep 2
 LIVE_ISSUER="$(echo | openssl s_client -connect "${SSL_DOMAIN}:443" -servername "${SSL_DOMAIN}" 2>/dev/null | openssl x509 -noout -issuer 2>/dev/null || true)"
 echo "  ${LIVE_ISSUER:-could not reach ${SSL_DOMAIN}:443}"
-if echo "$LIVE_ISSUER" | grep -q "Let's Encrypt"; then
+if echo "$LIVE_ISSUER" | grep -qi "Let's Encrypt"; then
   echo
   echo "Done. Trusted certificate is active for https://${SSL_DOMAIN}/"
 else
