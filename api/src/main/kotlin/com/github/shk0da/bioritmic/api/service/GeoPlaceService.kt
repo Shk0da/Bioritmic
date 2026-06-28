@@ -34,10 +34,31 @@ class GeoPlaceService(
 
     companion object {
         private const val NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org"
+        private const val PHOTON_BASE_URL = "https://photon.komoot.io"
         private const val USER_AGENT = "Bioritmic/1.0 (https://bioritmic.ru)"
         private const val MIN_QUERY_LENGTH = 2
         private const val MAX_RESULTS = 10
-        private val PLACE_TYPES = setOf("city", "town", "village", "hamlet", "municipality", "suburb")
+        private const val MAX_FETCH_RESULTS = 20
+        private val PLACE_TYPES = setOf(
+            "city",
+            "town",
+            "village",
+            "hamlet",
+            "municipality",
+            "suburb",
+            "locality"
+        )
+        private val PLACE_ADDRESS_TYPES = PLACE_TYPES
+        private val PHOTON_PLACE_TYPES = PLACE_TYPES
+        private val TYPE_PRIORITY = mapOf(
+            "city" to 0,
+            "town" to 1,
+            "municipality" to 2,
+            "village" to 3,
+            "hamlet" to 4,
+            "suburb" to 5,
+            "locality" to 6
+        )
     }
 
     suspend fun searchPlaces(countryCode: String, query: String): List<GeoPlaceModel> = withContext(Dispatchers.IO) {
@@ -50,14 +71,23 @@ class GeoPlaceService(
             throw ApiException("Неизвестный код страны")
         }
 
-        val cacheKey = "$normalizedCountry:$normalizedQuery.lowercase()"
+        val cacheKey = "$normalizedCountry:${normalizedQuery.lowercase()}"
         searchCache[cacheKey]?.let { return@withContext it }
 
-        val encodedQuery = URLEncoder.encode(normalizedQuery, StandardCharsets.UTF_8)
-        val url = "$NOMINATIM_BASE_URL/search?format=json&addressdetails=1&limit=$MAX_RESULTS" +
-            "&countrycodes=$normalizedCountry&q=$encodedQuery&accept-language=ru"
-        val body = executeGet(url)
-        val places = parseSearchResults(body, normalizedCountry.uppercase())
+        var nominatimError: Exception? = null
+        val nominatimPlaces = try {
+            fetchNominatimPlaces(normalizedCountry, normalizedQuery)
+        } catch (exception: Exception) {
+            nominatimError = exception
+            log.warn("Nominatim place lookup failed for country={} query={}", normalizedCountry, normalizedQuery, exception)
+            emptyList()
+        }
+        val photonPlaces = fetchPhotonPlaces(normalizedCountry.uppercase(), normalizedQuery)
+        if (nominatimPlaces.isEmpty() && photonPlaces.isEmpty() && nominatimError != null) {
+            throw ApiException("Не удалось выполнить поиск населённых пунктов")
+        }
+
+        val places = mergeAndRankPlaces(nominatimPlaces + photonPlaces, normalizedQuery).take(MAX_RESULTS)
         searchCache[cacheKey] = places
         places
     }
@@ -75,8 +105,13 @@ class GeoPlaceService(
 
     internal fun buildSearchUrl(countryCode: String, query: String): String {
         val encodedQuery = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8)
-        return "$NOMINATIM_BASE_URL/search?format=json&addressdetails=1&limit=$MAX_RESULTS" +
+        return "$NOMINATIM_BASE_URL/search?format=json&addressdetails=1&limit=$MAX_FETCH_RESULTS" +
             "&countrycodes=${countryCode.lowercase()}&q=$encodedQuery&accept-language=ru"
+    }
+
+    internal fun buildPhotonSearchUrl(query: String): String {
+        val encodedQuery = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8)
+        return "$PHOTON_BASE_URL/api/?q=$encodedQuery&limit=$MAX_FETCH_RESULTS"
     }
 
     internal fun parseSearchResults(body: String, countryCode: String): List<GeoPlaceModel> {
@@ -89,12 +124,44 @@ class GeoPlaceService(
         val seen = mutableSetOf<String>()
         root.forEach { node ->
             val place = toPlaceModel(node, countryCode) ?: return@forEach
-            val key = "${place.name.lowercase()}|${"%.4f".format(place.lat)}|${"%.4f".format(place.lon)}"
+            val key = placeKey(place)
             if (seen.add(key)) {
                 results.add(place)
             }
         }
         return results
+    }
+
+    internal fun parsePhotonResults(body: String, countryCode: String): List<GeoPlaceModel> {
+        val features = objectMapper.readTree(body).path("features")
+        if (!features.isArray) {
+            return emptyList()
+        }
+
+        val results = mutableListOf<GeoPlaceModel>()
+        val seen = mutableSetOf<String>()
+        features.forEach { feature ->
+            val place = toPhotonPlaceModel(feature, countryCode) ?: return@forEach
+            val key = placeKey(place)
+            if (seen.add(key)) {
+                results.add(place)
+            }
+        }
+        return results
+    }
+
+    internal fun mergeAndRankPlaces(places: List<GeoPlaceModel>, query: String): List<GeoPlaceModel> {
+        val normalizedQuery = query.trim().lowercase()
+        val seen = mutableSetOf<String>()
+        return places
+            .filter { place -> seen.add(placeKey(place)) }
+            .sortedWith(
+                compareBy<GeoPlaceModel>(
+                    { place -> nameMatchRank(place.name, normalizedQuery) },
+                    { place -> TYPE_PRIORITY[place.type] ?: 99 },
+                    { place -> place.name.lowercase() }
+                )
+            )
     }
 
     internal fun parseReverseResult(body: String, lat: Double, lon: Double): GeoLocationDetailsModel {
@@ -117,7 +184,61 @@ class GeoPlaceService(
         )
     }
 
+    private fun fetchNominatimPlaces(countryCode: String, query: String): List<GeoPlaceModel> {
+        val encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8)
+        val country = countryCode.lowercase()
+        val upperCountry = country.uppercase()
+        val results = mutableListOf<GeoPlaceModel>()
+
+        val freeTextUrl = "$NOMINATIM_BASE_URL/search?format=json&addressdetails=1&limit=$MAX_FETCH_RESULTS" +
+            "&countrycodes=$country&q=$encodedQuery&accept-language=ru"
+        executeGet(freeTextUrl).let { body ->
+            results += parseSearchResults(body, upperCountry)
+        }
+
+        val structuredUrl = "$NOMINATIM_BASE_URL/search?format=json&addressdetails=1&limit=$MAX_FETCH_RESULTS" +
+            "&countrycodes=$country&city=$encodedQuery&accept-language=ru"
+        executeGetOptional(structuredUrl)?.let { body ->
+            results += parseSearchResults(body, upperCountry)
+        }
+
+        return results
+    }
+
+    private fun fetchPhotonPlaces(countryCode: String, query: String): List<GeoPlaceModel> {
+        return try {
+            val body = executeGetOptional(buildPhotonSearchUrl(query)) ?: return emptyList()
+            parsePhotonResults(body, countryCode)
+        } catch (exception: Exception) {
+            log.warn("Photon place lookup failed for country={} query={}", countryCode, query, exception)
+            emptyList()
+        }
+    }
+
     private fun executeGet(url: String): String {
+        val response = sendGet(url)
+        if (response.statusCode() != 200) {
+            log.warn("Geo place lookup returned status {} for url={}", response.statusCode(), url)
+            throw ApiException("Не удалось выполнить поиск населённых пунктов")
+        }
+        return response.body()
+    }
+
+    private fun executeGetOptional(url: String): String? {
+        val response = try {
+            sendGet(url)
+        } catch (exception: Exception) {
+            log.warn("Geo place lookup failed for url={}", url, exception)
+            return null
+        }
+        if (response.statusCode() != 200) {
+            log.warn("Geo place lookup returned status {} for url={}", response.statusCode(), url)
+            return null
+        }
+        return response.body()
+    }
+
+    private fun sendGet(url: String): HttpResponse<String> {
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .timeout(Duration.ofSeconds(8))
@@ -126,29 +247,20 @@ class GeoPlaceService(
             .GET()
             .build()
 
-        val response = try {
+        return try {
             httpClient.send(request, HttpResponse.BodyHandlers.ofString())
         } catch (exception: Exception) {
             log.warn("Geo place lookup failed for url={}", url, exception)
             throw ApiException("Не удалось выполнить поиск населённых пунктов")
         }
-
-        if (response.statusCode() != 200) {
-            log.warn("Geo place lookup returned status {} for url={}", response.statusCode(), url)
-            throw ApiException("Не удалось выполнить поиск населённых пунктов")
-        }
-        return response.body()
     }
 
     private fun toPlaceModel(node: JsonNode, fallbackCountryCode: String): GeoPlaceModel? {
-        if (node.path("class").asText() != "place") {
-            return null
-        }
-        val type = node.path("type").asText()
-        if (type !in PLACE_TYPES) {
+        if (!isAcceptableNominatimResult(node)) {
             return null
         }
 
+        val clazz = node.path("class").asText()
         val address = node.path("address")
         val name = extractPlaceName(address) ?: node.path("name").asText(null) ?: return null
         val lat = node.path("lat").asText(null)?.toDoubleOrNull() ?: return null
@@ -157,11 +269,14 @@ class GeoPlaceService(
         val region = address.path("state").asText(null)
             ?: address.path("region").asText(null)
             ?: address.path("county").asText(null)
-        val displayName = listOfNotNull(name, region).joinToString(", ")
+        val type = when {
+            clazz == "boundary" -> node.path("addresstype").asText("city")
+            else -> node.path("type").asText()
+        }
 
         return GeoPlaceModel(
             name = name,
-            displayName = displayName,
+            displayName = listOfNotNull(name, region).joinToString(", "),
             lat = lat,
             lon = lon,
             countryCode = countryCode,
@@ -169,9 +284,68 @@ class GeoPlaceService(
         )
     }
 
+    private fun toPhotonPlaceModel(feature: JsonNode, countryCode: String): GeoPlaceModel? {
+        val properties = feature.path("properties")
+        val resultCountryCode = properties.path("countrycode").asText(null)?.uppercase() ?: return null
+        if (resultCountryCode != countryCode.uppercase()) {
+            return null
+        }
+
+        val type = properties.path("type").asText(null) ?: return null
+        if (type !in PHOTON_PLACE_TYPES) {
+            return null
+        }
+
+        val name = properties.path("name").asText(null)?.takeIf { it.isNotBlank() } ?: return null
+        val coordinates = feature.path("geometry").path("coordinates")
+        if (!coordinates.isArray || coordinates.size() < 2) {
+            return null
+        }
+
+        val lon = coordinates.get(0).asDouble()
+        val lat = coordinates.get(1).asDouble()
+        val region = properties.path("state").asText(null)
+            ?: properties.path("county").asText(null)
+
+        return GeoPlaceModel(
+            name = name,
+            displayName = listOfNotNull(name, region).joinToString(", "),
+            lat = lat,
+            lon = lon,
+            countryCode = resultCountryCode,
+            type = type
+        )
+    }
+
+    private fun isAcceptableNominatimResult(node: JsonNode): Boolean {
+        val clazz = node.path("class").asText()
+        val type = node.path("type").asText()
+        return when {
+            clazz == "place" && type in PLACE_TYPES -> true
+            clazz == "boundary" && type == "administrative" -> {
+                node.path("addresstype").asText(null) in PLACE_ADDRESS_TYPES
+            }
+            else -> false
+        }
+    }
+
     private fun extractPlaceName(address: JsonNode): String? {
-        return sequenceOf("city", "town", "village", "hamlet", "municipality", "suburb", "locality")
+        return sequenceOf("city", "town", "village", "hamlet", "municipality", "suburb", "locality", "settlement")
             .mapNotNull { field -> address.path(field).asText(null)?.takeIf { it.isNotBlank() } }
             .firstOrNull()
+    }
+
+    private fun placeKey(place: GeoPlaceModel): String {
+        return "${place.name.lowercase()}|${"%.3f".format(place.lat)}|${"%.3f".format(place.lon)}"
+    }
+
+    private fun nameMatchRank(name: String, query: String): Int {
+        val normalizedName = name.lowercase()
+        return when {
+            normalizedName == query -> 0
+            normalizedName.startsWith(query) -> 1
+            normalizedName.contains(query) -> 2
+            else -> 3
+        }
     }
 }
