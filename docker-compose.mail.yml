@@ -2,10 +2,32 @@
 # Included by ./start-prod.sh (disable with PROD_MAIL=0).
 
 services:
+  mail-ssl-seed:
+    image: alpine:3.20
+    container_name: bioritmic-mail-ssl-seed
+    volumes:
+      - ./docker/mail/config/ssl:/seed:ro
+      - bioritmic-mail-ssl:/mail-ssl
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        mkdir -p /mail-ssl
+        if [ ! -s /mail-ssl/fullchain.pem ]; then
+          cp /seed/mail.bioritmic.ru-cert.pem /mail-ssl/fullchain.pem
+          cp /seed/mail.bioritmic.ru-key.pem /mail-ssl/privkey.pem
+          chmod 644 /mail-ssl/fullchain.pem
+          chmod 600 /mail-ssl/privkey.pem
+        fi
+    restart: "no"
+
   mail:
     image: ghcr.io/docker-mailserver/docker-mailserver:latest
     container_name: bioritmic-mail
     hostname: mail.bioritmic.ru
+    depends_on:
+      mail-ssl-seed:
+        condition: service_completed_successfully
     ports:
       - "${MAIL_PLAIN_PORT:-25}:25"
       - "${MAIL_PORT:-587}:587"
@@ -42,7 +64,6 @@ services:
       - ./docker/mail/config:/tmp/docker-mailserver
       - bioritmic-mail-data:/var/mail
       - bioritmic-mail-state:/var/mail-state
-      - bioritmic-mail-ssl:/mail-ssl
     env_file:
       - ./docker/mail/mailserver.env
     environment:
@@ -51,14 +72,6 @@ services:
     entrypoint: ["/bin/bash", "-c"]
     command:
       - >-
-        set -euo pipefail;
-        mkdir -p /mail-ssl;
-        if [[ ! -s /mail-ssl/fullchain.pem ]]; then
-          cp /tmp/docker-mailserver/ssl/mail.bioritmic.ru-cert.pem /mail-ssl/fullchain.pem;
-          cp /tmp/docker-mailserver/ssl/mail.bioritmic.ru-key.pem /mail-ssl/privkey.pem;
-          chmod 644 /mail-ssl/fullchain.pem;
-          chmod 600 /mail-ssl/privkey.pem;
-        fi;
         setup email add "noreply@$${MAIL_DOMAIN}" "$$MAILBOX_PASSWORD" 2>/dev/null
           || setup email update "noreply@$${MAIL_DOMAIN}" "$$MAILBOX_PASSWORD" 2>/dev/null
           || true;
