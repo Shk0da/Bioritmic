@@ -32,11 +32,11 @@ s3:
   region: us-east-1
 
 app:
-  base-url: http://localhost:2399
-  frontend-url: http://localhost:2399
+  base-url: ${APP_BASE_URL:http://localhost:2399}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:2399}
   cors:
     allowed-origins:
-      - http://localhost:2399
+      - ${APP_FRONTEND_URL:http://localhost:2399}
       - http://127.0.0.1:2399
   mail:
     from: noreply@bioritmic.ru
