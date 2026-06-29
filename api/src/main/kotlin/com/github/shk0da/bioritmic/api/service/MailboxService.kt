@@ -196,11 +196,13 @@ class MailboxService(
         val existing = mailboxReactionRepository.findReaction(messageId, userId)
         if (existing == reactionType.name) {
             mailboxReactionRepository.deleteReaction(messageId, userId)
-            val counts = mailboxReactionBatchRepository.countReactionsByMailIds(listOf(messageId))[messageId] ?: emptyMap()
+            val counts = mailboxReactionBatchRepository
+                .countReactionsByMailIdsFromMaster(listOf(messageId))[messageId] ?: emptyMap()
             return mapOf("reaction" to null, "reactionCounts" to counts)
         }
         mailboxReactionRepository.upsert(messageId, userId, reactionType.name)
-        val counts = mailboxReactionBatchRepository.countReactionsByMailIds(listOf(messageId))[messageId] ?: emptyMap()
+        val counts = mailboxReactionBatchRepository
+            .countReactionsByMailIdsFromMaster(listOf(messageId))[messageId] ?: emptyMap()
         return mapOf("reaction" to reactionType.name, "reactionCounts" to counts)
     }
 

@@ -676,16 +676,29 @@ interface ChatMessage extends UserMail {
     .message-reaction-toggle {
       border: none;
       background: transparent;
-      color: var(--text-muted);
-      font-size: 0.85rem;
+      color: var(--accent-pink);
+      font-size: 0.9rem;
       cursor: pointer;
       padding: 0.15rem 0.3rem;
       border-radius: 999px;
+      opacity: 0.9;
 
       &.active,
       &:hover {
         color: var(--accent-pink);
-        background: var(--bg-hover);
+        opacity: 1;
+        background: rgba(253, 41, 123, 0.12);
+      }
+    }
+
+    .message-bubble.outgoing .message-reaction-toggle {
+      color: rgba(255, 255, 255, 0.95);
+      opacity: 1;
+
+      &.active,
+      &:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.22);
       }
     }
 
@@ -743,16 +756,34 @@ interface ChatMessage extends UserMail {
     .reply-btn {
       border: none;
       background: transparent;
-      color: var(--text-muted);
-      font-size: 0.85rem;
+      color: var(--accent-pink);
+      font-size: 0.9rem;
       cursor: pointer;
       padding: 0.15rem 0.3rem;
       border-radius: 999px;
+      opacity: 0.9;
 
       &:hover {
         color: var(--accent-pink);
-        background: var(--bg-hover);
+        opacity: 1;
+        background: rgba(253, 41, 123, 0.12);
       }
+    }
+
+    .message-bubble.outgoing .reply-btn {
+      color: rgba(255, 255, 255, 0.95);
+      opacity: 1;
+
+      &:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.22);
+      }
+    }
+
+    .message-bubble.outgoing .message-time,
+    .message-bubble.outgoing .message-status {
+      color: rgba(255, 255, 255, 0.88);
+      opacity: 1;
     }
 
     .message-time {
@@ -817,7 +848,8 @@ interface ChatMessage extends UserMail {
 
     .reply-preview-text {
       font-size: 0.82rem;
-      color: var(--text-secondary);
+      color: var(--text-primary);
+      font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -837,26 +869,42 @@ interface ChatMessage extends UserMail {
     .reply-reference {
       display: flex;
       flex-direction: column;
-      gap: 0.1rem;
-      margin-bottom: 0.35rem;
-      padding-left: 0.45rem;
-      border-left: 2px solid rgba(253, 41, 123, 0.5);
+      gap: 0.15rem;
+      margin-bottom: 0.4rem;
+      padding: 0.35rem 0.5rem;
+      border-radius: 8px;
+      background: rgba(253, 41, 123, 0.1);
+      border-left: 3px solid var(--accent-pink);
+    }
+
+    .message-bubble.outgoing .reply-reference {
+      background: rgba(255, 255, 255, 0.2);
+      border-left-color: rgba(255, 255, 255, 0.9);
     }
 
     .reply-reference-label {
-      font-size: 0.68rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.02em;
+      font-size: 0.72rem;
+      color: var(--accent-pink);
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .message-bubble.outgoing .reply-reference-label {
+      color: rgba(255, 255, 255, 0.95);
     }
 
     .reply-reference-text {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
+      font-size: 0.84rem;
+      color: var(--text-primary);
+      font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 220px;
+    }
+
+    .message-bubble.outgoing .reply-reference-text {
+      color: rgba(255, 255, 255, 0.92);
     }
 
     .input-wrapper {
@@ -1137,9 +1185,11 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
         message.currentUserReaction = response.reaction;
         message.reactionCounts = { ...(response.reactionCounts ?? {}) };
         this.showReactionPickerFor = null;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.showReactionPickerFor = null;
+        this.cdr.markForCheck();
       }
     });
   }

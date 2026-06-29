@@ -35,15 +35,19 @@ interface MailboxReactionRepository : CoroutineCrudRepository<MailboxReaction, L
 
 @Repository
 @Transactional(transactionManager = readTransactionManager)
-class MailboxReactionBatchRepository(private val slaveConnectionFactory: ConnectionFactory) {
+class MailboxReactionBatchRepository(
+    private val slaveConnectionFactory: ConnectionFactory,
+    private val masterConnectionFactory: ConnectionFactory,
+) {
 
-    private val databaseClient: DatabaseClient by lazy { DatabaseClient.create(slaveConnectionFactory) }
+    private val slaveClient: DatabaseClient by lazy { DatabaseClient.create(slaveConnectionFactory) }
+    private val masterClient: DatabaseClient by lazy { DatabaseClient.create(masterConnectionFactory) }
 
     suspend fun findReactionsByMailIdsAndUserId(mailIds: List<Long>, userId: UUID): Map<Long, String> {
         if (mailIds.isEmpty()) return emptyMap()
         val placeholders = mailIds.mapIndexed { i, _ -> ":id$i" }.joinToString(",")
         val sql = "SELECT mail_id, reaction FROM mailbox_reactions WHERE mail_id IN ($placeholders) AND user_id = :userId"
-        return databaseClient.sql(sql)
+        return slaveClient.sql(sql)
             .let { q ->
                 var query = q
                 mailIds.forEachIndexed { i, id -> query = query.bind("id$i", id) }
@@ -62,13 +66,23 @@ class MailboxReactionBatchRepository(private val slaveConnectionFactory: Connect
             ?: emptyMap()
     }
 
-    suspend fun countReactionsByMailIds(mailIds: List<Long>): Map<Long, Map<String, Int>> {
+    suspend fun countReactionsByMailIds(mailIds: List<Long>): Map<Long, Map<String, Int>> =
+        countReactionsByMailIds(mailIds, slaveClient)
+
+    /** Read counts from master after a write — avoids stale replica data in react responses. */
+    suspend fun countReactionsByMailIdsFromMaster(mailIds: List<Long>): Map<Long, Map<String, Int>> =
+        countReactionsByMailIds(mailIds, masterClient)
+
+    private suspend fun countReactionsByMailIds(
+        mailIds: List<Long>,
+        client: DatabaseClient,
+    ): Map<Long, Map<String, Int>> {
         if (mailIds.isEmpty()) return emptyMap()
         val placeholders = mailIds.mapIndexed { i, _ -> ":id$i" }.joinToString(",")
         val sql =
             "SELECT mail_id, reaction, COUNT(*) AS cnt FROM mailbox_reactions " +
                 "WHERE mail_id IN ($placeholders) GROUP BY mail_id, reaction"
-        return databaseClient.sql(sql)
+        return client.sql(sql)
             .let { q ->
                 var query = q
                 mailIds.forEachIndexed { i, id -> query = query.bind("id$i", id) }

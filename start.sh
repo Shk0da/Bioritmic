@@ -51,6 +51,7 @@ trap cleanup SIGINT SIGTERM
 kill_processes() {
     pkill -f "gradlew.*bootRun" 2>/dev/null && echo "  Backend stopped" || true
     pkill -f "ng serve" 2>/dev/null && echo "  Frontend stopped" || true
+    pkill -f "GradleWorkerMain" 2>/dev/null || true
     pkill -f "minio server /tmp/bioritmic-minio" 2>/dev/null || true
     sleep 2
     pkill -9 -f "gradlew.*bootRun" 2>/dev/null || true

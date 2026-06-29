@@ -168,6 +168,7 @@ interface UserConversation {
 
     .conversation-list {
       overflow-y: auto;
+      overflow-x: hidden;
       flex: 1;
     }
 
@@ -335,13 +336,38 @@ interface UserConversation {
         align-items: center;
         justify-content: center;
         position: absolute;
-        inset: 0 0 0 auto;
-        width: 76px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 72px;
+        z-index: 0;
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         color: white;
-        font-size: 1.25rem;
+        font-size: 1.05rem;
         border: none;
         cursor: pointer;
+        padding: 0;
+
+        i {
+          font-size: 1.05rem;
+          line-height: 1;
+        }
+      }
+
+      .conversation-item {
+        width: 100%;
+        box-sizing: border-box;
+
+        &::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: -4px;
+          width: 4px;
+          height: 100%;
+          background: inherit;
+          pointer-events: none;
+        }
       }
 
       .btn-delete {
@@ -374,9 +400,9 @@ export class MailboxComponent implements OnInit, OnDestroy {
   swipeDragUserId: string | null = null;
   swipeOffset = 0;
 
-  private readonly swipeActionWidth = 76;
-  private readonly swipeOpenThreshold = 36;
-  private readonly swipeDeleteThreshold = 64;
+  private readonly swipeActionWidth = 72;
+  private readonly swipeOpenThreshold = 34;
+  private readonly swipeDeleteThreshold = 60;
   private openedSwipeOffsets: Record<string, number> = {};
   private swipeMoved = false;
   private swipeStartX = 0;
