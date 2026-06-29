@@ -36,7 +36,7 @@ interface BookmarkRepository : CoroutineCrudRepository<Bookmark, Bookmark.Primar
     suspend fun insert(userId: UUID, otherUserId: UUID, timestamp: Timestamp?): Int
 
     @Query(
-        "SELECT b2.other_user_id FROM bookmarks b1 " +
+        "SELECT b1.other_user_id FROM bookmarks b1 " +
             "JOIN bookmarks b2 ON b1.other_user_id = b2.user_id AND b2.other_user_id = b1.user_id " +
             "WHERE b1.user_id = :userId"
     )

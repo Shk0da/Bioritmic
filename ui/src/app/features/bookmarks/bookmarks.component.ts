@@ -33,7 +33,7 @@ interface UserWithPhoto extends UserInfo {
     } @else if (matchesCount > 0) {
       <div class="matches-section mb-4">
         <h5 class="matches-title">
-          <i class="bi bi-heart-fill text-danger me-2"></i>Совпадения
+          <i class="bi bi-heart-fill text-danger me-2"></i>Совпадения по лайкам
           <span class="badge bg-danger ms-2">{{ matchesCount }}</span>
         </h5>
         @if (matchesBlurred) {
@@ -67,7 +67,7 @@ interface UserWithPhoto extends UserInfo {
                 <a [routerLink]="['/user', user.id]" class="match-link">
                   <div class="match-avatar-wrapper">
                     <img
-                      [src]="user.photoDataUrl || ''"
+                      [src]="getMatchPhotoUrl(user)"
                       class="match-avatar"
                       [alt]="user.name">
                     @if (user.isOnline) {
@@ -508,6 +508,8 @@ export class BookmarksComponent implements OnInit {
         if (!response.blurred && response.matches.length > 0) {
           this.matches = response.matches.map(m => ({ ...m, photoDataUrl: null }));
           this.loadMatchPhotos();
+        } else {
+          this.matches = [];
         }
         this.matchesLoading = false;
       },
@@ -525,11 +527,20 @@ export class BookmarksComponent implements OnInit {
             user.photoDataUrl = this.bytesToDataUrl(bytes);
           },
           error: () => {
-            user.photoDataUrl = null;
+            user.photoDataUrl = user.id
+              ? this.userService.getProfilePhotoUrl(user.id, 0, 'card')
+              : null;
           }
         });
       }
     });
+  }
+
+  getMatchPhotoUrl(user: UserWithPhoto): string {
+    if (user.photoDataUrl) {
+      return user.photoDataUrl;
+    }
+    return user.id ? this.userService.getProfilePhotoUrl(user.id, 0, 'card') : '';
   }
 
   getPlaceholderArray(count: number): number[] {

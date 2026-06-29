@@ -18,11 +18,12 @@ import {
   getSummaryCompatibilityAverage,
 } from '../../shared/utils/biorhythm-labels.util';
 import { StoriesBarComponent } from '../../shared/components/stories-bar/stories-bar.component';
+import { MatchModalComponent } from '../../shared/components/match-modal/match-modal.component';
 
 @Component({
   selector: 'app-swipe',
   standalone: true,
-  imports: [RouterLink, FormsModule, NgClass, StoriesBarComponent],
+  imports: [RouterLink, FormsModule, NgClass, StoriesBarComponent, MatchModalComponent],
   template: `
     <div class="swipe-container">
       <div class="stories-row">
@@ -309,6 +310,16 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
         </div>
       </div>
     }
+
+    @if (showMatchModal) {
+      <app-match-modal
+        [visible]="true"
+        [matchedUser]="matchedUser"
+        [matchedUserPhoto]="matchedUserPhoto"
+        [currentUserPhoto]="currentUserPhoto"
+        (closed)="closeMatchModal()">
+      </app-match-modal>
+    }
   `,
   styleUrls: ['./swipe.component.scss']
 })
@@ -340,6 +351,10 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   isPro = false;
   isUserVerified = true;
   swipeHistory: Array<{ direction: SwipeDirection; card: SwipeCard }> = [];
+  showMatchModal = false;
+  matchedUser: UserInfo | null = null;
+  matchedUserPhoto: string | null = null;
+  currentUserPhoto: string | null = null;
 
   constructor(
     private searchService: SearchService,
@@ -660,15 +675,19 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private handleSwipeResult(result: SwipeResult): void {
-    // Здесь можно отправить результат на сервер
-    console.log('Swipe result:', result);
-
-    // Сохраняем в избранное при лайке
     if (result.direction === SwipeDirection.RIGHT || result.direction === SwipeDirection.UP) {
       if (result.card.user.id) {
-        this.bookmarksService.addBookmark({ userId: result.card.user.id }).subscribe({
-          next: () => console.log('Добавлено в избранное'),
-          error: () => console.error('Ошибка добавления в избранное')
+        const likedUserId = result.card.user.id;
+        this.bookmarksService.addBookmark({ userId: likedUserId }).pipe(
+          switchMap(() => this.matchService.checkMatch(likedUserId)),
+          takeUntil(this.destroy$)
+        ).subscribe({
+          next: ({ isMatch }) => {
+            if (isMatch) {
+              this.openMatchModal(result.card);
+            }
+          },
+          error: () => { /* bookmark or match check failed — non-critical */ }
         });
       }
     }
@@ -682,6 +701,27 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   openFilters(): void {
     this.showFilters = true;
+  }
+
+  closeMatchModal(): void {
+    this.showMatchModal = false;
+    this.matchedUser = null;
+    this.matchedUserPhoto = null;
+    this.currentUserPhoto = null;
+  }
+
+  private openMatchModal(card: SwipeCard): void {
+    if (this.showMatchModal) {
+      return;
+    }
+    this.matchedUser = card.user;
+    this.matchedUserPhoto = card.photoDataUrl
+      ?? (card.user.id ? this.userService.getProfilePhotoUrl(card.user.id, 0, 'card') : null);
+    const currentUser = this.authService.getCurrentUser();
+    this.currentUserPhoto = currentUser?.id
+      ? this.userService.getProfilePhotoUrl(currentUser.id, 0, 'card')
+      : null;
+    this.showMatchModal = true;
   }
 
   closeFilters(): void {

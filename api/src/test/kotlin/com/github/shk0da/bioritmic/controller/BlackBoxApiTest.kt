@@ -513,6 +513,19 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .headers(auth(aliceToken))
             .exchange()
             .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.isMatch").isEqualTo(true)
+
+        // Matches list must contain the other user, not self
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/bookmarks/matches")
+            .headers(auth(aliceToken))
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.count").isEqualTo(1)
+            .jsonPath("$.blurred").isEqualTo(false)
+            .jsonPath("$.matches[0].id").isEqualTo(bobId.toString())
     }
 
     // ===== SEARCH =====

@@ -240,7 +240,7 @@ interface ChatMessage extends UserMail {
           </button>
         </div>
       } @else {
-        <div class="message-input-container">
+        <div #messageInputContainer class="message-input-container">
           @if (replyingToMessage) {
             <div class="reply-preview">
               <div class="reply-preview-content">
@@ -297,6 +297,7 @@ interface ChatMessage extends UserMail {
             </div>
             <div class="input-wrapper">
               <input
+                #messageInput
                 type="text"
                 class="message-input"
                 placeholder="Написать сообщение..."
@@ -1175,6 +1176,8 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   @Output() messageSent = new EventEmitter<void>();
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
+  @ViewChild('messageInput') private messageInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('messageInputContainer') private messageInputContainer?: ElementRef<HTMLElement>;
   @ViewChild('photoInput') private photoInput?: ElementRef<HTMLInputElement>;
   @ViewChild('videoPreview') private videoPreview?: ElementRef<HTMLVideoElement>;
 
@@ -1208,6 +1211,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
 
   private shouldScroll = false;
   private scrollBehavior: ScrollBehavior = 'auto';
+  private focusInputTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private refreshInterval: ReturnType<typeof setInterval> | null = null;
   private isRefreshing = false;
   private readonly conversationPageSize = CONVERSATION_PAGE_SIZE;
@@ -1359,9 +1363,52 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.replyingToMessage = message;
     this.showAttachMenu = false;
     this.showEmojiPicker = false;
+    if (this.isMobileLayout()) {
+      this.scrollBehavior = 'smooth';
+      this.shouldScroll = true;
+      this.scheduleMessageInputFocus();
+    }
+  }
+
+  private isMobileLayout(): boolean {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 991.98px)').matches;
+  }
+
+  private scheduleMessageInputFocus(): void {
+    this.clearFocusInputTimeout();
+    this.cdr.markForCheck();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        this.focusMessageInput();
+        this.focusInputTimeoutId = setTimeout(() => {
+          this.focusInputTimeoutId = null;
+          this.focusMessageInput();
+        }, 350);
+      });
+    });
+  }
+
+  private clearFocusInputTimeout(): void {
+    if (this.focusInputTimeoutId != null) {
+      clearTimeout(this.focusInputTimeoutId);
+      this.focusInputTimeoutId = null;
+    }
+  }
+
+  private focusMessageInput(): void {
+    if (this.isBlocked || this.selectionMode || this.sending) {
+      return;
+    }
+    const container = this.messageInputContainer?.nativeElement;
+    const input = this.messageInput?.nativeElement;
+    if (container) {
+      container.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+    }
+    input?.focus({ preventScroll: !!container });
   }
 
   cancelReply(): void {
+    this.clearFocusInputTimeout();
     this.replyingToMessage = null;
   }
 
@@ -1714,6 +1761,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   private resetState(): void {
+    this.clearFocusInputTimeout();
     this.clearRefreshInterval();
     this.cleanupRecording();
     this.stopVoicePlayback();
@@ -1742,6 +1790,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     if (this.isBlocked) {
       return;
     }
+    this.clearFocusInputTimeout();
     this.selectionMode = true;
     this.selectedMessageIds = new Set<number>();
     this.showAttachMenu = false;
@@ -2140,6 +2189,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       return;
     }
     this.teardownDone = true;
+    this.clearFocusInputTimeout();
     this.voicePreloadGeneration += 1;
     this.voiceDurationLoads.clear();
     this.clearRefreshInterval();
