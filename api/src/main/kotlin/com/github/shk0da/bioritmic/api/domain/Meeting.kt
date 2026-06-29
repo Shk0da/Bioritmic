@@ -48,6 +48,7 @@ class Meeting : Serializable {
             meeting.otherUserLon = userMeeting.lon
             meeting.distance = userMeeting.distance
             meeting.timestamp = Timestamp(System.currentTimeMillis())
+            meeting.status = "PENDING"
             return meeting
         }
     }

@@ -174,6 +174,45 @@ class MeetingStatusTest : ApiApplicationTests() {
     }
 
     @Test
+    fun `resend meeting after decline resets status to pending`() {
+        val meeting = UserMeeting(userId = userBId, lat = 55.75, lon = 37.61, distance = 10.0)
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(meeting)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/meetings/$userAId/decline")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(meeting)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/meetings?page=0&size=10")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.length()").isEqualTo(1)
+            .jsonPath("$[0].status").isEqualTo("PENDING")
+    }
+
+    @Test
     fun `self meeting is not created`() {
         val meeting = UserMeeting(userId = userAId, lat = 55.75, lon = 37.61, distance = 10.0)
         webTestClient.post()

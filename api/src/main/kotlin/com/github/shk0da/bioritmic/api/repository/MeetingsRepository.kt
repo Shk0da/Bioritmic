@@ -49,11 +49,11 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
 
     @Modifying
     @Query(
-        "insert into meetings(user_id, other_user_id, other_user_lat, other_user_lon, distance, timestamp) " +
-            "values (:userId, :otherUserId, :otherUserLat, :otherUserLon, :distance, :timestamp) " +
+        "insert into meetings(user_id, other_user_id, other_user_lat, other_user_lon, distance, timestamp, status) " +
+            "values (:userId, :otherUserId, :otherUserLat, :otherUserLon, :distance, :timestamp, 'PENDING') " +
             "on conflict (user_id, other_user_id) do update " +
             "set other_user_lat = excluded.other_user_lat, other_user_lon = excluded.other_user_lon, " +
-            "distance = excluded.distance, timestamp = excluded.timestamp"
+            "distance = excluded.distance, timestamp = excluded.timestamp, status = 'PENDING'"
     )
     suspend fun insert(
         userId: UUID,

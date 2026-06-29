@@ -5,7 +5,6 @@ import { UserService } from '../../core/services/user.service';
 import { UserMeeting, PageableRequest, UserInfo } from '../../core/models/user.model';
 import { ModalService } from '../../core/services/modal.service';
 import { ToastService } from '../../core/services/toast.service';
-import { NgClass } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
 
 interface MeetingWithUser extends UserMeeting {
@@ -18,7 +17,7 @@ interface MeetingWithUser extends UserMeeting {
 @Component({
   selector: 'app-meetings',
   standalone: true,
-  imports: [RouterLink, NgClass],
+  imports: [RouterLink],
   template: `
     <div class="page-header mb-4">
       <h1 class="page-title">
@@ -55,7 +54,7 @@ interface MeetingWithUser extends UserMeeting {
                 <i class="bi bi-check-circle-fill"></i>
               </div>
               <img
-                [src]="meeting.userPhotoUrl || ''"
+                [src]="meeting.userPhotoUrl || 'assets/img/default-avatar.svg'"
                 class="rounded-circle accepted-meeting-photo"
                 [alt]="meeting.userName || 'User'">
               <div class="accepted-meeting-content flex-grow-1">
@@ -81,71 +80,101 @@ interface MeetingWithUser extends UserMeeting {
         </div>
       }
 
-      @if (incomingMeetings.length === 0 && acceptedOutgoingMeetings.length > 0) {
+      @if (acceptedIncomingMeetings.length > 0) {
+        <div class="accepted-meetings mb-4">
+          @for (meeting of acceptedIncomingMeetings; track meeting.userId) {
+            <div class="accepted-meeting-banner accepted-meeting-banner-incoming">
+              <div class="accepted-meeting-icon">
+                <i class="bi bi-check-circle-fill"></i>
+              </div>
+              <img
+                [src]="meeting.userPhotoUrl || 'assets/img/default-avatar.svg'"
+                class="rounded-circle accepted-meeting-photo"
+                [alt]="meeting.userName || 'User'">
+              <div class="accepted-meeting-content flex-grow-1">
+                <div class="accepted-meeting-title">Встреча подтверждена</div>
+                <p class="accepted-meeting-text mb-1">
+                  Вы приняли предложение встречи от <strong>{{ meeting.userName || 'пользователя' }}</strong>.
+                </p>
+                <p class="accepted-meeting-meta mb-0">
+                  <i class="bi bi-signpost-2 me-1"></i>
+                  Расстояние: <strong>{{ meeting.distance.toFixed(1) }} км</strong>
+                </p>
+              </div>
+              <div class="accepted-meeting-actions d-flex gap-2">
+                <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-success btn-sm">
+                  <i class="bi bi-person me-1"></i>Профиль
+                </a>
+                <a [routerLink]="['/mailbox', meeting.userId]" class="btn btn-success btn-sm">
+                  <i class="bi bi-chat-heart me-1"></i>Написать
+                </a>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (pendingIncomingMeetings.length === 0 && acceptedOutgoingMeetings.length > 0 && acceptedIncomingMeetings.length === 0) {
         <p class="text-muted mb-4">Новых предложений встреч пока нет</p>
       }
 
-      <div class="row">
-        @for (meeting of incomingMeetings; track meeting.userId) {
-          @if (meeting.status !== 'DECLINED') {
-          <div class="col-12 col-md-6 mb-4">
-            <div class="card meeting-card h-100">
-              <div class="card-body">
-                <div class="d-flex align-items-start">
+      <div class="meetings-list">
+        @for (meeting of pendingIncomingMeetings; track meeting.userId) {
+          <div class="meeting-card-wrap">
+            <div class="card meeting-card">
+              <div class="card-body meeting-card-body">
+                <div class="meeting-header">
                   <img
-                    [src]="meeting.userPhotoUrl || ''"
-                    class="rounded-circle me-3 meeting-user-photo"
+                    [src]="meeting.userPhotoUrl || 'assets/img/default-avatar.svg'"
+                    class="rounded-circle meeting-user-photo"
                     [alt]="meeting.userName || 'User'">
-                  <div class="flex-grow-1">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div class="meeting-header-main">
+                    <div class="meeting-title-row">
                       <h6 class="card-title mb-0">
                         {{ meeting.userName || 'Пользователь #' + meeting.userId }}
                       </h6>
-                      @if (meeting.status) {
-                        <span class="badge" [ngClass]="{
-                          'bg-warning': meeting.status === 'PENDING',
-                          'bg-success': meeting.status === 'ACCEPTED'
-                        }">
-                          @if (meeting.status === 'ACCEPTED') { Принято }
-                          @if (meeting.status === 'PENDING') { Ожидает }
-                        </span>
-                      }
+                      <span class="badge bg-warning">Ожидает ответа</span>
                     </div>
-                    <div class="meeting-details mb-3">
+                    <div class="meeting-details">
                       <p class="small text-muted mb-0">
                         <i class="bi bi-signpost-2 me-1"></i>
                         Расстояние: <strong>{{ meeting.distance.toFixed(1) }} км</strong>
                       </p>
                     </div>
-                    <div class="d-flex gap-2">
-                      <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-person me-1"></i>Профиль
-                      </a>
-                      <button
-                        class="btn btn-outline-success btn-sm"
-                        (click)="acceptMeeting(meeting)"
-                        [disabled]="meeting.status !== 'PENDING' || meeting.isAccepting"
-                        title="Принять">
-                        <i class="bi bi-check-lg me-1"></i>Принять
-                      </button>
-                      <button
-                        class="btn btn-outline-danger btn-sm"
-                        (click)="declineMeeting(meeting)"
-                        [disabled]="!includesStatus(meeting.status) || meeting.isDeclining"
-                        title="Отказаться">
-                        @if (meeting.isDeclining) {
-                          <span class="spinner-border spinner-border-sm"></span>
-                        } @else {
-                          <i class="bi bi-x-lg me-1"></i>Отказаться
-                        }
-                      </button>
-                    </div>
                   </div>
+                </div>
+                <div class="meeting-actions">
+                  <a [routerLink]="['/user', meeting.userId]" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-person me-1"></i>Профиль
+                  </a>
+                  <button
+                    class="btn btn-outline-success btn-sm"
+                    (click)="acceptMeeting(meeting)"
+                    [disabled]="meeting.isAccepting || meeting.isDeclining"
+                    title="Принять">
+                    @if (meeting.isAccepting) {
+                      <span class="spinner-border spinner-border-sm me-1"></span>
+                    } @else {
+                      <i class="bi bi-check-lg me-1"></i>
+                    }
+                    Принять
+                  </button>
+                  <button
+                    class="btn btn-outline-danger btn-sm"
+                    (click)="declineMeeting(meeting)"
+                    [disabled]="meeting.isDeclining || meeting.isAccepting"
+                    title="Отказаться">
+                    @if (meeting.isDeclining) {
+                      <span class="spinner-border spinner-border-sm me-1"></span>
+                    } @else {
+                      <i class="bi bi-x-lg me-1"></i>
+                    }
+                    Отказаться
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-          }
         }
       </div>
     }
@@ -170,28 +199,90 @@ interface MeetingWithUser extends UserMeeting {
       margin: 2rem auto;
     }
 
-    .meeting-card {
-      transition: all 0.3s ease;
+    .meetings-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      min-width: 0;
+    }
 
-      &:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    @media (min-width: 768px) {
+      .meetings-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
+    .meeting-card-wrap {
+      min-width: 0;
+    }
+
+    .meeting-card {
+      transition: box-shadow 0.3s ease;
+      overflow: hidden;
+
+      @media (hover: hover) {
+        &:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+      }
+    }
+
+    .meeting-card-body {
+      min-width: 0;
+    }
+
+    .meeting-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      min-width: 0;
+    }
+
+    .meeting-header-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .meeting-title-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .meeting-title-row .card-title {
+      min-width: 0;
+      word-break: break-word;
+    }
+
     .meeting-user-photo {
-      width: 60px;
-      height: 60px;
+      width: 56px;
+      height: 56px;
       object-fit: cover;
       border: 3px solid white;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
     }
 
     .meeting-details {
       background: rgba(253, 41, 123, 0.03);
       padding: 0.75rem;
       border-radius: 8px;
-      margin-bottom: 1rem;
+    }
+
+    .meeting-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.875rem;
+    }
+
+    .meeting-actions .btn {
+      flex: 1 1 auto;
+      min-width: 0;
+      white-space: nowrap;
     }
 
     .accepted-meeting-banner {
@@ -233,13 +324,42 @@ interface MeetingWithUser extends UserMeeting {
     }
 
     @media (max-width: 768px) {
+      .page-header {
+        padding: 0.25rem 0;
+      }
+
+      .page-title {
+        font-size: 1.45rem;
+      }
+
       .accepted-meeting-banner {
         flex-wrap: wrap;
+        padding: 0.875rem 1rem;
+        gap: 0.75rem;
       }
 
       .accepted-meeting-actions {
         width: 100%;
-        justify-content: flex-start;
+        flex-direction: column;
+      }
+
+      .accepted-meeting-actions .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .meeting-user-photo {
+        width: 48px;
+        height: 48px;
+      }
+
+      .meeting-actions {
+        flex-direction: column;
+      }
+
+      .meeting-actions .btn {
+        width: 100%;
+        justify-content: center;
       }
     }
 
@@ -253,6 +373,17 @@ export class MeetingsComponent implements OnInit, OnDestroy {
 
   get incomingMeetings(): MeetingWithUser[] {
     return this.meetings.filter((meeting) => !meeting.outgoing);
+  }
+
+  get pendingIncomingMeetings(): MeetingWithUser[] {
+    return this.incomingMeetings.filter((meeting) => {
+      const status = meeting.status ?? 'PENDING';
+      return status !== 'DECLINED' && status !== 'ACCEPTED';
+    });
+  }
+
+  get acceptedIncomingMeetings(): MeetingWithUser[] {
+    return this.incomingMeetings.filter((meeting) => (meeting.status ?? 'PENDING') === 'ACCEPTED');
   }
 
   get acceptedOutgoingMeetings(): MeetingWithUser[] {
@@ -277,14 +408,13 @@ export class MeetingsComponent implements OnInit, OnDestroy {
     this.meetings.forEach(m => UserService.revokePhotoUrl(m.userPhotoUrl));
   }
 
-  includesStatus(status: string | undefined): boolean {
-    return status === 'PENDING' || status === 'ACCEPTED';
-  }
-
-  private loadMeetings(): void {
-    this.loading = true;
+  private loadMeetings(silent = false): void {
+    if (!silent) {
+      this.loading = true;
+    }
     this.meetingsService.getMeetings(this.pageable).pipe(takeUntil(this.destroy$)).subscribe({
       next: (meetings) => {
+        this.meetings.forEach(m => UserService.revokePhotoUrl(m.userPhotoUrl));
         this.meetings = meetings;
         this.loadUserData();
         this.loading = false;
@@ -335,12 +465,16 @@ export class MeetingsComponent implements OnInit, OnDestroy {
   }
 
   acceptMeeting(meeting: MeetingWithUser): void {
+    if (meeting.isAccepting || meeting.isDeclining) {
+      return;
+    }
     meeting.isAccepting = true;
     this.meetingsService.acceptMeeting(meeting.userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         meeting.isAccepting = false;
         meeting.status = 'ACCEPTED';
         this.toastService.success('Встреча принята!');
+        this.loadMeetings(true);
       },
       error: () => {
         meeting.isAccepting = false;
@@ -362,6 +496,7 @@ export class MeetingsComponent implements OnInit, OnDestroy {
         meeting.isDeclining = false;
         meeting.status = 'DECLINED';
         this.toastService.success('Вы отказались от встречи. Пользователь уведомлён.');
+        this.loadMeetings(true);
       },
       error: () => {
         meeting.isDeclining = false;

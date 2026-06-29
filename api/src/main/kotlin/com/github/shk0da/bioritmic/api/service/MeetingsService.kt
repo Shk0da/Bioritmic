@@ -61,16 +61,17 @@ class MeetingsService(
                     val values = specs.joinToString(", ") { spec ->
                         "('${spec.userId}'::uuid, '${spec.otherUserId}'::uuid, " +
                             "${spec.otherUserLat}, ${spec.otherUserLon}, " +
-                            "${spec.distance}, '${spec.timestamp}')"
+                            "${spec.distance}, '${spec.timestamp}', 'PENDING')"
                     }
                     databaseClient.sql(
-                        """INSERT INTO meetings(user_id, other_user_id, other_user_lat, other_user_lon, distance, timestamp)
+                        """INSERT INTO meetings(user_id, other_user_id, other_user_lat, other_user_lon, distance, timestamp, status)
                            VALUES $values
                            ON CONFLICT (user_id, other_user_id) DO UPDATE
                            SET other_user_lat = excluded.other_user_lat,
                                other_user_lon = excluded.other_user_lon,
                                distance = excluded.distance,
-                               timestamp = excluded.timestamp"""
+                               timestamp = excluded.timestamp,
+                               status = 'PENDING'"""
                     ).fetch().rowsUpdated().awaitFirstOrNull()
 
                     val sender = userService.findUserById(userId)
@@ -140,6 +141,15 @@ class MeetingsService(
         if (meeting == null) {
             log.warn("acceptMeeting: no meeting found between {} and {}", otherUserId, currentUserId)
             return null
+        }
+
+        if (meeting.status == "DECLINED") {
+            log.warn("acceptMeeting: meeting was declined between {} and {}", otherUserId, currentUserId)
+            return null
+        }
+
+        if (meeting.status == "ACCEPTED") {
+            return meeting
         }
 
         val updated = meetingStatusUpdater.updateStatus(otherUserId, currentUserId, "ACCEPTED")

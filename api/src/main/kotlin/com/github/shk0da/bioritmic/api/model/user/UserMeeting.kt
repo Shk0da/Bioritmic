@@ -39,7 +39,7 @@ data class UserMeeting(
                 lon = lon,
                 distance = meeting.distance,
                 timestamp = meeting.timestamp,
-                status = meeting.status,
+                status = meeting.status?.takeIf { it.isNotBlank() } ?: "PENDING",
                 outgoing = isCurrentUserCreator,
             )
         }
