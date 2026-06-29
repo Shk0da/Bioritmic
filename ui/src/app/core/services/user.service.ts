@@ -10,7 +10,17 @@ const DEFAULT_USER_SETTINGS: UserSettings = {
   distance: 30,
 };
 
-export type PhotoSize = 'thumb' | 'card';
+export type PhotoSize = 'thumb' | 'card' | 'full';
+
+const MOBILE_LAYOUT_MAX_WIDTH = 1024;
+
+/** Full resolution on mobile swipe / hero; card size on desktop grids. */
+export function photoSizeForLargeDisplay(): PhotoSize {
+  if (typeof window !== 'undefined' && window.matchMedia(`(max-width: ${MOBILE_LAYOUT_MAX_WIDTH}px)`).matches) {
+    return 'full';
+  }
+  return 'card';
+}
 
 export interface BiorhythmCycle {
   name: string;
@@ -110,8 +120,8 @@ export class UserService {
   getPhoto(userId?: string, size: PhotoSize = 'thumb'): Observable<Uint8Array> {
     const url = userId ? `${this.apiUrl}/${userId}/photo` : `${this.apiUrl}/me/photo`;
     const options: { responseType: 'arraybuffer'; params?: HttpParams } = { responseType: 'arraybuffer' };
-    if (size === 'card') {
-      options.params = new HttpParams().set('size', 'card');
+    if (size !== 'thumb') {
+      options.params = new HttpParams().set('size', size);
     }
     return this.http.get(url, options).pipe(
       map((buffer: ArrayBuffer) => new Uint8Array(buffer))
@@ -122,14 +132,22 @@ export class UserService {
     return this.http.get<UserPhoto[]>(`${this.apiUrl}/${userId}/photos`);
   }
 
-  getProfilePhotoUrl(userId: string, cacheBuster?: number): string {
+  getProfilePhotoUrl(userId: string, cacheBuster?: number, size: PhotoSize = 'thumb'): string {
     const version = cacheBuster ?? Date.now();
-    return `${this.apiUrl}/${userId}/photo?v=${version}`;
+    let params = new HttpParams().set('v', String(version));
+    if (size !== 'thumb') {
+      params = params.set('size', size);
+    }
+    return `${this.apiUrl}/${userId}/photo?${params.toString()}`;
   }
 
-  resolveProfilePhotoUrl(userId: string, cacheBuster?: number): Observable<string | null> {
+  resolveProfilePhotoUrl(
+    userId: string,
+    cacheBuster?: number,
+    size: PhotoSize = 'card'
+  ): Observable<string | null> {
     return this.getUserPhotos(userId).pipe(
-      map((photos) => (photos.length > 0 ? this.getProfilePhotoUrl(userId, cacheBuster) : null)),
+      map((photos) => (photos.length > 0 ? this.getProfilePhotoUrl(userId, cacheBuster, size) : null)),
       catchError(() => of(null))
     );
   }

@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { StoryService } from '../../../core/services/story.service';
+import { ImageCropModalComponent } from '../image-crop-modal/image-crop-modal.component';
 
 @Component({
   selector: 'app-story-creator',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ImageCropModalComponent],
   template: `
     @if (visible) {
       <div class="creator-overlay" (click)="close()">
@@ -67,6 +68,14 @@ import { StoryService } from '../../../core/services/story.service';
         </div>
       </div>
     }
+
+    <app-image-crop-modal
+      [visible]="cropVisible"
+      [sourceFile]="cropSourceFile"
+      preset="story"
+      (confirmed)="onPhotoCropped($event)"
+      (cancelled)="onPhotoCropCancelled()">
+    </app-image-crop-modal>
   `,
   styles: [`
     .creator-overlay {
@@ -214,6 +223,8 @@ export class StoryCreatorComponent implements OnDestroy {
   previewUrl: string | null = null;
   caption = '';
   uploading = false;
+  cropVisible = false;
+  cropSourceFile: File | null = null;
 
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
@@ -236,13 +247,26 @@ export class StoryCreatorComponent implements OnDestroy {
         input.value = '';
         return;
       }
-      this.selectedFile = file;
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.previewUrl = reader.result as string;
-      };
-      reader.readAsDataURL(this.selectedFile);
+      input.value = '';
+      this.cropSourceFile = file;
+      this.cropVisible = true;
     }
+  }
+
+  onPhotoCropped(file: File): void {
+    this.cropVisible = false;
+    this.cropSourceFile = null;
+    this.selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.previewUrl = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  onPhotoCropCancelled(): void {
+    this.cropVisible = false;
+    this.cropSourceFile = null;
   }
 
   removePreview(): void {
@@ -272,6 +296,8 @@ export class StoryCreatorComponent implements OnDestroy {
     this.selectedFile = null;
     this.previewUrl = null;
     this.caption = '';
+    this.cropVisible = false;
+    this.cropSourceFile = null;
     this.closed.emit();
   }
 }

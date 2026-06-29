@@ -8,6 +8,7 @@ import com.github.shk0da.bioritmic.domain.UserModel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
 import java.util.UUID
@@ -105,9 +106,9 @@ class MailboxControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$[0].mediaType").isEqualTo("PHOTO")
-            .jsonPath("$[0].mediaUrl").isNotEmpty
-            .jsonPath("$[0].message").isEqualTo("Photo caption")
+            .jsonPath("$.messages[0].mediaType").isEqualTo("PHOTO")
+            .jsonPath("$.messages[0].mediaUrl").isNotEmpty
+            .jsonPath("$.messages[0].message").isEqualTo("Photo caption")
     }
 
     @Test
@@ -133,10 +134,11 @@ class MailboxControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.length()").isEqualTo(3)
-            .jsonPath("$[0].message").isEqualTo("Hello from A")
-            .jsonPath("$[1].message").isEqualTo("Reply from B")
-            .jsonPath("$[2].message").isEqualTo("Second from A")
+            .jsonPath("$.messages.length()").isEqualTo(3)
+            .jsonPath("$.messages[0].message").isEqualTo("Hello from A")
+            .jsonPath("$.messages[1].message").isEqualTo("Reply from B")
+            .jsonPath("$.messages[2].message").isEqualTo("Second from A")
+            .jsonPath("$.hasMore").isEqualTo(false)
     }
 
     private fun registerAndGetUserId(email: String, name: String): UUID {
@@ -209,7 +211,7 @@ class MailboxControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$[0].id").value { id: Any -> originalMessageId = (id as Number).toLong() }
+            .jsonPath("$.messages[0].id").value { id: Any -> originalMessageId = (id as Number).toLong() }
 
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/mailbox")
@@ -228,8 +230,8 @@ class MailboxControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$[1].replyToMessageId").isEqualTo(originalMessageId)
-            .jsonPath("$[1].message").isEqualTo("Reply to original")
+            .jsonPath("$.messages[1].replyToMessageId").isEqualTo(originalMessageId)
+            .jsonPath("$.messages[1].message").isEqualTo("Reply to original")
     }
 
     @Test
@@ -253,7 +255,7 @@ class MailboxControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$[0].id").value { id: Any -> messageId = (id as Number).toLong() }
+            .jsonPath("$.messages[0].id").value { id: Any -> messageId = (id as Number).toLong() }
 
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/mailbox/$messageId/react")
@@ -286,8 +288,155 @@ class MailboxControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$[0].currentUserReaction").doesNotExist()
-            .jsonPath("$[0].reactionCounts.HEART").doesNotExist()
+            .jsonPath("$.messages[0].currentUserReaction").doesNotExist()
+            .jsonPath("$.messages[0].reactionCounts.HEART").doesNotExist()
+    }
+
+    @Test
+    fun markMessagesAsReadWhenRecipientOpensConversationTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val userAEmail = "mailbox_read_a_$suffix@gmail.com"
+        val userBEmail = "mailbox_read_b_$suffix@gmail.com"
+
+        val userAId = registerAndGetUserId(userAEmail, "Read A")
+        val userBId = registerAndGetUserId(userBEmail, "Read B")
+        val tokenA = loginAndGetToken(userAEmail, userAId)
+        val tokenB = loginAndGetToken(userBEmail, userBId)
+
+        sendMail(tokenA, userBId, "Please read me")
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages[0].isRead").isEqualTo(false)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userAId")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages[0].isRead").isEqualTo(true)
+    }
+
+    @Test
+    fun conversationPaginationTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val userAEmail = "mailbox_page_a_$suffix@gmail.com"
+        val userBEmail = "mailbox_page_b_$suffix@gmail.com"
+
+        val userAId = registerAndGetUserId(userAEmail, "Page A")
+        val userBId = registerAndGetUserId(userBEmail, "Page B")
+        val tokenA = loginAndGetToken(userAEmail, userAId)
+
+        repeat(35) { index ->
+            sendMail(tokenA, userBId, "Message ${index + 1}")
+        }
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId?size=30")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages.length()").isEqualTo(30)
+            .jsonPath("$.messages[0].message").isEqualTo("Message 6")
+            .jsonPath("$.messages[29].message").isEqualTo("Message 35")
+            .jsonPath("$.hasMore").isEqualTo(true)
+
+        var beforeId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId?size=30")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages[0].id").value { id: Any -> beforeId = (id as Number).toLong() }
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId?before=$beforeId&size=30")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages.length()").isEqualTo(5)
+            .jsonPath("$.messages[0].message").isEqualTo("Message 1")
+            .jsonPath("$.messages[4].message").isEqualTo("Message 5")
+            .jsonPath("$.hasMore").isEqualTo(false)
+    }
+
+    @Test
+    fun deleteOwnMessagesTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val userAEmail = "mailbox_del_a_$suffix@gmail.com"
+        val userBEmail = "mailbox_del_b_$suffix@gmail.com"
+
+        val userAId = registerAndGetUserId(userAEmail, "Delete A")
+        val userBId = registerAndGetUserId(userBEmail, "Delete B")
+        val tokenA = loginAndGetToken(userAEmail, userAId)
+        val tokenB = loginAndGetToken(userBEmail, userBId)
+
+        sendMail(tokenA, userBId, "Keep me")
+        sendMail(tokenA, userBId, "Delete me")
+
+        var ownMessageId = 0L
+        var keepMessageId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages.length()").isEqualTo(2)
+            .jsonPath("$.messages[0].id").value { id: Any -> keepMessageId = (id as Number).toLong() }
+            .jsonPath("$.messages[1].message").isEqualTo("Delete me")
+            .jsonPath("$.messages[1].id").value { id: Any -> ownMessageId = (id as Number).toLong() }
+
+        webTestClient.method(HttpMethod.DELETE)
+            .uri("$API_WITH_VERSION_1/mailbox/messages")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("ids" to listOf(ownMessageId))))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.deleted").isEqualTo(1)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages.length()").isEqualTo(1)
+            .jsonPath("$.messages[0].message").isEqualTo("Keep me")
+
+        webTestClient.method(HttpMethod.DELETE)
+            .uri("$API_WITH_VERSION_1/mailbox/messages")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("ids" to listOf(keepMessageId))))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isForbidden
     }
 
     @Test

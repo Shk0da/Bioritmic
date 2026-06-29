@@ -63,7 +63,7 @@ echo.
 
 echo [2/4] Canary API start ^(old API keeps running^)...
 docker rm -f %CANARY_NAME% >nul 2>&1
-docker compose run -d --no-deps --name %CANARY_NAME% api >nul
+docker compose run -d --no-deps --use-aliases --name %CANARY_NAME% api
 if errorlevel 1 (
     echo Failed to start canary api container.
     exit /b 1

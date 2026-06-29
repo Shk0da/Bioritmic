@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 import { Subject, takeUntil } from 'rxjs';
+import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
 
 @Component({
   selector: 'app-edit-profile',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, ImageCropModalComponent],
   template: `
     @if (saving) {
       <div class="saving-overlay">
@@ -175,6 +176,14 @@ import { Subject, takeUntil } from 'rxjs';
         </div>
       </div>
     </div>
+
+    <app-image-crop-modal
+      [visible]="cropVisible"
+      [sourceFile]="cropSourceFile"
+      preset="profile"
+      (confirmed)="onPhotoCropped($event)"
+      (cancelled)="onPhotoCropCancelled()">
+    </app-image-crop-modal>
   `,
   styles: [`
     .saving-overlay {
@@ -231,6 +240,8 @@ import { Subject, takeUntil } from 'rxjs';
 export class EditProfileComponent implements OnInit, OnDestroy {
   user: Partial<UserInfo> = {};
   photoFile: File | null = null;
+  cropVisible = false;
+  cropSourceFile: File | null = null;
   photoDataUrl: string | null = null;
   newEmail = '';
   emailChangeMessage = '';
@@ -301,7 +312,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
   }
 
   private loadPhoto(userId: string): void {
-    this.userService.resolveProfilePhotoUrl(userId).pipe(takeUntil(this.destroy$)).subscribe({
+    this.userService.resolveProfilePhotoUrl(userId, undefined, 'full').pipe(takeUntil(this.destroy$)).subscribe({
       next: (url) => {
         UserService.revokePhotoUrl(this.photoDataUrl);
         this.photoDataUrl = url;
@@ -315,15 +326,30 @@ export class EditProfileComponent implements OnInit, OnDestroy {
 
   onPhotoSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      this.photoFile = input.files[0];
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        UserService.revokePhotoUrl(this.photoDataUrl);
-        this.photoDataUrl = e.target.result;
-      };
-      reader.readAsDataURL(this.photoFile);
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) {
+      return;
     }
+    this.cropSourceFile = file;
+    this.cropVisible = true;
+  }
+
+  onPhotoCropped(file: File): void {
+    this.cropVisible = false;
+    this.cropSourceFile = null;
+    this.photoFile = file;
+    const reader = new FileReader();
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+      UserService.revokePhotoUrl(this.photoDataUrl);
+      this.photoDataUrl = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  onPhotoCropCancelled(): void {
+    this.cropVisible = false;
+    this.cropSourceFile = null;
   }
 
   requestEmailChange(): void {
@@ -383,7 +409,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
               UserService.revokePhotoUrl(this.photoDataUrl);
               const userId = this.user.id;
               this.photoDataUrl = userId
-                ? this.userService.getProfilePhotoUrl(userId, Date.now())
+                ? this.userService.getProfilePhotoUrl(userId, Date.now(), 'full')
                 : null;
               this.photoFile = null;
               this.saving = false;

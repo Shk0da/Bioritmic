@@ -3,6 +3,7 @@ package com.github.shk0da.bioritmic.controller
 import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
+import com.github.shk0da.bioritmic.api.model.mailbox.ConversationPageModel
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
@@ -374,8 +375,8 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .headers(auth(bobToken))
             .exchange()
             .expectStatus().isOk
-            .expectBodyList(UserMailModel::class.java)
-            .returnResult().responseBody ?: emptyList()
+            .expectBody(ConversationPageModel::class.java)
+            .returnResult().responseBody?.messages ?: emptyList()
 
         assert(messages.isNotEmpty()) { "Bob should see the message" }
     }
@@ -663,8 +664,8 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .headers(auth(aliceToken))
             .exchange()
             .expectStatus().isOk
-            .expectBodyList(UserMailModel::class.java)
-            .returnResult().responseBody ?: emptyList()
+            .expectBody(ConversationPageModel::class.java)
+            .returnResult().responseBody?.messages ?: emptyList()
 
         assert(messages.isNotEmpty()) { "Alice should see Bob's message" }
     }

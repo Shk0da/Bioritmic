@@ -83,6 +83,7 @@ export interface UserMail {
   mediaUrl?: string | null;
   currentUserReaction?: MailReactionType | null;
   reactionCounts?: MailReactionCounts;
+  isRead?: boolean;
 }
 
 export interface UserMeeting {

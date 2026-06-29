@@ -736,7 +736,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadPhoto(userId: string): void {
-    this.userService.getPhoto(userId).pipe(takeUntil(this.destroy$)).subscribe({
+    this.userService.getPhoto(userId, 'full').pipe(takeUntil(this.destroy$)).subscribe({
       next: (bytes: Uint8Array) => {
         this.photoDataUrl = this.bytesToDataUrl(bytes);
       },

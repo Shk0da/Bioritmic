@@ -1,9 +1,12 @@
 package com.github.shk0da.bioritmic.api.controller.mailbox
 
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes
+import com.github.shk0da.bioritmic.api.model.mailbox.DeleteMessagesRequest
 import com.github.shk0da.bioritmic.api.model.mailbox.MailReactionRequest
+import com.github.shk0da.bioritmic.api.model.mailbox.ConversationPageModel
 import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
+import com.github.shk0da.bioritmic.api.service.MailboxService.Companion.CONVERSATION_PAGE_SIZE
 import com.github.shk0da.bioritmic.api.service.MailboxService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.springdoc.core.annotations.ParameterObject
@@ -36,7 +39,7 @@ class MailboxController(val mailboxService: MailboxService) {
     }
 
     @PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun mailbox(@RequestBody @Valid userMailModel: UserMailModel, principal: Principal): List<UserMailModel> {
+    suspend fun mailbox(@RequestBody @Valid userMailModel: UserMailModel, principal: Principal): ConversationPageModel {
         val userId = getUserId(principal)
         return mailboxService.sendUserMail(userId, userMailModel)
     }
@@ -52,7 +55,7 @@ class MailboxController(val mailboxService: MailboxService) {
         @RequestPart("file") file: FilePart,
         @RequestPart("message", required = false) caption: String?,
         @RequestPart("replyToMessageId", required = false) replyToMessageId: Long?
-    ): List<UserMailModel> {
+    ): ConversationPageModel {
         val userId = getUserId()
         val recipientId = try {
             UUID.fromString(toUserId.trim())
@@ -65,6 +68,13 @@ class MailboxController(val mailboxService: MailboxService) {
         return mailboxService.sendMediaMail(userId, recipientId, mediaType, file, caption, replyToMessageId)
     }
 
+    @DeleteMapping(value = ["/messages"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun deleteMessages(@RequestBody @Valid request: DeleteMessagesRequest): Map<String, Int> {
+        val currentUserId = getUserId()
+        val deleted = mailboxService.deleteOwnMessages(currentUserId, request.ids)
+        return mapOf("deleted" to deleted)
+    }
+
     @DeleteMapping(value = ["/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun deleteMailbox(@PathVariable userId: UUID) {
         val currentUserId = getUserId()
@@ -72,9 +82,13 @@ class MailboxController(val mailboxService: MailboxService) {
     }
 
     @GetMapping(value = ["/conversation/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun conversation(@PathVariable userId: UUID): List<UserMailModel> {
+    suspend fun conversation(
+        @PathVariable userId: UUID,
+        @RequestParam(required = false) before: Long?,
+        @RequestParam(defaultValue = "$CONVERSATION_PAGE_SIZE") size: Int,
+    ): ConversationPageModel {
         val currentUserId = getUserId()
-        return mailboxService.getConversationModels(currentUserId, userId)
+        return mailboxService.getConversationModels(currentUserId, userId, before, size)
     }
 
     @PostMapping(value = ["/{messageId}/react"], produces = [MediaType.APPLICATION_JSON_VALUE])

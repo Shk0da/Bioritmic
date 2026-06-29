@@ -6,6 +6,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
 import com.github.shk0da.bioritmic.api.model.mailbox.MailReactionType
 import com.github.shk0da.bioritmic.api.model.mailbox.MailMediaType
+import com.github.shk0da.bioritmic.api.model.mailbox.ConversationPageModel
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
 import com.github.shk0da.bioritmic.api.repository.MailboxReactionBatchRepository
 import com.github.shk0da.bioritmic.api.repository.MailboxReactionRepository
@@ -48,7 +49,7 @@ class MailboxService(
     }
 
     @Transactional
-    suspend fun sendUserMail(userId: UUID, userMailModel: UserMailModel): List<UserMailModel> {
+    suspend fun sendUserMail(userId: UUID, userMailModel: UserMailModel): ConversationPageModel {
         val toUserId = userMailModel.to!!
         ensureNotBlocked(userId, toUserId)
         val replyToMessageId = validateReplyTarget(userId, toUserId, userMailModel.replyToMessageId)
@@ -62,7 +63,7 @@ class MailboxService(
         mailboxRepository.save(userMail)
 
         notifyRecipient(userMail, userId)
-        return conversationModels(userMail.fromUserId!!, userMail.toUserId!!)
+        return getConversationPage(userId, toUserId, beforeId = null, size = CONVERSATION_PAGE_SIZE)
     }
 
     @Transactional
@@ -73,7 +74,7 @@ class MailboxService(
         file: FilePart,
         caption: String?,
         replyToMessageId: Long?
-    ): List<UserMailModel> {
+    ): ConversationPageModel {
         ensureNotBlocked(userId, toUserId)
         val validatedReplyId = validateReplyTarget(userId, toUserId, replyToMessageId)
 
@@ -114,7 +115,7 @@ class MailboxService(
         return try {
             mailboxRepository.save(userMail)
             notifyRecipient(userMail, userId)
-            conversationModels(userId, toUserId)
+            getConversationPage(userId, toUserId, beforeId = null, size = CONVERSATION_PAGE_SIZE)
         } catch (ex: Exception) {
             s3Service.deletePhoto(s3Key)
             throw ex
@@ -130,21 +131,73 @@ class MailboxService(
         mailboxRepository.deleteAllMailByBetweenTwoUserId(currentUserId, userId)
     }
 
+    @Transactional
+    suspend fun deleteOwnMessages(currentUserId: UUID, messageIds: List<Long>): Int {
+        val ids = messageIds.distinct()
+        if (ids.isEmpty() || ids.size > MAX_DELETE_BATCH_SIZE) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("ids" to "ids"))
+        }
+
+        val messages = mailboxRepository.findAllById(ids).toList()
+        if (messages.size != ids.size) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("ids" to "ids"))
+        }
+        if (messages.any { it.fromUserId != currentUserId }) {
+            throw ApiException(ErrorCode.ACCESS_DENIED)
+        }
+
+        messages.mapNotNull { it.mediaS3Key }.distinct().forEach { key ->
+            runCatching { s3Service.deletePhoto(key) }
+                .onFailure { ex -> log.warn("Failed to delete mailbox media {}: {}", key, ex.message) }
+        }
+
+        val deleted = mailboxRepository.deleteByIdsAndFromUserId(ids, currentUserId)
+        if (deleted != ids.size) {
+            throw ApiException(ErrorCode.ACCESS_DENIED)
+        }
+        return deleted
+    }
+
     @Transactional(readOnly = true)
     suspend fun getConversation(currentUserId: UUID, otherUserId: UUID): List<UserMail> {
         return mailboxRepository.findConversationBetweenUsers(currentUserId, otherUserId)
     }
 
-    @Transactional(readOnly = true)
-    suspend fun getConversationModels(currentUserId: UUID, otherUserId: UUID): List<UserMailModel> {
-        val messages = mailboxRepository.findConversationBetweenUsers(currentUserId, otherUserId)
-        return toModelsWithReactions(messages, currentUserId)
+    @Transactional
+    suspend fun getConversationModels(
+        currentUserId: UUID,
+        otherUserId: UUID,
+        beforeId: Long?,
+        size: Int,
+    ): ConversationPageModel {
+        return getConversationPage(currentUserId, otherUserId, beforeId, size)
     }
 
     @Transactional(readOnly = true)
     suspend fun countUnreadSenders(userId: UUID, sinceMs: Long): Long {
-        val since = java.sql.Timestamp(sinceMs)
-        return mailboxRepository.countUnreadSenders(userId, since)
+        return mailboxRepository.countUnreadSenders(userId, java.sql.Timestamp(sinceMs))
+    }
+
+    @Transactional
+    suspend fun getConversationPage(
+        currentUserId: UUID,
+        otherUserId: UUID,
+        beforeId: Long?,
+        size: Int,
+    ): ConversationPageModel {
+        val limit = size.coerceIn(1, MAX_CONVERSATION_PAGE_SIZE)
+        val rawMessages = if (beforeId == null) {
+            mailboxRepository.markIncomingAsRead(currentUserId, otherUserId)
+            mailboxRepository.findLatestConversationMessages(currentUserId, otherUserId, limit)
+        } else {
+            mailboxRepository.findOlderConversationMessages(currentUserId, otherUserId, beforeId, limit)
+        }
+        val messages = rawMessages.reversed()
+        val models = toModelsWithReactions(messages, currentUserId)
+        val hasMore = messages.firstOrNull()?.id?.let { oldestId ->
+            mailboxRepository.hasOlderConversationMessages(currentUserId, otherUserId, oldestId)
+        } ?: false
+        return ConversationPageModel(messages = models, hasMore = hasMore)
     }
 
     fun toModel(
@@ -154,11 +207,6 @@ class MailboxService(
     ): UserMailModel {
         val mediaUrl = userMail.mediaS3Key?.let { s3Service.getPhotoUrl(it) }
         return UserMailModel.of(userMail, mediaUrl, currentUserReaction, reactionCounts)
-    }
-
-    private suspend fun conversationModels(fromUserId: UUID, toUserId: UUID): List<UserMailModel> {
-        val messages = mailboxRepository.findConversationBetweenUsers(fromUserId, toUserId)
-        return toModelsWithReactions(messages, fromUserId)
     }
 
     private suspend fun toModelsWithReactions(messages: List<UserMail>, currentUserId: UUID): List<UserMailModel> {
@@ -286,6 +334,9 @@ class MailboxService(
     }
 
     companion object {
+        const val CONVERSATION_PAGE_SIZE = 30
+        private const val MAX_CONVERSATION_PAGE_SIZE = 100
+        private const val MAX_DELETE_BATCH_SIZE = 100
         private const val MAX_VOICE_BYTES = 50 * 1024 * 1024
         private const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
         private const val MAX_VIDEO_BYTES = 50 * 1024 * 1024

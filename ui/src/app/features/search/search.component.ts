@@ -175,7 +175,7 @@ export class SearchComponent implements OnInit {
   loadPhotos(): void {
     this.users.forEach(user => {
       if (user.id) {
-        this.userService.getPhoto(user.id).subscribe({
+        this.userService.getPhoto(user.id, 'card').subscribe({
           next: (bytes: Uint8Array) => {
             user.photoDataUrl = this.bytesToDataUrl(bytes);
           },

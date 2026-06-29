@@ -20,7 +20,10 @@ data class UserMailModel(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY) val mediaUrl: String? = null,
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) val mediaS3Key: String? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY) val currentUserReaction: String? = null,
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY) val reactionCounts: Map<String, Int>? = null
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY) val reactionCounts: Map<String, Int>? = null,
+    @get:JsonProperty("isRead")
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val messageRead: Boolean? = null
 ) {
 
     companion object {
@@ -45,7 +48,8 @@ data class UserMailModel(
                 mediaType = userMail.mediaType,
                 mediaUrl = mediaUrl,
                 currentUserReaction = currentUserReaction,
-                reactionCounts = validCounts
+                reactionCounts = validCounts,
+                messageRead = userMail.isRead
             )
         }
 

@@ -10,15 +10,25 @@ class PhotoDisplaySizeTest {
     fun fromQueryParsesCardAliases() {
         assertEquals(PhotoDisplaySize.CARD, PhotoDisplaySize.fromQuery("card"))
         assertEquals(PhotoDisplaySize.CARD, PhotoDisplaySize.fromQuery("large"))
+        assertEquals(PhotoDisplaySize.FULL, PhotoDisplaySize.fromQuery("full"))
+        assertEquals(PhotoDisplaySize.FULL, PhotoDisplaySize.fromQuery("original"))
         assertEquals(PhotoDisplaySize.THUMB, PhotoDisplaySize.fromQuery(null))
         assertEquals(PhotoDisplaySize.THUMB, PhotoDisplaySize.fromQuery("thumb"))
     }
 
     @Test
-    fun cardPrefersLargerVariantsFirst() {
+    fun cardPrefersMediumVariantsFirst() {
         assertEquals(
-            listOf(ImageTag.CROPP_500x500, ImageTag.ORIGINAL, ImageTag.CROPP_250x250),
+            listOf(ImageTag.CROPP_500x500, ImageTag.CROPP_250x250),
             PhotoDisplaySize.CARD.preferredTags(),
+        )
+    }
+
+    @Test
+    fun fullPrefersOriginalFirst() {
+        assertEquals(
+            listOf(ImageTag.ORIGINAL, ImageTag.CROPP_500x500, ImageTag.CROPP_250x250),
+            PhotoDisplaySize.FULL.preferredTags(),
         )
     }
 }

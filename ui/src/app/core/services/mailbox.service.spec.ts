@@ -31,14 +31,14 @@ describe('MailboxService', () => {
     service.sendMail({ to: '2', message: 'hi' }).subscribe();
     const req = httpMock.expectOne('/api/v1/mailbox');
     expect(req.request.method).toBe('POST');
-    req.flush([]);
+    req.flush({ messages: [], hasMore: false });
   });
 
   it('sendMail with name should include param', () => {
     service.sendMail({ to: '2', message: 'hi' }, 'TestName').subscribe();
     const req = httpMock.expectOne(r => r.url === '/api/v1/mailbox');
     expect(req.request.params.get('name')).toBe('TestName');
-    req.flush([]);
+    req.flush({ messages: [], hasMore: false });
   });
 
   it('sendMediaMail should POST multipart to /media', () => {
@@ -47,7 +47,7 @@ describe('MailboxService', () => {
     const req = httpMock.expectOne('/api/v1/mailbox/media');
     expect(req.request.method).toBe('POST');
     expect(req.request.body instanceof FormData).toBeTrue();
-    req.flush([]);
+    req.flush({ messages: [], hasMore: false });
   });
 
   it('sendMediaMail should strip codec suffix from video MIME type', () => {
@@ -57,7 +57,7 @@ describe('MailboxService', () => {
     const body = req.request.body as FormData;
     const uploaded = body.get('file') as File;
     expect(uploaded.type).toBe('video/webm');
-    req.flush([]);
+    req.flush({ messages: [], hasMore: false });
   });
 
   it('normalizeMediaMimeType should simplify codec parameters', () => {
@@ -72,10 +72,27 @@ describe('MailboxService', () => {
     req.flush(null);
   });
 
+  it('deleteMessages should DELETE /messages with ids body', () => {
+    service.deleteMessages([1, 2]).subscribe();
+    const req = httpMock.expectOne('/api/v1/mailbox/messages');
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.body).toEqual({ ids: [1, 2] });
+    req.flush({ deleted: 2 });
+  });
+
   it('getConversation should GET /conversation/{userId}', () => {
     service.getConversation('2').subscribe();
-    const req = httpMock.expectOne('/api/v1/mailbox/conversation/2');
+    const req = httpMock.expectOne(r => r.url === '/api/v1/mailbox/conversation/2');
     expect(req.request.method).toBe('GET');
-    req.flush([]);
+    expect(req.request.params.get('size')).toBe('30');
+    req.flush({ messages: [], hasMore: false });
+  });
+
+  it('getConversation with before cursor should pass query param', () => {
+    service.getConversation('2', { before: 42, size: 30 }).subscribe();
+    const req = httpMock.expectOne(r => r.url === '/api/v1/mailbox/conversation/2');
+    expect(req.request.params.get('before')).toBe('42');
+    expect(req.request.params.get('size')).toBe('30');
+    req.flush({ messages: [], hasMore: false });
   });
 });

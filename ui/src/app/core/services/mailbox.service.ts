@@ -23,6 +23,13 @@ export interface MailReactionResponse {
   reactionCounts: MailReactionCounts;
 }
 
+export interface ConversationPage {
+  messages: UserMail[];
+  hasMore: boolean;
+}
+
+export const CONVERSATION_PAGE_SIZE = 30;
+
 export const MAIL_REACTIONS: { type: MailReactionType; emoji: string; label: string }[] = [
   { type: 'LIKE', emoji: '👍', label: 'Лайк' },
   { type: 'HEART', emoji: '❤️', label: 'Сердце' },
@@ -47,12 +54,12 @@ export class MailboxService {
     return this.http.get<UserMail[]>(this.apiUrl, { params });
   }
 
-  sendMail(mail: UserMail, name?: string): Observable<UserMail[]> {
+  sendMail(mail: UserMail, name?: string): Observable<ConversationPage> {
     let params = new HttpParams();
     if (name) {
       params = params.set('name', name);
     }
-    return this.http.post<UserMail[]>(this.apiUrl, mail, { params });
+    return this.http.post<ConversationPage>(this.apiUrl, mail, { params });
   }
 
   sendMediaMail(
@@ -62,7 +69,7 @@ export class MailboxService {
     filename: string,
     caption?: string,
     replyToMessageId?: number
-  ): Observable<UserMail[]> {
+  ): Observable<ConversationPage> {
     const formData = new FormData();
     formData.append('to', to);
     formData.append('mediaType', mediaType);
@@ -75,15 +82,26 @@ export class MailboxService {
     if (replyToMessageId != null) {
       formData.append('replyToMessageId', String(replyToMessageId));
     }
-    return this.http.post<UserMail[]>(`${this.apiUrl}/media`, formData);
+    return this.http.post<ConversationPage>(`${this.apiUrl}/media`, formData);
   }
 
   deleteMail(userId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${userId}`);
   }
 
-  getConversation(userId: string): Observable<UserMail[]> {
-    return this.http.get<UserMail[]>(`${this.apiUrl}/conversation/${userId}`);
+  deleteMessages(messageIds: number[]): Observable<{ deleted: number }> {
+    return this.http.delete<{ deleted: number }>(`${this.apiUrl}/messages`, { body: { ids: messageIds } });
+  }
+
+  getConversation(
+    userId: string,
+    options?: { before?: number; size?: number }
+  ): Observable<ConversationPage> {
+    let params = new HttpParams().set('size', String(options?.size ?? CONVERSATION_PAGE_SIZE));
+    if (options?.before != null) {
+      params = params.set('before', String(options.before));
+    }
+    return this.http.get<ConversationPage>(`${this.apiUrl}/conversation/${userId}`, { params });
   }
 
   reactToMessage(messageId: number, reaction: MailReactionType): Observable<MailReactionResponse> {

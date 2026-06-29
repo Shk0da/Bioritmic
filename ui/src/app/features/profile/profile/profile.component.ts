@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Subject, takeUntil } from 'rxjs';
-import { UserService } from '../../../core/services/user.service';
+import { UserService, photoSizeForLargeDisplay } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 import { BoostService, BoostInfo } from '../../../core/services/boost.service';
@@ -274,7 +274,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.userService.resolveProfilePhotoUrl(userId).pipe(takeUntil(this.destroy$)).subscribe({
+    this.userService.resolveProfilePhotoUrl(userId, undefined, photoSizeForLargeDisplay()).pipe(takeUntil(this.destroy$)).subscribe({
       next: (url) => {
         UserService.revokePhotoUrl(this.photoDataUrl);
         this.photoDataUrl = url;

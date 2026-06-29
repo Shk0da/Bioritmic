@@ -34,6 +34,9 @@ class UserMail {
     @Column("reply_to_message_id")
     var replyToMessageId: Long? = null
 
+    @Column("is_read")
+    var isRead: Boolean = false
+
     companion object {
         fun of(userMailModel: UserMailModel): UserMail {
             val userMail = UserMail()

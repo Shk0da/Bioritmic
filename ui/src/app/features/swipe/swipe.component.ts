@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { SearchService } from '../../core/services/search.service';
-import { UserService } from '../../core/services/user.service';
+import { UserService, photoSizeForLargeDisplay, PhotoSize } from '../../core/services/user.service';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { SwipeService, SwipeResult } from '../../core/services/swipe.service';
 import { MatchService } from '../../core/services/match.service';
@@ -420,16 +420,18 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private loadVisiblePhotos(): void {
-    const visibleCards = this.cards.slice(0, 2);
-    visibleCards.forEach(card => {
+    const isMobileLayout = window.matchMedia('(max-width: 1024px)').matches;
+    const photoSize: PhotoSize = photoSizeForLargeDisplay();
+    const cardsToLoad = isMobileLayout ? this.cards.slice(0, 2) : this.cards;
+    cardsToLoad.forEach(card => {
       if (card.user.id && !card.photoDataUrl) {
-        this.userService.getPhoto(card.user.id, 'card').pipe(takeUntil(this.destroy$)).subscribe({
+        this.userService.getPhoto(card.user.id, photoSize).pipe(takeUntil(this.destroy$)).subscribe({
           next: (bytes: Uint8Array) => {
             UserService.revokePhotoUrl(card.photoDataUrl);
             card.photoDataUrl = UserService.createPhotoUrl(bytes);
           },
           error: () => {
-            card.photoDataUrl = card.user.image || null;
+            card.photoDataUrl = this.userService.getProfilePhotoUrl(card.user.id!, undefined, photoSize);
           }
         });
       }
@@ -441,13 +443,14 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.cards.length > nextIndex) {
       const card = this.cards[nextIndex];
       if (card.user.id && !card.photoDataUrl) {
-        this.userService.getPhoto(card.user.id, 'card').pipe(takeUntil(this.destroy$)).subscribe({
+        const photoSize = photoSizeForLargeDisplay();
+        this.userService.getPhoto(card.user.id, photoSize).pipe(takeUntil(this.destroy$)).subscribe({
           next: (bytes: Uint8Array) => {
             UserService.revokePhotoUrl(card.photoDataUrl);
             card.photoDataUrl = UserService.createPhotoUrl(bytes);
           },
           error: () => {
-            card.photoDataUrl = card.user.image || null;
+            card.photoDataUrl = this.userService.getProfilePhotoUrl(card.user.id!, undefined, photoSize);
           }
         });
       }

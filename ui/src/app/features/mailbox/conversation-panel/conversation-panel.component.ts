@@ -15,11 +15,12 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { MAIL_REACTIONS, MailboxService } from '../../../core/services/mailbox.service';
+import { CONVERSATION_PAGE_SIZE, ConversationPage, MAIL_REACTIONS, MailboxService } from '../../../core/services/mailbox.service';
 import { UserService } from '../../../core/services/user.service';
 import { UserMail, UserInfo, MailMediaType, MailReactionType } from '../../../core/models/user.model';
 import { ModalService } from '../../../core/services/modal.service';
 import { Subject, takeUntil } from 'rxjs';
+import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
 
 interface ChatMessage extends UserMail {
   isCurrentUser?: boolean;
@@ -28,7 +29,7 @@ interface ChatMessage extends UserMail {
 @Component({
   selector: 'app-conversation-panel',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, ImageCropModalComponent],
   template: `
     <div class="conversation-panel">
       <div class="chat-subheader">
@@ -50,9 +51,30 @@ interface ChatMessage extends UserMail {
         <a [routerLink]="['/user', userId]" class="profile-link-btn" title="Открыть профиль">
           <i class="bi bi-person"></i>
         </a>
+        @if (!selectionMode && !isBlocked) {
+          <button
+            type="button"
+            class="select-messages-btn"
+            title="Выбрать сообщения"
+            data-testid="enter-selection-mode"
+            (click)="enterSelectionMode()">
+            <i class="bi bi-check2-square"></i>
+          </button>
+        } @else {
+          <button type="button" class="select-messages-btn active" title="Отменить выбор" (click)="exitSelectionMode()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        }
       </div>
 
-      <div #scrollContainer class="messages-container">
+      <div #scrollContainer class="messages-container" (scroll)="onMessagesScroll($event)">
+        @if (loadingOlder) {
+          <div class="load-older-indicator">
+            <div class="spinner-border spinner-border-sm text-secondary" role="status">
+              <span class="visually-hidden">Загрузка...</span>
+            </div>
+          </div>
+        }
         @if (loading) {
           <div class="text-center py-5">
             <div class="spinner-border spinner-border-sm text-secondary" role="status">
@@ -67,14 +89,29 @@ interface ChatMessage extends UserMail {
           </div>
         } @else {
           @for (message of messages; track message.id) {
-            <div class="message-wrapper" [class.outgoing]="message.isCurrentUser" [class.incoming]="!message.isCurrentUser">
+            <div
+              class="message-wrapper"
+              [class.outgoing]="message.isCurrentUser"
+              [class.incoming]="!message.isCurrentUser"
+              [class.selectable]="selectionMode && message.isCurrentUser && message.id != null"
+              [class.selected]="isMessageSelected(message)"
+              (click)="onMessageClick(message, $event)">
+              @if (selectionMode && message.isCurrentUser && message.id != null) {
+                <div class="message-select-indicator" aria-hidden="true">
+                  <i class="bi" [class.bi-check-circle-fill]="isMessageSelected(message)" [class.bi-circle]="!isMessageSelected(message)"></i>
+                </div>
+              }
               @if (!message.isCurrentUser) {
                 <img
                   [src]="otherUserPhotoUrl || 'assets/img/default-avatar.svg'"
                   class="message-avatar"
                   [alt]="otherUserName || 'User'">
               }
-              <div class="message-bubble" [class.outgoing]="message.isCurrentUser" [class.incoming]="!message.isCurrentUser" [class.media-bubble]="!!message.mediaType">
+              <div
+                class="message-bubble"
+                [class.outgoing]="message.isCurrentUser"
+                [class.incoming]="!message.isCurrentUser"
+                [class.media-bubble]="!!message.mediaType">
                 @if (message.replyToMessageId) {
                   <div class="reply-reference">
                     <span class="reply-reference-label">Ответ на сообщение</span>
@@ -89,7 +126,7 @@ interface ChatMessage extends UserMail {
                       type="button"
                       class="voice-play-btn"
                       [class.playing]="isVoicePlaying(message)"
-                      (click)="toggleVoicePlayback(message)"
+                      (click)="onVoicePlayClick(message, $event)"
                       [attr.aria-label]="isVoicePlaying(message) ? 'Остановить' : 'Воспроизвести'">
                       <i
                         class="bi"
@@ -122,7 +159,7 @@ interface ChatMessage extends UserMail {
                 }
                 <div class="message-meta">
                   <span class="message-time">{{ getMessageTime(message.timestamp) }}</span>
-                  @if (message.id) {
+                  @if (message.id && !selectionMode) {
                     <button
                       type="button"
                       class="message-reaction-toggle"
@@ -132,17 +169,23 @@ interface ChatMessage extends UserMail {
                       <i class="bi bi-emoji-smile"></i>
                     </button>
                   }
-                  @if (message.id) {
+                  @if (message.id && !selectionMode) {
                     <button
                       type="button"
                       class="reply-btn"
                       title="Ответить"
-                      (click)="startReply(message)">
+                      (click)="onReplyClick(message, $event)">
                       <i class="bi bi-reply"></i>
                     </button>
                   }
                   @if (message.isCurrentUser) {
-                    <span class="message-status"><i class="bi bi-check-all"></i></span>
+                    <span class="message-status">
+                      @if (message.isRead) {
+                        <i class="bi bi-check-all" title="Прочитано"></i>
+                      } @else {
+                        <i class="bi bi-check" title="Доставлено"></i>
+                      }
+                    </span>
                   }
                 </div>
                 @if (message.id && showReactionPickerFor === message.id) {
@@ -179,6 +222,22 @@ interface ChatMessage extends UserMail {
         <div class="block-notice">
           <i class="bi bi-shield-slash"></i>
           <span>Пользователь ограничил с вами общение</span>
+        </div>
+      } @else if (selectionMode) {
+        <div class="selection-toolbar">
+          <span class="selection-count">Выбрано: {{ selectedMessageIds.size }}</span>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="exitSelectionMode()">Отмена</button>
+          <button
+            type="button"
+            class="btn btn-danger btn-sm"
+            data-testid="delete-selected-messages"
+            [disabled]="selectedMessageIds.size === 0 || deletingMessages"
+            (click)="deleteSelectedMessages()">
+            @if (deletingMessages) {
+              <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            <i class="bi bi-trash"></i> Удалить
+          </button>
         </div>
       } @else {
         <div class="message-input-container">
@@ -274,6 +333,14 @@ interface ChatMessage extends UserMail {
         </div>
       }
     </div>
+
+    <app-image-crop-modal
+      [visible]="photoCropVisible"
+      [sourceFile]="photoCropSourceFile"
+      preset="message"
+      (confirmed)="onPhotoCropped($event)"
+      (cancelled)="onPhotoCropCancelled()">
+    </app-image-crop-modal>
   `,
   styles: [`
     :host {
@@ -373,6 +440,67 @@ interface ChatMessage extends UserMail {
       }
     }
 
+    .select-messages-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      background: var(--bg-secondary);
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover,
+      &.active {
+        color: var(--accent-pink);
+        background: var(--bg-hover);
+      }
+    }
+
+    .message-wrapper.selectable {
+      cursor: pointer;
+    }
+
+    .message-wrapper.selected .message-bubble.outgoing {
+      box-shadow: 0 0 0 2px rgba(253, 41, 123, 0.55);
+    }
+
+    .message-select-indicator {
+      align-self: center;
+      color: var(--accent-pink);
+      font-size: 1.2rem;
+      flex-shrink: 0;
+      margin-right: 0.15rem;
+    }
+
+    .selection-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+      background: var(--card-bg);
+      border-top: 1px solid var(--border-color);
+      flex-shrink: 0;
+    }
+
+    .selection-count {
+      flex: 1;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .selection-toolbar .btn-danger {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
     .messages-container {
       flex: 1;
       overflow-y: auto;
@@ -381,6 +509,13 @@ interface ChatMessage extends UserMail {
       flex-direction: column;
       gap: 0.625rem;
       min-height: 0;
+    }
+
+    .load-older-indicator {
+      display: flex;
+      justify-content: center;
+      padding: 0.25rem 0 0.5rem;
+      flex-shrink: 0;
     }
 
     .message-wrapper {
@@ -1045,6 +1180,8 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
 
   messages: ChatMessage[] = [];
   loading = false;
+  loadingOlder = false;
+  hasMoreOlder = false;
   sending = false;
   otherUserName?: string;
   otherUserPhotoUrl: string | null = null;
@@ -1054,19 +1191,26 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   isBlocked = false;
   showEmojiPicker = false;
   showAttachMenu = false;
+  photoCropVisible = false;
+  photoCropSourceFile: File | null = null;
   recordingVoice = false;
   recordingVideo = false;
   recordingSeconds = 0;
   playingVoiceId: string | null = null;
   replyingToMessage: ChatMessage | null = null;
   showReactionPickerFor: number | null = null;
+  selectionMode = false;
+  selectedMessageIds = new Set<number>();
+  deletingMessages = false;
   readonly mailReactions = MAIL_REACTIONS;
 
   readonly voiceWaveBars = [3, 6, 10, 5, 12, 8, 14, 7, 11, 6, 13, 9, 8, 12, 4, 10, 14, 6, 5, 11];
 
   private shouldScroll = false;
+  private scrollBehavior: ScrollBehavior = 'auto';
   private refreshInterval: ReturnType<typeof setInterval> | null = null;
   private isRefreshing = false;
+  private readonly conversationPageSize = CONVERSATION_PAGE_SIZE;
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
   private mediaRecorder: MediaRecorder | null = null;
@@ -1077,6 +1221,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   private voiceProgress = 0;
   private voiceDurations = new Map<string, number>();
   private voiceDurationLoads = new Map<string, Promise<void>>();
+  private pendingPhotoCaption?: string;
   private voicePreloadGeneration = 0;
   private teardownDone = false;
   private readonly cdr = inject(ChangeDetectorRef);
@@ -1111,10 +1256,14 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
 
   ngAfterViewChecked(): void {
     if (this.shouldScroll && this.scrollContainer) {
-      setTimeout(() => {
+      const behavior = this.scrollBehavior;
+      this.shouldScroll = false;
+      this.scrollBehavior = 'auto';
+      requestAnimationFrame(() => {
+        this.scrollBehavior = behavior;
         this.scrollToBottom();
-        this.shouldScroll = false;
-      }, 50);
+        this.scrollBehavior = 'auto';
+      });
     }
   }
 
@@ -1131,11 +1280,11 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     };
 
     this.mailboxService.sendMail(message).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => {
+      next: (page) => {
         this.newMessage = '';
         this.replyingToMessage = null;
         this.sending = false;
-        this.loadMessages();
+        this.mergeConversationPage(page, { scrollToBottom: true, smoothScroll: true });
         this.messageSent.emit();
       },
       error: (error) => {
@@ -1335,9 +1484,26 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     if (!file || this.isBlocked || this.sending) {
       return;
     }
-    const caption = this.newMessage.trim() || undefined;
+    this.pendingPhotoCaption = this.newMessage.trim() || undefined;
     this.newMessage = '';
-    this.sendMedia('PHOTO', file, file.name, caption);
+    this.photoCropSourceFile = file;
+    this.photoCropVisible = true;
+  }
+
+  onPhotoCropped(file: File): void {
+    this.photoCropVisible = false;
+    this.photoCropSourceFile = null;
+    this.sendMedia('PHOTO', file, file.name, this.pendingPhotoCaption);
+    this.pendingPhotoCaption = undefined;
+  }
+
+  onPhotoCropCancelled(): void {
+    this.photoCropVisible = false;
+    this.photoCropSourceFile = null;
+    if (this.pendingPhotoCaption) {
+      this.newMessage = this.pendingPhotoCaption;
+      this.pendingPhotoCaption = undefined;
+    }
   }
 
   async startVoiceRecording(): Promise<void> {
@@ -1416,10 +1582,10 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.mailboxService.sendMediaMail(this.userId, mediaType, file, filename, caption, replyToMessageId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: () => {
+        next: (page) => {
           this.replyingToMessage = null;
           this.sending = false;
-          this.loadMessages();
+          this.mergeConversationPage(page, { scrollToBottom: true, smoothScroll: true });
           this.messageSent.emit();
         },
         error: (error) => {
@@ -1567,6 +1733,116 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.otherUserPhotoUrl = null;
     this.otherUserName = undefined;
     this.otherUserOnline = false;
+    this.hasMoreOlder = false;
+    this.loadingOlder = false;
+    this.exitSelectionMode();
+  }
+
+  enterSelectionMode(): void {
+    if (this.isBlocked) {
+      return;
+    }
+    this.selectionMode = true;
+    this.selectedMessageIds = new Set<number>();
+    this.showAttachMenu = false;
+    this.showEmojiPicker = false;
+    this.showReactionPickerFor = null;
+    this.replyingToMessage = null;
+    this.stopVoicePlayback();
+  }
+
+  exitSelectionMode(): void {
+    this.selectionMode = false;
+    this.selectedMessageIds = new Set<number>();
+    this.deletingMessages = false;
+  }
+
+  isMessageSelected(message: ChatMessage): boolean {
+    return message.id != null && this.selectedMessageIds.has(message.id);
+  }
+
+  onMessageClick(message: ChatMessage, event: Event): void {
+    if (!this.selectionMode || !message.isCurrentUser || message.id == null) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.toggleMessageSelection(message.id);
+  }
+
+  onVoicePlayClick(message: ChatMessage, event: Event): void {
+    event.stopPropagation();
+    if (this.selectionMode && message.isCurrentUser && message.id != null) {
+      this.toggleMessageSelection(message.id);
+      return;
+    }
+    this.toggleVoicePlayback(message);
+  }
+
+  onReplyClick(message: ChatMessage, event: Event): void {
+    event.stopPropagation();
+    if (this.selectionMode) {
+      return;
+    }
+    this.startReply(message);
+  }
+
+  private toggleMessageSelection(messageId: number): void {
+    const next = new Set(this.selectedMessageIds);
+    if (next.has(messageId)) {
+      next.delete(messageId);
+    } else {
+      next.add(messageId);
+    }
+    this.selectedMessageIds = next;
+    this.cdr.markForCheck();
+  }
+
+  async deleteSelectedMessages(): Promise<void> {
+    if (this.selectedMessageIds.size === 0 || this.deletingMessages) {
+      return;
+    }
+    const count = this.selectedMessageIds.size;
+    const confirmed = await this.modalService.confirm(
+      `Удалить выбранные сообщения (${count})? Это действие нельзя отменить.`,
+      'Удаление сообщений'
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    const ids = Array.from(this.selectedMessageIds);
+    this.deletingMessages = true;
+    this.mailboxService.deleteMessages(ids).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        const deleted = new Set(ids);
+        this.messages = this.messages.filter(message => message.id == null || !deleted.has(message.id));
+        if (this.replyingToMessage?.id != null && deleted.has(this.replyingToMessage.id)) {
+          this.replyingToMessage = null;
+        }
+        if (this.playingVoiceId && deleted.has(Number(this.playingVoiceId))) {
+          this.stopVoicePlayback();
+        }
+        if (this.messages.length === 0) {
+          this.hasMoreOlder = false;
+        }
+        this.deletingMessages = false;
+        this.exitSelectionMode();
+        this.messageSent.emit();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.deletingMessages = false;
+        this.modalService.alert('Не удалось удалить сообщения', 'Ошибка');
+      }
+    });
+  }
+
+  onMessagesScroll(event: Event): void {
+    const el = event.target as HTMLElement;
+    if (el.scrollTop <= 120 && this.hasMoreOlder && !this.loadingOlder && !this.loading) {
+      this.loadOlderMessages();
+    }
   }
 
   private loadCurrentUserAndChat(): void {
@@ -1593,23 +1869,101 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
 
   private loadMessages(): void {
     this.loading = true;
-    this.mailboxService.getConversation(this.userId).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (allMessages) => {
-        this.messages = allMessages.map(m => ({
-          ...m,
-          isCurrentUser: m.from === this.currentUserId
-        }));
-        this.preloadVoiceDurations(this.messages);
-        this.loading = false;
-        this.shouldScroll = true;
-        if (!this.refreshInterval) {
-          this.refreshInterval = setInterval(() => this.refreshMessages(), 3000);
+    this.hasMoreOlder = false;
+    this.mailboxService.getConversation(this.userId, { size: this.conversationPageSize })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (page) => {
+          this.messages = this.mapToChatMessages(page.messages);
+          this.hasMoreOlder = page.hasMore;
+          this.preloadVoiceDurations(this.messages);
+          this.loading = false;
+          this.scrollBehavior = 'auto';
+          this.shouldScroll = true;
+          if (!this.refreshInterval) {
+            this.refreshInterval = setInterval(() => this.refreshMessages(), 3000);
+          }
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.loading = false;
         }
-      },
-      error: () => {
-        this.loading = false;
+      });
+  }
+
+  private loadOlderMessages(): void {
+    const oldestId = this.messages[0]?.id;
+    if (oldestId == null || this.loadingOlder) {
+      return;
+    }
+    const container = this.scrollContainer?.nativeElement as HTMLElement | undefined;
+    const prevScrollHeight = container?.scrollHeight ?? 0;
+    this.loadingOlder = true;
+    this.mailboxService.getConversation(this.userId, { before: oldestId, size: this.conversationPageSize })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (page) => {
+          const older = this.mapToChatMessages(page.messages);
+          const existingIds = new Set(this.messages.map(m => m.id));
+          const uniqueOlder = older.filter(m => m.id != null && !existingIds.has(m.id));
+          this.messages = [...uniqueOlder, ...this.messages];
+          this.hasMoreOlder = page.hasMore;
+          this.loadingOlder = false;
+          this.preloadVoiceDurations(uniqueOlder);
+          if (container) {
+            requestAnimationFrame(() => {
+              container.scrollTop = container.scrollHeight - prevScrollHeight;
+            });
+          }
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.loadingOlder = false;
+        }
+      });
+  }
+
+  private mergeConversationPage(
+    page: ConversationPage,
+    options?: { scrollToBottom?: boolean; smoothScroll?: boolean }
+  ): void {
+    const byId = new Map<number, ChatMessage>();
+    for (const message of this.messages) {
+      if (message.id != null) {
+        byId.set(message.id, message);
       }
-    });
+    }
+    for (const message of this.mapToChatMessages(page.messages)) {
+      if (message.id != null) {
+        byId.set(message.id, message);
+      }
+    }
+    this.messages = Array.from(byId.values()).sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+    this.preloadVoiceDurations(page.messages);
+    if (options?.scrollToBottom) {
+      this.scrollBehavior = options.smoothScroll ? 'smooth' : 'auto';
+      this.shouldScroll = true;
+    }
+    this.cdr.markForCheck();
+  }
+
+  private mapToChatMessages(messages: UserMail[]): ChatMessage[] {
+    return messages.map(m => ({
+      ...m,
+      isCurrentUser: m.from === this.currentUserId
+    }));
+  }
+
+  private isNearBottom(threshold = 96): boolean {
+    try {
+      const el = this.scrollContainer?.nativeElement as HTMLElement | undefined;
+      if (!el) {
+        return true;
+      }
+      return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+    } catch {
+      return true;
+    }
   }
 
   private preloadVoiceDurations(messages: ChatMessage[]): void {
@@ -1714,31 +2068,61 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   private refreshMessages(): void {
-    if (this.sending || this.isRefreshing || this.recordingVoice || this.recordingVideo) {
+    if (
+      this.sending ||
+      this.isRefreshing ||
+      this.loadingOlder ||
+      this.recordingVoice ||
+      this.recordingVideo ||
+      this.selectionMode ||
+      this.deletingMessages
+    ) {
       return;
     }
     this.isRefreshing = true;
-    this.mailboxService.getConversation(this.userId).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (allMessages) => {
-        this.isRefreshing = false;
-        const prevCount = this.messages.length;
-        this.messages = allMessages.map(m => ({
-          ...m,
-          isCurrentUser: m.from === this.currentUserId
-        }));
-        this.preloadVoiceDurations(this.messages);
-        if (this.messages.length > prevCount) {
-          this.shouldScroll = true;
-        }
-      },
-      error: () => { this.isRefreshing = false; }
-    });
+    const wasNearBottom = this.isNearBottom();
+    const maxId = this.messages.reduce((max, message) => Math.max(max, message.id ?? 0), 0);
+    this.mailboxService.getConversation(this.userId, { size: this.conversationPageSize })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (page) => {
+          this.isRefreshing = false;
+          let hasNew = false;
+          const byId = new Map<number, ChatMessage>();
+          for (const message of this.messages) {
+            if (message.id != null) {
+              byId.set(message.id, message);
+            }
+          }
+          for (const incoming of this.mapToChatMessages(page.messages)) {
+            if (incoming.id == null) {
+              continue;
+            }
+            const existed = byId.has(incoming.id);
+            byId.set(incoming.id, incoming);
+            if (!existed && incoming.id > maxId) {
+              hasNew = true;
+            }
+          }
+          this.messages = Array.from(byId.values()).sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+          this.preloadVoiceDurations(page.messages);
+          if (hasNew && wasNearBottom) {
+            this.scrollBehavior = 'smooth';
+            this.shouldScroll = true;
+          }
+          this.cdr.markForCheck();
+        },
+        error: () => { this.isRefreshing = false; }
+      });
   }
 
   private scrollToBottom(): void {
     try {
       const el = this.scrollContainer.nativeElement;
-      el.scrollTop = el.scrollHeight;
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: this.scrollBehavior
+      });
     } catch {
       // ignore
     }

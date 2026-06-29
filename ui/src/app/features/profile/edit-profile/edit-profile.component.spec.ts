@@ -48,7 +48,7 @@ describe('EditProfileComponent', () => {
   it('should load profile and photo on init', () => {
     fixture.detectChanges();
     expect(userService.getCurrentUser).toHaveBeenCalled();
-    expect(userService.resolveProfilePhotoUrl).toHaveBeenCalledWith('1');
+    expect(userService.resolveProfilePhotoUrl).toHaveBeenCalledWith('1', undefined, 'full');
     expect(component.user.name).toBe('Test User');
     expect(component.user.bio).toBe('Hello world');
     expect(component.user.gender).toBe(Gender.MAN);

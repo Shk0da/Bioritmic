@@ -132,6 +132,13 @@ describe('UserService', () => {
     req.flush(new ArrayBuffer(8));
   });
 
+  it('getPhoto with full size should request size=full query param', () => {
+    service.getPhoto('42', 'full').subscribe();
+    const req = httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo') && r.params.get('size') === 'full');
+    expect(req.request.method).toBe('GET');
+    req.flush(new ArrayBuffer(8));
+  });
+
   it('getPhoto without userId should GET /api/v1/user/me/photo', () => {
     service.getPhoto().subscribe();
     const req = httpMock.expectOne('/api/v1/user/me/photo');
@@ -151,7 +158,7 @@ describe('UserService', () => {
     service.resolveProfilePhotoUrl('42', 123).subscribe((url) => { result = url; });
     const req = httpMock.expectOne('/api/v1/user/42/photos');
     req.flush([{ photoOrder: 0 }]);
-    expect(result).toBe('/api/v1/user/42/photo?v=123');
+    expect(result).toBe('/api/v1/user/42/photo?v=123&size=card');
   });
 
   it('resolveProfilePhotoUrl should return null when photos are missing', () => {
