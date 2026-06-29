@@ -16,6 +16,8 @@ import { ModalService } from '../../core/services/modal.service';
 import {
   getSummaryCompatibility,
   getSummaryCompatibilityAverage,
+  getBiorhythmDescription,
+  getCompatibilityLevelLabel,
 } from '../../shared/utils/biorhythm-labels.util';
 
 @Component({
@@ -74,14 +76,22 @@ import {
               <div class="compat-bars">
                 @for (item of getCompareDetails(); track item.name) {
                   <div class="compat-row">
-                    <span class="compat-label">{{ item.label }}</span>
+                    <div class="compat-text">
+                      <span class="compat-label">{{ item.label }}</span>
+                      @if (getDescription(item.name)) {
+                        <span class="compat-desc">{{ getDescription(item.name) }}</span>
+                      }
+                    </div>
+                    <div class="compat-metrics">
+                      <span class="compat-value" [class.text-success]="item.value >= 70" [class.text-warning]="item.value >= 40 && item.value < 70" [class.text-danger]="item.value < 40">{{ item.value }}%</span>
+                      <span class="compat-level" [class.text-success]="item.value >= 70" [class.text-warning]="item.value >= 40 && item.value < 70" [class.text-danger]="item.value < 40">{{ getLevelLabel(item.value) }}</span>
+                    </div>
                     <div class="compat-track">
                       <div class="compat-fill" [ngStyle]="{ 'width.%': item.value }"
                            [class.high]="item.value >= 70"
                            [class.medium]="item.value >= 40 && item.value < 70"
                            [class.low]="item.value < 40"></div>
                     </div>
-                    <span class="compat-value" [class.text-success]="item.value >= 70" [class.text-warning]="item.value >= 40 && item.value < 70" [class.text-danger]="item.value < 40">{{ item.value }}%</span>
                   </div>
                 }
               </div>
@@ -332,18 +342,41 @@ import {
 
     .compat-row {
       display: flex;
-      align-items: center;
-      gap: 0.75rem;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .compat-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    .compat-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted, #9ca3af);
+      line-height: 1.35;
+    }
+
+    .compat-metrics {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
     }
 
     .compat-label {
-      font-size: 0.85rem;
-      color: #6b7280;
-      min-width: 100px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary, #374151);
+    }
+
+    .compat-level {
+      font-size: 0.8rem;
+      font-weight: 600;
     }
 
     .compat-track {
-      flex: 1;
+      width: 100%;
       height: 6px;
       background: var(--border-color, #f3f4f6);
       border-radius: 3px;
@@ -843,6 +876,14 @@ export class UserDetailComponent implements OnInit, OnDestroy {
 
   getCompareAverage(): number {
     return getSummaryCompatibilityAverage(this.user?.compare);
+  }
+
+  getDescription(name: string): string {
+    return getBiorhythmDescription(name);
+  }
+
+  getLevelLabel(percent: number): string {
+    return getCompatibilityLevelLabel(percent);
   }
 
   toggleBookmark(): void {

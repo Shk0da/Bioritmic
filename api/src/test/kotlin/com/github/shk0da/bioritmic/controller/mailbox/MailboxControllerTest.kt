@@ -440,6 +440,18 @@ class MailboxControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun unreadBadgeTest() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/badge?since=0")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.count").isNumber
+    }
+
+    @Test
     fun deleteMailboxTest() {
         webTestClient.delete()
             .uri("$API_WITH_VERSION_1/mailbox/00000000-0000-0000-0000-000000000001")

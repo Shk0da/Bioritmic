@@ -8,12 +8,39 @@ export const BIORHYTHM_LABELS: Record<string, string> = {
   Heartfelt: 'Сердечная',
   Creative: 'Творческая',
   Intuitive: 'Интуитивная',
-  HighestChakra: 'Высшая чакра',
+  HighestChakra: 'Высшая',
   Spiritual: 'Духовная',
 };
 
+/** Описание чакры без номера: «Муладхара — …». */
+export const BIORHYTHM_DESCRIPTIONS: Record<string, string> = {
+  Physical: 'физическое влечение, совпадение желаний',
+  Emotional: 'эмоции, удовольствия, радость, грусть',
+  Intellectual: 'мышление, логический диалог, понимание',
+  Heartfelt: 'принятие, преданность, бескорыстное добро',
+  Creative: 'вдохновение, генерация идей, самовыражение',
+  Intuitive: 'предугадывание, одинаковые мысли, сознание',
+  HighestChakra: 'общий духовный путь, разделение вечных ценностей',
+  Spiritual: 'общая духовная гармония и жизненные ориентиры',
+};
+
+export function getBiorhythmDescription(name: string): string {
+  return BIORHYTHM_DESCRIPTIONS[name] ?? '';
+}
+
 export function formatCompatibilityPercent(value: number): number {
   return Math.round(Math.max(0, Math.min(100, value)));
+}
+
+export function getCompatibilityLevelLabel(percent: number): string {
+  const value = formatCompatibilityPercent(percent);
+  if (value >= 70) {
+    return 'Высокая';
+  }
+  if (value >= 40) {
+    return 'Средняя';
+  }
+  return 'Низкая';
 }
 
 export function getSummaryCompatibility(

@@ -99,7 +99,7 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
     @Query(
         """
         SELECT COUNT(DISTINCT from_user_id) FROM mailbox
-        WHERE to_user_id = :userId AND is_read = false
+        WHERE to_user_id = :userId AND is_read = false AND timestamp > :since
         """
     )
     suspend fun countUnreadSenders(userId: UUID, since: java.sql.Timestamp): Long

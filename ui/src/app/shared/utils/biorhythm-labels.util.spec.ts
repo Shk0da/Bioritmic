@@ -2,6 +2,8 @@ import {
   formatCompatibilityPercent,
   getSummaryCompatibility,
   getSummaryCompatibilityAverage,
+  getBiorhythmDescription,
+  getCompatibilityLevelLabel,
 } from './biorhythm-labels.util';
 
 describe('biorhythm-labels.util', () => {
@@ -28,5 +30,20 @@ describe('biorhythm-labels.util', () => {
       Physical: 70,
       Intellectual: 90,
     })).toBe(80);
+  });
+
+  it('getBiorhythmDescription should return chakra text without number', () => {
+    expect(getBiorhythmDescription('Physical')).toBe(
+      'Муладхара — физическое влечение, совпадение желаний'
+    );
+    expect(getBiorhythmDescription('Heartfelt')).toBe(
+      'Анахата — принятие, преданность, бескорыстное добро'
+    );
+  });
+
+  it('getCompatibilityLevelLabel should map percent to level', () => {
+    expect(getCompatibilityLevelLabel(100)).toBe('Высокая');
+    expect(getCompatibilityLevelLabel(55)).toBe('Средняя');
+    expect(getCompatibilityLevelLabel(20)).toBe('Низкая');
   });
 });
