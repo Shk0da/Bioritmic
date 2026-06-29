@@ -108,7 +108,7 @@ data class UserInfo(
 
         fun ofWithCompare(gisUser: GisUser, meBirthday: Date): UserInfo {
             val gisUserBirthday = Date(gisUser.birthday!!.time)
-            val compare = biorhythmService.compare(gisUserBirthday, meBirthday)
+            val compare = biorhythmService.compare(meBirthday, gisUserBirthday)
             val isBioCompatible = biorhythmService.boolCompare(compare)
             val isHoroCompatible = biorhythmService.horoCompare(gisUserBirthday, meBirthday)
             val isFullCompatible = isBioCompatible && isHoroCompatible
@@ -131,7 +131,7 @@ data class UserInfo(
 
         fun ofWithCompare(user: User, meBirthday: Date): UserInfo {
             val gisUserBirthday = Date(user.birthday!!.time)
-            val compare = biorhythmService.compare(gisUserBirthday, meBirthday)
+            val compare = biorhythmService.compare(meBirthday, gisUserBirthday)
             val isBioCompatible = biorhythmService.boolCompare(compare)
             val isHoroCompatible = biorhythmService.horoCompare(gisUserBirthday, meBirthday)
             val isFullCompatible = isBioCompatible && isHoroCompatible

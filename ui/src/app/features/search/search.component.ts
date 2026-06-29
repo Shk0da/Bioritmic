@@ -5,6 +5,10 @@ import { SearchService } from '../../core/services/search.service';
 import { UserService } from '../../core/services/user.service';
 import { UserInfo, Gender, UserSearch, UserSettings } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
+import {
+  getSummaryCompatibility,
+  getSummaryCompatibilityAverage,
+} from '../../shared/utils/biorhythm-labels.util';
 
 interface UserWithPhoto extends UserInfo {
   photoDataUrl?: string | null;
@@ -216,31 +220,10 @@ export class SearchComponent implements OnInit {
   }
 
   getComparePercent(user: UserWithPhoto): number {
-    if (!user.compare) return 0;
-    const values = Object.values(user.compare);
-    if (values.length === 0) return 0;
-    const sum = values.reduce((acc, val) => acc + val, 0);
-    return Math.round(sum / values.length * 100);
+    return getSummaryCompatibilityAverage(user.compare);
   }
 
   getAllCompatibility(user: UserWithPhoto): Array<{ name: string; label: string; value: number }> {
-    if (!user.compare) return [];
-
-    const labels: Record<string, string> = {
-      'Physical': 'Физическая',
-      'Intellectual': 'Интеллект',
-      'Heartfelt': 'Сердечная'
-    };
-
-    // Фильтруем только нужные типы совместимости
-    const neededTypes = ['Physical', 'Intellectual', 'Heartfelt'];
-
-    return Object.entries(user.compare)
-      .filter(([name]) => neededTypes.includes(name))
-      .map(([name, value]) => ({
-        name,
-        label: labels[name] || name,
-        value: Math.round(value)
-      }));
+    return getSummaryCompatibility(user.compare);
   }
 }

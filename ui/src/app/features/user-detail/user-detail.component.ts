@@ -13,6 +13,10 @@ import { FormsModule } from '@angular/forms';
 import { BiorhythmDetailComponent } from '../../shared/components/biorhythm-detail/biorhythm-detail.component';
 import { Subject, takeUntil } from 'rxjs';
 import { ModalService } from '../../core/services/modal.service';
+import {
+  getSummaryCompatibility,
+  getSummaryCompatibilityAverage,
+} from '../../shared/utils/biorhythm-labels.util';
 
 @Component({
   selector: 'app-user-detail',
@@ -61,7 +65,12 @@ import { ModalService } from '../../core/services/modal.service';
           <!-- Compatibility Section -->
           @if (user.compare) {
             <div class="compatibility-section">
-              <h6 class="section-label">Совместимость</h6>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="section-label mb-0">Совместимость</h6>
+                <span class="compat-overall-badge" title="Среднее по 3 ключевым циклам">
+                  {{ getCompareAverage() }}%
+                </span>
+              </div>
               <div class="compat-bars">
                 @for (item of getCompareDetails(); track item.name) {
                   <div class="compat-row">
@@ -310,6 +319,15 @@ import { ModalService } from '../../core/services/modal.service';
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
+    }
+
+    .compat-overall-badge {
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(253, 41, 123, 0.12);
+      color: #fd297b;
     }
 
     .compat-row {
@@ -820,23 +838,11 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   }
 
   getCompareDetails(): Array<{ name: string; label: string; value: number }> {
-    if (!this.user?.compare) return [];
-    
-    const labels: Record<string, string> = {
-      'Creative': 'Креативность',
-      'Emotional': 'Эмоциональность',
-      'Heartfelt': 'Сердечность',
-      'HighestChakra': 'Высшая чакра',
-      'Intellectual': 'Интеллект',
-      'Intuitive': 'Интуиция',
-      'Physical': 'Физическая'
-    };
-    
-    return Object.entries(this.user.compare).map(([name, value]) => ({
-      name,
-      label: labels[name] || name,
-      value: Math.round(value)
-    }));
+    return getSummaryCompatibility(this.user?.compare);
+  }
+
+  getCompareAverage(): number {
+    return getSummaryCompatibilityAverage(this.user?.compare);
   }
 
   toggleBookmark(): void {

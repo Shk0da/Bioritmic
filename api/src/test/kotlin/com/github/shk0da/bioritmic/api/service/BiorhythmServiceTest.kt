@@ -143,8 +143,50 @@ class BiorhythmServiceTest {
         val result = service.compare(date1, date2)
         assertEquals(3, result.size)
         result.forEach { (key, value) ->
-            assertTrue(value in -100.0..100.0, "$key=$value out of range [-100, 100]")
+            assertTrue(value in 0.0..100.0, "$key=$value out of range [0, 100]")
         }
+    }
+
+    @Test
+    fun `test compare matches detail for shared cycles`() {
+        val date1 = dateFormat.parse("01.01.1990")!!
+        val date2 = dateFormat.parse("01.06.1995")!!
+        val compare = service.compare(date1, date2)
+        val detail = service.detailCompare(date1, date2)
+
+        listOf("Heartfelt", "Physical", "Intellectual").forEach { name ->
+            val detailCycle = detail.cycles.first { it.name == name }
+            assertEquals(compare[name]!!, detailCycle.compatibility * 100.0, 0.01, "$name should match detail")
+        }
+    }
+
+    @Test
+    fun `test compare - result has stable order`() {
+        val date1 = dateFormat.parse("01.01.1990")!!
+        val date2 = dateFormat.parse("15.03.1985")!!
+        val result = service.compare(date1, date2)
+        assertEquals(listOf("Heartfelt", "Physical", "Intellectual"), result.keys.toList())
+    }
+
+    @Test
+    fun `test compare is symmetric`() {
+        val date1 = dateFormat.parse("01.01.1990")!!
+        val date2 = dateFormat.parse("15.03.1985")!!
+        val forward = service.compare(date1, date2)
+        val reverse = service.compare(date2, date1)
+        forward.forEach { (name, value) ->
+            assertEquals(value, reverse[name]!!, 0.01, "$name should be symmetric")
+        }
+    }
+
+    @Test
+    fun `test detailCompare has stable cycle order and count`() {
+        val date1 = dateFormat.parse("01.01.1990")!!
+        val date2 = dateFormat.parse("15.03.1985")!!
+        val detail = service.detailCompare(date1, date2)
+        assertEquals(BiorhythmService.DETAIL_CYCLE_NAMES, detail.cycles.map { it.name })
+        assertEquals(8, detail.cycles.size)
+        assertTrue(detail.overallCompatibility in 0.0..1.0)
     }
 
     @Test

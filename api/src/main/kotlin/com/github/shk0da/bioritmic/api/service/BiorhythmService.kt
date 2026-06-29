@@ -2,10 +2,10 @@ package com.github.shk0da.bioritmic.api.service
 
 import java.util.Calendar
 import java.util.Date
+import java.util.LinkedHashMap
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.sin
 
 class BiorhythmService {
@@ -15,29 +15,39 @@ class BiorhythmService {
 
         private const val ZODIAC_MONTHS = 12
         private const val BIORHYTHM_PERCENTAGE = 100.0
-        private const val BIORHYTHM_MIDPOINT = 50.0
-        private const val BIORHYTHM_MULTIPLIER = 2.0
         private const val COMPATIBILITY_THRESHOLD = 60.0
+        private const val SPIRITUAL_PERIOD = 53.0
+
+        /** Краткая совместимость: сердечная, физическая, интеллект. */
+        val SUMMARY_CYCLE_NAMES: List<String> = listOf("Heartfelt", "Physical", "Intellectual")
+
+        /** Детальная совместимость: все чакры снизу вверх + духовный цикл. */
+        val DETAIL_CYCLE_NAMES: List<String> = listOf(
+            "Physical",
+            "Emotional",
+            "Intellectual",
+            "Heartfelt",
+            "Creative",
+            "Intuitive",
+            "HighestChakra",
+            "Spiritual",
+        )
     }
 
-    private val biorhythms: Map<String, Double> = with(HashMap<String, Double>()) {
-        /*
-           Физический — 23,6884 суток — соответствует нижней чакре Муладхара
-           Эмоциональный — 28,426125 суток — вторая чакра Свадхистана
-           Интеллектуальный — 33,163812 суток — третья чакра Манипура
-           Сердечный — 37,901499 суток — четвертая чакра Анахата
-           Творческий — 42,6392 суток — пятая чакра Вишудха
-           Интуитивный — 47,3769 суток — шестая чакра Аджна
-           Высшая чакра — 52,1146 суток — седьмая чакра Сахасрара
-        */
-        put("Physical", 23.6884)
-        put("Emotional", 28.426125)
-        put("Intellectual", 33.163812)
-        put("Heartfelt", 37.901499)
-        put("Creative", 42.6392)
-        put("Intuitive", 47.3769)
-        put("HighestChakra", 52.1146)
-        this
+    private val biorhythms: Map<String, Double> = linkedMapOf(
+        "Physical" to 23.6884,
+        "Emotional" to 28.426125,
+        "Intellectual" to 33.163812,
+        "Heartfelt" to 37.901499,
+        "Creative" to 42.6392,
+        "Intuitive" to 47.3769,
+        "HighestChakra" to 52.1146,
+    )
+
+    private fun periodForCycle(name: String): Double = when (name) {
+        "Spiritual" -> SPIRITUAL_PERIOD
+        else -> biorhythms[name]
+            ?: throw IllegalArgumentException("Unknown biorhythm cycle: $name")
     }
 
     private val horo: Map<String, IntArray> = with(HashMap<String, IntArray>()) {
@@ -143,22 +153,14 @@ class BiorhythmService {
         return isCompare
     }
 
-    fun compare(birthDate1: Date, birthDate2: Date): HashMap<String, Double> {
-        val compare = HashMap<String, Double>()
-        val diffInMillis: Long = abs(birthDate1.time - birthDate2.time)
-        val livedDaysDiff = TimeUnit.DAYS.convert(diffInMillis, TimeUnit.MILLISECONDS)
-        
-        // Только 3 типа совместимости: Сердечная, Физическая, Интеллект
-        val allowedBiorhythms = listOf("Heartfelt", "Physical", "Intellectual")
-        
-        biorhythms.filterKeys { it in allowedBiorhythms }.forEach {
-            val relation = livedDaysDiff / it.value
-            val rhythm = floor((relation - floor(relation)) * BIORHYTHM_PERCENTAGE)
-            compare[it.key] = if (rhythm > BIORHYTHM_MIDPOINT) {
-                (rhythm - BIORHYTHM_MIDPOINT) * BIORHYTHM_MULTIPLIER
-            } else {
-                (-1) * ((rhythm - BIORHYTHM_MIDPOINT) * BIORHYTHM_MULTIPLIER)
-            }
+    fun compare(birthDate1: Date, birthDate2: Date): LinkedHashMap<String, Double> {
+        val compare = LinkedHashMap<String, Double>()
+        SUMMARY_CYCLE_NAMES.forEach { name ->
+            compare[name] = calculateCycleCompatibilityPercent(
+                birthDate1,
+                birthDate2,
+                periodForCycle(name)
+            )
         }
         return compare
     }
@@ -203,22 +205,13 @@ class BiorhythmService {
     }
 
     fun detailCompare(birthDate1: Date, birthDate2: Date): BiorhythmDetail {
-        val cycles = listOf(
-            BiorhythmCycle("Physical", 23),
-            BiorhythmCycle("Emotional", 28),
-            BiorhythmCycle("Intellectual", 33),
-            BiorhythmCycle("Heartfelt", 38),
-            BiorhythmCycle("Creative", 43),
-            BiorhythmCycle("Intuitive", 47),
-            BiorhythmCycle("HighestChakra", 52),
-            BiorhythmCycle("Spiritual", 53)
-        )
+        val cycles = DETAIL_CYCLE_NAMES.map { name -> BiorhythmCycle(name, periodForCycle(name)) }
 
         var totalCompatibility = 0.0
         val cycleResults = cycles.map { cycle ->
-            val selfValue = calculateBiorhythmValue(birthDate1, cycle.period.toDouble())
-            val otherValue = calculateBiorhythmValue(birthDate2, cycle.period.toDouble())
-            val compatibility = 1.0 - abs(selfValue - otherValue) / 2.0
+            val selfValue = calculateBiorhythmValue(birthDate1, cycle.period)
+            val otherValue = calculateBiorhythmValue(birthDate2, cycle.period)
+            val compatibility = calculateCycleCompatibilityRatio(selfValue, otherValue)
             totalCompatibility += compatibility
             BiorhythmCycleResult(
                 name = cycle.name,
@@ -234,13 +227,27 @@ class BiorhythmService {
             overallCompatibility = totalCompatibility / cycles.size
         )
     }
+
+    private fun calculateCycleCompatibilityRatio(selfValue: Double, otherValue: Double): Double {
+        return 1.0 - abs(selfValue - otherValue) / 2.0
+    }
+
+    private fun calculateCycleCompatibilityRatio(birthDate1: Date, birthDate2: Date, period: Double): Double {
+        val selfValue = calculateBiorhythmValue(birthDate1, period)
+        val otherValue = calculateBiorhythmValue(birthDate2, period)
+        return calculateCycleCompatibilityRatio(selfValue, otherValue)
+    }
+
+    private fun calculateCycleCompatibilityPercent(birthDate1: Date, birthDate2: Date, period: Double): Double {
+        return calculateCycleCompatibilityRatio(birthDate1, birthDate2, period) * BIORHYTHM_PERCENTAGE
+    }
 }
 
-data class BiorhythmCycle(val name: String, val period: Int)
+data class BiorhythmCycle(val name: String, val period: Double)
 
 data class BiorhythmCycleResult(
     val name: String,
-    val period: Int,
+    val period: Double,
     val selfValue: Double,
     val otherValue: Double,
     val compatibility: Double

@@ -44,7 +44,7 @@ import { ImageCropModalComponent } from '../../../shared/components/image-crop-m
                     style="width: 150px; height: 150px; object-fit: cover;">
                 } @else {
                   <div
-                    class="profile-avatar rounded-circle d-flex align-items-center justify-content-center bg-light text-muted"
+                    class="profile-avatar rounded-circle d-flex align-items-center justify-content-center profile-avatar-placeholder"
                     style="width: 150px; height: 150px;">
                     <i class="bi bi-person-fill fs-1"></i>
                   </div>
@@ -234,6 +234,11 @@ import { ImageCropModalComponent } from '../../../shared/components/image-crop-m
 
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    .profile-avatar-placeholder {
+      background: var(--bg-secondary);
+      color: var(--text-muted);
     }
   `]
 })

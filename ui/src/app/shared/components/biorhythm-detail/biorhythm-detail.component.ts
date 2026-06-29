@@ -1,11 +1,12 @@
 import { Component, Input, OnInit } from '@angular/core';
-import { NgClass, NgStyle } from '@angular/common';
+import { NgClass, NgStyle, DecimalPipe } from '@angular/common';
+import { BIORHYTHM_LABELS } from '../../utils/biorhythm-labels.util';
 import { UserService, BiorhythmDetail } from '../../../core/services/user.service';
 
 @Component({
   selector: 'app-biorhythm-detail',
   standalone: true,
-  imports: [NgClass, NgStyle],
+  imports: [NgClass, NgStyle, DecimalPipe],
   template: `
     @if (loading) {
       <div class="text-center py-3">
@@ -17,11 +18,11 @@ import { UserService, BiorhythmDetail } from '../../../core/services/user.servic
       <div class="biorhythm-detail">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h6 class="mb-0 text-muted">Детальная совместимость</h6>
-          <span class="badge" [ngClass]="{
+            <span class="badge" [ngClass]="{
             'bg-success': $any(detail).overallCompatibility >= 0.7,
             'bg-warning': $any(detail).overallCompatibility >= 0.4 && $any(detail).overallCompatibility < 0.7,
             'bg-danger': $any(detail).overallCompatibility < 0.4
-          }">
+          }" title="Среднее по 8 биоритмическим циклам">
             {{ ($any(detail).overallCompatibility * 100).toFixed(0) }}%
           </span>
         </div>
@@ -50,9 +51,10 @@ import { UserService, BiorhythmDetail } from '../../../core/services/user.servic
               </div>
             </div>
             <div class="d-flex justify-content-between mt-1">
-              <span class="text-muted" style="font-size: 0.7rem;">{{ cycle.period }} days</span>
-              <span class="text-muted" style="font-size: 0.7rem;">
-                {{ (cycle.selfValue > 0 ? '+' : '') + cycle.selfValue.toFixed(2) }} / {{ (cycle.otherValue > 0 ? '+' : '') + cycle.otherValue.toFixed(2) }}
+              <span class="text-muted" style="font-size: 0.7rem;">{{ cycle.period | number:'1.0-1' }} дн.</span>
+              <span class="text-muted" style="font-size: 0.7rem;" title="Ваш биоритм / биоритм партнёра">
+                вы {{ (cycle.selfValue > 0 ? '+' : '') + cycle.selfValue.toFixed(2) }} /
+                {{ (cycle.otherValue > 0 ? '+' : '') + cycle.otherValue.toFixed(2) }}
               </span>
             </div>
           </div>
@@ -99,16 +101,6 @@ export class BiorhythmDetailComponent implements OnInit {
   }
 
   getLabel(name: string): string {
-    const labels: Record<string, string> = {
-      'Physical': 'Физический',
-      'Emotional': 'Эмоциональный',
-      'Intellectual': 'Интеллектуальный',
-      'Heartfelt': 'Сердечный',
-      'Creative': 'Творческий',
-      'Intuitive': 'Интуитивный',
-      'HighestChakra': 'Высшая чакра',
-      'Spiritual': 'Духовный'
-    };
-    return labels[name] || name;
+    return BIORHYTHM_LABELS[name] || name;
   }
 }

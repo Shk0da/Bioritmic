@@ -12,6 +12,10 @@ import { UserInfo, Gender, UserSearch, UserSettings, SwipeDirection, SwipeCard }
 import { FormsModule } from '@angular/forms';
 import { NgClass } from '@angular/common';
 
+import {
+  getSummaryCompatibility,
+  getSummaryCompatibilityAverage,
+} from '../../shared/utils/biorhythm-labels.util';
 import { StoriesBarComponent } from '../../shared/components/stories-bar/stories-bar.component';
 
 @Component({
@@ -525,31 +529,11 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   getCompatibilityPercent(user: UserInfo): number {
-    if (!user.compare) return 0;
-    const values = Object.values(user.compare);
-    if (values.length === 0) return 0;
-    const sum = values.reduce((acc, val) => acc + val, 0);
-    return Math.round(sum / values.length);
+    return getSummaryCompatibilityAverage(user.compare);
   }
 
   getCompatibilityDetails(user: UserInfo): Array<{ name: string; label: string; value: number }> {
-    if (!user.compare) return [];
-
-    const labels: Record<string, string> = {
-      'Physical': 'Физическая',
-      'Intellectual': 'Интеллект',
-      'Heartfelt': 'Сердечная'
-    };
-
-    const allowedTypes = ['Heartfelt', 'Physical', 'Intellectual'];
-
-    return Object.entries(user.compare)
-      .filter(([name]) => allowedTypes.includes(name))
-      .map(([name, value]) => ({
-        name,
-        label: labels[name] || name,
-        value: Math.round(value)
-      }));
+    return getSummaryCompatibility(user.compare);
   }
 
   getCompatibilityBadges(user: UserInfo): Array<{ name: string; label: string; value: number }> {

@@ -272,9 +272,9 @@ class BiorhythmServiceTest {
         val date2 = dateFormat.parse("01.02.1990")
         val result = service.compare(date1!!, date2!!)
         
-        // Проверяем, что результаты в диапазоне [-100, 100]
+        // Проверяем, что результаты в диапазоне [0, 100]
         result.values.forEach { value ->
-            assertTrue(value in -100.0..100.0, "Значение совместимости должно быть в диапазоне [-100, 100]")
+            assertTrue(value in 0.0..100.0, "Значение совместимости должно быть в диапазоне [0, 100]")
         }
     }
 

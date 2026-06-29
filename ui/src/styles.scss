@@ -40,12 +40,20 @@
   --accent-yellow: #f59e0b;
   --accent-purple: #8b5cf6;
   --accent-gray: #6c757d;
+
+  --alert-warning-bg: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(251, 191, 36, 0.1) 100%);
+  --alert-warning-text: #92400e;
+  --alert-warning-border: rgba(217, 119, 6, 0.35);
+  --alert-warning-accent: #d97706;
+  --alert-warning-link: #b45309;
 }
 
 // ==========================================
 // CSS Variables — Dark theme
 // ==========================================
 [data-theme="dark"] {
+  color-scheme: dark;
+
   --bg-primary: #111827;
   --bg-secondary: #1f2937;
   --bg-tertiary: #0f172a;
@@ -70,6 +78,12 @@
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 5px 20px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+  --alert-warning-bg: linear-gradient(135deg, rgba(245, 158, 11, 0.28) 0%, rgba(180, 83, 9, 0.2) 100%);
+  --alert-warning-text: #fde68a;
+  --alert-warning-border: rgba(251, 191, 36, 0.55);
+  --alert-warning-accent: #fbbf24;
+  --alert-warning-link: #fcd34d;
 }
 
 // ==========================================
@@ -202,6 +216,15 @@ app-root {
   color: var(--text-primary);
 
   &:focus { outline: none; border-color: #fd297b; box-shadow: 0 0 0 3px rgba(253, 41, 123, 0.1); }
+
+  &:disabled {
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+    opacity: 1;
+    cursor: not-allowed;
+    -webkit-text-fill-color: var(--text-secondary);
+  }
 }
 
 .form-label { font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 0.9rem; }
@@ -262,6 +285,37 @@ option { background: var(--card-bg); color: var(--text-primary); }
   &.alert-info { background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%); color: #3b82f6; }
   &.alert-success { background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%); color: #10b981; }
   &.alert-danger { background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(244, 63, 94, 0.1) 100%); color: #ef4444; }
+  &.alert-warning {
+    background: var(--alert-warning-bg);
+    color: var(--alert-warning-text);
+    border: 1px solid var(--alert-warning-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+    strong {
+      color: var(--alert-warning-text);
+    }
+
+    .bi {
+      color: var(--alert-warning-accent);
+    }
+
+    .alert-link,
+    .btn-link.alert-link {
+      color: var(--alert-warning-link);
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+
+      &:hover,
+      &:focus {
+        color: var(--alert-warning-accent);
+      }
+
+      &:disabled {
+        opacity: 0.55;
+      }
+    }
+  }
 }
 
 // ==========================================
@@ -476,6 +530,12 @@ option { background: var(--card-bg); color: var(--text-primary); }
   margin-right: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
+
+  &.alert-warning {
+    strong {
+      font-weight: 700;
+    }
+  }
 }
 
 // ==========================================
@@ -516,8 +576,8 @@ option { background: var(--card-bg); color: var(--text-primary); }
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
   }
 
-  // General text
-  h1, h2, h3, h4, h5, h6, p, span, label, a, td, th, li, div {
+  // General text (skip alerts — they use their own palette)
+  :is(h1, h2, h3, h4, h5, h6, p, span, label, a, td, th, li, div):not(.alert):not(.alert *) {
     &:not([class*="text-"]):not(.gradient-text):not(.match-title):not(.match-subtitle) {
       color: var(--text-primary);
     }
@@ -534,6 +594,31 @@ option { background: var(--card-bg); color: var(--text-primary); }
   // Card-body overrides (fix hardcoded colors in components)
   .card-body, .card-header, .card-footer {
     color: var(--text-primary);
+  }
+
+  .card-body,
+  .card {
+    .form-control,
+    .form-select {
+      background: var(--bg-input);
+      color: var(--text-primary);
+      border-color: var(--border-color);
+
+      &:disabled {
+        background-color: var(--bg-secondary);
+        color: var(--text-secondary);
+        border-color: var(--border-color);
+        -webkit-text-fill-color: var(--text-secondary);
+      }
+    }
+
+    .form-label {
+      color: var(--text-secondary);
+    }
+
+    .form-text {
+      color: var(--text-muted);
+    }
   }
 
   // Auth pages
@@ -598,6 +683,36 @@ option { background: var(--card-bg); color: var(--text-primary); }
 
   // Toast / error messages
   .error-toast { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border-color: rgba(239, 68, 68, 0.2); }
+
+  // Warning alerts — richer contrast on dark backgrounds
+  .alert.alert-warning,
+  .verification-alert.alert-warning {
+    background: var(--alert-warning-bg);
+    color: var(--alert-warning-text);
+    border-color: var(--alert-warning-border);
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.12);
+
+    strong,
+    span,
+    div,
+    p {
+      color: inherit;
+    }
+
+    .bi {
+      color: var(--alert-warning-accent);
+    }
+
+    .alert-link,
+    .btn-link.alert-link {
+      color: var(--alert-warning-link);
+
+      &:hover,
+      &:focus {
+        color: #fde68a;
+      }
+    }
+  }
 
   // Search page
   .search-results { background: transparent; }
