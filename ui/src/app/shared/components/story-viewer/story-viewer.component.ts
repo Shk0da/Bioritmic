@@ -56,20 +56,23 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
 
           <div class="story-reactions" (click)="$event.stopPropagation()">
             @for (reaction of reactions; track reaction.type) {
-              <div class="reaction-item">
+              <button
+                type="button"
+                class="reaction-btn"
+                [class.selected]="selectedReaction === reaction.type"
+                [class.with-count]="getReactionCount(reaction.type) > 0"
+                [attr.aria-label]="reaction.label"
+                [title]="reaction.label"
+                (click)="sendReaction(reaction.type)">
                 @if (getReactionCount(reaction.type) > 0) {
-                  <span class="reaction-count">{{ getReactionCount(reaction.type) }}</span>
-                }
-                <button
-                  type="button"
-                  class="reaction-btn"
-                  [class.selected]="selectedReaction === reaction.type"
-                  [attr.aria-label]="reaction.label"
-                  [title]="reaction.label"
-                  (click)="sendReaction(reaction.type)">
+                  <span class="story-reaction-pill">
+                    <span>{{ reaction.emoji }}</span>
+                    <span>{{ getReactionCount(reaction.type) }}</span>
+                  </span>
+                } @else {
                   {{ reaction.emoji }}
-                </button>
-              </div>
+                }
+              </button>
             }
           </div>
 
@@ -251,17 +254,10 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
       flex-direction: row;
       flex-wrap: wrap;
       justify-content: flex-end;
-      align-items: flex-end;
-      gap: 2px 4px;
+      align-items: center;
+      gap: 0.25rem;
       z-index: 11;
       max-width: 55%;
-    }
-
-    .reaction-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-width: 22px;
     }
 
     .reaction-btn {
@@ -273,28 +269,46 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
       padding: 0;
       opacity: 0.75;
       transition: transform 0.15s ease, opacity 0.15s ease;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
     }
 
+    .reaction-btn.with-count {
+      opacity: 1;
+    }
+
     .reaction-btn:hover {
       opacity: 1;
-      transform: scale(1.12);
+      transform: scale(1.08);
     }
 
     .reaction-btn.selected {
       opacity: 1;
-      transform: scale(1.15);
+      transform: scale(1.08);
     }
 
-    .reaction-count {
-      font-size: 0.6rem;
-      color: rgba(255, 255, 255, 0.9);
-      line-height: 1;
-      margin-bottom: 1px;
-      font-weight: 600;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    .story-reaction-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.35rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      line-height: 1.2;
+    }
+
+    .reaction-btn.selected .story-reaction-pill {
+      border-color: #fd297b;
+      color: #fff;
+      background: rgba(253, 41, 123, 0.28);
+    }
+
+    .reaction-btn:hover .story-reaction-pill {
+      background: rgba(255, 255, 255, 0.2);
     }
 
     .story-viewers {
