@@ -516,6 +516,44 @@ async function fetchUserMe(token) {
   return resp.json();
 }
 
+async function patchUserProfileViaApi(token, body) {
+  const resp = await fetch(`${API_URL}/api/v1/user/me`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`PATCH /user/me failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+/** Profile edit form: MAN = Мужской, WOMAN = Женский */
+async function selectProfileGender(driver, gender) {
+  const select = await driver.wait(until.elementLocated(By.name('gender')), 10000);
+  const label = gender === 'WOMAN' ? 'Женский' : 'Мужской';
+  await driver.executeScript(
+    `
+      const select = arguments[0];
+      const label = arguments[1];
+      const option = Array.from(select.options).find((item) => item.text.trim() === label);
+      if (!option) {
+        throw new Error('Gender option not found: ' + label);
+      }
+      select.value = option.value;
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    `,
+    select,
+    label
+  );
+}
+
 async function setUserGisViaApi(token, lat = 55.7558, lon = 37.6173) {
   const resp = await fetch(`${API_URL}/api/v1/user/me/gis`, {
     method: 'POST',
@@ -605,6 +643,8 @@ module.exports = {
   getAccessTokenFromCookies,
   makeUser,
   fetchUserMe,
+  patchUserProfileViaApi,
+  selectProfileGender,
   setUserGisViaApi,
   sendMediaMailViaApi,
   navigateTo,

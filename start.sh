@@ -58,6 +58,20 @@ kill_processes() {
     pkill -9 -f "ng serve" 2>/dev/null || true
 }
 
+require_docker() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo -e "  ${RED}Docker CLI not found.${NC}"
+        echo "  Install Docker Desktop: https://www.docker.com/products/docker-desktop/"
+        exit 1
+    fi
+    if ! docker info >/dev/null 2>&1; then
+        echo -e "  ${RED}Docker daemon is not running.${NC}"
+        echo "  Start Docker Desktop and wait until it is ready, then run ./start.sh again."
+        echo "  (Expected socket: unix://${HOME}/.docker/run/docker.sock)"
+        exit 1
+    fi
+}
+
 echo -e "${CYAN}========================================${NC}"
 echo -e "${CYAN}  Bioritmic — Starting project${NC}"
 echo -e "${CYAN}========================================${NC}"
@@ -71,7 +85,9 @@ echo -e "  ${GREEN}Done${NC}"
 # --- Infrastructure: PostgreSQL (Docker) ---
 echo ""
 echo -e "${YELLOW}[2/7] Starting infrastructure (Docker)...${NC}"
+require_docker
 cd "$ROOT_DIR"
+docker rm -f bioritmic-api bioritmic-ui >/dev/null 2>&1 || true
 docker rm -f bioritmic-postgres >/dev/null 2>&1 || true
 docker rm -f bioritmic-mail >/dev/null 2>&1 || true
 docker compose up -d postgres mail
@@ -127,6 +143,11 @@ echo -e "  ${GREEN}Backend built successfully${NC}"
 # --- Backend ---
 echo ""
 echo -e "${YELLOW}[5/7] Starting Backend (Kotlin/Spring Boot on :${API_PORT})...${NC}"
+if lsof -i :"${API_PORT}" -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo -e "  ${YELLOW}Port ${API_PORT} is busy — stopping conflicting Docker API container...${NC}"
+    docker rm -f bioritmic-api >/dev/null 2>&1 || true
+    sleep 1
+fi
 cd "$ROOT_DIR"
 SPRING_PROFILES_ACTIVE=develop,swagger ./gradlew :api:bootRun > /tmp/bioritmic-api.log 2>&1 &
 API_PID=$!
