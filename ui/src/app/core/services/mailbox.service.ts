@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { UserMail, PageableRequest, MailMediaType } from '../models/user.model';
+import { UserMail, PageableRequest, MailMediaType, MailReactionType, MailReactionCounts } from '../models/user.model';
 
 /** Spring multipart rejects codec params (e.g. video/webm;codecs=vp9,opus). */
 export function normalizeMediaMimeType(mimeType: string, mediaType: MailMediaType): string {
@@ -17,6 +17,20 @@ export function normalizeMediaMimeType(mimeType: string, mediaType: MailMediaTyp
       return base || 'application/octet-stream';
   }
 }
+
+export interface MailReactionResponse {
+  reaction: MailReactionType | null;
+  reactionCounts: MailReactionCounts;
+}
+
+export const MAIL_REACTIONS: { type: MailReactionType; emoji: string; label: string }[] = [
+  { type: 'LIKE', emoji: '👍', label: 'Лайк' },
+  { type: 'HEART', emoji: '❤️', label: 'Сердце' },
+  { type: 'FIRE', emoji: '🔥', label: 'Огонь' },
+  { type: 'POOP', emoji: '💩', label: 'Какашка' },
+  { type: 'CLOWN', emoji: '🤡', label: 'Клоун' },
+  { type: 'LOL', emoji: '😂', label: 'LOL' },
+];
 
 @Injectable({
   providedIn: 'root'
@@ -46,7 +60,8 @@ export class MailboxService {
     mediaType: MailMediaType,
     file: File | Blob,
     filename: string,
-    caption?: string
+    caption?: string,
+    replyToMessageId?: number
   ): Observable<UserMail[]> {
     const formData = new FormData();
     formData.append('to', to);
@@ -57,6 +72,9 @@ export class MailboxService {
     if (caption?.trim()) {
       formData.append('message', caption.trim());
     }
+    if (replyToMessageId != null) {
+      formData.append('replyToMessageId', String(replyToMessageId));
+    }
     return this.http.post<UserMail[]>(`${this.apiUrl}/media`, formData);
   }
 
@@ -66,6 +84,10 @@ export class MailboxService {
 
   getConversation(userId: string): Observable<UserMail[]> {
     return this.http.get<UserMail[]>(`${this.apiUrl}/conversation/${userId}`);
+  }
+
+  reactToMessage(messageId: number, reaction: MailReactionType): Observable<MailReactionResponse> {
+    return this.http.post<MailReactionResponse>(`${this.apiUrl}/${messageId}/react`, { reaction });
   }
 
   getBadgeCount(sinceMs: number): Observable<{ count: number }> {

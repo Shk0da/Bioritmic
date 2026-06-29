@@ -20,13 +20,13 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
   imports: [RouterLink, FormsModule, NgClass, StoriesBarComponent],
   template: `
     <div class="swipe-container">
-      <app-stories-bar></app-stories-bar>
-
-      <!-- Кнопка фильтров (мобильная) -->
-      <div class="mobile-filters-btn">
-        <button class="control-btn btn-filter" (click)="openFilters()">
-          <i class="bi bi-funnel"></i>
-        </button>
+      <div class="stories-row">
+        <app-stories-bar></app-stories-bar>
+        <div class="mobile-filters-btn">
+          <button type="button" class="btn-filter" (click)="openFilters()" title="Параметры поиска">
+            <i class="bi bi-funnel"></i>
+          </button>
+        </div>
       </div>
 
       <!-- Мобильная версия: Tinder-карточки -->
@@ -423,7 +423,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     const visibleCards = this.cards.slice(0, 2);
     visibleCards.forEach(card => {
       if (card.user.id && !card.photoDataUrl) {
-        this.userService.getPhoto(card.user.id).pipe(takeUntil(this.destroy$)).subscribe({
+        this.userService.getPhoto(card.user.id, 'card').pipe(takeUntil(this.destroy$)).subscribe({
           next: (bytes: Uint8Array) => {
             UserService.revokePhotoUrl(card.photoDataUrl);
             card.photoDataUrl = UserService.createPhotoUrl(bytes);
@@ -441,7 +441,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.cards.length > nextIndex) {
       const card = this.cards[nextIndex];
       if (card.user.id && !card.photoDataUrl) {
-        this.userService.getPhoto(card.user.id).pipe(takeUntil(this.destroy$)).subscribe({
+        this.userService.getPhoto(card.user.id, 'card').pipe(takeUntil(this.destroy$)).subscribe({
           next: (bytes: Uint8Array) => {
             UserService.revokePhotoUrl(card.photoDataUrl);
             card.photoDataUrl = UserService.createPhotoUrl(bytes);

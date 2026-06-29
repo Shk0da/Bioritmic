@@ -10,6 +10,8 @@ const DEFAULT_USER_SETTINGS: UserSettings = {
   distance: 30,
 };
 
+export type PhotoSize = 'thumb' | 'card';
+
 export interface BiorhythmCycle {
   name: string;
   value: number;
@@ -105,9 +107,13 @@ export class UserService {
     return this.http.get<{ lat: number; lon: number; approximate: boolean }>(`${this.apiUrl}/me/gis/estimate`);
   }
 
-  getPhoto(userId?: string): Observable<Uint8Array> {
+  getPhoto(userId?: string, size: PhotoSize = 'thumb'): Observable<Uint8Array> {
     const url = userId ? `${this.apiUrl}/${userId}/photo` : `${this.apiUrl}/me/photo`;
-    return this.http.get(url, { responseType: 'arraybuffer' }).pipe(
+    const options: { responseType: 'arraybuffer'; params?: HttpParams } = { responseType: 'arraybuffer' };
+    if (size === 'card') {
+      options.params = new HttpParams().set('size', 'card');
+    }
+    return this.http.get(url, options).pipe(
       map((buffer: ArrayBuffer) => new Uint8Array(buffer))
     );
   }

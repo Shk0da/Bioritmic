@@ -1,39 +1,54 @@
 .swipe-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 70px);
-  height: calc(100dvh - 70px);
+  height: calc(100vh - var(--header-height) - 3rem);
+  height: calc(100dvh - var(--header-height) - 3rem);
   background: var(--bg-secondary);
   overflow: hidden;
   width: 100%;
   max-width: 100%;
+  min-height: 0;
+
+  .stories-row {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    min-width: 0;
+
+    app-stories-bar {
+      flex: 1;
+      min-width: 0;
+    }
+  }
 }
 
-/* Кнопка фильтров (мобильная) */
+/* Кнопка фильтров (мобильная) — в одной строке с историями */
 .mobile-filters-btn {
   display: none;
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 50;
-  
+  flex-shrink: 0;
+  padding: 12px 16px 12px 4px;
+
   .btn-filter {
-    width: 50px;
-    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    background: white;
+    background: var(--card-bg);
     color: #fd297b;
-    border: none;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    font-size: 1.25rem;
+    border: 3px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    font-size: 1.35rem;
     cursor: pointer;
-    transition: all 0.3s ease;
-    
+    transition: all 0.2s ease;
+
     &:hover {
-      transform: scale(1.1);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      transform: scale(1.05);
+      border-color: #fd297b;
+      box-shadow: 0 4px 12px rgba(253, 41, 123, 0.25);
     }
-    
+
     &:active {
       transform: scale(0.95);
     }
@@ -43,11 +58,12 @@
 /* Мобильная область карточек (Tinder) */
 .mobile-swipe-container {
   flex: 1;
+  min-height: 0;
   position: relative;
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 1rem;
+  align-items: stretch;
+  padding: 0.5rem 1rem;
   overflow: hidden;
 }
 
@@ -306,19 +322,22 @@
 /* Карточка */
 .swipe-card {
   position: absolute;
+  top: 0;
+  left: 50%;
   width: 100%;
   max-width: 400px;
-  height: 600px;
-  max-height: 80vh;
+  height: 100%;
+  max-height: 600px;
   background: var(--card-bg);
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   transition: transform 0.3s ease, opacity 0.3s ease;
   user-select: none;
+  transform: translateX(-50%);
 
   &.next-card {
-    transform: scale(0.95) translateY(-10px);
+    transform: translateX(-50%) scale(0.96) translateY(8px);
     opacity: 0.5;
   }
 }
@@ -537,28 +556,28 @@
 
 /* Кнопки управления */
 .swipe-controls {
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 0.625rem;
+  padding: 0.5rem 1rem 0.75rem;
+  background: transparent;
 }
 
 /* Счётчик свайпов и CTA */
 .swipe-limit-bar {
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0.5rem 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 0 1rem 0.5rem;
+  background: transparent;
 }
 
 .swipe-limit-text {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -602,13 +621,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 60px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: none;
-  font-size: 1.5rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  font-size: 1.35rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 
   &:disabled {
     opacity: 0.5;
@@ -667,14 +686,21 @@
   &.btn-undo {
     background: var(--card-bg);
     color: #f59e0b;
-    width: 50px;
-    height: 50px;
-    font-size: 1.2rem;
+    width: 42px;
+    height: 42px;
+    font-size: 1.1rem;
 
     &:hover {
       background: #f59e0b;
       color: white;
     }
+  }
+
+  &.btn-dislike,
+  &.btn-like {
+    width: 56px;
+    height: 56px;
+    font-size: 1.45rem;
   }
 }
 
@@ -849,9 +875,24 @@
 
 /* Адаптивность */
 @media (max-width: 768px) {
+  .swipe-container {
+    height: calc(100dvh - var(--header-height) - 2rem - env(safe-area-inset-bottom));
+    margin: -0.5rem -1rem 0;
+    width: calc(100% + 2rem);
+  }
+
+  .mobile-swipe-container {
+    padding: 0.375rem 0.75rem 0.25rem;
+  }
+
   .swipe-card {
     max-width: 100%;
-    height: 70vh;
+    max-height: none;
+    border-radius: 16px;
+  }
+
+  .card-info {
+    padding: 1rem 1.25rem 1.25rem;
   }
 
   .user-name {
@@ -862,10 +903,38 @@
     }
   }
 
+  .swipe-controls {
+    gap: 0.5rem;
+    margin: 0 0.75rem 0.25rem;
+    padding: 0.5rem 0.625rem;
+    background: var(--card-bg);
+    border-radius: 999px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+  }
+
   .control-btn {
-    width: 50px;
-    height: 50px;
-    font-size: 1.25rem;
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
+    box-shadow: none;
+
+    &.btn-undo {
+      width: 38px;
+      height: 38px;
+      font-size: 1rem;
+    }
+
+    &.btn-dislike,
+    &.btn-like {
+      width: 48px;
+      height: 48px;
+      font-size: 1.3rem;
+    }
+  }
+
+  .swipe-limit-bar {
+    padding: 0 0.75rem 0.375rem;
   }
 }
 
@@ -897,6 +966,7 @@
   }
   
   .mobile-filters-btn {
-    display: block !important;
+    display: flex !important;
+    align-items: flex-start;
   }
 }

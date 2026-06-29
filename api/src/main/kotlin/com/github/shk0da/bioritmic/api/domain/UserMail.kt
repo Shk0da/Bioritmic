@@ -31,6 +31,9 @@ class UserMail {
     @Column("media_s3_key")
     var mediaS3Key: String? = null
 
+    @Column("reply_to_message_id")
+    var replyToMessageId: Long? = null
+
     companion object {
         fun of(userMailModel: UserMailModel): UserMail {
             val userMail = UserMail()
@@ -40,6 +43,7 @@ class UserMail {
             userMail.message = userMailModel.message?.trim()?.takeIf { it.isNotEmpty() } ?: ""
             userMail.mediaType = userMailModel.mediaType
             userMail.mediaS3Key = userMailModel.mediaS3Key
+            userMail.replyToMessageId = userMailModel.replyToMessageId
             userMail.timestamp = Timestamp(System.currentTimeMillis())
             return userMail
         }
@@ -49,7 +53,8 @@ class UserMail {
             toUserId: UUID,
             mediaType: String,
             mediaS3Key: String,
-            caption: String?
+            caption: String?,
+            replyToMessageId: Long? = null
         ): UserMail {
             return UserMail().apply {
                 this.fromUserId = fromUserId
@@ -57,6 +62,7 @@ class UserMail {
                 this.mediaType = mediaType
                 this.mediaS3Key = mediaS3Key
                 this.message = caption?.trim()?.takeIf { it.isNotEmpty() } ?: ""
+                this.replyToMessageId = replyToMessageId
                 this.timestamp = Timestamp(System.currentTimeMillis())
             }
         }
@@ -64,6 +70,6 @@ class UserMail {
 
     override fun toString(): String {
         return "UserMail(id=$id, fromUserId=$fromUserId, toUserId=$toUserId, message=$message, " +
-            "mediaType=$mediaType, timestamp=$timestamp)"
+            "mediaType=$mediaType, replyToMessageId=$replyToMessageId, timestamp=$timestamp)"
     }
 }

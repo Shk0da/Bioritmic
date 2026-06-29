@@ -38,9 +38,10 @@ class S3Configuration {
     @Bean
     fun s3Client(): S3Client {
         val credentials = AwsBasicCredentials.create(accessKey, secretKey)
+        val normalizedEndpoint = endpoint.trim()
 
         val s3Client = S3Client.builder()
-            .endpointOverride(URI.create(endpoint))
+            .endpointOverride(URI.create(normalizedEndpoint))
             .credentialsProvider(StaticCredentialsProvider.create(credentials))
             .region(Region.of(region))
             .forcePathStyle(true)

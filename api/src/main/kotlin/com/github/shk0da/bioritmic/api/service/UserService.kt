@@ -12,6 +12,7 @@ import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.model.search.Gender.MAN
 import com.github.shk0da.bioritmic.api.model.search.Gender.WOMAN
+import com.github.shk0da.bioritmic.api.model.user.PhotoDisplaySize
 import com.github.shk0da.bioritmic.api.model.user.UpdateUserProfileRequest
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserModel
@@ -86,15 +87,18 @@ class UserService(
     }
 
     @Transactional(transactionManager = transactionManager)
-    suspend fun getPhoto(userId: UUID): ByteArray {
+    suspend fun getPhoto(userId: UUID, displaySize: PhotoDisplaySize = PhotoDisplaySize.THUMB): ByteArray {
         if (!userRepository.existsById(userId)) {
             throw ApiException(ErrorCode.USER_NOT_FOUND)
         }
         if (userPhotoRepository.findAllByUserId(userId).isEmpty()) {
             return ImageUtils.defaultNoImage()
         }
-        val s3Key = ImageUtils.s3KeyForPhoto(userId, ImageTag.CROPP_250x250)
-        return s3Service.downloadPhoto(s3Key) ?: ImageUtils.defaultNoImage()
+        for (tag in displaySize.preferredTags()) {
+            val s3Key = ImageUtils.s3KeyForPhoto(userId, tag)
+            s3Service.downloadPhoto(s3Key)?.let { return it }
+        }
+        return ImageUtils.defaultNoImage()
     }
 
     @Transactional
@@ -279,7 +283,12 @@ class UserService(
             throw ApiException(ErrorCode.API_INTERNAL_ERROR)
         }
 
-        val tagsToUpload = listOf(ImageTag.ORIGINAL, ImageTag.CROPP_100x100, ImageTag.CROPP_250x250)
+        val tagsToUpload = listOf(
+            ImageTag.ORIGINAL,
+            ImageTag.CROPP_500x500,
+            ImageTag.CROPP_100x100,
+            ImageTag.CROPP_250x250,
+        )
         val croppedByTag = tagsToUpload.associateWith { tag ->
             ImageUtils.cropImageBytes(originalBytes, tag)
         }

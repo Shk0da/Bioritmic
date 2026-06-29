@@ -1,6 +1,7 @@
 package com.github.shk0da.bioritmic.api.controller.mailbox
 
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes
+import com.github.shk0da.bioritmic.api.model.mailbox.MailReactionRequest
 import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
 import com.github.shk0da.bioritmic.api.service.MailboxService
@@ -49,7 +50,8 @@ class MailboxController(val mailboxService: MailboxService) {
         @RequestPart("to") toUserId: String,
         @RequestPart("mediaType") mediaType: String,
         @RequestPart("file") file: FilePart,
-        @RequestPart("message", required = false) caption: String?
+        @RequestPart("message", required = false) caption: String?,
+        @RequestPart("replyToMessageId", required = false) replyToMessageId: Long?
     ): List<UserMailModel> {
         val userId = getUserId()
         val recipientId = try {
@@ -60,7 +62,7 @@ class MailboxController(val mailboxService: MailboxService) {
                 mapOf("to" to "to")
             )
         }
-        return mailboxService.sendMediaMail(userId, recipientId, mediaType, file, caption)
+        return mailboxService.sendMediaMail(userId, recipientId, mediaType, file, caption, replyToMessageId)
     }
 
     @DeleteMapping(value = ["/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -72,7 +74,16 @@ class MailboxController(val mailboxService: MailboxService) {
     @GetMapping(value = ["/conversation/{userId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun conversation(@PathVariable userId: UUID): List<UserMailModel> {
         val currentUserId = getUserId()
-        return mailboxService.getConversation(currentUserId, userId).map { mailboxService.toModel(it) }
+        return mailboxService.getConversationModels(currentUserId, userId)
+    }
+
+    @PostMapping(value = ["/{messageId}/react"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun reactToMessage(
+        @PathVariable messageId: Long,
+        @RequestBody @Valid request: MailReactionRequest
+    ): Map<String, Any?> {
+        val userId = getUserId()
+        return mailboxService.reactToMessage(messageId, userId, request.reaction)
     }
 
     @GetMapping(value = ["/badge"], produces = [MediaType.APPLICATION_JSON_VALUE])

@@ -57,6 +57,7 @@ dependencies {
 
     // S3 (MinIO)
     implementation("software.amazon.awssdk:s3:2.31.1")
+    implementation("com.drewnoakes:metadata-extractor:2.19.0")
 
     // Firebase Admin SDK
     implementation("com.google.firebase:firebase-admin:9.2.0")

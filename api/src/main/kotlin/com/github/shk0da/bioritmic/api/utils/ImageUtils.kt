@@ -1,7 +1,11 @@
 package com.github.shk0da.bioritmic.api.utils
 
+import com.drew.imaging.ImageMetadataReader
+import com.drew.metadata.exif.ExifIFD0Directory
 import org.slf4j.LoggerFactory
 import java.awt.Image
+import java.awt.geom.AffineTransform
+import java.awt.image.AffineTransformOp
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -36,7 +40,8 @@ object ImageUtils {
 
         val originalImage = ImageIO.read(ByteArrayInputStream(inputBytes))
             ?: throw IOException("Unable to read image")
-        val resized = resizeImage(originalImage, tag.width, tag.height)
+        val normalizedImage = normalizeOrientation(inputBytes, originalImage)
+        val resized = resizeImage(normalizedImage, tag.width, tag.height)
         val outputStream = ByteArrayOutputStream()
         ImageIO.write(resized, "jpg", outputStream)
         return outputStream.toByteArray()
@@ -59,5 +64,71 @@ object ImageUtils {
         val outputImage = BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_RGB)
         outputImage.graphics.drawImage(resultingImage, 0, 0, null)
         return outputImage
+    }
+
+    private fun normalizeOrientation(inputBytes: ByteArray, image: BufferedImage): BufferedImage {
+        val orientation = readExifOrientation(inputBytes)
+        if (orientation == 1) return image
+
+        val transform = AffineTransform()
+        var newWidth = image.width
+        var newHeight = image.height
+
+        when (orientation) {
+            2 -> {
+                transform.scale(-1.0, 1.0)
+                transform.translate(-image.width.toDouble(), 0.0)
+            }
+            3 -> {
+                transform.translate(image.width.toDouble(), image.height.toDouble())
+                transform.rotate(Math.PI)
+            }
+            4 -> {
+                transform.scale(1.0, -1.0)
+                transform.translate(0.0, -image.height.toDouble())
+            }
+            5 -> {
+                transform.rotate(Math.PI / 2)
+                transform.scale(1.0, -1.0)
+                newWidth = image.height
+                newHeight = image.width
+            }
+            6 -> {
+                transform.translate(image.height.toDouble(), 0.0)
+                transform.rotate(Math.PI / 2)
+                newWidth = image.height
+                newHeight = image.width
+            }
+            7 -> {
+                transform.translate(image.height.toDouble(), 0.0)
+                transform.rotate(Math.PI / 2)
+                transform.scale(-1.0, 1.0)
+                newWidth = image.height
+                newHeight = image.width
+            }
+            8 -> {
+                transform.translate(0.0, image.width.toDouble())
+                transform.rotate(-Math.PI / 2)
+                newWidth = image.height
+                newHeight = image.width
+            }
+            else -> return image
+        }
+
+        val destinationImage = BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB)
+        val operation = AffineTransformOp(transform, AffineTransformOp.TYPE_BILINEAR)
+        operation.filter(image, destinationImage)
+        return destinationImage
+    }
+
+    private fun readExifOrientation(inputBytes: ByteArray): Int {
+        return runCatching {
+            val metadata = ImageMetadataReader.readMetadata(ByteArrayInputStream(inputBytes))
+            metadata.getFirstDirectoryOfType(ExifIFD0Directory::class.java)
+                ?.getInt(ExifIFD0Directory.TAG_ORIENTATION) ?: 1
+        }.getOrElse {
+            log.debug("Failed to read EXIF orientation: {}", it.message)
+            1
+        }
     }
 }

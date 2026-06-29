@@ -4,8 +4,11 @@ import com.github.shk0da.bioritmic.api.domain.UserMail
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
+import com.github.shk0da.bioritmic.api.model.mailbox.MailReactionType
 import com.github.shk0da.bioritmic.api.model.mailbox.MailMediaType
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
+import com.github.shk0da.bioritmic.api.repository.MailboxReactionBatchRepository
+import com.github.shk0da.bioritmic.api.repository.MailboxReactionRepository
 import com.github.shk0da.bioritmic.api.repository.MailboxRepository
 import com.github.shk0da.bioritmic.api.repository.UserBlockRepository
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
@@ -28,6 +31,8 @@ import java.util.UUID
 class MailboxService(
     val userService: UserService,
     val mailboxRepository: MailboxRepository,
+    val mailboxReactionRepository: MailboxReactionRepository,
+    val mailboxReactionBatchRepository: MailboxReactionBatchRepository,
     val userBlockRepository: UserBlockRepository,
     private val pushNotificationService: PushNotificationService,
     private val s3Service: S3Service
@@ -44,13 +49,16 @@ class MailboxService(
 
     @Transactional
     suspend fun sendUserMail(userId: UUID, userMailModel: UserMailModel): List<UserMailModel> {
-        ensureNotBlocked(userId, userMailModel.to!!)
+        val toUserId = userMailModel.to!!
+        ensureNotBlocked(userId, toUserId)
+        val replyToMessageId = validateReplyTarget(userId, toUserId, userMailModel.replyToMessageId)
         if (userMailModel.message.isNullOrBlank()) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("message" to "message"))
         }
 
         userMailModel.from = userId
-        val userMail = UserMail.of(userMailModel)
+        val userMailWithReply = userMailModel.copy(replyToMessageId = replyToMessageId)
+        val userMail = UserMail.of(userMailWithReply)
         mailboxRepository.save(userMail)
 
         notifyRecipient(userMail, userId)
@@ -63,9 +71,11 @@ class MailboxService(
         toUserId: UUID,
         mediaTypeRaw: String,
         file: FilePart,
-        caption: String?
+        caption: String?,
+        replyToMessageId: Long?
     ): List<UserMailModel> {
         ensureNotBlocked(userId, toUserId)
+        val validatedReplyId = validateReplyTarget(userId, toUserId, replyToMessageId)
 
         val mediaType = MailMediaType.parse(mediaTypeRaw)
             ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("mediaType" to "mediaType"))
@@ -97,7 +107,8 @@ class MailboxService(
             toUserId = toUserId,
             mediaType = mediaType.name,
             mediaS3Key = s3Key,
-            caption = caption
+            caption = caption,
+            replyToMessageId = validatedReplyId
         )
 
         return try {
@@ -125,20 +136,41 @@ class MailboxService(
     }
 
     @Transactional(readOnly = true)
+    suspend fun getConversationModels(currentUserId: UUID, otherUserId: UUID): List<UserMailModel> {
+        val messages = mailboxRepository.findConversationBetweenUsers(currentUserId, otherUserId)
+        return toModelsWithReactions(messages, currentUserId)
+    }
+
+    @Transactional(readOnly = true)
     suspend fun countUnreadSenders(userId: UUID, sinceMs: Long): Long {
         val since = java.sql.Timestamp(sinceMs)
         return mailboxRepository.countUnreadSenders(userId, since)
     }
 
-    fun toModel(userMail: UserMail): UserMailModel {
+    fun toModel(
+        userMail: UserMail,
+        currentUserReaction: String? = null,
+        reactionCounts: Map<String, Int> = emptyMap()
+    ): UserMailModel {
         val mediaUrl = userMail.mediaS3Key?.let { s3Service.getPhotoUrl(it) }
-        return UserMailModel.of(userMail, mediaUrl)
+        return UserMailModel.of(userMail, mediaUrl, currentUserReaction, reactionCounts)
     }
 
     private suspend fun conversationModels(fromUserId: UUID, toUserId: UUID): List<UserMailModel> {
-        return mailboxRepository
-            .findConversationBetweenUsers(fromUserId, toUserId)
-            .map { toModel(it) }
+        val messages = mailboxRepository.findConversationBetweenUsers(fromUserId, toUserId)
+        return toModelsWithReactions(messages, fromUserId)
+    }
+
+    private suspend fun toModelsWithReactions(messages: List<UserMail>, currentUserId: UUID): List<UserMailModel> {
+        val messageIds = messages.mapNotNull { it.id }
+        val reactionsByUser = mailboxReactionBatchRepository.findReactionsByMailIdsAndUserId(messageIds, currentUserId)
+        val reactionCounts = mailboxReactionBatchRepository.countReactionsByMailIds(messageIds)
+        return messages.map { message ->
+            val messageId = message.id
+            val currentReaction = if (messageId != null) reactionsByUser[messageId] else null
+            val counts = if (messageId != null) reactionCounts[messageId] ?: emptyMap() else emptyMap()
+            toModel(message, currentReaction, counts)
+        }
     }
 
     private suspend fun ensureNotBlocked(userId: UUID, otherUserId: UUID) {
@@ -147,6 +179,42 @@ class MailboxService(
         if (block != null) {
             throw ApiException(ErrorCode.USER_IS_BLOCKED)
         }
+    }
+
+    @Transactional(transactionManager = com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager)
+    suspend fun reactToMessage(messageId: Long, userId: UUID, reaction: String): Map<String, Any?> {
+        val message = mailboxRepository.findById(messageId)
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("messageId" to "messageId"))
+        val from = message.fromUserId ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("messageId" to "messageId"))
+        val to = message.toUserId ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("messageId" to "messageId"))
+        if (userId != from && userId != to) {
+            throw ApiException(ErrorCode.ACCESS_DENIED)
+        }
+
+        val reactionType = MailReactionType.parse(reaction)
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("reaction" to "reaction"))
+        val existing = mailboxReactionRepository.findReaction(messageId, userId)
+        if (existing == reactionType.name) {
+            mailboxReactionRepository.deleteReaction(messageId, userId)
+            val counts = mailboxReactionBatchRepository.countReactionsByMailIds(listOf(messageId))[messageId] ?: emptyMap()
+            return mapOf("reaction" to null, "reactionCounts" to counts)
+        }
+        mailboxReactionRepository.upsert(messageId, userId, reactionType.name)
+        val counts = mailboxReactionBatchRepository.countReactionsByMailIds(listOf(messageId))[messageId] ?: emptyMap()
+        return mapOf("reaction" to reactionType.name, "reactionCounts" to counts)
+    }
+
+    private suspend fun validateReplyTarget(userId: UUID, otherUserId: UUID, replyToMessageId: Long?): Long? {
+        if (replyToMessageId == null) return null
+        val targetMessage = mailboxRepository.findById(replyToMessageId)
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("replyToMessageId" to "replyToMessageId"))
+        val from = targetMessage.fromUserId
+        val to = targetMessage.toUserId
+        val sameConversation = (from == userId && to == otherUserId) || (from == otherUserId && to == userId)
+        if (!sameConversation) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("replyToMessageId" to "replyToMessageId"))
+        }
+        return replyToMessageId
     }
 
     private suspend fun notifyRecipient(userMail: UserMail, senderId: UUID) {

@@ -125,6 +125,13 @@ describe('UserService', () => {
     req.flush(new ArrayBuffer(8));
   });
 
+  it('getPhoto with card size should request size=card query param', () => {
+    service.getPhoto('42', 'card').subscribe();
+    const req = httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo') && r.params.get('size') === 'card');
+    expect(req.request.method).toBe('GET');
+    req.flush(new ArrayBuffer(8));
+  });
+
   it('getPhoto without userId should GET /api/v1/user/me/photo', () => {
     service.getPhoto().subscribe();
     const req = httpMock.expectOne('/api/v1/user/me/photo');

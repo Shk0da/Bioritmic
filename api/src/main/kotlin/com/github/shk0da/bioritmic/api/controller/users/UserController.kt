@@ -8,6 +8,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_PARAMETER
 import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.gis.GisEstimateModel
+import com.github.shk0da.bioritmic.api.model.user.PhotoDisplaySize
 import com.github.shk0da.bioritmic.api.model.user.UpdateUserProfileRequest
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserInfo.Companion.ofWithCompare
@@ -36,6 +37,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
@@ -174,17 +176,20 @@ class UserController(
         return geoIpService.estimateLocation(resolveClientIp(request))
     }
 
-    // GET /{id}/photo <- UserInfo
+    // GET /{id}/photo <- UserInfo (?size=card for swipe/profile cards)
     @GetMapping(value = ["/{id}/photo"], produces = [MediaType.IMAGE_JPEG_VALUE])
-    suspend fun photo(@PathVariable id: UUID): ByteArray {
-        return userService.getPhoto(id)
+    suspend fun photo(
+        @PathVariable id: UUID,
+        @RequestParam(required = false) size: String?,
+    ): ByteArray {
+        return userService.getPhoto(id, PhotoDisplaySize.fromQuery(size))
     }
 
     // GET /me/photo <- UserInfo
     @GetMapping(value = ["/me/photo"], produces = [MediaType.IMAGE_JPEG_VALUE])
-    suspend fun mePhoto(): ByteArray {
+    suspend fun mePhoto(@RequestParam(required = false) size: String?): ByteArray {
         val userId = getUserId()
-        return userService.getPhoto(userId)
+        return userService.getPhoto(userId, PhotoDisplaySize.fromQuery(size))
     }
 
     // POST /me/photo -> UserInfo

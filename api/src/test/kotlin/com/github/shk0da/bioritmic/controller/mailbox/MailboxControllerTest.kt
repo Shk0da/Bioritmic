@@ -189,6 +189,108 @@ class MailboxControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun sendMailWithReplyTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val userAEmail = "mailbox_reply_a_$suffix@gmail.com"
+        val userBEmail = "mailbox_reply_b_$suffix@gmail.com"
+
+        val userAId = registerAndGetUserId(userAEmail, "Reply A")
+        val userBId = registerAndGetUserId(userBEmail, "Reply B")
+        val tokenA = loginAndGetToken(userAEmail, userAId)
+        val tokenB = loginAndGetToken(userBEmail, userBId)
+
+        sendMail(tokenA, userBId, "Original message")
+
+        var originalMessageId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].id").value { id: Any -> originalMessageId = (id as Number).toLong() }
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/mailbox")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                BodyInserters.fromValue(
+                    UserMailModel(
+                        to = userAId,
+                        message = "Reply to original",
+                        replyToMessageId = originalMessageId
+                    )
+                )
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[1].replyToMessageId").isEqualTo(originalMessageId)
+            .jsonPath("$[1].message").isEqualTo("Reply to original")
+    }
+
+    @Test
+    fun reactToMessageTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val userAEmail = "mailbox_react_a_$suffix@gmail.com"
+        val userBEmail = "mailbox_react_b_$suffix@gmail.com"
+
+        val userAId = registerAndGetUserId(userAEmail, "React A")
+        val userBId = registerAndGetUserId(userBEmail, "React B")
+        val tokenA = loginAndGetToken(userAEmail, userAId)
+        val tokenB = loginAndGetToken(userBEmail, userBId)
+
+        sendMail(tokenA, userBId, "React me")
+
+        var messageId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].id").value { id: Any -> messageId = (id as Number).toLong() }
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/mailbox/$messageId/react")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("reaction" to "HEART")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.reaction").isEqualTo("HEART")
+            .jsonPath("$.reactionCounts.HEART").isEqualTo(1)
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/mailbox/$messageId/react")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("reaction" to "HEART")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.reaction").doesNotExist()
+            .jsonPath("$.reactionCounts.HEART").doesNotExist()
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].currentUserReaction").doesNotExist()
+            .jsonPath("$[0].reactionCounts.HEART").doesNotExist()
+    }
+
+    @Test
     fun deleteMailboxTest() {
         webTestClient.delete()
             .uri("$API_WITH_VERSION_1/mailbox/00000000-0000-0000-0000-000000000001")

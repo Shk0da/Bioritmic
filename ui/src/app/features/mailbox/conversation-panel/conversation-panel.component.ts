@@ -15,9 +15,9 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { MailboxService } from '../../../core/services/mailbox.service';
+import { MAIL_REACTIONS, MailboxService } from '../../../core/services/mailbox.service';
 import { UserService } from '../../../core/services/user.service';
-import { UserMail, UserInfo, MailMediaType } from '../../../core/models/user.model';
+import { UserMail, UserInfo, MailMediaType, MailReactionType } from '../../../core/models/user.model';
 import { ModalService } from '../../../core/services/modal.service';
 import { Subject, takeUntil } from 'rxjs';
 
@@ -75,6 +75,12 @@ interface ChatMessage extends UserMail {
                   [alt]="otherUserName || 'User'">
               }
               <div class="message-bubble" [class.outgoing]="message.isCurrentUser" [class.incoming]="!message.isCurrentUser" [class.media-bubble]="!!message.mediaType">
+                @if (message.replyToMessageId) {
+                  <div class="reply-reference">
+                    <span class="reply-reference-label">Ответ на сообщение</span>
+                    <span class="reply-reference-text">{{ getReplyReferenceText(message) }}</span>
+                  </div>
+                }
                 @if (message.mediaType === 'PHOTO' && message.mediaUrl) {
                   <img [src]="message.mediaUrl" class="message-photo" data-testid="message-photo" alt="Фото">
                 } @else if (message.mediaType === 'VOICE' && message.mediaUrl) {
@@ -116,10 +122,53 @@ interface ChatMessage extends UserMail {
                 }
                 <div class="message-meta">
                   <span class="message-time">{{ getMessageTime(message.timestamp) }}</span>
+                  @if (message.id) {
+                    <button
+                      type="button"
+                      class="message-reaction-toggle"
+                      [class.active]="showReactionPickerFor === message.id"
+                      title="Реакция"
+                      (click)="toggleMessageReactionPicker(message.id, $event)">
+                      <i class="bi bi-emoji-smile"></i>
+                    </button>
+                  }
+                  @if (message.id) {
+                    <button
+                      type="button"
+                      class="reply-btn"
+                      title="Ответить"
+                      (click)="startReply(message)">
+                      <i class="bi bi-reply"></i>
+                    </button>
+                  }
                   @if (message.isCurrentUser) {
                     <span class="message-status"><i class="bi bi-check-all"></i></span>
                   }
                 </div>
+                @if (message.id && showReactionPickerFor === message.id) {
+                  <div class="message-reactions-picker" (click)="$event.stopPropagation()">
+                    @for (reaction of mailReactions; track reaction.type) {
+                      <button
+                        type="button"
+                        class="message-reaction-btn"
+                        [class.selected]="message.currentUserReaction === reaction.type"
+                        (click)="reactToMessage(message, reaction.type)">
+                        {{ reaction.emoji }}
+                      </button>
+                    }
+                  </div>
+                }
+                @if (message.reactionCounts && hasReactionCounts(message)) {
+                  <div class="message-reactions-summary">
+                    @for (reaction of mailReactions; track reaction.type) {
+                      @if (getReactionCount(message, reaction.type) > 0) {
+                        <span class="message-reaction-pill" [class.mine]="message.currentUserReaction === reaction.type">
+                          {{ reaction.emoji }} {{ getReactionCount(message, reaction.type) }}
+                        </span>
+                      }
+                    }
+                  </div>
+                }
               </div>
             </div>
           }
@@ -133,6 +182,17 @@ interface ChatMessage extends UserMail {
         </div>
       } @else {
         <div class="message-input-container">
+          @if (replyingToMessage) {
+            <div class="reply-preview">
+              <div class="reply-preview-content">
+                <span class="reply-preview-label">Ответ на: {{ replyingToMessage.isCurrentUser ? 'ваше сообщение' : (otherUserName || 'сообщение') }}</span>
+                <span class="reply-preview-text">{{ getReplyPreviewText(replyingToMessage) }}</span>
+              </div>
+              <button type="button" class="reply-preview-close" (click)="cancelReply()" title="Отменить ответ">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+          }
           @if (recordingVoice) {
             <div class="recording-bar">
               <span class="recording-dot"></span>
@@ -166,9 +226,6 @@ interface ChatMessage extends UserMail {
                   </button>
                   <button type="button" (click)="startVoiceRecording()">
                     <i class="bi bi-mic-fill"></i> Голос
-                  </button>
-                  <button type="button" (click)="startVideoRecording()">
-                    <i class="bi bi-record-circle"></i> Кружок
                   </button>
                 </div>
               }
@@ -616,6 +673,88 @@ interface ChatMessage extends UserMail {
       margin-top: 0.25rem;
     }
 
+    .message-reaction-toggle {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 0.15rem 0.3rem;
+      border-radius: 999px;
+
+      &.active,
+      &:hover {
+        color: var(--accent-pink);
+        background: var(--bg-hover);
+      }
+    }
+
+    .message-reactions-picker {
+      margin-top: 0.35rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.2rem;
+      padding: 0.25rem;
+      border-radius: 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    .message-reaction-btn {
+      border: none;
+      background: transparent;
+      font-size: 1rem;
+      border-radius: 8px;
+      padding: 0.15rem 0.3rem;
+      cursor: pointer;
+
+      &.selected,
+      &:hover {
+        background: var(--bg-hover);
+      }
+    }
+
+    .message-reactions-summary {
+      margin-top: 0.3rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+
+    .message-reaction-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.35rem;
+      border-radius: 999px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+
+      &.mine {
+        border-color: var(--accent-pink);
+        color: var(--accent-pink);
+      }
+    }
+
+    .reply-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 0.15rem 0.3rem;
+      border-radius: 999px;
+
+      &:hover {
+        color: var(--accent-pink);
+        background: var(--bg-hover);
+      }
+    }
+
     .message-time {
       font-size: 0.7rem;
       opacity: 0.75;
@@ -641,12 +780,83 @@ interface ChatMessage extends UserMail {
 
     .message-input-container {
       display: flex;
+      flex-wrap: wrap;
       gap: 0.625rem;
       padding: 0.75rem 1rem;
       padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
       background: var(--card-bg);
       border-top: 1px solid var(--border-color);
       flex-shrink: 0;
+      min-width: 0;
+    }
+
+    .reply-preview {
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+    }
+
+    .reply-preview-content {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .reply-preview-label {
+      font-size: 0.72rem;
+      color: var(--accent-pink);
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .reply-preview-text {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .reply-preview-close {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      padding: 0.2rem;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .reply-reference {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      margin-bottom: 0.35rem;
+      padding-left: 0.45rem;
+      border-left: 2px solid rgba(253, 41, 123, 0.5);
+    }
+
+    .reply-reference-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .reply-reference-text {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
     }
 
     .input-wrapper {
@@ -657,6 +867,7 @@ interface ChatMessage extends UserMail {
       border-radius: 24px;
       padding: 0.5rem 0.875rem;
       border: 1px solid var(--border-color);
+      min-width: 0;
     }
 
     .message-input {
@@ -666,6 +877,7 @@ interface ChatMessage extends UserMail {
       font-size: 1rem;
       outline: none;
       color: var(--text-primary);
+      min-width: 0;
     }
 
     .emoji-btn {
@@ -701,6 +913,29 @@ interface ChatMessage extends UserMail {
       &:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .message-input-container {
+        gap: 0.45rem;
+        padding: 0.625rem 0.75rem;
+        padding-bottom: calc(0.625rem + env(safe-area-inset-bottom));
+      }
+
+      .input-wrapper {
+        padding: 0.45rem 0.65rem;
+      }
+
+      .attach-btn,
+      .send-btn {
+        width: 40px;
+        height: 40px;
+      }
+
+      .emoji-btn {
+        font-size: 1.05rem;
+        padding: 0.2rem;
       }
     }
 
@@ -775,6 +1010,9 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   recordingVideo = false;
   recordingSeconds = 0;
   playingVoiceId: string | null = null;
+  replyingToMessage: ChatMessage | null = null;
+  showReactionPickerFor: number | null = null;
+  readonly mailReactions = MAIL_REACTIONS;
 
   readonly voiceWaveBars = [3, 6, 10, 5, 12, 8, 14, 7, 11, 6, 13, 9, 8, 12, 4, 10, 14, 6, 5, 11];
 
@@ -790,6 +1028,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   private voiceAudio: HTMLAudioElement | null = null;
   private voiceProgress = 0;
   private voiceDurations = new Map<string, number>();
+  private voiceDurationLoads = new Map<string, Promise<void>>();
   private voicePreloadGeneration = 0;
   private teardownDone = false;
   private readonly cdr = inject(ChangeDetectorRef);
@@ -839,12 +1078,14 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.sending = true;
     const message: UserMail = {
       to: this.userId,
-      message: this.newMessage.trim()
+      message: this.newMessage.trim(),
+      replyToMessageId: this.replyingToMessage?.id ?? null
     };
 
     this.mailboxService.sendMail(message).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.newMessage = '';
+        this.replyingToMessage = null;
         this.sending = false;
         this.loadMessages();
         this.messageSent.emit();
@@ -874,11 +1115,55 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   toggleEmojiPicker(): void {
+    this.showReactionPickerFor = null;
     this.showEmojiPicker = !this.showEmojiPicker;
   }
 
   addEmoji(emoji: string): void {
     this.newMessage += emoji;
+  }
+
+  toggleMessageReactionPicker(messageId: number, event?: Event): void {
+    event?.stopPropagation();
+    this.showReactionPickerFor = this.showReactionPickerFor === messageId ? null : messageId;
+  }
+
+  reactToMessage(message: ChatMessage, reaction: MailReactionType): void {
+    if (!message.id || this.sending || this.isBlocked) {
+      return;
+    }
+    this.mailboxService.reactToMessage(message.id, reaction).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        message.currentUserReaction = response.reaction;
+        message.reactionCounts = { ...(response.reactionCounts ?? {}) };
+        this.showReactionPickerFor = null;
+      },
+      error: () => {
+        this.showReactionPickerFor = null;
+      }
+    });
+  }
+
+  getReactionCount(message: ChatMessage, reaction: MailReactionType): number {
+    return message.reactionCounts?.[reaction] ?? 0;
+  }
+
+  hasReactionCounts(message: ChatMessage): boolean {
+    if (!message.reactionCounts) return false;
+    return this.mailReactions.some(r => (message.reactionCounts?.[r.type] ?? 0) > 0);
+  }
+
+  startReply(message: ChatMessage): void {
+    if (!message.id || this.isBlocked || this.sending) {
+      return;
+    }
+    this.replyingToMessage = message;
+    this.showAttachMenu = false;
+    this.showEmojiPicker = false;
+  }
+
+  cancelReply(): void {
+    this.replyingToMessage = null;
   }
 
   showMessageText(message: ChatMessage): boolean {
@@ -913,10 +1198,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.voiceProgress = 0;
 
     audio.addEventListener('loadedmetadata', () => {
-      if (Number.isFinite(audio.duration)) {
-        this.voiceDurations.set(messageKey, audio.duration);
-        this.cdr.markForCheck();
-      }
+      void this.ensureVoiceDuration(messageKey, message.mediaUrl!, audio.duration);
     });
     audio.addEventListener('timeupdate', () => {
       if (Number.isFinite(audio.duration) && audio.duration > 0) {
@@ -965,13 +1247,34 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
+  getReplyPreviewText(message: ChatMessage): string {
+    if (message.mediaType === 'VOICE') return 'Голосовое сообщение';
+    if (message.mediaType === 'PHOTO') return 'Фото';
+    if (message.mediaType === 'VIDEO_NOTE') return 'Видео-кружок';
+    return message.message?.trim() || 'Сообщение';
+  }
+
+  getReplyReferenceText(message: ChatMessage): string {
+    const targetId = message.replyToMessageId;
+    if (!targetId) {
+      return 'Сообщение недоступно';
+    }
+    const target = this.messages.find(m => m.id === targetId);
+    if (!target) {
+      return 'Сообщение недоступно';
+    }
+    return this.getReplyPreviewText(target);
+  }
+
   toggleAttachMenu(): void {
     this.showAttachMenu = !this.showAttachMenu;
     this.showEmojiPicker = false;
+    this.showReactionPickerFor = null;
   }
 
   pickPhoto(): void {
     this.showAttachMenu = false;
+    this.showReactionPickerFor = null;
     this.photoInput?.nativeElement.click();
   }
 
@@ -1059,10 +1362,12 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       return;
     }
     this.sending = true;
-    this.mailboxService.sendMediaMail(this.userId, mediaType, file, filename, caption)
+    const replyToMessageId = this.replyingToMessage?.id;
+    this.mailboxService.sendMediaMail(this.userId, mediaType, file, filename, caption, replyToMessageId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
+          this.replyingToMessage = null;
           this.sending = false;
           this.loadMessages();
           this.messageSent.emit();
@@ -1198,12 +1503,15 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.stopVoicePlayback();
     this.voicePreloadGeneration += 1;
     this.voiceDurations.clear();
+    this.voiceDurationLoads.clear();
     UserService.revokePhotoUrl(this.otherUserPhotoUrl);
     this.messages = [];
     this.newMessage = '';
+    this.replyingToMessage = null;
     this.isBlocked = false;
     this.showEmojiPicker = false;
     this.showAttachMenu = false;
+    this.showReactionPickerFor = null;
     this.recordingVoice = false;
     this.recordingVideo = false;
     this.otherUserPhotoUrl = null;
@@ -1264,16 +1572,16 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       if (this.voiceDurations.has(messageKey)) {
         continue;
       }
+      if (this.voiceDurationLoads.has(messageKey)) {
+        continue;
+      }
       const audio = new Audio(message.mediaUrl);
       audio.preload = 'metadata';
       audio.addEventListener('loadedmetadata', () => {
         if (generation !== this.voicePreloadGeneration) {
           return;
         }
-        if (Number.isFinite(audio.duration)) {
-          this.voiceDurations.set(messageKey, audio.duration);
-          this.cdr.markForCheck();
-        }
+        void this.ensureVoiceDuration(messageKey, message.mediaUrl!, audio.duration);
         audio.removeAttribute('src');
         audio.load();
       }, { once: true });
@@ -1281,6 +1589,52 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
         audio.removeAttribute('src');
         audio.load();
       }, { once: true });
+      audio.src = message.mediaUrl;
+    }
+  }
+
+  private async ensureVoiceDuration(messageKey: string, mediaUrl: string, metadataDuration?: number): Promise<void> {
+    if (this.voiceDurations.has(messageKey)) {
+      return;
+    }
+    if (Number.isFinite(metadataDuration) && (metadataDuration ?? 0) > 0) {
+      this.voiceDurations.set(messageKey, metadataDuration!);
+      this.cdr.markForCheck();
+      return;
+    }
+    if (this.voiceDurationLoads.has(messageKey)) {
+      await this.voiceDurationLoads.get(messageKey);
+      return;
+    }
+
+    const loadPromise = (async () => {
+      const decodedDuration = await this.readDurationWithAudioContext(mediaUrl);
+      if (decodedDuration > 0) {
+        this.voiceDurations.set(messageKey, decodedDuration);
+        this.cdr.markForCheck();
+      }
+    })().finally(() => {
+      this.voiceDurationLoads.delete(messageKey);
+    });
+
+    this.voiceDurationLoads.set(messageKey, loadPromise);
+    await loadPromise;
+  }
+
+  private async readDurationWithAudioContext(mediaUrl: string): Promise<number> {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    try {
+      const response = await fetch(mediaUrl, { credentials: 'include' });
+      if (!response.ok) {
+        return 0;
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      const decoded = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+      return Number.isFinite(decoded.duration) ? decoded.duration : 0;
+    } catch {
+      return 0;
+    } finally {
+      await audioContext.close().catch(() => undefined);
     }
   }
 
@@ -1353,6 +1707,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     }
     this.teardownDone = true;
     this.voicePreloadGeneration += 1;
+    this.voiceDurationLoads.clear();
     this.clearRefreshInterval();
     this.cleanupRecording();
     this.stopVoicePlayback();

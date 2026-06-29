@@ -63,6 +63,7 @@ class ApiApplicationTests {
             "bans",
             "user_blocks",
             "meetings",
+            "mailbox_reactions",
             "mailbox",
             "bookmarks",
             "gis_data",
