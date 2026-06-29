@@ -21,9 +21,9 @@ interface UserPushTokenRepository : CoroutineCrudRepository<UserPushToken, Long>
 
     @Modifying
     @Query("DELETE FROM user_push_tokens WHERE token = :token")
-    suspend fun deleteByToken(token: String)
+    suspend fun deleteByToken(token: String): Int
 
     @Modifying
     @Query("DELETE FROM user_push_tokens WHERE user_id = :userId")
-    suspend fun deleteAllByUserId(userId: UUID)
+    suspend fun deleteAllByUserId(userId: UUID): Int
 }

@@ -112,7 +112,7 @@ s3:
   region: us-east-1
 
 firebase:
-  enabled: false
+  enabled: ${FIREBASE_ENABLED:false}
   credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
   web:
     api-key: ${FIREBASE_WEB_API_KEY:}

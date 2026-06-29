@@ -195,15 +195,8 @@ export class PushNotificationService {
   }
 
   async removeToken(): Promise<void> {
-    if (!this.currentToken) {
-      return;
-    }
     try {
-      await firstValueFrom(
-        this.http.delete(`${this.apiUrl}/me/push-token`, {
-          body: { token: this.currentToken }
-        })
-      );
+      await firstValueFrom(this.http.delete(`${this.apiUrl}/me/push-token`));
     } finally {
       this.currentToken = null;
     }

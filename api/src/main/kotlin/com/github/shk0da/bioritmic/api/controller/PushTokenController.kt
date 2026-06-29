@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -28,10 +29,15 @@ class PushTokenController(
     }
 
     @DeleteMapping(value = ["/me/push-token"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun removePushToken(@RequestBody request: PushTokenRequest): Map<String, Any> {
+    suspend fun removePushToken(@RequestParam(required = false) token: String?): Map<String, Any> {
         val userId = getUserId()
-        pushNotificationService.removeToken(userId, request.token)
-        log.debug("Removed push token: {}", request.token.take(8))
+        if (token.isNullOrBlank()) {
+            pushNotificationService.removeAllTokens(userId)
+            log.debug("Removed all push tokens for userId: {}", userId)
+        } else {
+            pushNotificationService.removeToken(userId, token)
+            log.debug("Removed push token: {}", token.take(8))
+        }
         return mapOf("success" to true)
     }
 }

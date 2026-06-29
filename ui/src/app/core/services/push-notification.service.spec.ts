@@ -45,4 +45,17 @@ describe('PushNotificationService', () => {
     service.syncEnabledWithPermission();
     expect(service.isEnabled()).toBeFalse();
   });
+
+  it('should remove push token via DELETE without body', async () => {
+    service.setEnabled(true);
+    const disablePromise = service.disable();
+
+    const req = httpMock.expectOne('/api/v1/user/me/push-token');
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.body).toBeNull();
+    req.flush({ success: true });
+
+    await disablePromise;
+    expect(service.isEnabled()).toBeFalse();
+  });
 });

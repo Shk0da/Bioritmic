@@ -51,6 +51,12 @@ class PushNotificationService(
         userPushTokenRepository.deleteByToken(token)
     }
 
+    @Transactional
+    suspend fun removeAllTokens(userId: UUID) {
+        userPushTokenRepository.deleteAllByUserId(userId)
+        log.debug("All push tokens removed for userId: {}", userId)
+    }
+
     suspend fun sendPushNotification(
         userId: UUID, title: String, body: String,
         data: Map<String, String> = emptyMap()

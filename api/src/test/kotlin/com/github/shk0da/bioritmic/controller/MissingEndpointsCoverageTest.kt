@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.web.reactive.function.BodyInserters
@@ -106,11 +105,9 @@ class MissingEndpointsCoverageTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
 
-        webTestClient.method(HttpMethod.DELETE)
+        webTestClient.delete()
             .uri("$API_WITH_VERSION_1/user/me/push-token")
             .header(HttpHeaders.AUTHORIZATION, aliceToken)
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(request))
             .exchange()
             .expectStatus().isOk
     }

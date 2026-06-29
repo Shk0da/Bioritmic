@@ -3,6 +3,15 @@ set -e
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+load_dotenv() {
+    if [ -f "$ROOT_DIR/.env" ]; then
+        set -a
+        # shellcheck disable=SC1091
+        source "$ROOT_DIR/.env"
+        set +a
+    fi
+}
+
 load_env_var() {
     local name="$1"
     local default="$2"
@@ -17,6 +26,8 @@ load_env_var() {
     fi
     export "${name}=${value}"
 }
+
+load_dotenv
 
 load_env_var POSTGRES_PORT 5433
 load_env_var MINIO_API_PORT 19000

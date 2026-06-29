@@ -92,3 +92,4 @@ Thumbs.db
 .kotlin
 /minio-project/
 .env
+*-firebase-adminsdk-*.json
