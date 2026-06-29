@@ -1,8 +1,9 @@
 import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, switchMap, EMPTY } from 'rxjs';
 import { SearchService } from '../../core/services/search.service';
 import { UserService, photoSizeForLargeDisplay, PhotoSize } from '../../core/services/user.service';
+import { GeoService } from '../../core/services/geo.service';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { SwipeService, SwipeResult } from '../../core/services/swipe.service';
 import { MatchService } from '../../core/services/match.service';
@@ -38,17 +39,33 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
         @if (cards.length === 0 && !loading) {
           <div class="no-cards">
             <div class="no-cards-icon">
-              <i class="bi" [ngClass]="locationRequired ? 'bi-geo-alt' : 'bi-emoji-frown'"></i>
+              <i class="bi" [ngClass]="(geoDataMissing || locationRequired) ? 'bi-geo-alt' : 'bi-emoji-frown'"></i>
             </div>
-            @if (locationRequired) {
-              <h3>Укажите местоположение</h3>
-              <p class="text-muted">Для поиска людей рядом нужно добавить геолокацию</p>
+            @if (geoDataMissing || locationRequired) {
+              <h3>Геоданные не найдены</h3>
+              <p class="text-muted">Добавьте своё местоположение для поиска людей рядом.</p>
               <a routerLink="/settings/location" class="btn btn-primary mt-3">
                 <i class="bi bi-geo-alt"></i> Указать местоположение
               </a>
+            } @else if (searchError) {
+              <h3>Не удалось выполнить поиск</h3>
+              <p class="text-muted">{{ searchError }}</p>
+              @if (userPlaceLabel) {
+                <p class="user-location-hint">
+                  <i class="bi bi-geo-alt me-1"></i>Вы находитесь: <strong>{{ userPlaceLabel }}</strong>
+                </p>
+              }
+              <button class="btn btn-primary mt-3" (click)="openFilters()">
+                <i class="bi bi-funnel"></i> Изменить фильтры
+              </button>
             } @else {
               <h3>Пользователи закончились</h3>
-              <p class="text-muted">{{ searchError || 'Попробуйте расширить параметры поиска' }}</p>
+              <p class="text-muted">Попробуйте расширить параметры поиска</p>
+              @if (userPlaceLabel) {
+                <p class="user-location-hint">
+                  <i class="bi bi-geo-alt me-1"></i>Вы находитесь: <strong>{{ userPlaceLabel }}</strong>
+                </p>
+              }
               <button class="btn btn-primary mt-3" (click)="openFilters()">
                 <i class="bi bi-funnel"></i> Изменить фильтры
               </button>
@@ -119,17 +136,33 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
         } @else if (cards.length === 0) {
           <div class="no-cards-desktop text-center py-5">
             <div class="no-cards-icon">
-              <i class="bi" [ngClass]="locationRequired ? 'bi-geo-alt' : 'bi-emoji-frown'"></i>
+              <i class="bi" [ngClass]="(geoDataMissing || locationRequired) ? 'bi-geo-alt' : 'bi-emoji-frown'"></i>
             </div>
-            @if (locationRequired) {
-              <h3>Укажите местоположение</h3>
-              <p class="text-muted">Для поиска людей рядом нужно добавить геолокацию</p>
+            @if (geoDataMissing || locationRequired) {
+              <h3>Геоданные не найдены</h3>
+              <p class="text-muted">Добавьте своё местоположение для поиска людей рядом.</p>
               <a routerLink="/settings/location" class="btn btn-primary mt-3">
                 <i class="bi bi-geo-alt"></i> Указать местоположение
               </a>
+            } @else if (searchError) {
+              <h3>Не удалось выполнить поиск</h3>
+              <p class="text-muted">{{ searchError }}</p>
+              @if (userPlaceLabel) {
+                <p class="user-location-hint">
+                  <i class="bi bi-geo-alt me-1"></i>Вы находитесь: <strong>{{ userPlaceLabel }}</strong>
+                </p>
+              }
+              <button class="btn btn-primary mt-3" (click)="openFilters()">
+                <i class="bi bi-funnel"></i> Изменить фильтры
+              </button>
             } @else {
               <h3>Пользователи закончились</h3>
-              <p class="text-muted">{{ searchError || 'Попробуйте расширить параметры поиска' }}</p>
+              <p class="text-muted">Попробуйте расширить параметры поиска</p>
+              @if (userPlaceLabel) {
+                <p class="user-location-hint">
+                  <i class="bi bi-geo-alt me-1"></i>Вы находитесь: <strong>{{ userPlaceLabel }}</strong>
+                </p>
+              }
               <button class="btn btn-primary mt-3" (click)="openFilters()">
                 <i class="bi bi-funnel"></i> Изменить фильтры
               </button>
@@ -285,6 +318,8 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   showFilters = false;
   searchError: string | null = null;
   locationRequired = false;
+  geoDataMissing = false;
+  userPlaceLabel: string | null = null;
   SwipeDirection = SwipeDirection;
   Gender = Gender;
   Math = Math;
@@ -309,6 +344,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   constructor(
     private searchService: SearchService,
     private userService: UserService,
+    private geoService: GeoService,
     private bookmarksService: BookmarksService,
     private swipeService: SwipeService,
     private matchService: MatchService,
@@ -403,7 +439,24 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.loading = true;
     this.searchError = null;
     this.locationRequired = false;
-    this.searchService.searchByFilter(this.searchCriteria).subscribe({
+    this.geoDataMissing = false;
+
+    this.userService.getGisData().pipe(
+      takeUntil(this.destroy$),
+      switchMap((gis) => {
+        if (gis?.lat == null || gis?.lon == null) {
+          this.geoDataMissing = true;
+          this.locationRequired = true;
+          this.userPlaceLabel = null;
+          this.cards = [];
+          this.loading = false;
+          return EMPTY;
+        }
+
+        this.resolveUserPlace(gis.lat, gis.lon);
+        return this.searchService.searchByFilter(this.searchCriteria);
+      })
+    ).subscribe({
       next: (users) => {
         this.swipeService.setCards(users);
         this.cards = this.swipeService.getCards();
@@ -415,10 +468,23 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.cards = [];
         const message = err?.error?.errors?.[0]?.message || err?.error?.message || '';
         if (err?.status === 404 && message.toLowerCase().includes('coordinates')) {
+          this.geoDataMissing = true;
           this.locationRequired = true;
+          this.userPlaceLabel = null;
         } else {
           this.searchError = message || 'Не удалось выполнить поиск';
         }
+      }
+    });
+  }
+
+  private resolveUserPlace(lat: number, lon: number): void {
+    this.geoService.reverseGeocode(lat, lon).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (details) => {
+        this.userPlaceLabel = details.placeName || details.displayName || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+      },
+      error: () => {
+        this.userPlaceLabel = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
       }
     });
   }

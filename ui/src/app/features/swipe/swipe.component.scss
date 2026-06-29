@@ -295,6 +295,18 @@
     p {
       color: var(--text-secondary);
     }
+
+    .user-location-hint {
+      margin-top: 0.75rem;
+      margin-bottom: 0;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+
+      strong {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+    }
   }
 }
 
@@ -317,6 +329,18 @@
 
   p {
     color: var(--text-secondary);
+  }
+
+  .user-location-hint {
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+
+    strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
   }
 }
 
