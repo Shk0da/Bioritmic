@@ -45,7 +45,7 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
 
-    client_max_body_size 15m;
+    client_max_body_size 50m;
 
     root /usr/share/nginx/html;
     index index.html;

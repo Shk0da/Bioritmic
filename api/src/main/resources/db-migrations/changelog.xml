@@ -18,6 +18,7 @@
     <include file="v1/0030-drop-interests-prompts.xml" relativeToChangelogFile="true"/>
     <include file="v1/0031-create-story-reactions.xml" relativeToChangelogFile="true"/>
     <include file="v1/0032-allow-multiple-auth-sessions.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0033-add-mailbox-media.xml" relativeToChangelogFile="true"/>
     <!-- -->
 
     <!--  Seeding  -->

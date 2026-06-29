@@ -212,9 +212,9 @@ async function assertRouteAccessible(driver, path, options = {}) {
 }
 
 const SEED_ADMIN = {
-  email: process.env.E2E_ADMIN_EMAIL || 'testuser1@example.com',
+  email: process.env.E2E_ADMIN_EMAIL || 'e2e-admin@bioritmic.test',
   password: process.env.E2E_ADMIN_PASSWORD || 'Test123456',
-  id: 'a0000000-0000-0000-0000-000000000001',
+  id: 'a0000000-0000-0000-0000-00000000e2e0',
 };
 
 const SEED_PASSWORDS = [
@@ -228,7 +228,61 @@ let cachedSeedAdminCredentials = null;
 
 const SEED_PASSWORD_HASH = '$2a$10$u8FDeghIngUoihQVztHuh.3LMxESSdbrsTBGrJniDHuDrZwerkSaK';
 
+function ensureE2eAdminInDatabase() {
+  const email = SEED_ADMIN.email.replace(/'/g, "''");
+  const hash = SEED_PASSWORD_HASH.replace(/'/g, "''");
+  const adminId = SEED_ADMIN.id.replace(/'/g, "''");
+  const sql = `
+INSERT INTO users (id, name, email, password, birthday, gender, register_date, is_verified, failed_login_attempts)
+VALUES ('${adminId}', 'E2E Admin', '${email}', '${hash}', '1990-01-01 00:00:00', 0, NOW(), true, 0)
+ON CONFLICT (email) DO UPDATE SET
+  password = EXCLUDED.password,
+  locked_until = NULL,
+  failed_login_attempts = 0,
+  is_verified = true;
+INSERT INTO user_roles (user_id, role)
+SELECT u.id, 'ROLE_ADMIN'
+FROM users u
+WHERE u.email = '${email}'
+  AND NOT EXISTS (
+    SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id AND ur.role = 'ROLE_ADMIN'
+  );
+`;
+  const attempts = [
+    {
+      command: 'docker',
+      args: ['exec', 'bioritmic-postgres', 'psql', '-U', 'postgres', '-d', 'bioritmic', '-c', sql],
+    },
+    {
+      command: 'psql',
+      args: [
+        '-h', 'localhost',
+        '-p', String(process.env.POSTGRES_PORT || 5433),
+        '-U', 'postgres',
+        '-d', 'bioritmic',
+        '-c', sql,
+      ],
+      env: { ...process.env, PGPASSWORD: 'postgres' },
+    },
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      execFileSync(attempt.command, attempt.args, {
+        stdio: 'pipe',
+        timeout: 10000,
+        env: attempt.env || process.env,
+      });
+      return true;
+    } catch (_) {
+      // try next method
+    }
+  }
+  return false;
+}
+
 function resetSeedAdminLockout() {
+  ensureE2eAdminInDatabase();
   const email = SEED_ADMIN.email.replace(/'/g, "''");
   const hash = SEED_PASSWORD_HASH.replace(/'/g, "''");
   const sql = `UPDATE users SET password = '${hash}', locked_until = NULL, failed_login_attempts = 0, is_verified = true WHERE email = '${email}';`;
@@ -265,12 +319,16 @@ function resetSeedAdminLockout() {
   return false;
 }
 
-async function loginViaApi(email, password, retryOnLockout = true) {
+async function loginViaApi(email, password, retryOnLockout = true, rateLimitRetries = 0) {
   const resp = await fetch(`${API_URL}/api/v1/authorization`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
+  if (resp.status === 429 && rateLimitRetries < 5) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return loginViaApi(email, password, retryOnLockout, rateLimitRetries + 1);
+  }
   if (resp.status === 423 && retryOnLockout && email === SEED_ADMIN.email) {
     resetSeedAdminLockout();
     return loginViaApi(email, password, false);
@@ -293,6 +351,28 @@ async function verifyUserViaApi(adminToken, userId) {
   });
   if (!resp.ok) {
     throw new Error(`Verify user failed: ${resp.status} for user ${userId}`);
+  }
+}
+
+async function dismissOpenModals(driver) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const overlays = await driver.findElements(By.css('.modal-overlay'));
+    if (overlays.length === 0) {
+      return;
+    }
+    const buttons = await driver.findElements(
+      By.css('.modal-overlay button.btn-primary, .modal-overlay button.btn-secondary, .modal-overlay button.btn-close')
+    );
+    if (buttons.length > 0) {
+      try {
+        await buttons[0].click();
+      } catch (_) {
+        await driver.actions().sendKeys(Key.ESCAPE).perform();
+      }
+    } else {
+      await driver.actions().sendKeys(Key.ESCAPE).perform();
+    }
+    await driver.sleep(300);
   }
 }
 
@@ -372,16 +452,6 @@ async function grantAdminRole(adminToken, userId) {
   }
 }
 
-async function fetchUserMe(token) {
-  const resp = await fetch(`${API_URL}/api/v1/user/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!resp.ok) {
-    throw new Error(`fetchUserMe failed: ${resp.status}`);
-  }
-  return resp.json();
-}
-
 function makeUser(overrides = {}) {
   return {
     name: 'Тест User',
@@ -446,6 +516,47 @@ async function fetchUserMe(token) {
   return resp.json();
 }
 
+async function setUserGisViaApi(token, lat = 55.7558, lon = 37.6173) {
+  const resp = await fetch(`${API_URL}/api/v1/user/me/gis`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ lat, lon }),
+  });
+  if (!resp.ok) {
+    throw new Error(`setUserGisViaApi failed: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+async function sendMediaMailViaApi(token, toUserId, mediaType, filePath, caption) {
+  const fs = require('fs');
+  const path = require('path');
+  const buffer = fs.readFileSync(filePath);
+  const ext = path.extname(filePath).toLowerCase();
+  const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+  const form = new FormData();
+  form.append('to', toUserId);
+  form.append('mediaType', mediaType);
+  form.append('file', new Blob([buffer], { type: mime }), path.basename(filePath));
+  if (caption) {
+    form.append('message', caption);
+  }
+
+  const resp = await fetch(`${API_URL}/api/v1/mailbox/media`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`sendMediaMailViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
 async function registerAndVerifyUser(driver, user) {
   await resolveSeedAdminCredentials();
   await clearSession(driver);
@@ -481,6 +592,7 @@ module.exports = {
   registerUser,
   registerUserViaApi,
   registerAndVerifyUser,
+  dismissOpenModals,
   clearSession,
   loginUser,
   loginViaApi,
@@ -493,6 +605,8 @@ module.exports = {
   getAccessTokenFromCookies,
   makeUser,
   fetchUserMe,
+  setUserGisViaApi,
+  sendMediaMailViaApi,
   navigateTo,
   getUserById,
   getAuthToken,

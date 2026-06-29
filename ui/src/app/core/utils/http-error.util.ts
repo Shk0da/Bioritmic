@@ -16,12 +16,23 @@ const ERROR_CODE_MESSAGES_RU: Record<string, string> = {
   'API-500': 'Ошибка сервера. Попробуйте позже.',
 };
 
+function isCoordinatesNotFoundMessage(message: string): boolean {
+  const lower = message.toLowerCase();
+  return lower.includes('coordinates for user') || lower.includes('update gis data');
+}
+
 function resolveApiErrorItem(item: { message?: string; errorCode?: string }): string | null {
   const code = item.errorCode?.trim();
   if (code && ERROR_CODE_MESSAGES_RU[code]) {
     return ERROR_CODE_MESSAGES_RU[code];
   }
   const message = item.message?.trim();
+  if (message && /user with email:/i.test(message)) {
+    return 'Неверный email или пароль';
+  }
+  if (message && isCoordinatesNotFoundMessage(message)) {
+    return 'Укажите местоположение в настройках, чтобы видеть людей рядом.';
+  }
   return message || null;
 }
 

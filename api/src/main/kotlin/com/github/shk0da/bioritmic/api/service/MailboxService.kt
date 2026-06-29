@@ -4,13 +4,22 @@ import com.github.shk0da.bioritmic.api.domain.UserMail
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
+import com.github.shk0da.bioritmic.api.model.mailbox.MailMediaType
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
 import com.github.shk0da.bioritmic.api.repository.MailboxRepository
 import com.github.shk0da.bioritmic.api.repository.UserBlockRepository
+import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
+import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkNotEmpty
+import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.reactive.awaitSingle
+import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.data.domain.Sort.by
+import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -20,8 +29,11 @@ class MailboxService(
     val userService: UserService,
     val mailboxRepository: MailboxRepository,
     val userBlockRepository: UserBlockRepository,
-    private val pushNotificationService: PushNotificationService
+    private val pushNotificationService: PushNotificationService,
+    private val s3Service: S3Service
 ) {
+
+    private val log = LoggerFactory.getLogger(MailboxService::class.java)
 
     private val defaultPageable = PageableRequest(1, 10, by(Sort.Direction.DESC, "timestamp"))
 
@@ -31,28 +43,79 @@ class MailboxService(
     }
 
     @Transactional
-    suspend fun sendUserMail(userId: UUID, userMailModel: UserMailModel): List<UserMail> {
-        val user = userService.findUserById(userMailModel.to!!) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        val block = userBlockRepository.findByUserIdAndOtherUserId(user.id!!, userId)
-        if (null != block) {
-            throw ApiException(ErrorCode.USER_IS_BLOCKED)
+    suspend fun sendUserMail(userId: UUID, userMailModel: UserMailModel): List<UserMailModel> {
+        ensureNotBlocked(userId, userMailModel.to!!)
+        if (userMailModel.message.isNullOrBlank()) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("message" to "message"))
         }
 
         userMailModel.from = userId
         val userMail = UserMail.of(userMailModel)
         mailboxRepository.save(userMail)
 
-        val sender = userService.findUserById(userId)
-        val senderName = sender?.name?.takeIf { it.isNotBlank() } ?: "Пользователь"
-        pushNotificationService.notifyNewMessage(userMail.toUserId!!, senderName, userMail.message ?: "")
+        notifyRecipient(userMail, userId)
+        return conversationModels(userMail.fromUserId!!, userMail.toUserId!!)
+    }
 
-        return mailboxRepository
-            .findAllByFromUserIdAndToUserId(userMail.fromUserId!!, userMail.toUserId!!, defaultPageable)
-            .toList()
+    @Transactional
+    suspend fun sendMediaMail(
+        userId: UUID,
+        toUserId: UUID,
+        mediaTypeRaw: String,
+        file: FilePart,
+        caption: String?
+    ): List<UserMailModel> {
+        ensureNotBlocked(userId, toUserId)
+
+        val mediaType = MailMediaType.parse(mediaTypeRaw)
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("mediaType" to "mediaType"))
+
+        val filename = file.filename()
+        checkNotEmpty(filename, ErrorCode.INVALID_PARAMETER, mapOf("file" to "file"))
+
+        val bytes = readFileBytes(file)
+        if (bytes.isEmpty()) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("file" to "file"))
+        }
+        val extension = resolveExtension(filename, mediaType)
+        checkFileExtension(filename, allowedExtensions(mediaType), ErrorCode.BAD_PHOTO, mapOf("file" to "file"))
+        checkSize(bytes.size, maxBytes(mediaType), ErrorCode.INVALID_PARAMETER)
+
+        val contentType = contentTypeFor(extension, mediaType)
+        val folder = mediaFolder(mediaType)
+        val s3Key = "mailbox/$folder/$userId/$toUserId/${UUID.randomUUID()}.$extension"
+
+        try {
+            s3Service.uploadPhoto(s3Key, bytes, contentType)
+        } catch (ex: Exception) {
+            log.error("Failed to upload mailbox media to S3", ex)
+            throw ApiException(ErrorCode.API_SERVICE_UNAVAILABLE)
+        }
+
+        val userMail = UserMail.createMedia(
+            fromUserId = userId,
+            toUserId = toUserId,
+            mediaType = mediaType.name,
+            mediaS3Key = s3Key,
+            caption = caption
+        )
+
+        return try {
+            mailboxRepository.save(userMail)
+            notifyRecipient(userMail, userId)
+            conversationModels(userId, toUserId)
+        } catch (ex: Exception) {
+            s3Service.deletePhoto(s3Key)
+            throw ex
+        }
     }
 
     @Transactional
     suspend fun deleteMailboxes(currentUserId: UUID, userId: UUID) {
+        val messages = mailboxRepository.findAllBetweenUsers(currentUserId, userId)
+        messages.mapNotNull { it.mediaS3Key }.forEach { key ->
+            s3Service.deletePhoto(key)
+        }
         mailboxRepository.deleteAllMailByBetweenTwoUserId(currentUserId, userId)
     }
 
@@ -65,5 +128,96 @@ class MailboxService(
     suspend fun countUnreadSenders(userId: UUID, sinceMs: Long): Long {
         val since = java.sql.Timestamp(sinceMs)
         return mailboxRepository.countUnreadSenders(userId, since)
+    }
+
+    fun toModel(userMail: UserMail): UserMailModel {
+        val mediaUrl = userMail.mediaS3Key?.let { s3Service.getPhotoUrl(it) }
+        return UserMailModel.of(userMail, mediaUrl)
+    }
+
+    private suspend fun conversationModels(fromUserId: UUID, toUserId: UUID): List<UserMailModel> {
+        return mailboxRepository
+            .findConversationBetweenUsers(fromUserId, toUserId)
+            .map { toModel(it) }
+    }
+
+    private suspend fun ensureNotBlocked(userId: UUID, otherUserId: UUID) {
+        val user = userService.findUserById(otherUserId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val block = userBlockRepository.findByUserIdAndOtherUserId(user.id!!, userId)
+        if (block != null) {
+            throw ApiException(ErrorCode.USER_IS_BLOCKED)
+        }
+    }
+
+    private suspend fun notifyRecipient(userMail: UserMail, senderId: UUID) {
+        val sender = userService.findUserById(senderId)
+        val senderName = sender?.name?.takeIf { it.isNotBlank() } ?: "Пользователь"
+        val preview = pushPreview(userMail)
+        pushNotificationService.notifyNewMessage(userMail.toUserId!!, senderName, preview)
+    }
+
+    private fun pushPreview(userMail: UserMail): String {
+        if (!userMail.message.isNullOrBlank()) {
+            return userMail.message!!
+        }
+        return when (userMail.mediaType) {
+            MailMediaType.VOICE.name -> "Голосовое сообщение"
+            MailMediaType.PHOTO.name -> "Фото"
+            MailMediaType.VIDEO_NOTE.name -> "Видео-кружок"
+            else -> "Новое сообщение"
+        }
+    }
+
+    private suspend fun readFileBytes(file: FilePart): ByteArray = withContext(Dispatchers.IO) {
+        file.content().reduce { buffer1, buffer2 ->
+            buffer1.write(buffer2)
+            buffer1
+        }.awaitSingle().asInputStream().use { it.readAllBytes() }
+    }
+
+    private fun allowedExtensions(mediaType: MailMediaType): List<String> = when (mediaType) {
+        MailMediaType.VOICE -> listOf("webm", "ogg", "mp4", "m4a")
+        MailMediaType.PHOTO -> listOf("png", "jpg", "jpeg", "webp")
+        MailMediaType.VIDEO_NOTE -> listOf("webm", "mp4")
+    }
+
+    private fun maxBytes(mediaType: MailMediaType): Int = when (mediaType) {
+        MailMediaType.VOICE -> MAX_VOICE_BYTES
+        MailMediaType.PHOTO -> MAX_PHOTO_BYTES
+        MailMediaType.VIDEO_NOTE -> MAX_VIDEO_BYTES
+    }
+
+    private fun resolveExtension(filename: String, mediaType: MailMediaType): String {
+        val ext = filename.substringAfterLast('.', "").lowercase()
+        if (ext.isNotBlank() && allowedExtensions(mediaType).contains(ext)) {
+            return ext
+        }
+        return when (mediaType) {
+            MailMediaType.VOICE -> "webm"
+            MailMediaType.PHOTO -> "jpg"
+            MailMediaType.VIDEO_NOTE -> "webm"
+        }
+    }
+
+    private fun mediaFolder(mediaType: MailMediaType): String = when (mediaType) {
+        MailMediaType.VOICE -> "voice"
+        MailMediaType.PHOTO -> "photo"
+        MailMediaType.VIDEO_NOTE -> "video"
+    }
+
+    private fun contentTypeFor(extension: String, mediaType: MailMediaType): String = when (extension) {
+        "png" -> "image/png"
+        "webp" -> "image/webp"
+        "jpg", "jpeg" -> "image/jpeg"
+        "ogg" -> "audio/ogg"
+        "m4a" -> "audio/mp4"
+        "mp4" -> if (mediaType == MailMediaType.VOICE) "audio/mp4" else "video/mp4"
+        else -> if (mediaType == MailMediaType.VOICE) "audio/webm" else "video/webm"
+    }
+
+    companion object {
+        private const val MAX_VOICE_BYTES = 50 * 1024 * 1024
+        private const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
+        private const val MAX_VIDEO_BYTES = 50 * 1024 * 1024
     }
 }

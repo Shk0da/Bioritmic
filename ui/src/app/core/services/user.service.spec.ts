@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { UserService } from './user.service';
 import { AuthService } from './auth.service';
-import { GisData } from '../models/user.model';
+import { GisData, UserSettings } from '../models/user.model';
 
 describe('UserService', () => {
   let service: UserService;
@@ -176,6 +176,14 @@ describe('UserService', () => {
     const req = httpMock.expectOne('/api/v1/user/settings');
     expect(req.request.method).toBe('GET');
     req.flush({ ageMin: 18, ageMax: 45 });
+  });
+
+  it('getUserSettings should return defaults on 404', () => {
+    let result: UserSettings | undefined;
+    service.getUserSettings().subscribe(settings => { result = settings; });
+    const req = httpMock.expectOne('/api/v1/user/settings');
+    req.flush({ errors: [{ message: 'Settings for User not found.' }] }, { status: 404, statusText: 'Not Found' });
+    expect(result).toEqual({ ageMin: 18, ageMax: 45, distance: 30 });
   });
 
   it('saveUserSettings should POST /api/v1/user/settings', () => {

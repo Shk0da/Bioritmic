@@ -19,6 +19,17 @@ const SILENT_PATH_SUFFIXES = [
   '/geo/',
   '/refresh-token',
   '/logout',
+  '/search',
+  '/user/settings',
+];
+
+/** Auth forms show inline error-toast; skip global modal for these endpoints. */
+const SELF_HANDLED_ERROR_PATH_SUFFIXES = [
+  '/authorization',
+  '/registration',
+  '/recovery',
+  '/reset-password',
+  '/verify-email',
 ];
 
 function isSilentPath(url: string, method: string): boolean {
@@ -29,6 +40,22 @@ function isSilentPath(url: string, method: string): boolean {
     return true;
   }
   return false;
+}
+
+function isSelfHandledErrorPath(url: string): boolean {
+  return SELF_HANDLED_ERROR_PATH_SUFFIXES.some((suffix) => url.includes(suffix));
+}
+
+function isSelfHandledApiError(error: HttpErrorResponse): boolean {
+  const body = error.error as { errors?: Array<{ message?: string }> } | null;
+  if (!body || typeof body !== 'object' || !Array.isArray(body.errors)) {
+    return false;
+  }
+  return body.errors.some((item) => {
+    const message = item.message?.toLowerCase() || '';
+    return message.includes('coordinates for user') || message.includes('update gis data') ||
+      message.includes('settings for user');
+  });
 }
 
 function shouldRedirectToErrorPage(error: HttpErrorResponse, req: HttpRequest<unknown>): boolean {
@@ -51,6 +78,12 @@ function shouldRedirectToErrorPage(error: HttpErrorResponse, req: HttpRequest<un
 
 function shouldShowErrorAlert(error: HttpErrorResponse, req: HttpRequest<unknown>): boolean {
   if (req.context.get(SKIP_HTTP_ERROR_ALERT)) {
+    return false;
+  }
+  if (isSelfHandledErrorPath(req.url)) {
+    return false;
+  }
+  if (isSelfHandledApiError(error)) {
     return false;
   }
   if (isSilentPath(req.url, req.method)) {

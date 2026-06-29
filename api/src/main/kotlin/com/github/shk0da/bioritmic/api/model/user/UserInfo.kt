@@ -20,7 +20,6 @@ data class UserInfo(
     val birthday: Date? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val age: Int? = null,
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val gender: Gender? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val horo: Int? = null,

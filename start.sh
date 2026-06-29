@@ -28,6 +28,9 @@ load_env_var API_ACTUATOR_PORT 6046
 load_env_var UI_PORT 2399
 load_env_var MAIL_PORT 2587
 
+COMPOSE_FILE="${COMPOSE_FILE:-$ROOT_DIR/docker-compose.multi.yml}"
+export COMPOSE_FILE
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -91,21 +94,27 @@ echo -e "${YELLOW}[3/7] Checking MinIO (S3 storage)...${NC}"
 if curl -sf "http://localhost:${MINIO_CONSOLE_PORT}" > /dev/null 2>&1; then
     echo -e "  ${GREEN}MinIO is already running (console port ${MINIO_CONSOLE_PORT})${NC}"
 else
-    if command -v minio &> /dev/null; then
-        echo -e "  Starting MinIO..."
-        MINIO_ROOT_USER=bioritmic MINIO_ROOT_PASSWORD=bioritmic \
-            minio server /tmp/bioritmic-minio --address ":${MINIO_API_PORT}" --console-address ":${MINIO_CONSOLE_PORT}" > /tmp/bioritmic-minio.log 2>&1 &
-        MINIO_PID=$!
-        sleep 2
-        if kill -0 "$MINIO_PID" 2>/dev/null; then
+    echo -e "  Starting MinIO (Docker)..."
+    docker compose up -d minio
+    for i in $(seq 1 30); do
+        if curl -sf "http://localhost:${MINIO_CONSOLE_PORT}" > /dev/null 2>&1; then
             echo -e "  ${GREEN}MinIO started (API: ${MINIO_API_PORT}, Console: ${MINIO_CONSOLE_PORT})${NC}"
-        else
-            echo -e "  ${RED}MinIO failed to start. Check /tmp/bioritmic-minio.log${NC}"
+            break
         fi
-    else
-        echo -e "  ${RED}MinIO not found. Install: brew install minio/stable/minio${NC}"
-        echo -e "  ${YELLOW}Continuing without MinIO (S3 features won't work)${NC}"
-    fi
+        if [ "$i" -eq 30 ]; then
+            echo -e "  ${YELLOW}MinIO Docker start timed out; trying local binary...${NC}"
+            if command -v minio &> /dev/null; then
+                MINIO_ROOT_USER=bioritmic MINIO_ROOT_PASSWORD=bioritmic \
+                    minio server /tmp/bioritmic-minio --address ":${MINIO_API_PORT}" --console-address ":${MINIO_CONSOLE_PORT}" > /tmp/bioritmic-minio.log 2>&1 &
+                sleep 2
+                echo -e "  ${GREEN}MinIO started locally (API: ${MINIO_API_PORT}, Console: ${MINIO_CONSOLE_PORT})${NC}"
+            else
+                echo -e "  ${RED}MinIO not available. Install: brew install minio/stable/minio${NC}"
+                echo -e "  ${YELLOW}Continuing without MinIO (S3 features won't work)${NC}"
+            fi
+        fi
+        sleep 1
+    done
 fi
 
 # --- Clean Build Backend ---

@@ -11,6 +11,7 @@ set POSTGRES_PORT=5433
 set MINIO_API_PORT=19000
 set MINIO_CONSOLE_PORT=19001
 set MAIL_PORT=2587
+set "COMPOSE_FILE=%ROOT_DIR%docker-compose.multi.yml"
 if exist "%ROOT_DIR%.env" (
     for /f "usebackq eol=# tokens=1,* delims==" %%a in (`findstr /B "API_PORT=" "%ROOT_DIR%.env"`) do set "API_PORT=%%b"
     for /f "usebackq eol=# tokens=1,* delims==" %%a in (`findstr /B "API_ACTUATOR_PORT=" "%ROOT_DIR%.env"`) do set "API_ACTUATOR_PORT=%%b"

@@ -8,6 +8,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_PARAMETER
 import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.gis.GisEstimateModel
+import com.github.shk0da.bioritmic.api.model.user.UpdateUserProfileRequest
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserInfo.Companion.ofWithCompare
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
@@ -72,9 +73,9 @@ class UserController(
         method = [RequestMethod.PATCH, RequestMethod.PUT],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    suspend fun update(@RequestBody @Valid userInfo: UserInfo, principal: Principal): UserInfo {
+    suspend fun update(@RequestBody @Valid request: UpdateUserProfileRequest, principal: Principal): UserInfo {
         val userId = getUserId(principal)
-        return UserInfo.of(userService.updateUserById(userId, userInfo))
+        return UserInfo.of(userService.updateUserById(userId, request))
     }
 
     // DELETE /me -> send email with approve ??

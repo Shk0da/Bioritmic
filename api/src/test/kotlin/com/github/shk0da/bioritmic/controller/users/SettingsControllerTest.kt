@@ -64,7 +64,11 @@ class SettingsControllerTest : ApiApplicationTests() {
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isNotFound
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.ageMin").isEqualTo(18)
+            .jsonPath("$.ageMax").isEqualTo(45)
+            .jsonPath("$.distance").isEqualTo(30.0)
     }
 
     @Test

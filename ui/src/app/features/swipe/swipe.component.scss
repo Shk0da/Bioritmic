@@ -315,48 +315,11 @@
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   transition: transform 0.3s ease, opacity 0.3s ease;
-  cursor: grab;
-
-  &.top-card {
-    cursor: grabbing;
-  }
+  user-select: none;
 
   &.next-card {
     transform: scale(0.95) translateY(-10px);
     opacity: 0.5;
-  }
-
-  &.swipe-left {
-    animation: swipeLeft 0.5s ease forwards;
-  }
-
-  &.swipe-right {
-    animation: swipeRight 0.5s ease forwards;
-  }
-
-  &.swipe-up {
-    animation: swipeUp 0.5s ease forwards;
-  }
-
-  @keyframes swipeLeft {
-    to {
-      transform: translateX(-150%) rotate(-30deg);
-      opacity: 0;
-    }
-  }
-
-  @keyframes swipeRight {
-    to {
-      transform: translateX(150%) rotate(30deg);
-      opacity: 0;
-    }
-  }
-
-  @keyframes swipeUp {
-    to {
-      transform: translateY(-150%) scale(1.1);
-      opacity: 0;
-    }
   }
 }
 
@@ -376,68 +339,6 @@
       transparent 50%,
       rgba(0, 0, 0, 0.8) 100%
     );
-  }
-}
-
-/* Индикаторы свайпа */
-.swipe-indicator {
-  position: absolute;
-  top: 2rem;
-  padding: 0.5rem 1.5rem;
-  border: 4px solid;
-  border-radius: 10px;
-  font-size: 2rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  opacity: 0;
-  transform: scale(0.5);
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-
-  &.visible {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  &.like {
-    left: 2rem;
-    color: #4ade80;
-    border-color: #4ade80;
-    transform: rotate(-15deg) scale(0.5);
-
-    &.visible {
-      transform: rotate(-15deg) scale(1);
-    }
-  }
-
-  &.nope {
-    right: 2rem;
-    color: #f87171;
-    border-color: #f87171;
-    transform: rotate(15deg) scale(0.5);
-
-    &.visible {
-      transform: rotate(15deg) scale(1);
-    }
-  }
-
-  &.superlike {
-    left: 50%;
-    transform: translateX(-50%) scale(0.5);
-    color: #3b82f6;
-    border-color: #3b82f6;
-
-    &.visible {
-      transform: translateX(-50%) scale(1);
-    }
-  }
-
-  span {
-    font-size: 1rem;
-    letter-spacing: 2px;
   }
 }
 

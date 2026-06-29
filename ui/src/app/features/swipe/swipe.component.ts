@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { SearchService } from '../../core/services/search.service';
@@ -10,14 +10,14 @@ import { SubscriptionService } from '../../core/services/subscription.service';
 import { AuthService } from '../../core/services/auth.service';
 import { UserInfo, Gender, UserSearch, UserSettings, SwipeDirection, SwipeCard } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
-import { NgClass, NgStyle } from '@angular/common';
+import { NgClass } from '@angular/common';
 
 import { StoriesBarComponent } from '../../shared/components/stories-bar/stories-bar.component';
 
 @Component({
   selector: 'app-swipe',
   standalone: true,
-  imports: [RouterLink, FormsModule, NgClass, NgStyle, StoriesBarComponent],
+  imports: [RouterLink, FormsModule, NgClass, StoriesBarComponent],
   template: `
     <div class="swipe-container">
       <app-stories-bar></app-stories-bar>
@@ -56,33 +56,12 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
               class="swipe-card"
               [class.top-card]="i === 0"
               [class.next-card]="i === 1"
-              [class.swipe-left]="i === 0 && swipeDirection === SwipeDirection.LEFT"
-              [class.swipe-right]="i === 0 && swipeDirection === SwipeDirection.RIGHT"
-              [style.transform]="i === 0 ? cardTransform : ''"
               [style.opacity]="i === 0 ? 1 : 0.95"
               [style.z-index]="10 - i"
-              (mousedown)="onDragStart($event)"
-              (touchstart)="onDragStart($event)"
             >
               <!-- Фото пользователя -->
               <div class="card-photo" [style.backgroundImage]="'url(' + (card.photoDataUrl || card.user.image || '') + ' '">
                 <div class="photo-overlay"></div>
-
-                <!-- Индикаторы свайпа -->
-                @if (i === 0) {
-                  <div class="swipe-indicator like" [class.visible]="swipeDirection === SwipeDirection.RIGHT">
-                    <i class="bi bi-heart-fill"></i>
-                    <span>LIKE</span>
-                  </div>
-                  <div class="swipe-indicator nope" [class.visible]="swipeDirection === SwipeDirection.LEFT">
-                    <i class="bi bi-x-lg"></i>
-                    <span>NOPE</span>
-                  </div>
-                  <div class="swipe-indicator superlike" [class.visible]="swipeDirection === SwipeDirection.UP">
-                    <i class="bi bi-star-fill"></i>
-                    <span>SUPER</span>
-                  </div>
-                }
 
                 <!-- Информация на карточке -->
                 <div class="card-info">
@@ -213,7 +192,7 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
         <button class="control-btn btn-undo" (click)="undoSwipe()" [disabled]="cards.length === 0 && !canUndo()" title="Отменить">
           <i class="bi bi-arrow-counterclockwise"></i>
         </button>
-        <button class="control-btn btn-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)">
+        <button class="control-btn btn-dislike" data-testid="swipe-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)">
           <i class="bi bi-x-lg"></i>
         </button>
         <button class="control-btn btn-superlike" (click)="manualSwipe(SwipeDirection.UP)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)" title="Супер-лайк">
@@ -297,8 +276,6 @@ import { StoriesBarComponent } from '../../shared/components/stories-bar/stories
   styleUrls: ['./swipe.component.scss']
 })
 export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
-  @ViewChild('cardsContainer') cardsContainer!: ElementRef;
-
   cards: SwipeCard[] = [];
   loading = false;
   showFilters = false;
@@ -315,18 +292,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     distance: 50
   };
 
-  // Для drag-and-drop
-  private isDragging = false;
-  private startX = 0;
-  private startY = 0;
-  private currentX = 0;
-  private currentY = 0;
-  private boundOnDragMove: ((e: MouseEvent | TouchEvent) => void) | null = null;
-  private boundOnDragEnd: ((e: MouseEvent | TouchEvent) => void) | null = null;
   private boundOnKeyDown: ((e: KeyboardEvent) => void) | null = null;
-
-  cardTransform = '';
-  swipeDirection: SwipeDirection = SwipeDirection.NONE;
   private destroy$ = new Subject<void>();
 
   // Swipe limit state
@@ -374,32 +340,17 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
       .subscribe((card: SwipeCard) => {
         this.cards = this.swipeService.getCards().slice(this.swipeService.getCurrentIndex());
         this.loadVisiblePhotos();
-        this.resetCard();
       });
   }
 
   ngAfterViewInit(): void {
-    this.boundOnDragMove = this.onDragMove.bind(this);
-    this.boundOnDragEnd = this.onDragEnd.bind(this);
     this.boundOnKeyDown = this.onKeyDown.bind(this);
-    document.addEventListener('mousemove', this.boundOnDragMove);
-    document.addEventListener('mouseup', this.boundOnDragEnd);
-    document.addEventListener('touchmove', this.boundOnDragMove);
-    document.addEventListener('touchend', this.boundOnDragEnd);
     document.addEventListener('keydown', this.boundOnKeyDown);
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    if (this.boundOnDragMove) {
-      document.removeEventListener('mousemove', this.boundOnDragMove);
-      document.removeEventListener('touchmove', this.boundOnDragMove);
-    }
-    if (this.boundOnDragEnd) {
-      document.removeEventListener('mouseup', this.boundOnDragEnd);
-      document.removeEventListener('touchend', this.boundOnDragEnd);
-    }
     if (this.boundOnKeyDown) {
       document.removeEventListener('keydown', this.boundOnKeyDown);
     }
@@ -639,80 +590,6 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.swipeService.canUndo();
   }
 
-  // Drag and Drop логика
-  onDragStart(event: MouseEvent | TouchEvent): void {
-    if (this.cards.length === 0 || this.loading) return;
-
-    this.isDragging = true;
-    this.startX = this.getClientX(event);
-    this.startY = this.getClientY(event);
-    this.currentX = 0;
-    this.currentY = 0;
-    this.swipeDirection = SwipeDirection.NONE;
-  }
-
-  onDragMove(event: MouseEvent | TouchEvent): void {
-    if (!this.isDragging || this.cards.length === 0) return;
-
-    const clientX = this.getClientX(event);
-    const clientY = this.getClientY(event);
-
-    this.currentX = clientX - this.startX;
-    this.currentY = clientY - this.startY;
-
-    if (this.currentX > 50) {
-      this.swipeDirection = SwipeDirection.RIGHT;
-    } else if (this.currentX < -50) {
-      this.swipeDirection = SwipeDirection.LEFT;
-    } else if (this.currentY < -80) {
-      this.swipeDirection = SwipeDirection.UP;
-    } else {
-      this.swipeDirection = SwipeDirection.NONE;
-    }
-
-    if (this.currentY < -80) {
-      const scale = Math.max(0.8, 1 + (this.currentY + 80) * 0.002);
-      this.cardTransform = `translate(${this.currentX}px, ${this.currentY}px) scale(${scale})`;
-    } else {
-      const rotate = this.currentX * 0.1;
-      this.cardTransform = `translate(${this.currentX}px, ${this.currentY}px) rotate(${rotate}deg)`;
-    }
-  }
-
-  onDragEnd(event: MouseEvent | TouchEvent): void {
-    if (!this.isDragging) return;
-
-    this.isDragging = false;
-
-    const threshold = 100;
-
-    if (this.swipeDirection === SwipeDirection.RIGHT && this.currentX > threshold) {
-      this.completeSwipe(SwipeDirection.RIGHT);
-    } else if (this.swipeDirection === SwipeDirection.LEFT && this.currentX < -threshold) {
-      this.completeSwipe(SwipeDirection.LEFT);
-    } else if (this.swipeDirection === SwipeDirection.UP && this.currentY < -threshold) {
-      this.completeSwipe(SwipeDirection.UP);
-    } else {
-      this.resetCard();
-    }
-  }
-
-  private completeSwipe(direction: SwipeDirection): void {
-    const card = this.swipeService.swipe(direction);
-    if (card) {
-      this.decrementSwipeLimit();
-      this.handleSwipeResult({ direction, card });
-    }
-    this.resetCard();
-  }
-
-  private resetCard(): void {
-    this.cardTransform = 'translate(0, 0) rotate(0)';
-    this.swipeDirection = SwipeDirection.NONE;
-    this.currentX = 0;
-    this.currentY = 0;
-  }
-
   manualSwipe(direction: SwipeDirection): void {
     if (this.cards.length === 0) return;
 
@@ -746,24 +623,8 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Обновляем список карточек
     setTimeout(() => {
       this.cards = this.swipeService.getCards().slice(this.swipeService.getCurrentIndex());
-      this.resetCard();
-      // Загружаем фото для следующей карточки
       this.loadNextPhoto();
     }, 300);
-  }
-
-  private getClientX(event: MouseEvent | TouchEvent): number {
-    if (event instanceof MouseEvent) {
-      return event.clientX;
-    }
-    return (event as TouchEvent).touches[0].clientX;
-  }
-
-  private getClientY(event: MouseEvent | TouchEvent): number {
-    if (event instanceof MouseEvent) {
-      return event.clientY;
-    }
-    return (event as TouchEvent).touches[0].clientY;
   }
 
   openFilters(): void {

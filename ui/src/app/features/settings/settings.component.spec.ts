@@ -7,6 +7,8 @@ import { SettingsService } from '../../core/services/settings.service';
 import { UserService } from '../../core/services/user.service';
 import { AuthService } from '../../core/services/auth.service';
 import { PushNotificationService } from '../../core/services/push-notification.service';
+import { FeedbackService } from '../../core/services/feedback.service';
+import { ModalService } from '../../core/services/modal.service';
 import { Gender } from '../../core/models/user.model';
 
 describe('SettingsComponent', () => {
@@ -40,13 +42,22 @@ describe('SettingsComponent', () => {
     pushService.isStandalone.and.returnValue(false);
     pushService.isIos.and.returnValue(false);
 
+    const feedbackService = jasmine.createSpyObj('FeedbackService', ['submit']);
+    feedbackService.submit.and.returnValue(of(void 0));
+
+    const modalService = jasmine.createSpyObj('ModalService', ['alert', 'confirm']);
+    modalService.alert.and.returnValue(Promise.resolve());
+    modalService.confirm.and.returnValue(Promise.resolve(true));
+
     await TestBed.configureTestingModule({
       imports: [SettingsComponent, RouterTestingModule],
       providers: [
         { provide: SettingsService, useValue: settingsService },
         { provide: UserService, useValue: userService },
         { provide: AuthService, useValue: authService },
-        { provide: PushNotificationService, useValue: pushService }
+        { provide: PushNotificationService, useValue: pushService },
+        { provide: FeedbackService, useValue: feedbackService },
+        { provide: ModalService, useValue: modalService }
       ]
     }).compileComponents();
 

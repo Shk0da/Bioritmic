@@ -51,7 +51,14 @@ describe('EditProfileComponent', () => {
     expect(userService.resolveProfilePhotoUrl).toHaveBeenCalledWith('1');
     expect(component.user.name).toBe('Test User');
     expect(component.user.bio).toBe('Hello world');
+    expect(component.user.gender).toBe(Gender.MAN);
     expect(component.photoDataUrl).toBe('/api/v1/user/1/photo?v=1');
+  });
+
+  it('should normalize gender from API string value', () => {
+    userService.getCurrentUser.and.returnValue(of({ ...mockUser, gender: 'WOMAN' as unknown as Gender }));
+    fixture.detectChanges();
+    expect(component.user.gender).toBe(Gender.WOMAN);
   });
 
   it('should save name, birthday, gender and bio', () => {

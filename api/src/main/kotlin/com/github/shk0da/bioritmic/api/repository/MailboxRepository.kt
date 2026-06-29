@@ -15,35 +15,50 @@ import java.util.UUID
 interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
 
     @Query(
-        "select id, from_user_id, to_user_id, message, timestamp " +
-            "from mailbox " +
-            "where from_user_id = :userId or to_user_id = :userId " +
-            "order by timestamp desc " +
-            "limit :limit offset :offset"
+        """
+        SELECT * FROM mailbox
+        WHERE from_user_id = :userId OR to_user_id = :userId
+        ORDER BY timestamp DESC
+        LIMIT :limit OFFSET :offset
+        """
     )
     suspend fun findAllMailsByUserId(userId: UUID, limit: Int, offset: Long): List<UserMail>
 
     @Query(
-        "select id, from_user_id, to_user_id, message, timestamp " +
-            "from mailbox " +
-            "where (from_user_id = :userId1 and to_user_id = :userId2) " +
-                "or (from_user_id = :userId2 and to_user_id = :userId1) " +
-            "order by timestamp asc"
+        """
+        SELECT * FROM mailbox
+        WHERE (from_user_id = :userId1 AND to_user_id = :userId2)
+           OR (from_user_id = :userId2 AND to_user_id = :userId1)
+        ORDER BY timestamp ASC
+        """
     )
     suspend fun findConversationBetweenUsers(userId1: UUID, userId2: UUID): List<UserMail>
+
+    @Query(
+        """
+        SELECT * FROM mailbox
+        WHERE (from_user_id = :userId1 AND to_user_id = :userId2)
+           OR (from_user_id = :userId2 AND to_user_id = :userId1)
+        """
+    )
+    suspend fun findAllBetweenUsers(userId1: UUID, userId2: UUID): List<UserMail>
 
     fun findAllByFromUserIdAndToUserId(from: UUID, to: UUID, pageable: Pageable?): Flow<UserMail>
 
     @Query(
-        "delete from mailbox m where " +
-            "(m.from_user_id = :userId and m.to_user_id = :currentUserId) or " +
-            "(m.to_user_id = :userId and m.from_user_id = :currentUserId)"
+        """
+        DELETE FROM mailbox m
+        WHERE (m.from_user_id = :userId AND m.to_user_id = :currentUserId)
+           OR (m.to_user_id = :userId AND m.from_user_id = :currentUserId)
+        """
     )
     suspend fun deleteAllMailByBetweenTwoUserId(currentUserId: UUID, userId: UUID)
 
     @Query(
-        "SELECT COUNT(DISTINCT from_user_id) FROM mailbox " +
-            "WHERE to_user_id = :userId AND from_user_id != :userId AND timestamp > :since"
+        """
+        SELECT COUNT(DISTINCT from_user_id) FROM mailbox
+        WHERE to_user_id = :userId AND from_user_id != :userId AND timestamp > :since
+        """
     )
     suspend fun countUnreadSenders(userId: UUID, since: java.sql.Timestamp): Long
 }

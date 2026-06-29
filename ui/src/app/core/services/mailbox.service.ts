@@ -1,7 +1,22 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { UserMail, PageableRequest } from '../models/user.model';
+import { UserMail, PageableRequest, MailMediaType } from '../models/user.model';
+
+/** Spring multipart rejects codec params (e.g. video/webm;codecs=vp9,opus). */
+export function normalizeMediaMimeType(mimeType: string, mediaType: MailMediaType): string {
+  const base = (mimeType || '').split(';')[0].trim().toLowerCase();
+  switch (mediaType) {
+    case 'VOICE':
+      return base.startsWith('audio/') ? base : 'audio/webm';
+    case 'VIDEO_NOTE':
+      return base.startsWith('video/') ? base : 'video/webm';
+    case 'PHOTO':
+      return base.startsWith('image/') ? base : 'image/jpeg';
+    default:
+      return base || 'application/octet-stream';
+  }
+}
 
 @Injectable({
   providedIn: 'root'
@@ -24,6 +39,25 @@ export class MailboxService {
       params = params.set('name', name);
     }
     return this.http.post<UserMail[]>(this.apiUrl, mail, { params });
+  }
+
+  sendMediaMail(
+    to: string,
+    mediaType: MailMediaType,
+    file: File | Blob,
+    filename: string,
+    caption?: string
+  ): Observable<UserMail[]> {
+    const formData = new FormData();
+    formData.append('to', to);
+    formData.append('mediaType', mediaType);
+    const uploadType = normalizeMediaMimeType(file.type, mediaType);
+    const uploadFile = new File([file], filename, { type: uploadType });
+    formData.append('file', uploadFile, filename);
+    if (caption?.trim()) {
+      formData.append('message', caption.trim());
+    }
+    return this.http.post<UserMail[]>(`${this.apiUrl}/media`, formData);
   }
 
   deleteMail(userId: string): Observable<void> {

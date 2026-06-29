@@ -10,7 +10,8 @@
     "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "test:e2e": "mocha --timeout 60000 e2e/**/*.test.js",
+    "test:e2e": "mocha --timeout 60000 \"e2e/**/*.test.js\"",
+    "test:e2e:only": "mocha --no-config --timeout 120000",
     "lint": "ng lint"
   },
   "dependencies": {

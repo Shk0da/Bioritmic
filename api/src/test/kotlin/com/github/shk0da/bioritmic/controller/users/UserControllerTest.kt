@@ -115,6 +115,29 @@ class UserControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun updateMeGenderTest() {
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("gender" to "WOMAN")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.gender").isEqualTo("WOMAN")
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.gender").isEqualTo("WOMAN")
+    }
+
+    @Test
     fun getMeGisTest() {
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/user/me/gis")

@@ -4,6 +4,12 @@ import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { User, UserInfo, GisData, PageableRequest, UserSettings, UserPhoto } from '../models/user.model';
 
+const DEFAULT_USER_SETTINGS: UserSettings = {
+  ageMin: 18,
+  ageMax: 45,
+  distance: 30,
+};
+
 export interface BiorhythmCycle {
   name: string;
   value: number;
@@ -139,7 +145,11 @@ export class UserService {
   }
 
   getUserSettings(): Observable<UserSettings> {
-    return this.http.get<UserSettings>(`${this.apiUrl}/settings`);
+    return this.http.get<UserSettings>(`${this.apiUrl}/settings`).pipe(
+      catchError((error: HttpErrorResponse) =>
+        error.status === 404 ? of({ ...DEFAULT_USER_SETTINGS }) : throwError(() => error)
+      )
+    );
   }
 
   saveUserSettings(settings: UserSettings): Observable<UserSettings> {

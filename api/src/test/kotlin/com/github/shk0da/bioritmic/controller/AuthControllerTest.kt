@@ -263,6 +263,7 @@ class AuthControllerTest : ApiApplicationTests() {
 
     @Test
     fun registrationShouldSendVerificationCodeForRegularUser() {
+        registerSeedAdminUser()
         val userModel = defaultUserModel.copy(email = "verify_reg_${UUID.randomUUID()}@gmail.com")
 
         webTestClient.post()
@@ -290,6 +291,7 @@ class AuthControllerTest : ApiApplicationTests() {
 
     @Test
     fun verifyEmailShouldMarkUserAsVerified() {
+        registerSeedAdminUser()
         val userModel = defaultUserModel.copy(email = "verify_flow_${UUID.randomUUID()}@gmail.com")
 
         webTestClient.post()

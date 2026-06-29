@@ -16,7 +16,11 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.http.MediaType
 import org.springframework.test.web.reactive.server.WebTestClient
+import org.springframework.web.reactive.function.BodyInserters
+import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
+import java.util.UUID
 
 @ExtendWith(SpringExtension::class)
 @AutoConfigureWebTestClient(timeout = "36000")
@@ -44,7 +48,6 @@ class ApiApplicationTests {
 
     @BeforeEach
     fun clearDatabase() {
-        // Clear database tables
         val tables = listOf(
             "story_reactions",
             "story_views",
@@ -68,16 +71,55 @@ class ApiApplicationTests {
             "users",
         )
 
-        tables.forEach { table ->
+        liquibaseDataSource.connection.use { connection ->
             try {
-                liquibaseDataSource.connection.prepareStatement("DELETE FROM $table").execute()
-            } catch (_: Exception) {
-                // Ignore errors for tables that don't exist yet
+                connection.prepareStatement(
+                    "TRUNCATE TABLE ${tables.joinToString(", ")} RESTART IDENTITY CASCADE"
+                ).execute()
+            } catch (ex: Exception) {
+                log.warn("TRUNCATE failed, falling back to DELETE: {}", ex.message)
+                tables.forEach { table ->
+                    try {
+                        connection.prepareStatement("DELETE FROM $table").execute()
+                    } catch (_: Exception) {
+                        // Ignore errors for tables that don't exist yet
+                    }
+                }
             }
         }
 
-        // Clear auth token cache
         authTokenCache.clear()
+    }
+
+    protected fun registerSeedAdminUser() {
+        registerUserViaApi(
+            email = "seed_admin_${UUID.randomUUID()}@gmail.com",
+            name = "Seed Admin",
+        )
+    }
+
+    protected fun registerUserViaApi(
+        email: String,
+        name: String = "Test User",
+        password: String = "Test12345",
+        birthday: String = "1990-01-01",
+    ) {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                BodyInserters.fromValue(
+                    mapOf(
+                        "name" to name,
+                        "email" to email,
+                        "password" to password,
+                        "birthday" to birthday,
+                    )
+                )
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
     }
 
     @AfterEach

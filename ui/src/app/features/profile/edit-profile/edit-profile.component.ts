@@ -259,13 +259,34 @@ export class EditProfileComponent implements OnInit, OnDestroy {
   private loadProfile(): void {
     this.userService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe({
       next: (user: UserInfo) => {
-        this.user = { ...user };
+        this.user = {
+          ...user,
+          birthday: this.formatBirthday(user.birthday),
+          gender: this.normalizeGender(user.gender),
+        };
         if (user.id) {
           this.loadPhoto(user.id);
           this.loadPhotoStatus(user.id);
         }
       }
     });
+  }
+
+  private formatBirthday(birthday: unknown): string {
+    if (!birthday) {
+      return '';
+    }
+    if (typeof birthday === 'string') {
+      return birthday.length >= 10 ? birthday.slice(0, 10) : birthday;
+    }
+    return '';
+  }
+
+  private normalizeGender(value: unknown): Gender {
+    if (value === Gender.WOMAN || value === 'WOMAN') {
+      return Gender.WOMAN;
+    }
+    return Gender.MAN;
   }
 
   private loadPhotoStatus(userId: string): void {
@@ -350,7 +371,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
     this.userService.updateUser({
       name: this.user.name,
       birthday: this.user.birthday,
-      gender: this.user.gender,
+      gender: this.normalizeGender(this.user.gender),
       bio: bio || ''
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {

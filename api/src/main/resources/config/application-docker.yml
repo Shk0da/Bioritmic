@@ -41,3 +41,6 @@ app:
     from: noreply@bioritmic.ru
     from-name: Bioritmic
     mode: smtp
+
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}

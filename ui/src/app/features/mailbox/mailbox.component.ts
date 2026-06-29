@@ -55,28 +55,46 @@ interface UserConversation {
           </div>
           <div class="conversation-list">
             @for (conv of conversations; track conv.userId) {
-              <div
-                class="conversation-item"
-                [class.active]="conv.userId === selectedUserId"
-                (click)="selectConversation(conv.userId)">
-                <img
-                  [src]="conv.userPhotoUrl || 'assets/img/default-avatar.svg'"
-                  class="conversation-avatar"
-                  [alt]="conv.userName || 'User'">
-                <div class="conversation-body min-w-0">
-                  <div class="conversation-top">
-                    <h6 class="conversation-name mb-0">{{ conv.userName || 'Пользователь' }}</h6>
-                    <small class="conversation-time">{{ getMessageDate(conv.lastMessageTime) }}</small>
-                  </div>
-                  <p class="conversation-preview text-truncate mb-0">{{ conv.lastMessage }}</p>
+              <div class="conversation-swipe-wrap">
+                <div
+                  class="conversation-swipe-actions"
+                  role="button"
+                  tabindex="0"
+                  aria-label="Удалить переписку"
+                  (click)="onSwipeDeleteClick(conv.userId, $event)"
+                  (keydown.enter)="onSwipeDeleteClick(conv.userId, $event)"
+                  (keydown.space)="onSwipeDeleteClick(conv.userId, $event)">
+                  <i class="bi bi-trash-fill"></i>
                 </div>
-                <button
-                  type="button"
-                  class="btn-delete"
-                  title="Удалить переписку"
-                  (click)="$event.stopPropagation(); deleteConversation(conv.userId)">
-                  <i class="bi bi-trash"></i>
-                </button>
+                <div
+                  class="conversation-item"
+                  [class.active]="conv.userId === selectedUserId"
+                  [class.swipe-dragging]="swipeDragUserId === conv.userId"
+                  [style.transform]="getItemTransform(conv.userId)"
+                  (click)="onConversationClick(conv.userId)"
+                  (touchstart)="onSwipeStart(conv.userId, $event)"
+                  (touchmove)="onSwipeMove(conv.userId, $event)"
+                  (touchend)="onSwipeEnd(conv.userId)"
+                  (touchcancel)="onSwipeEnd(conv.userId)">
+                  <img
+                    [src]="conv.userPhotoUrl || 'assets/img/default-avatar.svg'"
+                    class="conversation-avatar"
+                    [alt]="conv.userName || 'User'">
+                  <div class="conversation-body min-w-0">
+                    <div class="conversation-top">
+                      <h6 class="conversation-name mb-0">{{ conv.userName || 'Пользователь' }}</h6>
+                      <small class="conversation-time">{{ getMessageDate(conv.lastMessageTime) }}</small>
+                    </div>
+                    <p class="conversation-preview text-truncate mb-0">{{ conv.lastMessage }}</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-delete"
+                    title="Удалить переписку"
+                    (click)="$event.stopPropagation(); deleteConversation(conv.userId)">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
               </div>
             }
           </div>
@@ -153,14 +171,35 @@ interface UserConversation {
       flex: 1;
     }
 
+    .conversation-swipe-wrap {
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border-light);
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .conversation-swipe-actions {
+      display: none;
+    }
+
     .conversation-item {
       display: flex;
       align-items: center;
       gap: 0.75rem;
       padding: 0.875rem 1rem;
       cursor: pointer;
-      border-bottom: 1px solid var(--border-light);
-      transition: background 0.2s ease;
+      transition: background 0.2s ease, transform 0.2s ease;
+      position: relative;
+      z-index: 1;
+      background: var(--card-bg);
+      will-change: transform;
+
+      &.swipe-dragging {
+        transition: background 0.2s ease;
+      }
 
       &:hover {
         background: var(--bg-hover);
@@ -170,10 +209,6 @@ interface UserConversation {
         background: linear-gradient(135deg, rgba(253, 41, 123, 0.08) 0%, rgba(255, 101, 91, 0.06) 100%);
         border-left: 3px solid var(--accent-pink);
         padding-left: calc(1rem - 3px);
-      }
-
-      &:last-child {
-        border-bottom: none;
       }
     }
 
@@ -295,6 +330,24 @@ interface UserConversation {
     }
 
     @media (max-width: 991.98px) {
+      .conversation-swipe-actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        inset: 0 0 0 auto;
+        width: 76px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        font-size: 1.25rem;
+        border: none;
+        cursor: pointer;
+      }
+
+      .btn-delete {
+        display: none;
+      }
+
       .mailbox-card:not(.chat-open) .mailbox-chat-panel {
         display: none;
       }
@@ -318,7 +371,16 @@ export class MailboxComponent implements OnInit, OnDestroy {
   loading = false;
   selectedUserId: string | null = null;
   isMobileView = false;
+  swipeDragUserId: string | null = null;
+  swipeOffset = 0;
 
+  private readonly swipeActionWidth = 76;
+  private readonly swipeOpenThreshold = 36;
+  private readonly swipeDeleteThreshold = 64;
+  private openedSwipeOffsets: Record<string, number> = {};
+  private swipeMoved = false;
+  private swipeStartX = 0;
+  private swipeStartOffset = 0;
   private messages: UserMail[] = [];
   private pageable: PageableRequest = { page: 0, size: 100 };
   private currentUserId?: string;
@@ -357,7 +419,118 @@ export class MailboxComponent implements OnInit, OnDestroy {
   }
 
   selectConversation(userId: string): void {
+    this.closeAllSwipes();
     this.router.navigate(['/mailbox', userId]);
+  }
+
+  onConversationClick(userId: string): void {
+    if (!this.isMobileView) {
+      this.selectConversation(userId);
+      return;
+    }
+    if (this.swipeMoved) {
+      return;
+    }
+    const offset = this.getSavedSwipeOffset(userId);
+    if (offset < 0) {
+      this.openedSwipeOffsets[userId] = 0;
+      return;
+    }
+    this.selectConversation(userId);
+  }
+
+  onSwipeDeleteClick(userId: string, event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+    this.openedSwipeOffsets[userId] = 0;
+    void this.deleteConversation(userId);
+  }
+
+  onSwipeStart(userId: string, event: TouchEvent): void {
+    if (!this.isMobileView || event.touches.length !== 1) {
+      return;
+    }
+    this.closeOtherSwipes(userId);
+    const touch = event.touches[0];
+    this.swipeDragUserId = userId;
+    this.swipeStartX = touch.clientX;
+    this.swipeStartOffset = this.getSavedSwipeOffset(userId);
+    this.swipeOffset = this.swipeStartOffset;
+    this.swipeMoved = false;
+  }
+
+  onSwipeMove(userId: string, event: TouchEvent): void {
+    if (!this.isMobileView || this.swipeDragUserId !== userId || event.touches.length !== 1) {
+      return;
+    }
+    const touch = event.touches[0];
+    const delta = touch.clientX - this.swipeStartX;
+    if (Math.abs(delta) > 6) {
+      this.swipeMoved = true;
+    }
+    this.swipeOffset = this.clampSwipeOffset(this.swipeStartOffset + delta);
+    if (this.swipeMoved) {
+      event.preventDefault();
+    }
+  }
+
+  onSwipeEnd(userId: string): void {
+    if (!this.isMobileView || this.swipeDragUserId !== userId) {
+      return;
+    }
+
+    if (this.swipeOffset <= -this.swipeDeleteThreshold) {
+      this.resetSwipeState();
+      this.openedSwipeOffsets[userId] = 0;
+      void this.deleteConversation(userId);
+      return;
+    }
+
+    if (this.swipeOffset <= -this.swipeOpenThreshold) {
+      this.openedSwipeOffsets[userId] = -this.swipeActionWidth;
+    } else {
+      this.openedSwipeOffsets[userId] = 0;
+    }
+
+    this.resetSwipeState();
+  }
+
+  getItemTransform(userId: string): string {
+    const offset = this.swipeDragUserId === userId
+      ? this.swipeOffset
+      : this.getSavedSwipeOffset(userId);
+    return offset ? `translateX(${offset}px)` : '';
+  }
+
+  private getSavedSwipeOffset(userId: string): number {
+    return this.openedSwipeOffsets[userId] ?? 0;
+  }
+
+  private clampSwipeOffset(offset: number): number {
+    return Math.max(-this.swipeActionWidth, Math.min(0, offset));
+  }
+
+  private resetSwipeState(): void {
+    this.swipeDragUserId = null;
+    this.swipeOffset = 0;
+    this.swipeStartX = 0;
+    this.swipeStartOffset = 0;
+    setTimeout(() => {
+      this.swipeMoved = false;
+    }, 0);
+  }
+
+  private closeOtherSwipes(userId: string): void {
+    Object.keys(this.openedSwipeOffsets).forEach((id) => {
+      if (id !== userId) {
+        this.openedSwipeOffsets[id] = 0;
+      }
+    });
+  }
+
+  private closeAllSwipes(): void {
+    this.openedSwipeOffsets = {};
+    this.resetSwipeState();
   }
 
   closeChat(): void {
@@ -427,7 +600,7 @@ export class MailboxComponent implements OnInit, OnDestroy {
       userId,
       userName: prevNames.get(userId),
       userPhotoUrl: prevPhotos.get(userId) ?? null,
-      lastMessage: message.message || '',
+      lastMessage: this.formatConversationPreview(message),
       lastMessageTime: message.timestamp
     }));
 
@@ -500,6 +673,19 @@ export class MailboxComponent implements OnInit, OnDestroy {
     return this.getTimestampSeconds(timeA) > this.getTimestampSeconds(timeB);
   }
 
+  private formatConversationPreview(message: UserMail): string {
+    if (message.mediaType === 'VOICE') {
+      return message.message?.trim() ? `🎤 ${message.message}` : '🎤 Голосовое';
+    }
+    if (message.mediaType === 'PHOTO') {
+      return message.message?.trim() ? `📷 ${message.message}` : '📷 Фото';
+    }
+    if (message.mediaType === 'VIDEO_NOTE') {
+      return message.message?.trim() ? `🎬 ${message.message}` : '🎬 Видео';
+    }
+    return message.message || '';
+  }
+
   private getTimestampSeconds(timestamp: unknown): number {
     if (!timestamp || typeof timestamp !== 'object') {
       return 0;
@@ -515,6 +701,7 @@ export class MailboxComponent implements OnInit, OnDestroy {
     }
     this.mailboxService.deleteMail(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
+        delete this.openedSwipeOffsets[userId];
         if (this.selectedUserId === userId) {
           this.closeChat();
         }

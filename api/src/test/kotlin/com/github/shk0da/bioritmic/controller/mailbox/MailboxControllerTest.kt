@@ -85,6 +85,110 @@ class MailboxControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun sendMediaMailPhotoTest() {
+        val currentUserId = userId ?: throw IllegalStateException("User ID is null")
+        val imageBytes = javaClass.classLoader.getResourceAsStream("images/no_image.png")!!.readBytes()
+        val builder = org.springframework.http.client.MultipartBodyBuilder()
+        builder.part("to", currentUserId.toString())
+        builder.part("mediaType", "PHOTO")
+        builder.part("file", org.springframework.core.io.ByteArrayResource(imageBytes))
+            .filename("photo.png")
+            .contentType(MediaType.IMAGE_PNG)
+        builder.part("message", "Photo caption")
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/mailbox/media")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData(builder.build()))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].mediaType").isEqualTo("PHOTO")
+            .jsonPath("$[0].mediaUrl").isNotEmpty
+            .jsonPath("$[0].message").isEqualTo("Photo caption")
+    }
+
+    @Test
+    fun sendMailReturnsBidirectionalConversationTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val userAEmail = "mailbox_a_$suffix@gmail.com"
+        val userBEmail = "mailbox_b_$suffix@gmail.com"
+
+        val userAId = registerAndGetUserId(userAEmail, "User A")
+        val userBId = registerAndGetUserId(userBEmail, "User B")
+        val tokenA = loginAndGetToken(userAEmail, userAId)
+        val tokenB = loginAndGetToken(userBEmail, userBId)
+
+        sendMail(tokenA, userBId, "Hello from A")
+        sendMail(tokenB, userAId, "Reply from B")
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/mailbox")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(UserMailModel(to = userBId, message = "Second from A")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.length()").isEqualTo(3)
+            .jsonPath("$[0].message").isEqualTo("Hello from A")
+            .jsonPath("$[1].message").isEqualTo("Reply from B")
+            .jsonPath("$[2].message").isEqualTo("Second from A")
+    }
+
+    private fun registerAndGetUserId(email: String, name: String): UUID {
+        var userId = ""
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                BodyInserters.fromValue(
+                    mapOf(
+                        "name" to name,
+                        "email" to email,
+                        "password" to "Test12345",
+                        "birthday" to "1990-01-01",
+                    )
+                )
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+            .expectBody()
+            .jsonPath("$.id")
+            .value { id: Any -> userId = id as String }
+        return UUID.fromString(userId)
+    }
+
+    private fun loginAndGetToken(email: String, userId: UUID): String {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(email = email, password = "Test12345")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val auth = authTokenCache.values.find { it.userId == userId }
+            ?: throw IllegalStateException("Auth not found for $email")
+        return "Bearer ${auth.accessToken}"
+    }
+
+    private fun sendMail(token: String, toUserId: UUID, message: String) {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/mailbox")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(UserMailModel(to = toUserId, message = message)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+    }
+
+    @Test
     fun deleteMailboxTest() {
         webTestClient.delete()
             .uri("$API_WITH_VERSION_1/mailbox/00000000-0000-0000-0000-000000000001")

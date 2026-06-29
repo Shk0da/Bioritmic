@@ -12,6 +12,7 @@ import com.github.shk0da.bioritmic.api.model.gis.GisDataModel
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.model.search.Gender.MAN
 import com.github.shk0da.bioritmic.api.model.search.Gender.WOMAN
+import com.github.shk0da.bioritmic.api.model.user.UpdateUserProfileRequest
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
@@ -135,8 +136,7 @@ class UserService(
     @Transactional(readOnly = true)
     suspend fun findUserByIdWithSettings(id: UUID): User {
         val user = userRepository.findById(id) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        val settings = userSettingsRepository.findById(user.id!!)
-        user.userSettings = settings
+        user.userSettings = resolveUserSettings(user.id!!)
         return user
     }
 
@@ -145,30 +145,31 @@ class UserService(
     }
 
     @Transactional
-    suspend fun updateUserById(userId: UUID, userInfo: UserInfo): User {
+    suspend fun updateUserById(userId: UUID, request: UpdateUserProfileRequest): User {
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        with(userInfo) {
-            if (isNotBlank(name)) {
-                user.name = name
+        if (isNotBlank(request.name)) {
+            user.name = request.name
+        }
+        if (isNotBlank(request.email) && !user.email.equals(request.email)) {
+            if (isUserExists(request.email!!)) throw ApiException(ErrorCode.USER_EXISTS)
+            user.setRecoveryCode()
+            emailService.sendConfirmationChangeEmail(user.email!!, request.email, user.recoveryCode!!)
+        }
+        if (null != request.birthday) {
+            user.birthday = Timestamp(request.birthday.time)
+        }
+        if (null != request.gender) {
+            user.setGender(request.gender)
+        }
+        if (request.bio != null) {
+            val trimmed = request.bio.trim()
+            if (trimmed.length > BIO_MAX_LENGTH) {
+                throw ApiException(
+                    ErrorCode.INVALID_PARAMETER,
+                    mapOf(Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME, "bio"))
+                )
             }
-            if (isNotBlank(email) && !user.email.equals(email)) {
-                if (isUserExists(email!!)) throw ApiException(ErrorCode.USER_EXISTS)
-                user.setRecoveryCode()
-                emailService.sendConfirmationChangeEmail(user.email!!, email, user.recoveryCode!!)
-            }
-            if (null != birthday) {
-                user.birthday = Timestamp(birthday.time)
-            }
-            if (bio != null) {
-                val trimmed = bio.trim()
-                if (trimmed.length > BIO_MAX_LENGTH) {
-                    throw ApiException(
-                        ErrorCode.INVALID_PARAMETER,
-                        mapOf(Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME, "bio"))
-                    )
-                }
-                user.bio = trimmed.ifEmpty { null }
-            }
+            user.bio = trimmed.ifEmpty { null }
         }
         return userRepository.save(user)
     }
@@ -221,24 +222,17 @@ class UserService(
         gisDataRepository.deleteById(userId)
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     suspend fun getUserSettingsById(userId: UUID): UserSettings {
-        return userSettingsRepository.findById(userId) ?: throw ApiException(ErrorCode.SETTINGS_NOT_FOUND)
+        return resolveUserSettings(userId)
     }
 
     @Transactional
     suspend fun updateUserSettingsById(userId: UUID, settings: UserSettingsModel): UserSettings {
-        val userSettings = userSettingsRepository.findById(userId) ?: UserSettings().apply {
-            ageMin = 18
-            ageMax = 45
-            distance = 30.0
-            gender = (if (MAN.ordinal.toShort() == userRepository.findById(userId)?.gender)
-                WOMAN.ordinal else MAN.ordinal).toShort()
+        val userSettings = userSettingsRepository.findById(userId) ?: defaultUserSettingsFor(userId).apply {
+            markAsNew()
         }
         with(userSettings) {
-            if (null == this.userId) {
-                markAsNew()
-            }
             this.userId = userId
             if (null != settings.gender) {
                 gender = settings.gender.ordinal.toShort()
@@ -254,6 +248,21 @@ class UserService(
             }
         }
         return userSettingsRepository.save(userSettings)
+    }
+
+    private suspend fun resolveUserSettings(userId: UUID): UserSettings {
+        return userSettingsRepository.findById(userId) ?: defaultUserSettingsFor(userId)
+    }
+
+    private suspend fun defaultUserSettingsFor(userId: UUID): UserSettings {
+        val userGender = userRepository.findById(userId)?.gender
+        return UserSettings().apply {
+            this.userId = userId
+            ageMin = 18
+            ageMax = 45
+            distance = 30.0
+            gender = (if (MAN.ordinal.toShort() == userGender) WOMAN.ordinal else MAN.ordinal).toShort()
+        }
     }
 
     @Transactional(transactionManager = transactionManager)

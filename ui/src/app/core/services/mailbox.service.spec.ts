@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { MailboxService } from './mailbox.service';
+import { MailboxService, normalizeMediaMimeType } from './mailbox.service';
 
 describe('MailboxService', () => {
   let service: MailboxService;
@@ -39,6 +39,30 @@ describe('MailboxService', () => {
     const req = httpMock.expectOne(r => r.url === '/api/v1/mailbox');
     expect(req.request.params.get('name')).toBe('TestName');
     req.flush([]);
+  });
+
+  it('sendMediaMail should POST multipart to /media', () => {
+    const file = new Blob(['test'], { type: 'image/png' });
+    service.sendMediaMail('user-2', 'PHOTO', file, 'photo.png', 'caption').subscribe();
+    const req = httpMock.expectOne('/api/v1/mailbox/media');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body instanceof FormData).toBeTrue();
+    req.flush([]);
+  });
+
+  it('sendMediaMail should strip codec suffix from video MIME type', () => {
+    const blob = new Blob(['video'], { type: 'video/webm;codecs=vp9,opus' });
+    service.sendMediaMail('user-2', 'VIDEO_NOTE', blob, 'video.webm').subscribe();
+    const req = httpMock.expectOne('/api/v1/mailbox/media');
+    const body = req.request.body as FormData;
+    const uploaded = body.get('file') as File;
+    expect(uploaded.type).toBe('video/webm');
+    req.flush([]);
+  });
+
+  it('normalizeMediaMimeType should simplify codec parameters', () => {
+    expect(normalizeMediaMimeType('video/webm;codecs=vp9,opus', 'VIDEO_NOTE')).toBe('video/webm');
+    expect(normalizeMediaMimeType('audio/webm;codecs=opus', 'VOICE')).toBe('audio/webm');
   });
 
   it('deleteMail should DELETE /{userId}', () => {

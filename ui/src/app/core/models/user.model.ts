@@ -68,12 +68,16 @@ export interface GisData {
   timestamp?: Date;
 }
 
+export type MailMediaType = 'VOICE' | 'PHOTO' | 'VIDEO_NOTE';
+
 export interface UserMail {
   id?: number;
   from?: string;
   to: string;
-  message: string; // minLength: 1, maxLength: 1024
+  message?: string;
   timestamp?: Timestamp;
+  mediaType?: MailMediaType | null;
+  mediaUrl?: string | null;
 }
 
 export interface UserMeeting {

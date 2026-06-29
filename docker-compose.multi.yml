@@ -13,10 +13,11 @@ services:
       POSTGRES_DB: bioritmic
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    command: ["postgres", "-c", "listen_addresses=*"]
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
-      - bioritmic-pgdata:/var/lib/postgresql/data
+      - bioritmic-pgdata-multi:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d bioritmic"]
       interval: 5s
@@ -109,6 +110,7 @@ services:
       SPRING_PROFILES_ACTIVE: docker,swagger
       MAIL_PASSWORD: ${MAIL_PASSWORD:-changeme}
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
     ports:
       - "${API_PORT:-6045}:6045"
       - "${API_ACTUATOR_PORT:-6046}:6046"
@@ -146,7 +148,7 @@ services:
       - "${MAILPIT_UI_PORT:-18025}:8025"
 
 volumes:
-  bioritmic-pgdata:
+  bioritmic-pgdata-multi:
   bioritmic-minio-data:
   bioritmic-mail-data:
   bioritmic-mail-state:

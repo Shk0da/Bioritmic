@@ -28,6 +28,26 @@ describe('resolveHttpErrorMessage', () => {
     expect(resolveHttpErrorMessage(error)).toContain('ограничил');
   });
 
+  it('should hide email in user-not-found API message', () => {
+    const error = new HttpErrorResponse({
+      status: 404,
+      error: {
+        errors: [{ errorCode: 'API-404', message: 'User with email: [test@example.com] not found.' }],
+      },
+    });
+    expect(resolveHttpErrorMessage(error)).toBe('Неверный email или пароль');
+  });
+
+  it('should map coordinates-not-found API message to friendly text', () => {
+    const error = new HttpErrorResponse({
+      status: 404,
+      error: {
+        errors: [{ errorCode: 'API-404', message: 'Coordinates for User not found. Please update GIS data.' }],
+      },
+    });
+    expect(resolveHttpErrorMessage(error)).toContain('местоположение');
+  });
+
   it('should fall back to generic server error', () => {
     const error = new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' });
     expect(resolveHttpErrorMessage(error)).toContain('Ошибка сервера');

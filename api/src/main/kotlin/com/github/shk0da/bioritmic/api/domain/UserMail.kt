@@ -25,19 +25,45 @@ class UserMail {
     @Column("timestamp")
     var timestamp: Timestamp? = null
 
+    @Column("media_type")
+    var mediaType: String? = null
+
+    @Column("media_s3_key")
+    var mediaS3Key: String? = null
+
     companion object {
         fun of(userMailModel: UserMailModel): UserMail {
             val userMail = UserMail()
             userMail.id = userMailModel.id
             userMail.fromUserId = userMailModel.from
             userMail.toUserId = userMailModel.to
-            userMail.message = userMailModel.message
+            userMail.message = userMailModel.message?.trim()?.takeIf { it.isNotEmpty() } ?: ""
+            userMail.mediaType = userMailModel.mediaType
+            userMail.mediaS3Key = userMailModel.mediaS3Key
             userMail.timestamp = Timestamp(System.currentTimeMillis())
             return userMail
+        }
+
+        fun createMedia(
+            fromUserId: UUID,
+            toUserId: UUID,
+            mediaType: String,
+            mediaS3Key: String,
+            caption: String?
+        ): UserMail {
+            return UserMail().apply {
+                this.fromUserId = fromUserId
+                this.toUserId = toUserId
+                this.mediaType = mediaType
+                this.mediaS3Key = mediaS3Key
+                this.message = caption?.trim()?.takeIf { it.isNotEmpty() } ?: ""
+                this.timestamp = Timestamp(System.currentTimeMillis())
+            }
         }
     }
 
     override fun toString(): String {
-        return "UserMail(id=$id, fromUserId=$fromUserId, toUserId=$toUserId, message=$message, timestamp=$timestamp)"
+        return "UserMail(id=$id, fromUserId=$fromUserId, toUserId=$toUserId, message=$message, " +
+            "mediaType=$mediaType, timestamp=$timestamp)"
     }
 }

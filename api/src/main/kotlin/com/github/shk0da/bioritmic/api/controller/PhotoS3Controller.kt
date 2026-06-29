@@ -27,11 +27,28 @@ class PhotoS3Controller(
             .body(bytes)
     }
 
-    private fun mediaTypeForKey(key: String): MediaType = when (key.substringAfterLast('.', "").lowercase()) {
-        "png" -> MediaType.IMAGE_PNG
-        "gif" -> MediaType.IMAGE_GIF
-        "webp" -> MediaType.parseMediaType("image/webp")
-        else -> MediaType.IMAGE_JPEG
+    private fun mediaTypeForKey(key: String): MediaType {
+        val extension = key.substringAfterLast('.', "").lowercase()
+        val path = key.lowercase()
+        return when (extension) {
+            "png" -> MediaType.IMAGE_PNG
+            "gif" -> MediaType.IMAGE_GIF
+            "webp" -> MediaType.parseMediaType("image/webp")
+            "jpg", "jpeg" -> MediaType.IMAGE_JPEG
+            "ogg" -> MediaType.parseMediaType("audio/ogg")
+            "m4a" -> MediaType.parseMediaType("audio/mp4")
+            "mp4" -> if (path.contains("/mailbox/voice/")) {
+                MediaType.parseMediaType("audio/mp4")
+            } else {
+                MediaType.parseMediaType("video/mp4")
+            }
+            "webm" -> if (path.contains("/mailbox/voice/")) {
+                MediaType.parseMediaType("audio/webm")
+            } else {
+                MediaType.parseMediaType("video/webm")
+            }
+            else -> MediaType.IMAGE_JPEG
+        }
     }
 
     companion object {

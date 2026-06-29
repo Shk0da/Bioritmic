@@ -18,6 +18,7 @@ const {
   assertRouteAccessible,
   assertNoRawJsonError,
   clickHeaderNav,
+  dismissOpenModals,
   makeUser,
 } = require('./helpers');
 
@@ -310,6 +311,7 @@ describe('Маршруты администратора', function () {
   for (const tab of adminTabs) {
     it(`Вкладка "${tab.label}" открывается в админ-панели`, async function () {
       await navigateTo(driver, '/admin');
+      await dismissOpenModals(driver);
       const buttons = await driver.findElements(By.css('.nav-tabs .nav-link'));
       let clicked = false;
       for (const btn of buttons) {
