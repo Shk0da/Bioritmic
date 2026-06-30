@@ -3,6 +3,7 @@ import {
   Input,
   Output,
   EventEmitter,
+  HostListener,
   OnChanges,
   OnDestroy,
   SimpleChanges,
@@ -95,6 +96,8 @@ interface ChatMessage extends UserMail {
               [class.incoming]="!message.isCurrentUser"
               [class.selectable]="selectionMode && message.isCurrentUser && message.id != null"
               [class.selected]="isMessageSelected(message)"
+              [class.reply-target-highlight]="highlightedMessageId === message.id"
+              [attr.data-message-id]="message.id ?? null"
               (click)="onMessageClick(message, $event)">
               @if (selectionMode && message.isCurrentUser && message.id != null) {
                 <div class="message-select-indicator" aria-hidden="true">
@@ -113,13 +116,29 @@ interface ChatMessage extends UserMail {
                 [class.incoming]="!message.isCurrentUser"
                 [class.media-bubble]="!!message.mediaType">
                 @if (message.replyToMessageId) {
-                  <div class="reply-reference">
+                  <div
+                    class="reply-reference"
+                    [class.clickable]="canNavigateToReply(message)"
+                    [attr.role]="canNavigateToReply(message) ? 'button' : null"
+                    [attr.tabindex]="canNavigateToReply(message) ? 0 : null"
+                    (click)="scrollToReplyMessage(message, $event)"
+                    (keydown.enter)="scrollToReplyMessage(message, $event)"
+                    (keydown.space)="scrollToReplyMessage(message, $event)">
                     <span class="reply-reference-label">Ответ на сообщение</span>
                     <span class="reply-reference-text">{{ getReplyReferenceText(message) }}</span>
                   </div>
                 }
                 @if (message.mediaType === 'PHOTO' && message.mediaUrl) {
-                  <img [src]="message.mediaUrl" class="message-photo" data-testid="message-photo" alt="Фото">
+                  <img
+                    [src]="message.mediaUrl"
+                    class="message-photo"
+                    data-testid="message-photo"
+                    alt="Фото"
+                    role="button"
+                    tabindex="0"
+                    (click)="onMessagePhotoClick(message, $event)"
+                    (keydown.enter)="onMessagePhotoClick(message, $event)"
+                    (keydown.space)="onMessagePhotoClick(message, $event)">
                 } @else if (message.mediaType === 'VOICE' && message.mediaUrl) {
                   <div class="voice-message" data-testid="message-voice">
                     <button
@@ -333,6 +352,23 @@ interface ChatMessage extends UserMail {
           </div>
         </div>
       }
+
+      @if (photoPreviewUrl) {
+        <div class="photo-preview-backdrop" (click)="closePhotoPreview()">
+          <button
+            type="button"
+            class="photo-preview-close"
+            aria-label="Закрыть просмотр фото"
+            (click)="$event.stopPropagation(); closePhotoPreview()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+          <img
+            [src]="photoPreviewUrl"
+            class="photo-preview-image"
+            alt="Полный размер фото"
+            (click)="$event.stopPropagation()">
+        </div>
+      }
     </div>
 
     <app-image-crop-modal
@@ -526,6 +562,7 @@ interface ChatMessage extends UserMail {
       display: flex;
       gap: 0.5rem;
       max-width: 75%;
+      min-width: 0;
     }
 
     .message-wrapper.incoming { align-self: flex-start; }
@@ -544,6 +581,8 @@ interface ChatMessage extends UserMail {
       border-radius: 16px;
       word-wrap: break-word;
       box-shadow: var(--shadow-sm);
+      max-width: 100%;
+      overflow: hidden;
     }
 
     .message-bubble.incoming {
@@ -571,10 +610,13 @@ interface ChatMessage extends UserMail {
 
     .message-photo {
       display: block;
+      width: 100%;
       max-width: 240px;
       max-height: 320px;
       border-radius: 12px;
-      object-fit: cover;
+      object-fit: contain;
+      object-position: center;
+      cursor: zoom-in;
     }
 
     .voice-message {
@@ -1016,9 +1058,22 @@ interface ChatMessage extends UserMail {
       border-left: 3px solid var(--accent-pink);
     }
 
+    .reply-reference.clickable {
+      cursor: pointer;
+      transition: background 0.2s ease;
+
+      &:hover {
+        background: rgba(253, 41, 123, 0.16);
+      }
+    }
+
     .message-bubble.outgoing .reply-reference {
       background: rgba(255, 255, 255, 0.2);
       border-left-color: rgba(255, 255, 255, 0.9);
+    }
+
+    .message-bubble.outgoing .reply-reference.clickable:hover {
+      background: rgba(255, 255, 255, 0.28);
     }
 
     .reply-reference-label {
@@ -1104,6 +1159,14 @@ interface ChatMessage extends UserMail {
     }
 
     @media (max-width: 576px) {
+      .message-wrapper {
+        max-width: 88%;
+      }
+
+      .message-bubble.media-bubble {
+        max-width: min(260px, 100%);
+      }
+
       .message-input-container {
         gap: 0.45rem;
         padding: 0.625rem 0.75rem;
@@ -1165,10 +1228,50 @@ interface ChatMessage extends UserMail {
       flex-shrink: 0;
     }
 
+    .photo-preview-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1050;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.85);
+    }
+
+    .photo-preview-image {
+      max-width: min(96vw, 1200px);
+      max-height: 92vh;
+      border-radius: 12px;
+      object-fit: contain;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .photo-preview-close {
+      position: absolute;
+      top: max(12px, calc(12px + var(--app-safe-top)));
+      right: max(12px, calc(12px + var(--app-safe-right)));
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(17, 24, 39, 0.78);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
     .messages-container::-webkit-scrollbar { width: 5px; }
     .messages-container::-webkit-scrollbar-thumb {
       background: var(--border-color);
       border-radius: 3px;
+    }
+
+    .message-wrapper.reply-target-highlight .message-bubble {
+      box-shadow: 0 0 0 2px rgba(253, 41, 123, 0.55), var(--shadow-sm);
+      transition: box-shadow 0.3s ease;
     }
   `]
 })
@@ -1197,6 +1300,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   isBlocked = false;
   showEmojiPicker = false;
   showAttachMenu = false;
+  photoPreviewUrl: string | null = null;
   photoCropVisible = false;
   photoCropSourceFile: File | null = null;
   recordingVoice = false;
@@ -1208,6 +1312,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   selectionMode = false;
   selectedMessageIds = new Set<number>();
   deletingMessages = false;
+  highlightedMessageId: number | null = null;
   readonly mailReactions = MAIL_REACTIONS;
 
   readonly voiceWaveBars = [3, 6, 10, 5, 12, 8, 14, 7, 11, 6, 13, 9, 8, 12, 4, 10, 14, 6, 5, 11];
@@ -1231,10 +1336,13 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   private pendingPhotoCaption?: string;
   private voicePreloadGeneration = 0;
   private teardownDone = false;
+  private highlightTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private lastOnlineRefreshAt = 0;
   private readonly cdr = inject(ChangeDetectorRef);
 
   private static readonly MAX_VOICE_MS = 120_000;
   private static readonly MAX_VIDEO_MS = 30_000;
+  private static readonly ONLINE_STATUS_REFRESH_MS = 30_000;
 
   emojis = [
     '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
@@ -1259,6 +1367,11 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
 
   ngOnDestroy(): void {
     this.teardown();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapePressed(): void {
+    this.closePhotoPreview();
   }
 
   ngAfterViewChecked(): void {
@@ -1515,6 +1628,26 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     return this.getReplyPreviewText(target);
   }
 
+  canNavigateToReply(message: ChatMessage): boolean {
+    return !!message.replyToMessageId;
+  }
+
+  async scrollToReplyMessage(message: ChatMessage, event: Event): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!message.replyToMessageId) {
+      return;
+    }
+    const targetId = message.replyToMessageId;
+    if (this.scrollToMessageElement(targetId, true)) {
+      return;
+    }
+    const foundAfterLoad = await this.loadOlderMessagesUntilFound(targetId);
+    if (foundAfterLoad) {
+      this.scrollToMessageElement(targetId, true);
+    }
+  }
+
   toggleAttachMenu(): void {
     this.showAttachMenu = !this.showAttachMenu;
     this.showEmojiPicker = false;
@@ -1769,6 +1902,12 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.cleanupRecording();
     this.stopVoicePlayback();
     this.voicePreloadGeneration += 1;
+    if (this.highlightTimeoutId) {
+      clearTimeout(this.highlightTimeoutId);
+      this.highlightTimeoutId = null;
+    }
+    this.highlightedMessageId = null;
+    this.lastOnlineRefreshAt = 0;
     this.voiceDurations.clear();
     this.voiceDurationLoads.clear();
     this.messages = [];
@@ -1777,6 +1916,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.isBlocked = false;
     this.showEmojiPicker = false;
     this.showAttachMenu = false;
+    this.photoPreviewUrl = null;
     this.showReactionPickerFor = null;
     this.recordingVoice = false;
     this.recordingVideo = false;
@@ -1836,6 +1976,19 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       return;
     }
     this.startReply(message);
+  }
+
+  onMessagePhotoClick(message: ChatMessage, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.selectionMode || !message.mediaUrl) {
+      return;
+    }
+    this.photoPreviewUrl = message.mediaUrl;
+  }
+
+  closePhotoPreview(): void {
+    this.photoPreviewUrl = null;
   }
 
   private toggleMessageSelection(messageId: number): void {
@@ -1974,6 +2127,83 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       });
   }
 
+  private loadOlderMessagesBatch(): Promise<boolean> {
+    const oldestId = this.messages[0]?.id;
+    if (oldestId == null || this.loadingOlder) {
+      return Promise.resolve(false);
+    }
+    const container = this.scrollContainer?.nativeElement as HTMLElement | undefined;
+    const prevScrollHeight = container?.scrollHeight ?? 0;
+    this.loadingOlder = true;
+    return new Promise((resolve) => {
+      this.mailboxService.getConversation(this.userId, { before: oldestId, size: this.conversationPageSize })
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (page) => {
+            const older = this.mapToChatMessages(page.messages);
+            const existingIds = new Set(this.messages.map(m => m.id));
+            const uniqueOlder = older.filter(m => m.id != null && !existingIds.has(m.id));
+            this.messages = [...uniqueOlder, ...this.messages];
+            this.hasMoreOlder = page.hasMore;
+            this.loadingOlder = false;
+            this.preloadVoiceDurations(uniqueOlder);
+            if (container) {
+              requestAnimationFrame(() => {
+                container.scrollTop = container.scrollHeight - prevScrollHeight;
+              });
+            }
+            this.cdr.markForCheck();
+            resolve(uniqueOlder.length > 0);
+          },
+          error: () => {
+            this.loadingOlder = false;
+            resolve(false);
+          }
+        });
+    });
+  }
+
+  private async loadOlderMessagesUntilFound(targetMessageId: number): Promise<boolean> {
+    const maxAttempts = 20;
+    for (let i = 0; i < maxAttempts && this.hasMoreOlder; i++) {
+      const loaded = await this.loadOlderMessagesBatch();
+      if (!loaded) {
+        break;
+      }
+      if (this.messages.some(message => message.id === targetMessageId)) {
+        return true;
+      }
+    }
+    return this.messages.some(message => message.id === targetMessageId);
+  }
+
+  private scrollToMessageElement(messageId: number, smooth: boolean): boolean {
+    const container = this.scrollContainer?.nativeElement as HTMLElement | undefined;
+    if (!container) {
+      return false;
+    }
+    const target = container.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement | null;
+    if (!target) {
+      return false;
+    }
+    target.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'center', inline: 'nearest' });
+    this.highlightReplyTarget(messageId);
+    return true;
+  }
+
+  private highlightReplyTarget(messageId: number): void {
+    this.highlightedMessageId = messageId;
+    if (this.highlightTimeoutId) {
+      clearTimeout(this.highlightTimeoutId);
+    }
+    this.highlightTimeoutId = setTimeout(() => {
+      this.highlightedMessageId = null;
+      this.highlightTimeoutId = null;
+      this.cdr.markForCheck();
+    }, 1800);
+    this.cdr.markForCheck();
+  }
+
   private mergeConversationPage(
     page: ConversationPage,
     options?: { scrollToBottom?: boolean; smoothScroll?: boolean }
@@ -2098,10 +2328,28 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       next: (user: UserInfo) => {
         this.otherUserName = user.name;
         this.otherUserOnline = user.isOnline === true;
+        this.lastOnlineRefreshAt = Date.now();
         this.loadOtherUserPhoto();
       },
       error: () => {
         this.otherUserName = 'Пользователь #' + this.userId;
+      }
+    });
+  }
+
+  private refreshOtherUserOnlineStatus(force = false): void {
+    const now = Date.now();
+    if (!force && now - this.lastOnlineRefreshAt < ConversationPanelComponent.ONLINE_STATUS_REFRESH_MS) {
+      return;
+    }
+    this.userService.getUserById(this.userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (user: UserInfo) => {
+        this.otherUserOnline = user.isOnline === true;
+        this.lastOnlineRefreshAt = Date.now();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.lastOnlineRefreshAt = Date.now();
       }
     });
   }
@@ -2133,6 +2381,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.isRefreshing = true;
     const wasNearBottom = this.isNearBottom();
     const maxId = this.messages.reduce((max, message) => Math.max(max, message.id ?? 0), 0);
+    this.refreshOtherUserOnlineStatus();
     this.mailboxService.getConversation(this.userId, { size: this.conversationPageSize })
       .pipe(takeUntil(this.destroy$))
       .subscribe({

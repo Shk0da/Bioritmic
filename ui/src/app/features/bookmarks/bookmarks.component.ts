@@ -1,4 +1,4 @@
-import { Component, OnInit, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BookmarksService } from '../../core/services/bookmarks.service';
@@ -82,7 +82,7 @@ interface UserWithPhoto extends UserInfo {
                       [position]="user.statusPosition"
                       size="sm">
                     </app-avatar-status-badge>
-                    @if (user.isOnline) {
+                    @if (isUserOnline(user)) {
                       <span class="online-dot"></span>
                     }
                   </div>
@@ -122,9 +122,9 @@ interface UserWithPhoto extends UserInfo {
         </div>
       </div>
     } @else {
-      <div class="row">
+      <div class="row bookmarks-grid">
         @for (user of users; track user.id) {
-          <div class="col-12 col-md-6 col-lg-4 mb-4">
+          <div class="col-12 col-md-6 col-lg-4 mb-4 bookmarks-col">
             <div class="card user-card h-100">
               <div class="user-card-image-wrapper">
                 <img
@@ -205,9 +205,19 @@ interface UserWithPhoto extends UserInfo {
       margin: 2rem auto;
     }
 
+    .bookmarks-grid {
+      justify-content: center;
+    }
+
+    .bookmarks-col {
+      display: flex;
+      justify-content: center;
+    }
+
     .user-card {
       transition: all 0.3s ease;
       overflow: hidden;
+      width: 100%;
 
       &:hover {
         transform: translateY(-5px);
@@ -218,6 +228,15 @@ interface UserWithPhoto extends UserInfo {
     .user-card-image-wrapper {
       position: relative;
       overflow: hidden;
+      aspect-ratio: 4 / 3;
+      background: var(--bg-secondary, #f3f4f6);
+    }
+
+    .user-card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
     }
 
     .user-card-overlay {
@@ -558,9 +577,25 @@ interface UserWithPhoto extends UserInfo {
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
+    @media (max-width: 767.98px) {
+      .bookmarks-grid {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .bookmarks-col {
+        padding-left: 0;
+        padding-right: 0;
+      }
+
+      .user-card {
+        max-width: 560px;
+      }
+    }
   `]
 })
-export class BookmarksComponent implements OnInit {
+export class BookmarksComponent implements OnInit, OnDestroy {
   users: UserWithPhoto[] = [];
   matches: UserWithPhoto[] = [];
   matchesCount = 0;
@@ -569,6 +604,8 @@ export class BookmarksComponent implements OnInit {
   loading = false;
   pageable: PageableRequest = { page: 0, size: 20 };
   private readonly destroyRef = inject(DestroyRef);
+  private onlineTickInterval: ReturnType<typeof setInterval> | null = null;
+  private onlineTickMs = Date.now();
 
   constructor(
     private bookmarksService: BookmarksService,
@@ -579,6 +616,30 @@ export class BookmarksComponent implements OnInit {
   ngOnInit(): void {
     this.loadMatches();
     this.loadBookmarks();
+    this.onlineTickInterval = setInterval(() => {
+      this.onlineTickMs = Date.now();
+    }, 30_000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.onlineTickInterval) {
+      clearInterval(this.onlineTickInterval);
+      this.onlineTickInterval = null;
+    }
+  }
+
+  isUserOnline(user: UserWithPhoto | null | undefined): boolean {
+    if (!user) {
+      return false;
+    }
+    if (!user.lastActiveAt) {
+      return user.isOnline === true;
+    }
+    const lastActiveMs = Date.parse(user.lastActiveAt);
+    if (Number.isNaN(lastActiveMs)) {
+      return user.isOnline === true;
+    }
+    return this.onlineTickMs - lastActiveMs <= 60_000;
   }
 
   private loadMatches(): void {

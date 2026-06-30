@@ -20,7 +20,8 @@ import java.util.UUID
 @Service
 class BookmarksService(
     val userRepository: UserRepository,
-    val bookmarkRepository: BookmarkRepository
+    val bookmarkRepository: BookmarkRepository,
+    val swipeActionService: SwipeActionService,
 ) {
 
     private val log = LoggerFactory.getLogger(BookmarksService::class.java)
@@ -45,6 +46,7 @@ class BookmarksService(
                 val bookmarks = bookmarkList.map { Bookmark.of(userId, it) }
                 bookmarks.forEach { bookmark ->
                     bookmarkRepository.insert(bookmark.userId!!, bookmark.otherUserId!!, bookmark.timestamp)
+                    swipeActionService.clearSkip(userId, bookmark.otherUserId!!)
                 }
             } catch (ex: DataAccessException) {
                 log.error("Failed save bookmarks for userId [{}]: {}", userId, ex.message, ex)

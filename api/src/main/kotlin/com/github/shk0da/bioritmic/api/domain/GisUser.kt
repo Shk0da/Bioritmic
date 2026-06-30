@@ -26,6 +26,8 @@ class GisUser {
 
     var statusPosition: String? = null
 
+    var lastActiveAt: Timestamp? = null
+
     fun getGender(): Gender? {
         if (null == this.gender || Gender.values().size < this.gender!!.toInt()) {
             return null

@@ -40,7 +40,7 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
         val lonMax = lon + lonDelta
 
         var sql = """
-            SELECT usr.id, usr.name, usr.birthday, usr.gender, usr.status_emoji, usr.status_position, gis.lat, gis.lon, gis.distance
+            SELECT usr.id, usr.name, usr.birthday, usr.gender, usr.status_emoji, usr.status_position, usr.last_active_at, gis.lat, gis.lon, gis.distance
             FROM users AS usr, (
                 SELECT *, (point(lat, lon) <@> point(:lat, :lon)) AS distance
                 FROM gis_data
@@ -56,6 +56,14 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
               AND NOT EXISTS (
                 SELECT 1 FROM user_roles ur
                 WHERE ur.user_id = usr.id AND ur.role IN ('ROLE_BANNED', 'BANNED')
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM bookmarks bm
+                WHERE bm.user_id = :userId AND bm.other_user_id = usr.id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM swipe_skips ss
+                WHERE ss.user_id = :userId AND ss.other_user_id = usr.id
               )
               AND NOT EXISTS (
                 SELECT 1 FROM bans b
@@ -110,6 +118,8 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
                     this.gender = (row["gender"] as? Number)?.toShort()
                     this.statusEmoji = row["status_emoji"] as? String
                     this.statusPosition = row["status_position"] as? String
+                    this.lastActiveAt = (row["last_active_at"] as? LocalDateTime)
+                        ?.let { Timestamp.from(it.toInstant(defaultZone)) }
                     this.lat = (row["lat"] as? Double) ?: (row["lat"] as? Number)?.toDouble()
                     this.lon = (row["lon"] as? Double) ?: (row["lon"] as? Number)?.toDouble()
                     this.distance = (row["distance"] as? Double) ?: (row["distance"] as? Number)?.toDouble()

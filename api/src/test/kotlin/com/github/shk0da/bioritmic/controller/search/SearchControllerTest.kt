@@ -264,6 +264,86 @@ class SearchControllerTest : ApiApplicationTests() {
             .jsonPath("$[?(@.id == '$bannedId')]").doesNotExist()
     }
 
+    @Test
+    fun searchExcludesSkippedUsersTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val lat = 55.7558
+        val lon = 37.6173
+
+        val skippedEmail = "skipped_$suffix@gmail.com"
+        val (skippedId, _) = registerNearbyUser(skippedEmail, lat, lon)
+        verifyUser(skippedId)
+        insertPhoto(skippedId)
+
+        configureSearchSettings()
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/search")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[?(@.id == '$skippedId')]").exists()
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/swipe/$skippedId/skip")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/search")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[?(@.id == '$skippedId')]").doesNotExist()
+    }
+
+    @Test
+    fun searchExcludesBookmarkedUsersTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val lat = 55.7558
+        val lon = 37.6173
+
+        val likedEmail = "liked_$suffix@gmail.com"
+        val (likedId, _) = registerNearbyUser(likedEmail, lat, lon)
+        verifyUser(likedId)
+        insertPhoto(likedId)
+
+        configureSearchSettings()
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/search")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[?(@.id == '$likedId')]").exists()
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/bookmarks")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(mapOf("userId" to likedId))))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/search")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[?(@.id == '$likedId')]").doesNotExist()
+    }
+
     private fun registerNearbyUser(email: String, lat: Double, lon: Double): Pair<UUID, String> {
         var registeredId: UUID? = null
         webTestClient.post()
@@ -298,6 +378,26 @@ class SearchControllerTest : ApiApplicationTests() {
             .expectStatus().isOk
 
         return registeredId!! to token
+    }
+
+    private fun configureSearchSettings() {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/user/settings")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                BodyInserters.fromValue(
+                    mapOf(
+                        "gender" to "MAN",
+                        "ageMin" to 18,
+                        "ageMax" to 50,
+                        "distance" to 50.0
+                    )
+                )
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
     }
 
     private fun authorizeUser(email: String): String {

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
+import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.UUID
@@ -78,6 +79,19 @@ class UserControllerTest : ApiApplicationTests() {
             .jsonPath("$.id").isNotEmpty
             .jsonPath("$.name").isEqualTo(defaultUserModel.name)
             .jsonPath("$.email").isEqualTo(defaultUserModel.email)
+    }
+
+    @Test
+    fun getMeReturnsOnlineStatusAndLastActiveAtTest() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.isOnline").isEqualTo(true)
+            .jsonPath("$.lastActiveAt").isNotEmpty
     }
 
     @Test
@@ -263,6 +277,60 @@ class UserControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun getUserByIdReturnsOnlineStatusAndLastActiveAtTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val email = "online_status_$suffix@gmail.com"
+        var targetId = ""
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                BodyInserters.fromValue(
+                    mapOf(
+                        "name" to "Online Status User",
+                        "email" to email,
+                        "password" to "Test12345",
+                        "birthday" to "1991-01-01"
+                    )
+                )
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+            .expectBody()
+            .jsonPath("$.id")
+            .value { id: Any -> targetId = id as String }
+
+        val targetUuid = UUID.fromString(targetId)
+        val onlineTs = Timestamp(System.currentTimeMillis() - 30_000L)
+        setUserLastActiveAt(targetUuid, onlineTs)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/$targetId")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.isOnline").isEqualTo(true)
+            .jsonPath("$.lastActiveAt").isNotEmpty
+
+        val offlineTs = Timestamp(System.currentTimeMillis() - 10 * 60_000L)
+        setUserLastActiveAt(targetUuid, offlineTs)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/$targetId")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.isOnline").isEqualTo(false)
+            .jsonPath("$.lastActiveAt").isNotEmpty
+    }
+
+    @Test
     fun unverifiedUserCanSaveGisAndSearchSettings() {
         val suffix = UUID.randomUUID().toString().substring(0, 8)
         val unverifiedEmail = "unverified_gis_$suffix@gmail.com"
@@ -380,5 +448,15 @@ class UserControllerTest : ApiApplicationTests() {
             .header(HttpHeaders.AUTHORIZATION, authToken)
             .exchange()
             .expectStatus().isNoContent
+    }
+
+    private fun setUserLastActiveAt(targetUserId: UUID, timestamp: Timestamp) {
+        liquibaseDataSource.connection.use { connection ->
+            connection.prepareStatement("UPDATE users SET last_active_at = ? WHERE id = ?").use { statement ->
+                statement.setTimestamp(1, timestamp)
+                statement.setObject(2, targetUserId)
+                statement.executeUpdate()
+            }
+        }
     }
 }

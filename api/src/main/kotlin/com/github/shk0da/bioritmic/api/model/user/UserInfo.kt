@@ -8,6 +8,8 @@ import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import com.github.shk0da.bioritmic.api.model.search.Gender
 import com.github.shk0da.bioritmic.api.service.BiorhythmService
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
+import java.time.Duration
+import java.time.Instant
 import java.util.Date
 import java.util.UUID
 
@@ -47,6 +49,10 @@ data class UserInfo(
     val isVerified: Boolean? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val isBanned: Boolean? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val isOnline: Boolean? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val lastActiveAt: String? = null,
     val bio: String? = null,
     val statusEmoji: String? = null,
     val statusPosition: String? = null,
@@ -63,7 +69,9 @@ data class UserInfo(
                 name = user.name,
                 email = user.email,
                 age = birthday?.let { biorhythmService.calculateAge(Date(it.time)) },
-                isVerified = user.isVerified
+                isVerified = user.isVerified,
+                isOnline = isOnline(user.lastActiveAt?.toInstant()),
+                lastActiveAt = user.lastActiveAt?.toInstant()?.toString()
             )
         }
 
@@ -77,6 +85,8 @@ data class UserInfo(
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
                 image = ImageUtils.getProfileImageUri(user.id!!),
                 isVerified = user.isVerified,
+                isOnline = isOnline(user.lastActiveAt?.toInstant()),
+                lastActiveAt = user.lastActiveAt?.toInstant()?.toString(),
                 bio = user.bio,
                 statusEmoji = user.statusEmoji,
                 statusPosition = user.statusPosition
@@ -92,6 +102,8 @@ data class UserInfo(
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
                 image = ImageUtils.getProfileImageUri(user.id!!),
                 isVerified = user.isVerified,
+                isOnline = isOnline(user.lastActiveAt?.toInstant()),
+                lastActiveAt = user.lastActiveAt?.toInstant()?.toString(),
                 bio = user.bio,
                 statusEmoji = user.statusEmoji,
                 statusPosition = user.statusPosition
@@ -109,6 +121,8 @@ data class UserInfo(
                 lon = gisUser.lon,
                 distance = gisUser.distance,
                 image = ImageUtils.getProfileImageUri(gisUser.id!!),
+                isOnline = isOnline(gisUser.lastActiveAt?.toInstant()),
+                lastActiveAt = gisUser.lastActiveAt?.toInstant()?.toString(),
                 statusEmoji = gisUser.statusEmoji,
                 statusPosition = gisUser.statusPosition
             )
@@ -134,6 +148,8 @@ data class UserInfo(
                 isHoroCompatible = isHoroCompatible,
                 isFullCompatible = isFullCompatible,
                 image = ImageUtils.getProfileImageUri(gisUser.id!!),
+                isOnline = isOnline(gisUser.lastActiveAt?.toInstant()),
+                lastActiveAt = gisUser.lastActiveAt?.toInstant()?.toString(),
                 statusEmoji = gisUser.statusEmoji,
                 statusPosition = gisUser.statusPosition
             )
@@ -156,10 +172,19 @@ data class UserInfo(
                 isHoroCompatible = isHoroCompatible,
                 isFullCompatible = isFullCompatible,
                 image = ImageUtils.getProfileImageUri(user.id!!),
+                isOnline = isOnline(user.lastActiveAt?.toInstant()),
+                lastActiveAt = user.lastActiveAt?.toInstant()?.toString(),
                 bio = user.bio,
                 statusEmoji = user.statusEmoji,
                 statusPosition = user.statusPosition
             )
         }
+
+        private fun isOnline(lastActiveAt: Instant?): Boolean {
+            if (lastActiveAt == null) return false
+            return Duration.between(lastActiveAt, Instant.now()).seconds <= ONLINE_WINDOW_SECONDS
+        }
+
+        private const val ONLINE_WINDOW_SECONDS = 60L
     }
 }

@@ -313,14 +313,20 @@ After modifying any Kotlin file in `api/`:
 After modifying any TypeScript file in `ui/`:
 
 ```bash
-# Run unit tests
-cd ui && npm test -- --watch=false --browsers=EdgeHeadless
+# Run unit tests in EdgeHeadless (auto-resolves EDGE_BIN when possible)
+cd ui && npm run test:edge
 
 # Run lint
 cd ui && npm run lint
 
 # Verify build
 cd ui && npm run build
+```
+
+If Edge is installed in a non-standard location, set `EDGE_BIN` explicitly:
+
+```bash
+cd ui && EDGE_BIN='/path/to/Microsoft Edge' npm run test:edge -- --include='**/swipe.component.spec.ts'
 ```
 
 **What to check:**
@@ -526,6 +532,7 @@ describe('Feature', function () {
 - **Do NOT skip tests** — the verification checklist is mandatory. Run tests before claiming completion.
 - **Detekt runs with auto-correct** — it will fix some style issues automatically.
 - **E2E tests use MicrosoftEdge** — not Chrome. The `createDriver()` helper is configured for Edge headless.
+- **Frontend unit tests use EdgeHeadless by default via `npm run test:edge`**. If Edge binary is not detected automatically, set `EDGE_BIN`.
 - **`premium.free-for-all: true`** in `application.yml` means all users currently get Pro features without payment.
 - **First user is admin** — this is checked at registration time by counting existing users.
 - **Badge system** polls every 30s and uses localStorage timestamps to determine unread counts.

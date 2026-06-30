@@ -43,7 +43,7 @@ import {
         <div class="profile-hero">
           <div class="hero-photo" [style.backgroundImage]="'url(' + (photoDataUrl || user.image || '') + ')'">
             <div class="hero-overlay"></div>
-            @if (user.isOnline) {
+            @if (isUserOnline(user)) {
               <span class="hero-online-badge">В сети</span>
             }
             <button class="hero-back-btn" (click)="goBack()">
@@ -765,6 +765,9 @@ export class UserDetailComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
+  private onlineTickInterval: ReturnType<typeof setInterval> | null = null;
+  private onlineTickMs = Date.now();
+  private onlineStatusRefreshInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -785,6 +788,12 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     const userId = this.route.snapshot.paramMap.get('id');
     if (userId) {
       this.loadUser(userId);
+      this.onlineTickInterval = setInterval(() => {
+        this.onlineTickMs = Date.now();
+      }, 30_000);
+      this.onlineStatusRefreshInterval = setInterval(() => {
+        this.refreshUserOnlineStatus(userId);
+      }, 30_000);
     } else {
       this.error = 'Пользователь не найден';
       this.loading = false;
@@ -794,6 +803,28 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.onlineTickInterval) {
+      clearInterval(this.onlineTickInterval);
+      this.onlineTickInterval = null;
+    }
+    if (this.onlineStatusRefreshInterval) {
+      clearInterval(this.onlineStatusRefreshInterval);
+      this.onlineStatusRefreshInterval = null;
+    }
+  }
+
+  isUserOnline(user: UserInfo | null | undefined): boolean {
+    if (!user) {
+      return false;
+    }
+    if (!user.lastActiveAt) {
+      return user.isOnline === true;
+    }
+    const lastActiveMs = Date.parse(user.lastActiveAt);
+    if (Number.isNaN(lastActiveMs)) {
+      return user.isOnline === true;
+    }
+    return this.onlineTickMs - lastActiveMs <= 60_000;
   }
 
   goBack(): void {
@@ -822,6 +853,23 @@ export class UserDetailComponent implements OnInit, OnDestroy {
         this.error = 'Ошибка загрузки профиля пользователя';
         this.loading = false;
       }
+    });
+  }
+
+  private refreshUserOnlineStatus(userId: string): void {
+    if (!this.user || this.loading) {
+      return;
+    }
+    this.userService.getUserById(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (freshUser) => {
+        if (!this.user) {
+          return;
+        }
+        this.user.isOnline = freshUser.isOnline;
+        this.user.lastActiveAt = freshUser.lastActiveAt;
+        this.onlineTickMs = Date.now();
+      },
+      error: () => { /* ignore transient online-status refresh errors */ }
     });
   }
 

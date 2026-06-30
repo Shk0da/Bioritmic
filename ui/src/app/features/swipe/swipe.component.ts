@@ -9,6 +9,7 @@ import { SwipeService, SwipeResult } from '../../core/services/swipe.service';
 import { MatchService } from '../../core/services/match.service';
 import { SubscriptionService } from '../../core/services/subscription.service';
 import { AuthService } from '../../core/services/auth.service';
+import { SwipeActionService } from '../../core/services/swipe-action.service';
 import { UserInfo, Gender, UserSearch, UserSettings, SwipeDirection, SwipeCard } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
 import { NgClass } from '@angular/common';
@@ -215,7 +216,9 @@ import { ModalService } from '../../core/services/modal.service';
                     [position]="card.user.statusPosition"
                     size="md">
                   </app-avatar-status-badge>
-                  <div class="online-badge"></div>
+                  @if (isUserOnline(card.user)) {
+                    <div class="online-badge"></div>
+                  }
                 </div>
                 <div class="profile-card-body">
                   <div class="profile-card-header">
@@ -387,6 +390,8 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private boundOnKeyDown: ((e: KeyboardEvent) => void) | null = null;
   private destroy$ = new Subject<void>();
+  private onlineTickInterval: ReturnType<typeof setInterval> | null = null;
+  private onlineTickMs = Date.now();
 
   // Swipe limit state
   swipeLimit = -1;
@@ -411,6 +416,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     private matchService: MatchService,
     private subscriptionService: SubscriptionService,
     private authService: AuthService,
+    private swipeActionService: SwipeActionService,
     private shareService: ShareService,
     private modalService: ModalService,
     private router: Router
@@ -449,6 +455,10 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.cards = this.swipeService.getCards().slice(this.swipeService.getCurrentIndex());
         this.loadVisiblePhotos();
       });
+
+    this.onlineTickInterval = setInterval(() => {
+      this.onlineTickMs = Date.now();
+    }, 30_000);
   }
 
   ngAfterViewInit(): void {
@@ -463,6 +473,24 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
       document.removeEventListener('keydown', this.boundOnKeyDown);
     }
     this.cards.forEach(card => UserService.revokePhotoUrl(card.photoDataUrl));
+    if (this.onlineTickInterval) {
+      clearInterval(this.onlineTickInterval);
+      this.onlineTickInterval = null;
+    }
+  }
+
+  isUserOnline(user: UserInfo | null | undefined): boolean {
+    if (!user) {
+      return false;
+    }
+    if (!user.lastActiveAt) {
+      return user.isOnline === true;
+    }
+    const lastActiveMs = Date.parse(user.lastActiveAt);
+    if (Number.isNaN(lastActiveMs)) {
+      return user.isOnline === true;
+    }
+    return this.onlineTickMs - lastActiveMs <= 60_000;
   }
 
   private loadUserSettings(): void {
@@ -676,19 +704,22 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Методы для десктопной версии
   removeCard(card: SwipeCard): void {
-    const index = this.cards.indexOf(card);
-    if (index >= 0) {
-      this.cards.splice(index, 1);
-      this.cards = [...this.cards];
-    }
+    this.decrementSwipeLimit();
+    this.trackSwipeDecision(card, SwipeDirection.LEFT);
+    this.removeCardFromLists(card);
   }
 
   likeProfile(card: SwipeCard): void {
-    this.swipeService.swipe(SwipeDirection.RIGHT);
+    this.decrementSwipeLimit();
+    this.trackSwipeDecision(card, SwipeDirection.RIGHT);
+    this.removeCardFromLists(card);
   }
 
   superLikeProfile(card: SwipeCard): void {
-    this.swipeService.swipe(SwipeDirection.UP);
+    const swiped = this.swipeService.swipe(SwipeDirection.UP);
+    if (swiped) {
+      this.decrementSwipeLimit();
+    }
   }
 
   openProfile(card?: SwipeCard): void {
@@ -717,7 +748,6 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     const card = this.swipeService.swipe(direction);
     if (card) {
       this.decrementSwipeLimit();
-      this.handleSwipeResult({ direction, card });
     }
   }
 
@@ -728,28 +758,55 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private handleSwipeResult(result: SwipeResult): void {
-    if (result.direction === SwipeDirection.RIGHT || result.direction === SwipeDirection.UP) {
-      if (result.card.user.id) {
-        const likedUserId = result.card.user.id;
-        this.bookmarksService.addBookmark({ userId: likedUserId }).pipe(
-          switchMap(() => this.matchService.checkMatch(likedUserId)),
-          takeUntil(this.destroy$)
-        ).subscribe({
-          next: ({ isMatch }) => {
-            if (isMatch) {
-              this.openMatchModal(result.card);
-            }
-          },
-          error: () => { /* bookmark or match check failed — non-critical */ }
-        });
-      }
-    }
+    this.trackSwipeDecision(result.card, result.direction);
 
     // Обновляем список карточек
     setTimeout(() => {
       this.cards = this.swipeService.getCards().slice(this.swipeService.getCurrentIndex());
       this.loadNextPhoto();
     }, 300);
+  }
+
+  private trackSwipeDecision(card: SwipeCard, direction: SwipeDirection): void {
+    const targetUserId = card.user.id;
+    if (!targetUserId) {
+      return;
+    }
+
+    if (direction === SwipeDirection.RIGHT || direction === SwipeDirection.UP) {
+      this.bookmarksService.addBookmark({ userId: targetUserId }).pipe(
+        switchMap(() => this.matchService.checkMatch(targetUserId)),
+        takeUntil(this.destroy$)
+      ).subscribe({
+        next: ({ isMatch }) => {
+          if (isMatch) {
+            this.openMatchModal(card);
+          }
+        },
+        error: () => { /* bookmark or match check failed — non-critical */ }
+      });
+      return;
+    }
+
+    if (direction === SwipeDirection.LEFT) {
+      this.swipeActionService.skipUser(targetUserId).pipe(takeUntil(this.destroy$)).subscribe({
+        error: () => { /* skip tracking failed — non-critical */ }
+      });
+    }
+  }
+
+  private removeCardFromLists(card: SwipeCard): void {
+    const index = this.cards.indexOf(card);
+    if (index >= 0) {
+      this.cards.splice(index, 1);
+      this.cards = [...this.cards];
+    }
+
+    const serviceCards = this.swipeService.getCards();
+    const serviceIndex = serviceCards.findIndex((item) => item.user.id === card.user.id);
+    if (serviceIndex >= 0) {
+      serviceCards.splice(serviceIndex, 1);
+    }
   }
 
   get showMobileSwipeControls(): boolean {
