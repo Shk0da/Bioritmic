@@ -108,7 +108,7 @@ export class ModalService {
     :host(.modal-host-open) {
       position: fixed;
       inset: 0;
-      z-index: 10000;
+      z-index: 12000;
       pointer-events: none;
     }
 
@@ -119,7 +119,7 @@ export class ModalService {
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 10000;
+      z-index: 12000;
       padding: 1rem;
       padding-top: calc(1rem + var(--app-safe-top));
       padding-bottom: calc(1rem + var(--app-safe-bottom));

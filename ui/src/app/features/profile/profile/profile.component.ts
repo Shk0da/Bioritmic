@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink, NavigationEnd } from '@angular/router';
 import { NgClass } from '@angular/common';
-import { Subject, takeUntil, switchMap, EMPTY, catchError } from 'rxjs';
+import { Subject, takeUntil, switchMap, EMPTY, catchError, filter } from 'rxjs';
 import { UserService, photoSizeForLargeDisplay } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
@@ -460,7 +460,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     private boostService: BoostService,
     private shareService: ShareService,
     private modalService: ModalService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private router: Router
   ) {
     this.destroyRef.onDestroy(() => {
       this.destroy$.next();
@@ -475,6 +476,19 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.loadProfile();
     this.loadBlockedCount();
     this.loadActiveBoost();
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      filter(() => this.isProfileMeRoute()),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.loadProfile();
+      this.loadActiveBoost();
+    });
+  }
+
+  private isProfileMeRoute(): boolean {
+    const url = this.router.url.split('?')[0].split('#')[0];
+    return url === '/profile/me';
   }
 
   ngOnDestroy(): void {

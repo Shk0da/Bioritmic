@@ -358,23 +358,24 @@ interface ChatMessage extends UserMail {
         </div>
       }
 
-      @if (photoPreviewUrl) {
-        <div class="photo-preview-backdrop" (click)="closePhotoPreview()">
-          <button
-            type="button"
-            class="photo-preview-close"
-            aria-label="Закрыть просмотр фото"
-            (click)="$event.stopPropagation(); closePhotoPreview()">
-            <i class="bi bi-x-lg"></i>
-          </button>
-          <img
-            [src]="photoPreviewUrl"
-            class="photo-preview-image"
-            alt="Полный размер фото"
-            (click)="$event.stopPropagation()">
-        </div>
-      }
     </div>
+
+    @if (photoPreviewUrl) {
+      <div class="photo-preview-backdrop" (click)="closePhotoPreview()">
+        <button
+          type="button"
+          class="photo-preview-close"
+          aria-label="Закрыть просмотр фото"
+          (click)="$event.stopPropagation(); closePhotoPreview()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+        <img
+          [src]="photoPreviewUrl"
+          class="photo-preview-image"
+          alt="Полный размер фото"
+          (click)="$event.stopPropagation()">
+      </div>
+    }
 
     <app-image-crop-modal
       [visible]="photoCropVisible"
@@ -1237,19 +1238,30 @@ interface ChatMessage extends UserMail {
     .photo-preview-backdrop {
       position: fixed;
       inset: 0;
-      z-index: 1050;
+      width: 100%;
+      height: 100dvh;
+      z-index: 12000;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
-      background: rgba(0, 0, 0, 0.85);
+      padding:
+        max(1rem, var(--app-safe-top))
+        max(1rem, var(--app-safe-right))
+        max(1rem, var(--app-safe-bottom))
+        max(1rem, var(--app-safe-left));
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.9);
     }
 
     .photo-preview-image {
-      max-width: min(96vw, 1200px);
-      max-height: 92vh;
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
       border-radius: 12px;
       object-fit: contain;
+      object-position: center;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
     }
 

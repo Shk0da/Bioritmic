@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ModalService } from '../../../core/services/modal.service';
 import { PageBackLinkComponent } from '../../../shared/components/page-back-link/page-back-link.component';
 
 @Component({
@@ -42,11 +43,16 @@ export class DangerZoneSettingsComponent {
   constructor(
     private userService: UserService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private modalService: ModalService
   ) {}
 
-  deleteAccount(): void {
-    if (!confirm('Вы уверены, что хотите удалить аккаунт? Это действие необратимо.')) {
+  async deleteAccount(): Promise<void> {
+    const confirmed = await this.modalService.confirm(
+      'Вы уверены, что хотите удалить аккаунт? Это действие необратимо.',
+      'Удалить аккаунт?'
+    );
+    if (!confirmed) {
       return;
     }
     this.deletingAccount = true;
@@ -57,7 +63,7 @@ export class DangerZoneSettingsComponent {
       },
       error: () => {
         this.deletingAccount = false;
-        alert('Не удалось удалить аккаунт');
+        void this.modalService.alert('Не удалось удалить аккаунт', 'Ошибка');
       }
     });
   }

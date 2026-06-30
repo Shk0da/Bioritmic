@@ -2,6 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subscription, of, tap, catchError, throwError, timeout, map, shareReplay } from 'rxjs';
 import { User, UserToken, AuthorizationModel, UserInfo } from '../models/user.model';
+import { clearLayoutRouteCache } from '../routing/mobile-route-reuse.strategy';
 
 const USER_KEY = 'current_user';
 const USER_POLL_MS = 30_000;
@@ -103,6 +104,7 @@ export class AuthService implements OnDestroy {
   }
 
   clearAuth(): void {
+    clearLayoutRouteCache();
     this.legacyToken = null;
     localStorage.removeItem(USER_KEY);
     this.currentUserSubject.next(null);

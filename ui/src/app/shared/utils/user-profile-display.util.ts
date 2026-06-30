@@ -49,7 +49,7 @@ export function isMaleGender(gender?: Gender | string): boolean {
 }
 
 export function getGenderSymbol(gender?: Gender | string): string {
-  return isMaleGender(gender) ? '♂' : '♀';
+  return isMaleGender(gender) ? '👨' : '👩';
 }
 
 export function getGenderLabel(gender?: Gender | string): string {

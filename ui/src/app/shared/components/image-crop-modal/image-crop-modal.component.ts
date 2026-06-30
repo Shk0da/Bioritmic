@@ -77,6 +77,10 @@ import {
 
           <p class="crop-hint">Перетащите рамку или потяните за края и углы</p>
 
+          @if (errorMessage) {
+            <p class="crop-error" role="alert">{{ errorMessage }}</p>
+          }
+
           <div class="crop-footer">
             <button type="button" class="btn btn-secondary" (click)="cancel()" [disabled]="processing">
               Отмена
@@ -188,6 +192,16 @@ import {
       text-align: center;
     }
 
+    .crop-error {
+      margin: 0.75rem 1rem 0;
+      padding: 0.65rem 0.75rem;
+      border-radius: 10px;
+      background: rgba(239, 68, 68, 0.12);
+      color: #ef4444;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
     .crop-footer {
       display: flex;
       gap: 0.75rem;
@@ -224,6 +238,7 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
   imageUrl: string | null = null;
   imageLoaded = false;
   processing = false;
+  errorMessage: string | null = null;
 
   imageRect: CropRect = { x: 0, y: 0, width: 0, height: 0 };
   cropRect: CropRect = { x: 0, y: 0, width: 0, height: 0 };
@@ -315,6 +330,7 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
     }
 
     this.processing = true;
+    this.errorMessage = null;
     const generation = this.loadGeneration;
     try {
       const options = IMAGE_CROP_PRESETS[this.preset];
@@ -348,7 +364,7 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
       }
       this.confirmed.emit(blobToFile(blob, filename));
     } catch {
-      alert('Не удалось обрезать изображение');
+      this.errorMessage = 'Не удалось обрезать изображение';
     } finally {
       this.processing = false;
     }
@@ -363,6 +379,7 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
   }
 
   private async loadSource(): Promise<void> {
+    this.errorMessage = null;
     const generation = ++this.loadGeneration;
     this.resetState(false);
     if (!this.sourceFile) {
@@ -393,7 +410,7 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
       if (generation !== this.loadGeneration) {
         return;
       }
-      alert('Не удалось открыть изображение');
+      this.errorMessage = 'Не удалось открыть изображение';
       this.cancelled.emit();
       this.resetState();
     }
@@ -443,6 +460,7 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
     }
     this.imageLoaded = false;
     this.processing = false;
+    this.errorMessage = null;
     this.imageWidth = 0;
     this.imageHeight = 0;
     this.imageRect = { x: 0, y: 0, width: 0, height: 0 };

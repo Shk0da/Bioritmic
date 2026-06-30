@@ -1097,6 +1097,10 @@ option { background: var(--card-bg); color: var(--text-primary); }
     display: none !important;
   }
 
+  .layout-outlet {
+    min-height: calc(100dvh - 4.5rem);
+  }
+
   :is(
     app-settings-hub,
     app-settings,

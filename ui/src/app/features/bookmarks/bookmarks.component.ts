@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { UserService } from '../../core/services/user.service';
 import { MatchService, MatchesResponse } from '../../core/services/match.service';
+import { ModalService } from '../../core/services/modal.service';
 import { UserInfo, PageableRequest } from '../../core/models/user.model';
 import { AvatarStatusBadgeComponent } from '../../shared/components/avatar-status-badge/avatar-status-badge.component';
 import {
@@ -142,7 +143,7 @@ interface UserWithPhoto extends UserInfo {
                 <p class="user-card-info text-muted">
                   <span class="user-card-meta-item">{{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }} лет,</span>
                   <span class="user-card-meta-item user-card-gender" [attr.title]="getGenderLabel(user.gender)">
-                    <span class="gender-symbol" aria-hidden="true">{{ getGenderSymbol(user.gender) }}</span>
+                    <span class="gender-emoji" aria-hidden="true">{{ getGenderSymbol(user.gender) }}</span>
                     <span>{{ getGenderLabel(user.gender) }}</span>
                   </span>
                   @if (getZodiacEmoji(user.horo, user.birthday)) {
@@ -298,15 +299,13 @@ interface UserWithPhoto extends UserInfo {
       white-space: nowrap;
     }
 
-    .gender-symbol {
+    .gender-emoji {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       font-size: 1em;
       line-height: 1;
       flex-shrink: 0;
-      color: var(--accent-pink, #fd297b);
-      font-weight: 600;
     }
 
     .user-card-zodiac {
@@ -618,7 +617,8 @@ export class BookmarksComponent implements OnInit, OnDestroy {
   constructor(
     private bookmarksService: BookmarksService,
     private userService: UserService,
-    private matchService: MatchService
+    private matchService: MatchService,
+    private modalService: ModalService
   ) {}
 
   ngOnInit(): void {
@@ -743,7 +743,7 @@ export class BookmarksComponent implements OnInit, OnDestroy {
         this.loadBookmarks();
       },
       error: () => {
-        alert('Ошибка удаления из избранного');
+        void this.modalService.alert('Ошибка удаления из избранного', 'Ошибка');
       }
     });
   }

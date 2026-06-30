@@ -8,6 +8,7 @@ import { GeolocationService } from '../../../core/services/geolocation.service';
 import { GeoCountry, GeoPlace, GeoService } from '../../../core/services/geo.service';
 import { GisData } from '../../../core/models/user.model';
 import { PageBackLinkComponent } from '../../../shared/components/page-back-link/page-back-link.component';
+import { ModalService } from '../../../core/services/modal.service';
 
 @Component({
   selector: 'app-location',
@@ -413,7 +414,8 @@ export class LocationComponent implements OnInit {
   constructor(
     private userService: UserService,
     private geolocationService: GeolocationService,
-    private geoService: GeoService
+    private geoService: GeoService,
+    private modalService: ModalService
   ) {}
 
   ngOnInit(): void {
@@ -602,7 +604,10 @@ export class LocationComponent implements OnInit {
 
   saveLocation(): void {
     if (!this.canSave) {
-      alert('Выберите населённый пункт из списка или определите местоположение автоматически.');
+      void this.modalService.alert(
+        'Выберите населённый пункт из списка или определите местоположение автоматически.',
+        'Укажите местоположение'
+      );
       return;
     }
 
@@ -614,17 +619,21 @@ export class LocationComponent implements OnInit {
           ? `${this.cityQuery}, ${this.getCountryName(this.selectedCountryCode)}`
           : `${data.lat}, ${data.lon}`;
         this.geolocationService.startTracking();
-        alert('Местоположение сохранено!');
+        void this.modalService.alert('Местоположение сохранено!', 'Готово');
       },
       error: (error) => {
         console.error('Failed to save location', error);
-        alert('Ошибка сохранения местоположения.');
+        void this.modalService.alert('Ошибка сохранения местоположения.', 'Ошибка');
       }
     });
   }
 
-  deleteLocation(): void {
-    if (!confirm('Вы уверены, что хотите удалить своё местоположение?')) {
+  async deleteLocation(): Promise<void> {
+    const confirmed = await this.modalService.confirm(
+      'Вы уверены, что хотите удалить своё местоположение?',
+      'Удалить местоположение?'
+    );
+    if (!confirmed) {
       return;
     }
     this.userService.deleteGisData().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -636,11 +645,11 @@ export class LocationComponent implements OnInit {
         this.savedPlaceLabel = '';
         this.selectedPlaceKey = null;
         this.error = true;
-        alert('Местоположение удалено.');
+        void this.modalService.alert('Местоположение удалено.', 'Готово');
       },
       error: (error) => {
         console.error('Failed to delete location', error);
-        alert('Ошибка удаления местоположения.');
+        void this.modalService.alert('Ошибка удаления местоположения.', 'Ошибка');
       }
     });
   }

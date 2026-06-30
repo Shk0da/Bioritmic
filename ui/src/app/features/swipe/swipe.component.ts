@@ -328,8 +328,8 @@ import { ModalService } from '../../core/services/modal.service';
           <div class="filter-group">
             <label class="filter-label">Пол</label>
             <select class="form-select" [(ngModel)]="searchCriteria.gender">
-              <option [value]="Gender.MAN">Муж</option>
-              <option [value]="Gender.WOMAN">Жен</option>
+              <option [value]="Gender.MAN">Мужчин</option>
+              <option [value]="Gender.WOMAN">Женщин</option>
             </select>
           </div>
 

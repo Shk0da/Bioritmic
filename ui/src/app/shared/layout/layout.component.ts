@@ -8,6 +8,7 @@ import { MailboxService } from '../../core/services/mailbox.service';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { PushNotificationService } from '../../core/services/push-notification.service';
+import { clearLayoutRouteCache } from '../../core/routing/mobile-route-reuse.strategy';
 import { Subject, Subscription, filter, takeUntil } from 'rxjs';
 
 @Component({
@@ -72,7 +73,7 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
       </div>
     </header>
 
-    <main class="main-container">
+    <main class="main-container layout-main">
       @if (!isUserVerified) {
         <div class="alert alert-warning verification-alert d-flex align-items-center mb-3" role="alert">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -97,7 +98,9 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
           </div>
         </div>
       }
-      <router-outlet></router-outlet>
+      <div class="layout-outlet">
+        <router-outlet></router-outlet>
+      </div>
     </main>
   `,
   styles: [`
@@ -180,6 +183,14 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
       &:hover i {
         transform: rotate(20deg) scale(1.1);
       }
+    }
+
+    .layout-outlet {
+      position: relative;
+      min-height: calc(100dvh - 5.5rem);
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
     }
   `]
 })
@@ -383,10 +394,12 @@ export class LayoutComponent implements OnInit, OnDestroy {
     }
     this.authService.logout().subscribe({
       complete: () => {
+        clearLayoutRouteCache();
         this.authService.clearAuth();
         this.router.navigate(['/auth/login']);
       },
       error: () => {
+        clearLayoutRouteCache();
         this.authService.clearAuth();
         this.router.navigate(['/auth/login']);
       }

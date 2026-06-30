@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { UserService } from '../../../core/services/user.service';
+import { ModalService } from '../../../core/services/modal.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 import { Subject, finalize, map, of, switchMap, takeUntil } from 'rxjs';
 import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
@@ -299,7 +300,8 @@ export class EditProfileComponent implements OnInit, OnDestroy {
 
   constructor(
     private userService: UserService,
-    private router: Router
+    private router: Router,
+    private modalService: ModalService
   ) {}
 
   ngOnInit(): void {
@@ -427,8 +429,11 @@ export class EditProfileComponent implements OnInit, OnDestroy {
     });
   }
 
-  deletePhoto(): void {
-    if (!confirm('Удалить фото профиля?')) return;
+  async deletePhoto(): Promise<void> {
+    const confirmed = await this.modalService.confirm('Удалить фото профиля?', 'Удаление фото');
+    if (!confirmed) {
+      return;
+    }
     this.saving = true;
     this.userService.deletePhoto().pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
@@ -440,7 +445,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.saving = false;
-        alert('Не удалось удалить фото');
+        void this.modalService.alert('Не удалось удалить фото', 'Ошибка');
       }
     });
   }
@@ -465,7 +470,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
 
     const shouldUpdateProfile = this.isProfileValid();
     if (shouldUpdateProfile && (!this.user.birthday || !meetsMinimumAge(this.user.birthday))) {
-      alert(MIN_AGE_PROFILE_MESSAGE);
+      void this.modalService.alert(MIN_AGE_PROFILE_MESSAGE, 'Возраст');
       return;
     }
 
@@ -504,7 +509,10 @@ export class EditProfileComponent implements OnInit, OnDestroy {
         this.router.navigate(['/profile/me']);
       },
       error: () => {
-        alert(pendingPhoto ? 'Не удалось сохранить изменения' : 'Ошибка сохранения профиля');
+        void this.modalService.alert(
+          pendingPhoto ? 'Не удалось сохранить изменения' : 'Ошибка сохранения профиля',
+          'Ошибка'
+        );
       }
     });
   }

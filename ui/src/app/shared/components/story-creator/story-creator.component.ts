@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { StoryService } from '../../../core/services/story.service';
+import { ModalService } from '../../../core/services/modal.service';
 import { ImageCropModalComponent } from '../image-crop-modal/image-crop-modal.component';
 
 @Component({
@@ -229,7 +230,10 @@ export class StoryCreatorComponent implements OnDestroy {
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
 
-  constructor(private storyService: StoryService) {
+  constructor(
+    private storyService: StoryService,
+    private modalService: ModalService
+  ) {
     this.destroyRef.onDestroy(() => this.destroy$.next());
   }
 
@@ -243,7 +247,7 @@ export class StoryCreatorComponent implements OnDestroy {
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
       if (file.size > StoryCreatorComponent.MAX_FILE_BYTES) {
-        alert('Файл слишком большой. Максимальный размер — 5 МБ.');
+        void this.modalService.alert('Файл слишком большой. Максимальный размер — 5 МБ.', 'Файл');
         input.value = '';
         return;
       }

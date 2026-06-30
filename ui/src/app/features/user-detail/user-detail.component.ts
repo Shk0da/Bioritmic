@@ -785,19 +785,29 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    const userId = this.route.snapshot.paramMap.get('id');
-    if (userId) {
-      this.loadUser(userId);
-      this.onlineTickInterval = setInterval(() => {
-        this.onlineTickMs = Date.now();
-      }, 30_000);
-      this.onlineStatusRefreshInterval = setInterval(() => {
-        this.refreshUserOnlineStatus(userId);
-      }, 30_000);
-    } else {
-      this.error = 'Пользователь не найден';
-      this.loading = false;
-    }
+    this.onlineTickInterval = setInterval(() => {
+      this.onlineTickMs = Date.now();
+    }, 30_000);
+
+    this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      const userId = params.get('id');
+      if (this.onlineStatusRefreshInterval) {
+        clearInterval(this.onlineStatusRefreshInterval);
+        this.onlineStatusRefreshInterval = null;
+      }
+
+      if (userId) {
+        this.loading = true;
+        this.error = null;
+        this.loadUser(userId);
+        this.onlineStatusRefreshInterval = setInterval(() => {
+          this.refreshUserOnlineStatus(userId);
+        }, 30_000);
+      } else {
+        this.error = 'Пользователь не найден';
+        this.loading = false;
+      }
+    });
   }
 
   ngOnDestroy(): void {

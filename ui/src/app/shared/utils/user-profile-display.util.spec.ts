@@ -7,9 +7,9 @@ import {
 } from './user-profile-display.util';
 
 describe('user-profile-display.util', () => {
-  it('getGenderSymbol should return gender symbols', () => {
-    expect(getGenderSymbol(Gender.MAN)).toBe('♂');
-    expect(getGenderSymbol(Gender.WOMAN)).toBe('♀');
+  it('getGenderSymbol should return gender emojis', () => {
+    expect(getGenderSymbol(Gender.MAN)).toBe('👨');
+    expect(getGenderSymbol(Gender.WOMAN)).toBe('👩');
   });
 
   it('getGenderLabel should return readable gender', () => {

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../../core/services/settings.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ModalService } from '../../core/services/modal.service';
 import { UserSettings, Gender } from '../../core/models/user.model';
 import { PageBackLinkComponent } from '../../shared/components/page-back-link/page-back-link.component';
 
@@ -117,7 +118,8 @@ export class SettingsComponent implements OnInit {
 
   constructor(
     private settingsService: SettingsService,
-    private authService: AuthService
+    private authService: AuthService,
+    private modalService: ModalService
   ) {
     const user = this.authService.getCurrentUser();
     if (user?.gender === Gender.MAN) {
@@ -160,11 +162,11 @@ export class SettingsComponent implements OnInit {
     this.settingsService.updateSettings(this.settings).subscribe({
       next: () => {
         this.saving = false;
-        alert('Настройки сохранены!');
+        void this.modalService.alert('Настройки сохранены!', 'Готово');
       },
       error: () => {
         this.saving = false;
-        alert('Ошибка сохранения настроек');
+        void this.modalService.alert('Ошибка сохранения настроек', 'Ошибка');
       }
     });
   }
