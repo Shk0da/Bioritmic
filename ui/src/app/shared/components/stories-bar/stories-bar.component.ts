@@ -8,11 +8,12 @@ import { ModalService } from '../../../core/services/modal.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { StoryCreatorComponent } from '../story-creator/story-creator.component';
 import { StoryViewerComponent } from '../story-viewer/story-viewer.component';
+import { AvatarStatusBadgeComponent } from '../avatar-status-badge/avatar-status-badge.component';
 
 @Component({
   selector: 'app-stories-bar',
   standalone: true,
-  imports: [CommonModule, StoryCreatorComponent, StoryViewerComponent],
+  imports: [CommonModule, StoryCreatorComponent, StoryViewerComponent, AvatarStatusBadgeComponent],
   template: `
     <div class="stories-bar">
       <div class="stories-scroll">
@@ -56,6 +57,11 @@ import { StoryViewerComponent } from '../story-viewer/story-viewer.component';
                 @if (!group.userPhoto) {
                   <span class="avatar-initial">{{ group.userName.charAt(0) || '?' }}</span>
                 }
+                <app-avatar-status-badge
+                  [emoji]="group.statusEmoji"
+                  [position]="group.statusPosition"
+                  size="sm">
+                </app-avatar-status-badge>
               </div>
             </div>
             <span class="story-name">{{ group.userName }}</span>
@@ -126,6 +132,7 @@ import { StoryViewerComponent } from '../story-viewer/story-viewer.component';
     }
 
     .story-avatar {
+      position: relative;
       width: 100%;
       height: 100%;
       border-radius: 50%;
@@ -136,7 +143,7 @@ import { StoryViewerComponent } from '../story-viewer/story-viewer.component';
       align-items: center;
       justify-content: center;
       border: 3px solid var(--card-bg, white);
-      overflow: hidden;
+      overflow: visible;
     }
 
     .story-avatar i {
@@ -368,7 +375,9 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
           stories: [],
           viewedByCurrentUser: false,
           userName: '',
-          userPhoto: null
+          userPhoto: null,
+          statusEmoji: null,
+          statusPosition: null
         });
       }
       grouped.get(story.userId)!.stories.push(story);
@@ -392,9 +401,13 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
       this.userService.getUserById(group.userId).pipe(takeUntil(this.destroy$)).subscribe({
         next: (user) => {
           group.userName = user.name || '';
+          group.statusEmoji = user.statusEmoji ?? null;
+          group.statusPosition = user.statusPosition ?? null;
         },
         error: () => {
           group.userName = '';
+          group.statusEmoji = null;
+          group.statusPosition = null;
         }
       });
 
@@ -416,4 +429,6 @@ export interface StoryGroup {
   viewedByCurrentUser: boolean;
   userName: string;
   userPhoto: string | null;
+  statusEmoji?: string | null;
+  statusPosition?: string | null;
 }

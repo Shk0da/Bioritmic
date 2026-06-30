@@ -79,6 +79,7 @@ export interface UserMail {
   message?: string;
   timestamp?: Timestamp;
   replyToMessageId?: number | null;
+  replyTargetUnavailable?: boolean;
   mediaType?: MailMediaType | null;
   mediaUrl?: string | null;
   currentUserReaction?: MailReactionType | null;

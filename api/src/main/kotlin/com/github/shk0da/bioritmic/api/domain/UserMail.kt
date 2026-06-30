@@ -34,6 +34,9 @@ class UserMail {
     @Column("reply_to_message_id")
     var replyToMessageId: Long? = null
 
+    @Column("reply_target_unavailable")
+    var replyTargetUnavailable: Boolean = false
+
     @Column("is_read")
     var isRead: Boolean = false
 

@@ -8,6 +8,8 @@ import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
 import com.github.shk0da.bioritmic.api.service.MailboxService.Companion.CONVERSATION_PAGE_SIZE
 import com.github.shk0da.bioritmic.api.service.MailboxService
+import com.github.shk0da.bioritmic.api.exceptions.ApiException
+import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.springdoc.core.annotations.ParameterObject
 import org.springframework.data.domain.Pageable
@@ -54,18 +56,25 @@ class MailboxController(val mailboxService: MailboxService) {
         @RequestPart("mediaType") mediaType: String,
         @RequestPart("file") file: FilePart,
         @RequestPart("message", required = false) caption: String?,
-        @RequestPart("replyToMessageId", required = false) replyToMessageId: Long?
+        @RequestPart("replyToMessageId", required = false) replyToMessageId: String?
     ): ConversationPageModel {
         val userId = getUserId()
         val recipientId = try {
             UUID.fromString(toUserId.trim())
         } catch (_: IllegalArgumentException) {
-            throw com.github.shk0da.bioritmic.api.exceptions.ApiException(
-                com.github.shk0da.bioritmic.api.exceptions.ErrorCode.INVALID_PARAMETER,
-                mapOf("to" to "to")
-            )
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("to" to "to"))
         }
-        return mailboxService.sendMediaMail(userId, recipientId, mediaType, file, caption, replyToMessageId)
+        val parsedReplyToMessageId = parseOptionalMultipartLong(replyToMessageId, "replyToMessageId")
+        return mailboxService.sendMediaMail(userId, recipientId, mediaType, file, caption, parsedReplyToMessageId)
+    }
+
+    private fun parseOptionalMultipartLong(value: String?, fieldName: String): Long? {
+        val trimmed = value?.trim().orEmpty()
+        if (trimmed.isEmpty()) {
+            return null
+        }
+        return trimmed.toLongOrNull()
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf(fieldName to fieldName))
     }
 
     @DeleteMapping(value = ["/messages"], produces = [MediaType.APPLICATION_JSON_VALUE])

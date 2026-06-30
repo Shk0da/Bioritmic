@@ -5,13 +5,13 @@ import { BookmarksService } from '../../core/services/bookmarks.service';
 import { UserService } from '../../core/services/user.service';
 import { MatchService, MatchesResponse } from '../../core/services/match.service';
 import { UserInfo, PageableRequest } from '../../core/models/user.model';
+import { AvatarStatusBadgeComponent } from '../../shared/components/avatar-status-badge/avatar-status-badge.component';
 import {
   getGenderLabel,
   getGenderSymbol,
   getZodiacEmoji,
   getZodiacSignName,
 } from '../../shared/utils/user-profile-display.util';
-import { AvatarStatusBadgeComponent } from '../../shared/components/avatar-status-badge/avatar-status-badge.component';
 
 interface UserWithPhoto extends UserInfo {
   photoDataUrl?: string | null;
@@ -131,11 +131,6 @@ interface UserWithPhoto extends UserInfo {
                   [src]="user.photoDataUrl || ''"
                   class="card-img-top user-card-img"
                   [alt]="user.name">
-                <app-avatar-status-badge
-                  [emoji]="user.statusEmoji"
-                  [position]="user.statusPosition"
-                  size="md">
-                </app-avatar-status-badge>
                 <div class="user-card-overlay">
                   <button class="btn-remove" (click)="removeBookmark(user.id)" title="Удалить">
                     <i class="bi bi-x-lg"></i>
@@ -578,7 +573,7 @@ interface UserWithPhoto extends UserInfo {
       text-overflow: ellipsis;
     }
 
-    @media (max-width: 767.98px) {
+    @media (max-width: 767.98px), (hover: none) and (pointer: coarse) {
       .bookmarks-grid {
         margin-left: 0;
         margin-right: 0;

@@ -148,6 +148,39 @@ class UserControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun updateMeStatusCustomPositionTest() {
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf(
+                "statusEmoji" to "🔥",
+                "statusPosition" to "CUSTOM:42:58"
+            )))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.statusEmoji").isEqualTo("🔥")
+            .jsonPath("$.statusPosition").isEqualTo("CUSTOM:42:58")
+    }
+
+    @Test
+    fun updateMeStatusRejectsInvalidPosition() {
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf(
+                "statusEmoji" to "🔥",
+                "statusPosition" to "CUSTOM:abc:def"
+            )))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
+    }
+
+    @Test
     fun updateMeStatusRejectsUnknownEmoji() {
         webTestClient.patch()
             .uri("$API_WITH_VERSION_1/user/me")

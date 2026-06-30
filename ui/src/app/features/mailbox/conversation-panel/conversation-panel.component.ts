@@ -115,7 +115,7 @@ interface ChatMessage extends UserMail {
                 [class.outgoing]="message.isCurrentUser"
                 [class.incoming]="!message.isCurrentUser"
                 [class.media-bubble]="!!message.mediaType">
-                @if (message.replyToMessageId) {
+                @if (hasReplyReference(message)) {
                   <div
                     class="reply-reference"
                     [class.clickable]="canNavigateToReply(message)"
@@ -613,6 +613,7 @@ interface ChatMessage extends UserMail {
       width: 100%;
       max-width: 240px;
       max-height: 320px;
+      margin: 0 auto;
       border-radius: 12px;
       object-fit: contain;
       object-position: center;
@@ -1406,12 +1407,14 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
         this.sending = false;
         this.mergeConversationPage(page, { scrollToBottom: true, smoothScroll: true });
         this.messageSent.emit();
+        this.scheduleMessageInputFocus();
       },
       error: (error) => {
         if (error.status === 412) {
           this.isBlocked = true;
         }
         this.sending = false;
+        this.scheduleMessageInputFocus();
       }
     });
   }
@@ -1616,20 +1619,45 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     return message.message?.trim() || 'Сообщение';
   }
 
+  hasReplyReference(message: ChatMessage): boolean {
+    return !!message.replyToMessageId || message.replyTargetUnavailable === true;
+  }
+
   getReplyReferenceText(message: ChatMessage): string {
+    if (message.replyTargetUnavailable) {
+      return 'Исходное сообщение удалено';
+    }
     const targetId = message.replyToMessageId;
     if (!targetId) {
-      return 'Сообщение недоступно';
+      return 'Исходное сообщение удалено';
     }
     const target = this.messages.find(m => m.id === targetId);
-    if (!target) {
-      return 'Сообщение недоступно';
+    if (target) {
+      return this.getReplyPreviewText(target);
     }
-    return this.getReplyPreviewText(target);
+    if (this.canLoadOlderReplyTarget(targetId)) {
+      return 'Сообщение выше в переписке';
+    }
+    return 'Исходное сообщение удалено';
+  }
+
+  private canLoadOlderReplyTarget(targetId: number): boolean {
+    const oldestId = this.messages[0]?.id;
+    if (oldestId == null) {
+      return this.hasMoreOlder;
+    }
+    return targetId < oldestId && this.hasMoreOlder;
   }
 
   canNavigateToReply(message: ChatMessage): boolean {
-    return !!message.replyToMessageId;
+    if (message.replyTargetUnavailable || !message.replyToMessageId) {
+      return false;
+    }
+    const targetId = message.replyToMessageId;
+    if (this.messages.some(m => m.id === targetId)) {
+      return true;
+    }
+    return this.canLoadOlderReplyTarget(targetId);
   }
 
   async scrollToReplyMessage(message: ChatMessage, event: Event): Promise<void> {
@@ -1770,6 +1798,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
           this.sending = false;
           this.mergeConversationPage(page, { scrollToBottom: true, smoothScroll: true });
           this.messageSent.emit();
+          this.scheduleMessageInputFocus();
         },
         error: (error) => {
           this.sending = false;
@@ -1778,6 +1807,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
           } else {
             this.modalService.alert('Не удалось отправить вложение.', 'Ошибка');
           }
+          this.scheduleMessageInputFocus();
         }
       });
   }
@@ -2020,7 +2050,18 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.mailboxService.deleteMessages(ids).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         const deleted = new Set(ids);
-        this.messages = this.messages.filter(message => message.id == null || !deleted.has(message.id));
+        this.messages = this.messages
+          .filter(message => message.id == null || !deleted.has(message.id))
+          .map(message => {
+            if (message.replyToMessageId != null && deleted.has(message.replyToMessageId)) {
+              return {
+                ...message,
+                replyToMessageId: null,
+                replyTargetUnavailable: true,
+              };
+            }
+            return message;
+          });
         if (this.replyingToMessage?.id != null && deleted.has(this.replyingToMessage.id)) {
           this.replyingToMessage = null;
         }

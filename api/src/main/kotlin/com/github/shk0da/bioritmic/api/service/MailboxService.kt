@@ -151,6 +151,9 @@ class MailboxService(
                 .onFailure { ex -> log.warn("Failed to delete mailbox media {}: {}", key, ex.message) }
         }
 
+        // Keep replies and show that their source message was deleted.
+        mailboxRepository.markReplyTargetsUnavailable(ids)
+
         val deleted = mailboxRepository.deleteByIdsAndFromUserId(ids, currentUserId)
         if (deleted != ids.size) {
             throw ApiException(ErrorCode.ACCESS_DENIED)

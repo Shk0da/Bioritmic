@@ -117,6 +117,10 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
     suspend fun markIncomingAsRead(readerId: UUID, senderId: UUID): Int
 
     @Modifying
+    @Query("UPDATE mailbox SET reply_target_unavailable = true WHERE reply_to_message_id IN (:ids)")
+    suspend fun markReplyTargetsUnavailable(ids: List<Long>): Int
+
+    @Modifying
     @Query("DELETE FROM mailbox WHERE id IN (:ids) AND from_user_id = :userId")
     suspend fun deleteByIdsAndFromUserId(ids: List<Long>, userId: UUID): Int
 

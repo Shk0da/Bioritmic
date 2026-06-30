@@ -112,6 +112,53 @@ class MailboxControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun sendMediaMailPhotoWithReplyTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val userAEmail = "mailbox_media_reply_a_$suffix@gmail.com"
+        val userBEmail = "mailbox_media_reply_b_$suffix@gmail.com"
+
+        val userAId = registerAndGetUserId(userAEmail, "Media Reply A")
+        val userBId = registerAndGetUserId(userBEmail, "Media Reply B")
+        val tokenA = loginAndGetToken(userAEmail, userAId)
+        val tokenB = loginAndGetToken(userBEmail, userBId)
+
+        sendMail(tokenA, userBId, "Original message")
+
+        var originalMessageId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages[0].id").value { id: Any -> originalMessageId = (id as Number).toLong() }
+
+        val imageBytes = javaClass.classLoader.getResourceAsStream("images/no_image.png")!!.readBytes()
+        val builder = org.springframework.http.client.MultipartBodyBuilder()
+        builder.part("to", userAId.toString())
+        builder.part("mediaType", "PHOTO")
+        builder.part("file", org.springframework.core.io.ByteArrayResource(imageBytes))
+            .filename("photo.png")
+            .contentType(MediaType.IMAGE_PNG)
+        builder.part("message", "Photo reply")
+        builder.part("replyToMessageId", originalMessageId.toString())
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/mailbox/media")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData(builder.build()))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages[1].mediaType").isEqualTo("PHOTO")
+            .jsonPath("$.messages[1].replyToMessageId").isEqualTo(originalMessageId)
+            .jsonPath("$.messages[1].message").isEqualTo("Photo reply")
+    }
+
+    @Test
     fun sendMailReturnsBidirectionalConversationTest() {
         val suffix = UUID.randomUUID().toString().substring(0, 8)
         val userAEmail = "mailbox_a_$suffix@gmail.com"
@@ -437,6 +484,74 @@ class MailboxControllerTest : ApiApplicationTests() {
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isForbidden
+    }
+
+    @Test
+    fun deleteOwnMessageKeepsReplyMessageTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val userAEmail = "mailbox_del_reply_a_$suffix@gmail.com"
+        val userBEmail = "mailbox_del_reply_b_$suffix@gmail.com"
+
+        val userAId = registerAndGetUserId(userAEmail, "Delete Reply A")
+        val userBId = registerAndGetUserId(userBEmail, "Delete Reply B")
+        val tokenA = loginAndGetToken(userAEmail, userAId)
+        val tokenB = loginAndGetToken(userBEmail, userBId)
+
+        sendMail(tokenA, userBId, "Original to delete")
+
+        var originalMessageId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages.length()").isEqualTo(1)
+            .jsonPath("$.messages[0].id").value { id: Any -> originalMessageId = (id as Number).toLong() }
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/mailbox")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                BodyInserters.fromValue(
+                    UserMailModel(
+                        to = userAId,
+                        message = "Reply should stay",
+                        replyToMessageId = originalMessageId
+                    )
+                )
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages.length()").isEqualTo(2)
+            .jsonPath("$.messages[1].replyToMessageId").isEqualTo(originalMessageId)
+
+        webTestClient.method(HttpMethod.DELETE)
+            .uri("$API_WITH_VERSION_1/mailbox/messages")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("ids" to listOf(originalMessageId))))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.deleted").isEqualTo(1)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userAId")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages.length()").isEqualTo(1)
+            .jsonPath("$.messages[0].message").isEqualTo("Reply should stay")
+            .jsonPath("$.messages[0].replyToMessageId").doesNotExist()
+            .jsonPath("$.messages[0].replyTargetUnavailable").isEqualTo(true)
     }
 
     @Test

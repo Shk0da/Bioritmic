@@ -13,8 +13,6 @@ import {
   DEFAULT_USER_STATUS_POSITION,
   normalizeUserStatusPosition,
   PROFILE_STATUS_EMOJIS,
-  USER_STATUS_POSITIONS,
-  UserStatusPosition,
 } from '../../../shared/utils/user-status.util';
 import { ToastService } from '../../../core/services/toast.service';
 
@@ -85,18 +83,22 @@ import { ToastService } from '../../../core/services/toast.service';
 
                   @if (user?.statusEmoji) {
                     <div class="status-position-picker mt-3">
-                      <div class="form-label mb-2">Положение на фото</div>
-                      <div class="status-position-options">
-                        @for (option of statusPositions; track option.value) {
-                          <button
-                            type="button"
-                            class="status-position-btn"
-                            [class.selected]="user?.statusPosition === option.value"
-                            [disabled]="statusSaving"
-                            (click)="selectStatusPosition(option.value)">
-                            {{ option.label }}
-                          </button>
-                        }
+                      <div class="form-label mb-2">Перетащите эмодзи в нужное место на фото</div>
+                      <div
+                        class="status-position-stage"
+                        (pointerdown)="onStatusStagePointerDown($event)"
+                        (pointermove)="onStatusStagePointerMove($event)"
+                        (pointerup)="onStatusStagePointerUp($event)"
+                        (pointercancel)="onStatusStagePointerCancel($event)">
+                        <img
+                          [src]="photoDataUrl || user?.image || ''"
+                          class="status-position-stage-avatar"
+                          [alt]="user?.name">
+                        <app-avatar-status-badge
+                          [emoji]="user?.statusEmoji"
+                          [position]="user?.statusPosition"
+                          size="lg">
+                        </app-avatar-status-badge>
                       </div>
                     </div>
                   }
@@ -358,31 +360,30 @@ import { ToastService } from '../../../core/services/toast.service';
       }
     }
 
-    .status-position-options {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .status-position-btn {
+    .status-position-stage {
+      position: relative;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      overflow: hidden;
       border: 1px solid var(--border-color);
       background: var(--bg-secondary);
-      color: var(--text-primary);
-      border-radius: 999px;
-      padding: 0.35rem 0.75rem;
-      font-size: 0.82rem;
-      cursor: pointer;
+      margin: 0 auto;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
 
-      &.selected {
-        border-color: var(--accent-pink);
-        color: var(--accent-pink);
-        background: rgba(253, 41, 123, 0.1);
+      &:active {
+        cursor: grabbing;
       }
+    }
 
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
+    .status-position-stage-avatar {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
     }
 
     .status-saving-indicator {
@@ -421,7 +422,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
   readonly statusEmojis = PROFILE_STATUS_EMOJIS;
-  readonly statusPositions = USER_STATUS_POSITIONS;
   user: UserInfo | null = null;
   photoDataUrl: string | null = null;
   blockedCount = 0;
@@ -433,6 +433,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   private statusSaveTrigger$ = new Subject<void>();
   private boostCountdownInterval: ReturnType<typeof setInterval> | null = null;
+  private statusDragPointerId: number | null = null;
 
   constructor(
     private userService: UserService,
@@ -517,13 +518,62 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.saveStatus();
   }
 
-  selectStatusPosition(position: UserStatusPosition): void {
+  onStatusStagePointerDown(event: PointerEvent): void {
+    if (!this.user?.statusEmoji || this.statusSaving) return;
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+    this.statusDragPointerId = event.pointerId;
+    target.setPointerCapture(event.pointerId);
+    this.updateStatusPositionFromPointer(event, target, false);
+  }
+
+  onStatusStagePointerMove(event: PointerEvent): void {
+    if (this.statusDragPointerId !== event.pointerId) return;
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+    this.updateStatusPositionFromPointer(event, target, false);
+  }
+
+  onStatusStagePointerUp(event: PointerEvent): void {
+    if (this.statusDragPointerId !== event.pointerId) return;
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+    this.updateStatusPositionFromPointer(event, target, true);
+    target.releasePointerCapture(event.pointerId);
+    this.statusDragPointerId = null;
+  }
+
+  onStatusStagePointerCancel(event: PointerEvent): void {
+    if (this.statusDragPointerId !== event.pointerId) return;
+    const target = event.currentTarget as HTMLElement | null;
+    if (target?.hasPointerCapture(event.pointerId)) {
+      target.releasePointerCapture(event.pointerId);
+    }
+    const shouldSave = this.statusDragPointerId != null;
+    this.statusDragPointerId = null;
+    if (shouldSave) {
+      this.saveStatus();
+    }
+  }
+
+  private updateStatusPositionFromPointer(event: PointerEvent, target: HTMLElement, saveAfterMove: boolean): void {
     if (!this.user?.statusEmoji) return;
-    this.user = {
-      ...this.user,
-      statusPosition: position,
-    };
-    this.saveStatus();
+    const rect = target.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = Math.round(((event.clientX - rect.left) / rect.width) * 100);
+    const y = Math.round(((event.clientY - rect.top) / rect.height) * 100);
+    const clampedX = Math.max(0, Math.min(100, x));
+    const clampedY = Math.max(0, Math.min(100, y));
+    const nextPosition = `CUSTOM:${clampedX}:${clampedY}`;
+    if (this.user.statusPosition !== nextPosition) {
+      this.user = {
+        ...this.user,
+        statusPosition: nextPosition,
+      };
+    }
+    if (saveAfterMove) {
+      this.saveStatus();
+    }
   }
 
   private saveStatus(): void {

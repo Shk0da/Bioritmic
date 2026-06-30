@@ -62,6 +62,7 @@ class UserService(
         private const val CONTENT_TYPE_JPEG = "image/jpeg"
         private const val BIO_MAX_LENGTH = 500
         private const val STATUS_EMOJI_MAX_LENGTH = 16
+        private val CUSTOM_STATUS_REGEX = Regex("^CUSTOM:(\\d{1,3}):(\\d{1,3})$", RegexOption.IGNORE_CASE)
     }
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
@@ -200,9 +201,24 @@ class UserService(
             }
         }
         if (request.statusPosition != null && user.statusEmoji != null) {
-            user.statusPosition = request.statusPosition.name
+            val normalizedPosition = normalizeStatusPosition(request.statusPosition)
+                ?: throw ApiException(
+                    ErrorCode.INVALID_PARAMETER,
+                    mapOf(Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME, "statusPosition"))
+                )
+            user.statusPosition = normalizedPosition
         }
         return userRepository.save(user)
+    }
+
+    private fun normalizeStatusPosition(rawValue: String?): String? {
+        val trimmed = rawValue?.trim() ?: return null
+        UserStatusPosition.parse(trimmed)?.let { return it.name }
+
+        val match = CUSTOM_STATUS_REGEX.matchEntire(trimmed) ?: return null
+        val x = match.groupValues[1].toIntOrNull() ?: return null
+        val y = match.groupValues[2].toIntOrNull() ?: return null
+        return "CUSTOM:${x.coerceIn(0, 100)}:${y.coerceIn(0, 100)}"
     }
 
     @Transactional

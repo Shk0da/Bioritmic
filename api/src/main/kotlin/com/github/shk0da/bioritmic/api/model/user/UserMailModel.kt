@@ -16,6 +16,8 @@ data class UserMailModel(
     @field:Size(max = 1024) val message: String? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY) var timestamp: Timestamp? = null,
     val replyToMessageId: Long? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val replyTargetUnavailable: Boolean? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY) val mediaType: String? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY) val mediaUrl: String? = null,
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) val mediaS3Key: String? = null,
@@ -45,6 +47,7 @@ data class UserMailModel(
                 message = displayMessage,
                 timestamp = userMail.timestamp,
                 replyToMessageId = userMail.replyToMessageId,
+                replyTargetUnavailable = userMail.replyTargetUnavailable.takeIf { it },
                 mediaType = userMail.mediaType,
                 mediaUrl = mediaUrl,
                 currentUserReaction = currentUserReaction,
