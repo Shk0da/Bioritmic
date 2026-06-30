@@ -257,7 +257,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
     }
 
     @Test
-    fun `alice does not see her own sent meeting`() {
+    fun `alice sees her own pending sent meeting as outgoing`() {
         // Alice sends meeting to Bob
         val meeting = testMeeting(bobId)
         webTestClient.post()
@@ -268,14 +268,15 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
 
-        // Alice should NOT see her own sent meeting
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/meetings?page=0&size=10")
             .headers(auth(aliceToken))
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.length()").isEqualTo(0)
+            .jsonPath("$.length()").isEqualTo(1)
+            .jsonPath("$[0].outgoing").isEqualTo(true)
+            .jsonPath("$[0].status").isEqualTo("PENDING")
     }
 
     @Test

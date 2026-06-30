@@ -18,6 +18,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CONVERSATION_PAGE_SIZE, ConversationPage, MAIL_REACTIONS, MailboxService } from '../../../core/services/mailbox.service';
+import { MailboxRealtimeService, MailboxWsEvent } from '../../../core/services/mailbox-realtime.service';
 import { UserService } from '../../../core/services/user.service';
 import { UserMail, UserInfo, MailMediaType, MailReactionType } from '../../../core/models/user.model';
 import { ModalService } from '../../../core/services/modal.service';
@@ -27,6 +28,7 @@ import { formatMessageDateTime, formatMessageTime } from '../../../shared/utils/
 import { isSystemMailMessage } from '../../../shared/utils/mail-system-message.util';
 import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
 import { normalizeRouteUrl } from '../../../core/routing/route-cache-refresh.util';
+import { isLayoutCachingEnabled } from '../../../core/routing/layout-cache.util';
 import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.service';
 
 interface ChatMessage extends UserMail {
@@ -79,6 +81,12 @@ interface ChatMessage extends UserMail {
         class="messages-container"
         data-testid="messages-container"
         (scroll)="onMessagesScroll($event)">
+        @if (hasMoreOlder && !loadingOlder && !loading && messages.length > 0) {
+          <div class="load-older-hint" aria-hidden="true">
+            <i class="bi bi-arrow-up"></i>
+            <span>Ранние сообщения</span>
+          </div>
+        }
         @if (loadingOlder) {
           <div class="load-older-indicator">
             <div class="spinner-border spinner-border-sm text-secondary" role="status">
@@ -158,13 +166,21 @@ interface ChatMessage extends UserMail {
                   <img
                     [src]="message.mediaUrl"
                     class="message-photo"
+                    [class.message-photo-loading]="isMessageMediaLoading(message)"
                     data-testid="message-photo"
                     alt="Фото"
                     role="button"
                     tabindex="0"
                     (click)="onMessagePhotoClick(message, $event)"
                     (keydown.enter)="onMessagePhotoClick(message, $event)"
-                    (keydown.space)="onMessagePhotoClick(message, $event)">
+                    (keydown.space)="onMessagePhotoClick(message, $event)"
+                    (load)="onMessagePhotoLoaded(message)"
+                    (error)="onMessagePhotoError(message)">
+                } @else if (message.mediaType === 'PHOTO') {
+                  <div class="message-media-fallback" aria-label="Фото загружается">
+                    <i class="bi bi-image"></i>
+                    <span>Фото</span>
+                  </div>
                 } @else if (message.mediaType === 'VOICE' && message.mediaUrl) {
                   <div class="voice-message" data-testid="message-voice">
                     <button
@@ -196,8 +212,14 @@ interface ChatMessage extends UserMail {
                     class="message-video-note"
                     playsinline
                     controls
-                    preload="metadata">
+                    preload="metadata"
+                    (error)="onMessageVideoError(message)">
                   </video>
+                } @else if (message.mediaType === 'VIDEO_NOTE') {
+                  <div class="message-media-fallback" aria-label="Видео загружается">
+                    <i class="bi bi-camera-video"></i>
+                    <span>Видео</span>
+                  </div>
                 }
                 @if (showMessageText(message)) {
                   <div class="message-text">{{ message.message }}</div>
@@ -595,6 +617,20 @@ interface ChatMessage extends UserMail {
       flex-shrink: 0;
     }
 
+    .load-older-hint {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0 0.5rem;
+      flex-shrink: 0;
+      font-size: 0.75rem;
+      color: var(--text-muted, #6c757d);
+      opacity: 0.85;
+      user-select: none;
+      pointer-events: none;
+    }
+
     .message-wrapper {
       display: flex;
       gap: 0.5rem;
@@ -682,6 +718,30 @@ interface ChatMessage extends UserMail {
       object-fit: contain;
       object-position: center;
       cursor: zoom-in;
+    }
+
+    .message-photo-loading {
+      opacity: 0.55;
+    }
+
+    .message-media-fallback {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      min-width: 120px;
+      min-height: 88px;
+      padding: 0.75rem;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.06);
+      color: var(--text-muted, #6c757d);
+      font-size: 0.8rem;
+    }
+
+    .message-media-fallback .bi {
+      font-size: 1.35rem;
+      opacity: 0.7;
     }
 
     .voice-message {
@@ -1413,14 +1473,19 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   private shouldScroll = false;
   private viewInitialized = false;
   private scrollBehavior: ScrollBehavior = 'auto';
+  private stickToBottom = true;
+  private scheduledScrollTimeouts: number[] = [];
+  private lastScrollTop = 0;
   private focusInputTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private scrollPinObserver: ResizeObserver | null = null;
   private scrollPinStopTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private scrollPinActive = false;
   private programmaticScroll = false;
-  private refreshInterval: ReturnType<typeof setInterval> | null = null;
   private isRefreshing = false;
   private readonly conversationPageSize = CONVERSATION_PAGE_SIZE;
+  private photoLoadRetries = new Map<number, number>();
+  private photoLoadTimers = new Map<number, ReturnType<typeof setTimeout>>();
+  private photoLoadingIds = new Set<number>();
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
   private readonly pullToRefreshService = inject(PullToRefreshService);
@@ -1437,6 +1502,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   private teardownDone = false;
   private highlightTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private lastOnlineRefreshAt = 0;
+  private realtimeBound = false;
   private readonly cdr = inject(ChangeDetectorRef);
 
   private static readonly MAX_VOICE_MS = 120_000;
@@ -1451,10 +1517,22 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
 
   constructor(
     private mailboxService: MailboxService,
+    private mailboxRealtime: MailboxRealtimeService,
     private userService: UserService,
     private modalService: ModalService
   ) {
     this.destroyRef.onDestroy(() => this.teardown());
+    this.bindRealtimeEvents();
+  }
+
+  private bindRealtimeEvents(): void {
+    if (this.realtimeBound) {
+      return;
+    }
+    this.realtimeBound = true;
+    this.mailboxRealtime.events$()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((event) => this.handleRealtimeEvent(event));
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -1464,12 +1542,33 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       && !changes['reloadToken'].firstChange;
 
     if (userIdChanged) {
+      this.mailboxRealtime.unsubscribeConversation();
       this.resetState();
+      this.mailboxRealtime.subscribeConversation(this.userId);
       this.loadCurrentUserAndChat();
     }
     if (reloadTokenChanged && this.userId && !userIdChanged) {
-      this.reloadConversation(true, true);
+      if (this.shouldFocusBottomOnEntry()) {
+        this.focusConversationOnEntry();
+      } else {
+        this.reloadConversation(this.stickToBottom, true, !this.stickToBottom);
+      }
     }
+  }
+
+  /** Mobile/PWA: always open the chat at the latest messages when entering from another screen. */
+  private shouldFocusBottomOnEntry(): boolean {
+    return isLayoutCachingEnabled();
+  }
+
+  private focusConversationOnEntry(): void {
+    this.stickToBottom = true;
+    this.lastScrollTop = 0;
+    if (this.isRefreshing) {
+      this.deferScrollToLatestMessages(true);
+      return;
+    }
+    this.reloadConversation(true, true, false);
   }
 
   ngAfterViewInit(): void {
@@ -1478,12 +1577,12 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       const normalized = normalizeRouteUrl(url);
       return normalized.startsWith('/mailbox/') && normalized !== '/mailbox';
     }, () => ({
-      refresh: () => this.reloadConversation(true, true),
+      refresh: () => this.pullRefreshConversation(),
       getScrollElement: () => this.scrollContainer?.nativeElement,
       isEnabled: () => !this.loading && !this.loadingOlder && !this.isRefreshing,
     }));
-    if (!this.loading && this.messages.length > 0) {
-      this.scrollToLatestMessages();
+    if (!this.loading && this.messages.length > 0 && this.stickToBottom) {
+      this.deferScrollToLatestMessages(true);
     }
   }
 
@@ -1497,7 +1596,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   ngAfterViewChecked(): void {
-    if (this.shouldScroll && this.scrollContainer) {
+    if (this.shouldScroll && this.scrollContainer && this.stickToBottom) {
       const behavior = this.scrollBehavior;
       this.shouldScroll = false;
       this.scrollBehavior = 'auto';
@@ -1515,6 +1614,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     }
 
     this.sending = true;
+    this.stickToBottom = true;
     const message: UserMail = {
       to: this.userId,
       message: this.newMessage.trim(),
@@ -1640,7 +1740,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     if (!input) {
       return;
     }
-    if (this.isMobileLayout()) {
+    if (this.isMobileLayout() && this.stickToBottom) {
       this.scrollToBottom();
     }
     input.focus({ preventScroll: true });
@@ -1909,6 +2009,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       return;
     }
     this.sending = true;
+    this.stickToBottom = true;
     const replyToMessageId = this.replyingToMessage?.id;
     this.mailboxService.sendMediaMail(this.userId, mediaType, file, filename, caption, replyToMessageId)
       .pipe(takeUntil(this.destroy$))
@@ -2047,9 +2148,12 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   private resetState(): void {
+    this.stickToBottom = true;
+    this.lastScrollTop = 0;
+    this.clearPhotoLoadState();
+    this.cancelPendingAutoScroll();
     this.clearScrollPin();
     this.clearFocusInputTimeout();
-    this.clearRefreshInterval();
     this.cleanupRecording();
     this.stopVoicePlayback();
     this.voicePreloadGeneration += 1;
@@ -2138,6 +2242,89 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.photoPreviewUrl = message.mediaUrl;
   }
 
+  onMessagePhotoLoaded(message: ChatMessage): void {
+    if (message.id == null) {
+      return;
+    }
+    this.photoLoadRetries.delete(message.id);
+    this.photoLoadingIds.delete(message.id);
+    this.clearPhotoLoadTimer(message.id);
+    this.cdr.markForCheck();
+  }
+
+  onMessagePhotoError(message: ChatMessage): void {
+    this.scheduleMessageMediaRetry(message);
+  }
+
+  onMessageVideoError(message: ChatMessage): void {
+    this.scheduleMessageMediaRetry(message);
+  }
+
+  isMessageMediaLoading(message: ChatMessage): boolean {
+    return message.id != null && this.photoLoadingIds.has(message.id);
+  }
+
+  private scheduleMessageMediaRetry(message: ChatMessage): void {
+    if (message.id == null) {
+      return;
+    }
+    const attempt = (this.photoLoadRetries.get(message.id) ?? 0) + 1;
+    if (attempt > 8) {
+      this.photoLoadingIds.delete(message.id);
+      return;
+    }
+    this.photoLoadRetries.set(message.id, attempt);
+    this.photoLoadingIds.add(message.id);
+    this.clearPhotoLoadTimer(message.id);
+    const delay = Math.min(300 * attempt, 2500);
+    const messageId = message.id;
+    const timer = setTimeout(() => {
+      this.photoLoadTimers.delete(messageId);
+      this.bumpMessageMediaUrl(messageId);
+    }, delay);
+    this.photoLoadTimers.set(message.id, timer);
+    this.cdr.markForCheck();
+  }
+
+  private bumpMessageMediaUrl(messageId: number): void {
+    const message = this.messages.find((item) => item.id === messageId);
+    if (!message?.mediaUrl) {
+      this.photoLoadingIds.delete(messageId);
+      this.cdr.markForCheck();
+      return;
+    }
+    const base = message.mediaUrl.split('?')[0];
+    message.mediaUrl = `${base}?rt=${Date.now()}`;
+    this.cdr.markForCheck();
+  }
+
+  private clearPhotoLoadTimer(messageId: number): void {
+    const timer = this.photoLoadTimers.get(messageId);
+    if (timer != null) {
+      clearTimeout(timer);
+      this.photoLoadTimers.delete(messageId);
+    }
+  }
+
+  private clearPhotoLoadState(): void {
+    for (const timer of this.photoLoadTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.photoLoadRetries.clear();
+    this.photoLoadTimers.clear();
+    this.photoLoadingIds.clear();
+  }
+
+  private mergeIncomingMessage(previous: ChatMessage | undefined, incoming: ChatMessage): ChatMessage {
+    if (!previous) {
+      return incoming;
+    }
+    return {
+      ...incoming,
+      mediaUrl: incoming.mediaUrl ?? previous.mediaUrl,
+    };
+  }
+
   closePhotoPreview(): void {
     this.photoPreviewUrl = null;
   }
@@ -2205,13 +2392,32 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   onMessagesScroll(event: Event): void {
-    if (this.scrollPinActive && !this.programmaticScroll) {
-      this.clearScrollPin();
-    }
     const el = event.target as HTMLElement;
-    if (el.scrollTop <= 120 && this.hasMoreOlder && !this.loadingOlder && !this.loading) {
+    const scrollingUp = el.scrollTop < this.lastScrollTop;
+    this.lastScrollTop = el.scrollTop;
+
+    if (!this.programmaticScroll) {
+      if (this.isNearBottom()) {
+        this.stickToBottom = true;
+      } else {
+        this.stickToBottom = false;
+        this.cancelPendingAutoScroll();
+        this.clearScrollPin();
+      }
+    }
+    if (this.shouldLoadOlderMessages(el, scrollingUp)) {
       this.loadOlderMessages();
     }
+  }
+
+  private shouldLoadOlderMessages(el: HTMLElement, scrollingUp: boolean): boolean {
+    return scrollingUp
+      && el.scrollTop <= 120
+      && this.hasMoreOlder
+      && !this.loadingOlder
+      && !this.loading
+      && !this.programmaticScroll
+      && !this.stickToBottom;
   }
 
   private loadCurrentUserAndChat(): void {
@@ -2243,15 +2449,10 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (page) => {
-          this.messages = this.mapToChatMessages(page.messages);
-          this.hasMoreOlder = page.hasMore;
-          this.preloadVoiceDurations(this.messages);
+          this.applyConversationMessages(page);
           this.loading = false;
-          this.onConversationReady();
-          if (!this.refreshInterval) {
-            this.refreshInterval = setInterval(() => this.refreshMessages(), 3000);
-          }
           this.cdr.markForCheck();
+          this.onConversationReady();
         },
         error: () => {
           this.loading = false;
@@ -2261,32 +2462,77 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
 
   private onConversationReady(scrollToBottom = true): void {
     if (scrollToBottom) {
-      this.scrollToLatestMessages();
+      this.stickToBottom = true;
+      this.deferScrollToLatestMessages(true);
     }
     this.conversationLoaded.emit();
   }
 
-  private scrollToLatestMessages(smooth = false): void {
-    this.scheduleScrollToBottom(smooth);
-    this.pinScrollToBottomWhileLayoutSettles();
-    this.ensureScrollToBottomWhenReady();
+  private deferScrollToLatestMessages(force = false, attemptsLeft = 16): void {
+    if (!force && !this.stickToBottom) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!force && !this.stickToBottom) {
+          return;
+        }
+        if (!this.viewInitialized || !this.scrollContainer?.nativeElement) {
+          if (attemptsLeft > 0) {
+            window.setTimeout(() => this.deferScrollToLatestMessages(force, attemptsLeft - 1), 50);
+          }
+          return;
+        }
+        this.scrollToLatestMessages(force);
+        if (force && this.stickToBottom && attemptsLeft > 0 && !this.isNearBottom(120)) {
+          window.setTimeout(() => this.deferScrollToLatestMessages(force, attemptsLeft - 1), 80);
+        }
+      });
+    });
   }
 
-  private ensureScrollToBottomWhenReady(attemptsLeft = 48): void {
-    if (attemptsLeft <= 0) {
+  private scrollToLatestMessages(force = false): void {
+    if (!force && !this.stickToBottom) {
       return;
     }
-    const scrolled = this.scrollToBottom();
+    this.scheduleScrollToBottom(false);
+    this.observeLayoutForBottomStick();
+  }
+
+  private observeLayoutForBottomStick(): void {
+    if (!this.stickToBottom) {
+      return;
+    }
     const el = this.scrollContainer?.nativeElement as HTMLElement | undefined;
-    const layoutReady = !!el && el.clientHeight > 0;
-    const contentReady = !!el && el.scrollHeight > el.clientHeight + 2;
-    if (!this.viewInitialized || !layoutReady || (!contentReady && this.messages.length > 0 && !this.loading)) {
-      requestAnimationFrame(() => this.ensureScrollToBottomWhenReady(attemptsLeft - 1));
+    if (!el) {
+      window.setTimeout(() => this.observeLayoutForBottomStick(), 50);
       return;
     }
-    if (!scrolled && layoutReady) {
-      requestAnimationFrame(() => this.ensureScrollToBottomWhenReady(attemptsLeft - 1));
+    this.clearScrollPin();
+    if (!this.stickToBottom) {
+      return;
     }
+    this.scrollPinActive = true;
+    const stickIfNeeded = () => {
+      if (this.scrollPinActive && this.stickToBottom) {
+        this.scrollToBottom();
+      }
+    };
+    if (typeof ResizeObserver !== 'undefined') {
+      this.scrollPinObserver = new ResizeObserver(() => stickIfNeeded());
+      this.scrollPinObserver.observe(el);
+    }
+    stickIfNeeded();
+    const pinDurationMs = this.shouldFocusBottomOnEntry() ? 1800 : 800;
+    this.scrollPinStopTimeoutId = setTimeout(() => this.clearScrollPin(), pinDurationMs);
+  }
+
+  private cancelPendingAutoScroll(): void {
+    this.shouldScroll = false;
+    for (const timeoutId of this.scheduledScrollTimeouts) {
+      clearTimeout(timeoutId);
+    }
+    this.scheduledScrollTimeouts = [];
   }
 
   private clearScrollPin(): void {
@@ -2299,31 +2545,6 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.scrollPinObserver = null;
   }
 
-  private pinScrollToBottomWhileLayoutSettles(): void {
-    const el = this.scrollContainer?.nativeElement as HTMLElement | undefined;
-    if (!el) {
-      window.setTimeout(() => this.pinScrollToBottomWhileLayoutSettles(), 50);
-      return;
-    }
-    this.clearScrollPin();
-    this.scrollPinActive = true;
-    const pin = () => {
-      if (this.scrollPinActive) {
-        this.scrollToBottom();
-      }
-    };
-    if (typeof ResizeObserver !== 'undefined') {
-      this.scrollPinObserver = new ResizeObserver(() => pin());
-      this.scrollPinObserver.observe(el);
-    }
-    pin();
-    const pinDurationMs = this.isMobileLayout() ? 3500 : 2000;
-    this.scrollPinStopTimeoutId = setTimeout(() => {
-      this.clearScrollPin();
-      pin();
-    }, pinDurationMs);
-  }
-
   private loadOlderMessages(): void {
     const oldestId = this.messages[0]?.id;
     if (oldestId == null || this.loadingOlder) {
@@ -2331,6 +2552,9 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     }
     const container = this.scrollContainer?.nativeElement as HTMLElement | undefined;
     const prevScrollHeight = container?.scrollHeight ?? 0;
+    this.stickToBottom = false;
+    this.cancelPendingAutoScroll();
+    this.clearScrollPin();
     this.loadingOlder = true;
     this.mailboxService.getConversation(this.userId, { before: oldestId, size: this.conversationPageSize })
       .pipe(takeUntil(this.destroy$))
@@ -2346,6 +2570,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
           if (container) {
             requestAnimationFrame(() => {
               container.scrollTop = container.scrollHeight - prevScrollHeight;
+              this.lastScrollTop = container.scrollTop;
             });
           }
           this.cdr.markForCheck();
@@ -2379,6 +2604,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
             if (container) {
               requestAnimationFrame(() => {
                 container.scrollTop = container.scrollHeight - prevScrollHeight;
+                this.lastScrollTop = container.scrollTop;
               });
             }
             this.cdr.markForCheck();
@@ -2445,16 +2671,18 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     }
     for (const message of this.mapToChatMessages(page.messages)) {
       if (message.id != null) {
-        byId.set(message.id, message);
+        const existing = byId.get(message.id);
+        byId.set(message.id, this.mergeIncomingMessage(existing, message));
       }
     }
     this.messages = Array.from(byId.values()).sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
     this.preloadVoiceDurations(page.messages);
     if (options?.scrollToBottom) {
+      this.stickToBottom = true;
       if (options.smoothScroll) {
         this.scheduleScrollToBottom(true);
       } else {
-        this.scrollToLatestMessages();
+        this.scrollToLatestMessages(true);
       }
     }
     this.cdr.markForCheck();
@@ -2467,15 +2695,39 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     }));
   }
 
+  private applyConversationMessages(
+    page: ConversationPage,
+    options?: { preserveOlderMessages?: boolean }
+  ): void {
+    const latest = this.mapToChatMessages(page.messages);
+    if (options?.preserveOlderMessages && this.messages.length > 0) {
+      const minLatestId = latest.reduce((min, message) => {
+        if (message.id != null && message.id < min) {
+          return message.id;
+        }
+        return min;
+      }, Number.MAX_SAFE_INTEGER);
+      const olderKept = minLatestId < Number.MAX_SAFE_INTEGER
+        ? this.messages.filter((message) => message.id != null && message.id < minLatestId)
+        : [];
+      this.messages = [...olderKept, ...latest].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+      this.hasMoreOlder = page.hasMore || olderKept.length > 0;
+    } else {
+      this.messages = latest;
+      this.hasMoreOlder = page.hasMore;
+    }
+    this.preloadVoiceDurations(page.messages);
+  }
+
   private isNearBottom(threshold = 96): boolean {
     try {
       const el = this.scrollContainer?.nativeElement as HTMLElement | undefined;
       if (!el) {
-        return true;
+        return false;
       }
       return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
     } catch {
-      return true;
+      return false;
     }
   }
 
@@ -2598,66 +2850,129 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     });
   }
 
-  private refreshMessages(): void {
-    if (
-      this.sending ||
-      this.isRefreshing ||
-      this.loadingOlder ||
-      this.recordingVoice ||
-      this.recordingVideo ||
-      this.selectionMode ||
-      this.deletingMessages
-    ) {
+  private handleRealtimeEvent(event: MailboxWsEvent): void {
+    if (event.otherUserId && event.otherUserId !== this.userId) {
       return;
     }
-    this.isRefreshing = true;
-    const wasNearBottom = this.isNearBottom();
-    const maxId = this.messages.reduce((max, message) => Math.max(max, message.id ?? 0), 0);
-    this.refreshOtherUserOnlineStatus();
-    this.mailboxService.getConversation(this.userId, { size: this.conversationPageSize })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (page) => {
-          this.isRefreshing = false;
-          let hasNew = false;
-          const byId = new Map<number, ChatMessage>();
-          for (const message of this.messages) {
-            if (message.id != null) {
-              byId.set(message.id, message);
-            }
-          }
-          for (const incoming of this.mapToChatMessages(page.messages)) {
-            if (incoming.id == null) {
-              continue;
-            }
-            const existed = byId.has(incoming.id);
-            byId.set(incoming.id, incoming);
-            if (!existed && incoming.id > maxId) {
-              hasNew = true;
-            }
-          }
-          this.messages = Array.from(byId.values()).sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
-          this.preloadVoiceDurations(page.messages);
-          if (hasNew && wasNearBottom) {
-            this.scheduleScrollToBottom(true);
-          }
-          this.cdr.markForCheck();
-        },
-        error: () => { this.isRefreshing = false; }
-      });
+    switch (event.type) {
+      case 'message':
+        if (event.message) {
+          this.applyIncomingMessage(event.message);
+        }
+        break;
+      case 'deleted':
+        this.applyDeletedMessages(event.messageIds ?? []);
+        break;
+      case 'reaction':
+        if (event.messageId != null) {
+          this.applyReactionUpdate(event.messageId, event.reaction ?? null, event.reactionCounts ?? {});
+        }
+        break;
+      case 'read':
+        this.applyReadReceipts(event.messageIds ?? []);
+        break;
+      default:
+        break;
+    }
   }
 
-  private reloadConversation(scrollToBottom = true, silent = false): void {
-    if (!this.userId) {
+  private applyIncomingMessage(message: UserMail): void {
+    if (message.id == null || this.loading || this.loadingOlder || this.isRefreshing) {
       return;
+    }
+    const wasNearBottom = this.isNearBottom();
+    const mapped = this.mapToChatMessages([message])[0];
+    const byId = new Map<number, ChatMessage>();
+    for (const existing of this.messages) {
+      if (existing.id != null) {
+        byId.set(existing.id, existing);
+      }
+    }
+    const existed = byId.has(message.id);
+    const previous = existed ? byId.get(message.id) : undefined;
+    byId.set(message.id, this.mergeIncomingMessage(previous, mapped));
+    this.messages = Array.from(byId.values()).sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+    this.preloadVoiceDurations([message]);
+    if (!existed && !mapped.isCurrentUser) {
+      this.refreshOtherUserOnlineStatus(true);
+    }
+    if (!existed && wasNearBottom) {
+      this.stickToBottom = true;
+      this.scheduleScrollToBottom(true);
+    }
+    this.cdr.markForCheck();
+  }
+
+  private applyDeletedMessages(messageIds: number[]): void {
+    if (messageIds.length === 0) {
+      return;
+    }
+    const deleted = new Set(messageIds);
+    this.messages = this.messages.filter((message) => message.id == null || !deleted.has(message.id));
+    if (this.replyingToMessage?.id != null && deleted.has(this.replyingToMessage.id)) {
+      this.replyingToMessage = null;
+    }
+    if (this.playingVoiceId && deleted.has(Number(this.playingVoiceId))) {
+      this.stopVoicePlayback();
+    }
+    this.cdr.markForCheck();
+  }
+
+  private applyReactionUpdate(
+    messageId: number,
+    reaction: string | null,
+    reactionCounts: Record<string, number>
+  ): void {
+    const message = this.messages.find((item) => item.id === messageId);
+    if (!message) {
+      return;
+    }
+    message.currentUserReaction = (reaction as MailReactionType | null) ?? undefined;
+    message.reactionCounts = { ...reactionCounts };
+    this.cdr.markForCheck();
+  }
+
+  private applyReadReceipts(messageIds: number[]): void {
+    if (messageIds.length === 0) {
+      return;
+    }
+    const readIds = new Set(messageIds);
+    let changed = false;
+    for (const message of this.messages) {
+      if (message.id != null && readIds.has(message.id) && message.isCurrentUser && !message.isRead) {
+        message.isRead = true;
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Explicit pull-to-refresh: always fetch the latest page and scroll to bottom. */
+  private pullRefreshConversation(): Promise<void> {
+    this.stickToBottom = true;
+    this.lastScrollTop = 0;
+    return this.reloadConversation(true, true, false);
+  }
+
+  private reloadConversation(
+    scrollToBottom = true,
+    silent = false,
+    preserveOlderMessages?: boolean,
+  ): Promise<void> {
+    if (!this.userId) {
+      return Promise.resolve();
     }
     if (silent) {
       if (this.loading || this.isRefreshing) {
-        return;
+        return Promise.resolve();
       }
     } else if (this.loading) {
-      return;
+      return Promise.resolve();
     }
+
+    const preserveOlder = preserveOlderMessages ?? (silent && !scrollToBottom);
 
     if (!silent) {
       this.loading = true;
@@ -2666,59 +2981,66 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       this.isRefreshing = true;
     }
 
-    this.mailboxService.getConversation(this.userId, { size: this.conversationPageSize })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (page) => {
-          this.messages = this.mapToChatMessages(page.messages);
-          this.hasMoreOlder = page.hasMore;
-          this.preloadVoiceDurations(this.messages);
-          if (silent) {
-            this.isRefreshing = false;
-          } else {
-            this.loading = false;
-          }
-          if (scrollToBottom) {
+    return new Promise((resolve) => {
+      this.mailboxService.getConversation(this.userId!, { size: this.conversationPageSize })
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (page) => {
+            this.applyConversationMessages(page, { preserveOlderMessages: preserveOlder });
             if (silent) {
-              this.scrollToLatestMessages();
+              this.isRefreshing = false;
             } else {
-              this.onConversationReady();
+              this.loading = false;
             }
-          } else {
-            this.conversationLoaded.emit();
+            this.cdr.markForCheck();
+            if (scrollToBottom && this.stickToBottom) {
+              if (silent) {
+                this.deferScrollToLatestMessages(true);
+                this.conversationLoaded.emit();
+              } else {
+                this.onConversationReady();
+              }
+            } else {
+              this.conversationLoaded.emit();
+            }
+            resolve();
+          },
+          error: () => {
+            if (silent) {
+              this.isRefreshing = false;
+            } else {
+              this.loading = false;
+            }
+            this.cdr.markForCheck();
+            resolve();
           }
-          if (!this.refreshInterval) {
-            this.refreshInterval = setInterval(() => this.refreshMessages(), 3000);
-          }
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          if (silent) {
-            this.isRefreshing = false;
-          } else {
-            this.loading = false;
-          }
-          this.cdr.markForCheck();
-        }
-      });
+        });
+    });
   }
 
   private scheduleScrollToBottom(smooth = false): void {
+    if (!this.stickToBottom) {
+      return;
+    }
+    this.cancelPendingAutoScroll();
     this.scrollBehavior = smooth ? 'smooth' : 'auto';
     this.shouldScroll = true;
-    const scroll = () => this.scrollToBottom();
+    const scrollIfStuck = () => {
+      if (this.stickToBottom) {
+        this.scrollToBottom();
+      }
+    };
     requestAnimationFrame(() => {
-      scroll();
-      requestAnimationFrame(scroll);
+      scrollIfStuck();
+      requestAnimationFrame(scrollIfStuck);
     });
-    const delays = this.isMobileLayout() ? [80, 200, 450, 900, 1500, 2500, 3500] : [80, 200, 450, 900, 1500];
-    for (const delay of delays) {
-      window.setTimeout(scroll, delay);
+    for (const delay of [50, 150, 400]) {
+      this.scheduledScrollTimeouts.push(window.setTimeout(scrollIfStuck, delay));
     }
   }
 
   private scrollToBottom(): boolean {
-    if (!this.scrollContainer?.nativeElement) {
+    if (!this.stickToBottom || !this.scrollContainer?.nativeElement) {
       return false;
     }
     this.programmaticScroll = true;
@@ -2730,6 +3052,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
         top,
         behavior: this.scrollBehavior
       });
+      this.lastScrollTop = el.scrollTop;
       return true;
     } catch {
       return false;
@@ -2740,23 +3063,18 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     }
   }
 
-  private clearRefreshInterval(): void {
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
-      this.refreshInterval = null;
-    }
-  }
-
   private teardown(): void {
     if (this.teardownDone) {
       return;
     }
     this.teardownDone = true;
+    this.clearPhotoLoadState();
+    this.cancelPendingAutoScroll();
+    this.mailboxRealtime.unsubscribeConversation();
     this.clearScrollPin();
     this.clearFocusInputTimeout();
     this.voicePreloadGeneration += 1;
     this.voiceDurationLoads.clear();
-    this.clearRefreshInterval();
     this.cleanupRecording();
     this.stopVoicePlayback();
     this.destroy$.next();

@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, OnDestroy, inject, Injector } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subscription, of, tap, catchError, throwError, timeout, map, shareReplay } from 'rxjs';
 import { User, UserToken, AuthorizationModel, UserInfo } from '../models/user.model';
@@ -12,6 +12,7 @@ const USER_POLL_MS = 30_000;
 })
 export class AuthService implements OnDestroy {
   private readonly apiUrl = '/api/v1';
+  private readonly injector = inject(Injector);
   private currentUserSubject = new BehaviorSubject<UserInfo | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   private legacyToken: string | null = null;
@@ -105,6 +106,9 @@ export class AuthService implements OnDestroy {
 
   clearAuth(): void {
     clearLayoutRouteCache();
+    void import('./mailbox-realtime.service').then(({ MailboxRealtimeService }) => {
+      this.injector.get(MailboxRealtimeService).disconnect();
+    });
     this.legacyToken = null;
     localStorage.removeItem(USER_KEY);
     this.currentUserSubject.next(null);

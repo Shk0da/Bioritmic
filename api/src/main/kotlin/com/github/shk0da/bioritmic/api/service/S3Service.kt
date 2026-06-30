@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.core.exception.SdkException
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import java.io.ByteArrayInputStream
 
@@ -71,6 +72,38 @@ class S3Service(
     }
 
     fun getPhotoUrl(key: String): String {
-        return "/api/v1/photos/s3/$key"
+        return "$PHOTO_URL_PREFIX$key"
+    }
+
+    suspend fun listObjectKeys(prefix: String): List<String> = withContext(Dispatchers.IO) {
+        val keys = mutableListOf<String>()
+        var continuationToken: String? = null
+        do {
+            val requestBuilder = ListObjectsV2Request.builder()
+                .bucket(bucket)
+                .prefix(prefix)
+            continuationToken?.let { requestBuilder.continuationToken(it) }
+            val response = s3Client.listObjectsV2(requestBuilder.build())
+            response.contents()?.forEach { obj ->
+                obj.key()?.let { keys.add(it) }
+            }
+            continuationToken = if (response.isTruncated) response.nextContinuationToken() else null
+        } while (continuationToken != null)
+        keys
+    }
+
+    companion object {
+        const val PHOTO_URL_PREFIX = "/api/v1/photos/s3/"
+
+        fun keyFromPhotoUrl(mediaUrl: String?): String? {
+            if (mediaUrl.isNullOrBlank()) {
+                return null
+            }
+            return if (mediaUrl.startsWith(PHOTO_URL_PREFIX)) {
+                mediaUrl.removePrefix(PHOTO_URL_PREFIX)
+            } else {
+                null
+            }
+        }
     }
 }

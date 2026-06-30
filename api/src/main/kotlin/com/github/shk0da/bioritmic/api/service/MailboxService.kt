@@ -13,6 +13,7 @@ import com.github.shk0da.bioritmic.api.repository.MailboxReactionBatchRepository
 import com.github.shk0da.bioritmic.api.repository.MailboxReactionRepository
 import com.github.shk0da.bioritmic.api.repository.MailboxRepository
 import com.github.shk0da.bioritmic.api.repository.UserBlockRepository
+import com.github.shk0da.bioritmic.api.service.mailbox.MailboxRealtimeNotifier
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkNotEmpty
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.data.domain.Sort.by
@@ -37,10 +39,13 @@ class MailboxService(
     val mailboxReactionBatchRepository: MailboxReactionBatchRepository,
     val userBlockRepository: UserBlockRepository,
     private val pushNotificationService: PushNotificationService,
-    private val s3Service: S3Service
+    private val s3Service: S3Service,
+    private val mailboxRealtimeNotifier: MailboxRealtimeNotifier,
+    selfProvider: ObjectProvider<MailboxService>,
 ) {
 
     private val log = LoggerFactory.getLogger(MailboxService::class.java)
+    private val tx: MailboxService by lazy { selfProvider.getObject() }
 
     private val defaultPageable = PageableRequest(1, 10, by(Sort.Direction.DESC, "timestamp"))
 
@@ -49,8 +54,15 @@ class MailboxService(
         return mailboxRepository.findAllMailsByUserId(userId, pageable.pageSize, pageable.offset)
     }
 
-    @Transactional
     suspend fun sendUserMail(userId: UUID, userMailModel: UserMailModel): ConversationPageModel {
+        val toUserId = userMailModel.to!!
+        val saved = tx.persistUserMail(userId, userMailModel)
+        mailboxRealtimeNotifier.onMessagePersisted(saved)
+        return tx.getConversationPage(userId, toUserId, beforeId = null, size = CONVERSATION_PAGE_SIZE)
+    }
+
+    @Transactional
+    suspend fun persistUserMail(userId: UUID, userMailModel: UserMailModel): UserMail {
         val toUserId = userMailModel.to!!
         ensureNotBlocked(userId, toUserId)
         val replyToMessageId = validateReplyTarget(userId, toUserId, userMailModel.replyToMessageId)
@@ -61,13 +73,11 @@ class MailboxService(
         userMailModel.from = userId
         val userMailWithReply = userMailModel.copy(replyToMessageId = replyToMessageId)
         val userMail = UserMail.of(userMailWithReply)
-        mailboxRepository.save(userMail)
-
-        notifyRecipient(userMail, userId)
-        return getConversationPage(userId, toUserId, beforeId = null, size = CONVERSATION_PAGE_SIZE)
+        val saved = mailboxRepository.save(userMail)
+        notifyRecipient(saved, userId)
+        return saved
     }
 
-    @Transactional
     suspend fun sendMediaMail(
         userId: UUID,
         toUserId: UUID,
@@ -76,6 +86,20 @@ class MailboxService(
         caption: String?,
         replyToMessageId: Long?
     ): ConversationPageModel {
+        val saved = tx.persistMediaMail(userId, toUserId, mediaTypeRaw, file, caption, replyToMessageId)
+        mailboxRealtimeNotifier.onMessagePersisted(saved)
+        return tx.getConversationPage(userId, toUserId, beforeId = null, size = CONVERSATION_PAGE_SIZE)
+    }
+
+    @Transactional
+    suspend fun persistMediaMail(
+        userId: UUID,
+        toUserId: UUID,
+        mediaTypeRaw: String,
+        file: FilePart,
+        caption: String?,
+        replyToMessageId: Long?,
+    ): UserMail {
         ensureNotBlocked(userId, toUserId)
         val validatedReplyId = validateReplyTarget(userId, toUserId, replyToMessageId)
 
@@ -114,9 +138,9 @@ class MailboxService(
         )
 
         return try {
-            mailboxRepository.save(userMail)
-            notifyRecipient(userMail, userId)
-            getConversationPage(userId, toUserId, beforeId = null, size = CONVERSATION_PAGE_SIZE)
+            val saved = mailboxRepository.save(userMail)
+            notifyRecipient(saved, userId)
+            saved
         } catch (ex: Exception) {
             s3Service.deletePhoto(s3Key)
             throw ex
@@ -162,6 +186,16 @@ class MailboxService(
         if (deleted != ids.size) {
             throw ApiException(ErrorCode.ACCESS_DENIED)
         }
+        val otherUserIds = messages.mapNotNull { mail ->
+            when (currentUserId) {
+                mail.fromUserId -> mail.toUserId
+                mail.toUserId -> mail.fromUserId
+                else -> null
+            }
+        }.distinct()
+        otherUserIds.forEach { otherUserId ->
+            mailboxRealtimeNotifier.onMessagesDeleted(currentUserId, otherUserId, ids)
+        }
         return deleted
     }
 
@@ -194,7 +228,11 @@ class MailboxService(
     ): ConversationPageModel {
         val limit = size.coerceIn(1, MAX_CONVERSATION_PAGE_SIZE)
         val rawMessages = if (beforeId == null) {
+            val unreadIds = mailboxRepository.findUnreadIncomingIds(currentUserId, otherUserId)
             mailboxRepository.markIncomingAsRead(currentUserId, otherUserId)
+            if (unreadIds.isNotEmpty()) {
+                mailboxRealtimeNotifier.onMessagesRead(currentUserId, otherUserId, unreadIds)
+            }
             mailboxRepository.findLatestConversationMessages(currentUserId, otherUserId, limit)
         } else {
             mailboxRepository.findOlderConversationMessages(currentUserId, otherUserId, beforeId, limit)
@@ -253,11 +291,15 @@ class MailboxService(
             mailboxReactionRepository.deleteReaction(messageId, userId)
             val counts = mailboxReactionBatchRepository
                 .countReactionsByMailIdsFromMaster(listOf(messageId))[messageId] ?: emptyMap()
+            val otherUserId = if (userId == from) to else from
+            mailboxRealtimeNotifier.onReactionUpdated(userId, otherUserId, messageId, null, counts)
             return mapOf("reaction" to null, "reactionCounts" to counts)
         }
         mailboxReactionRepository.upsert(messageId, userId, reactionType.name)
         val counts = mailboxReactionBatchRepository
             .countReactionsByMailIdsFromMaster(listOf(messageId))[messageId] ?: emptyMap()
+        val otherUserId = if (userId == from) to else from
+        mailboxRealtimeNotifier.onReactionUpdated(userId, otherUserId, messageId, reactionType.name, counts)
         return mapOf("reaction" to reactionType.name, "reactionCounts" to counts)
     }
 

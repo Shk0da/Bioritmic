@@ -10,6 +10,7 @@ import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import com.github.shk0da.bioritmic.api.repository.MailboxRepository
 import com.github.shk0da.bioritmic.api.repository.MeetingStatusUpdater
 import com.github.shk0da.bioritmic.api.repository.MeetingsRepository
+import com.github.shk0da.bioritmic.api.service.mailbox.MailboxRealtimeNotifier
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.slf4j.LoggerFactory
@@ -28,7 +29,8 @@ class MeetingsService(
     val mailboxRepository: MailboxRepository,
     val databaseClient: DatabaseClient,
     private val userService: UserService,
-    private val pushNotificationService: PushNotificationService
+    private val pushNotificationService: PushNotificationService,
+    private val mailboxRealtimeNotifier: MailboxRealtimeNotifier,
 ) {
 
     private val log = LoggerFactory.getLogger(MeetingsService::class.java)
@@ -165,9 +167,10 @@ class MeetingsService(
             } else {
                 MeetingSystemMailMessages.DECLINED
             }
-            mailboxRepository.save(
+            val saved = mailboxRepository.save(
                 MailSystemMessage.create(currentUserId, initiatorId, declineText)
             )
+            mailboxRealtimeNotifier.onMessagePersisted(saved)
         }
 
         val result = meetingsRepository.findBySenderAndRecipient(senderUserId, currentUserId)
@@ -199,13 +202,14 @@ class MeetingsService(
 
         val initiatorId = meeting.userId
         if (initiatorId != null && initiatorId != currentUserId) {
-            mailboxRepository.save(
+            val saved = mailboxRepository.save(
                 MailSystemMessage.create(
                     currentUserId,
                     initiatorId,
                     MeetingSystemMailMessages.ACCEPTED
                 )
             )
+            mailboxRealtimeNotifier.onMessagePersisted(saved)
         }
 
         val result = meetingsRepository.findBySenderAndRecipient(otherUserId, currentUserId)
@@ -244,7 +248,8 @@ class MeetingsService(
         } else {
             MeetingSystemMailMessages.REVOKED_PENDING
         }
-        mailboxRepository.save(MailSystemMessage.create(senderId, recipientId, text))
+        val saved = mailboxRepository.save(MailSystemMessage.create(senderId, recipientId, text))
+        mailboxRealtimeNotifier.onMessagePersisted(saved)
     }
 
     companion object {

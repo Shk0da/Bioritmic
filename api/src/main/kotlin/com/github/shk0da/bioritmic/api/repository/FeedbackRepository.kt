@@ -34,4 +34,13 @@ interface FeedbackRepository : CoroutineCrudRepository<UserFeedback, Long> {
     @Transactional(readOnly = true)
     @Query("SELECT * FROM user_feedback WHERE attachment_s3_key = :s3Key LIMIT 1")
     suspend fun findByAttachmentS3Key(s3Key: String): UserFeedback?
+
+    @Transactional(readOnly = true)
+    @Query(
+        """
+        SELECT DISTINCT attachment_s3_key FROM user_feedback
+        WHERE attachment_s3_key IS NOT NULL AND attachment_s3_key <> ''
+        """
+    )
+    suspend fun findAllAttachmentS3Keys(): List<String>
 }

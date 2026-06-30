@@ -31,6 +31,9 @@ interface UserPhotoRepository : CoroutineCrudRepository<UserPhoto, Long> {
     @Query("delete from user_photos where user_id = :userId")
     suspend fun deleteAllByUserId(userId: UUID)
 
+    @Query("SELECT DISTINCT s3_key FROM user_photos WHERE s3_key IS NOT NULL AND s3_key <> ''")
+    suspend fun findAllS3Keys(): List<String>
+
     @Modifying
     @Query("update user_photos set photo_order = :newOrder where id = :photoId")
     suspend fun updateOrder(photoId: Long, newOrder: Int)

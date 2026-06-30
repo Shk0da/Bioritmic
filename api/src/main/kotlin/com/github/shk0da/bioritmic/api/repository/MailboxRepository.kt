@@ -116,6 +116,17 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
     )
     suspend fun markIncomingAsRead(readerId: UUID, senderId: UUID): Int
 
+    @Query(
+        """
+        SELECT id FROM mailbox
+        WHERE to_user_id = :readerId
+          AND from_user_id = :senderId
+          AND is_read = false
+        ORDER BY id ASC
+        """
+    )
+    suspend fun findUnreadIncomingIds(readerId: UUID, senderId: UUID): List<Long>
+
     @Modifying
     @Query("UPDATE mailbox SET reply_target_unavailable = true WHERE reply_to_message_id IN (:ids)")
     suspend fun markReplyTargetsUnavailable(ids: List<Long>): Int
@@ -133,4 +144,13 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
         """
     )
     suspend fun countByMediaS3KeyForParticipant(s3Key: String, userId: UUID): Long
+
+    @Transactional(readOnly = true)
+    @Query(
+        """
+        SELECT DISTINCT media_s3_key FROM mailbox
+        WHERE media_s3_key IS NOT NULL AND media_s3_key <> ''
+        """
+    )
+    suspend fun findAllMediaS3Keys(): List<String>
 }

@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, HostListener, DestroyRef, inject } from '@angular/core';
-import { RouterLink, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
+import { RouterLink, Router, ActivatedRoute } from '@angular/router';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { UserService } from '../../core/services/user.service';
 import { UserMail, PageableRequest, UserInfo } from '../../core/models/user.model';
@@ -9,7 +9,7 @@ import { normalizeRouteUrl, subscribeCachedRouteRefresh } from '../../core/routi
 import { isLayoutCachingEnabled } from '../../core/routing/layout-cache.util';
 import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
 import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
-import { Subject, takeUntil, filter } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { parseTimestampMs, formatMessageTime } from '../../shared/utils/timestamp.util';
 
 interface UserConversation {
@@ -530,6 +530,14 @@ export class MailboxComponent implements OnInit, OnDestroy {
       isEnabled: () => !this.selectedUserId && !this.loading,
     }));
 
+    subscribeCachedRouteRefresh(this.router, this.destroyRef, (url) => {
+      return /^\/mailbox\/[^/]+$/.test(normalizeRouteUrl(url));
+    }, () => {
+      if (this.selectedUserId) {
+        this.conversationReloadToken++;
+      }
+    });
+
     this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
       const nextSelectedUserId = params.get('userId');
       const wasSelected = !!this.selectedUserId;
@@ -546,16 +554,6 @@ export class MailboxComponent implements OnInit, OnDestroy {
         }
       } else if (wasSelected) {
         this.loadMessages();
-      }
-    });
-
-    this.router.events.pipe(
-      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-      takeUntil(this.destroy$),
-    ).subscribe((event) => {
-      const currentUrl = normalizeRouteUrl(event.urlAfterRedirects);
-      if (isLayoutCachingEnabled() && /^\/mailbox\/[^/]+$/.test(currentUrl)) {
-        this.conversationReloadToken++;
       }
     });
 
@@ -577,6 +575,9 @@ export class MailboxComponent implements OnInit, OnDestroy {
 
   selectConversation(userId: string): void {
     this.closeAllSwipes();
+    if (this.selectedUserId === userId && isLayoutCachingEnabled()) {
+      this.conversationReloadToken++;
+    }
     this.router.navigate(['/mailbox', userId]);
   }
 

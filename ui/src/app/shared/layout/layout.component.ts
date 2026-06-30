@@ -270,6 +270,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private meetingsBaselineSet = false;
   private pushInitDone = false;
   private pullTracking = false;
+  /** Pull began on [data-pull-refresh-zone]; keep tracking until touchend. */
+  private pullStartedFromZone = false;
   private pullStartY = 0;
   private pullTouchStartHandler: ((event: TouchEvent) => void) | null = null;
   private pullTouchMoveHandler: ((event: TouchEvent) => void) | null = null;
@@ -372,11 +374,12 @@ export class LayoutComponent implements OnInit, OnDestroy {
         return;
       }
       this.pullStartY = event.touches[0]?.clientY ?? 0;
+      this.pullStartedFromZone = pullFromZone;
       this.pullTracking = true;
     };
 
     this.pullTouchMoveHandler = (event: TouchEvent) => {
-      if (this.shouldDeferPullGesture(event)) {
+      if (!this.pullStartedFromZone && this.shouldDeferPullGesture(event)) {
         this.pullTracking = false;
         this.pullRefreshOffset = 0;
         return;
@@ -390,7 +393,11 @@ export class LayoutComponent implements OnInit, OnDestroy {
         this.pullRefreshOffset = 0;
         return;
       }
-      if (!this.isTouchOnPullRefreshZone(event) && this.pullToRefreshService.getScrollTop() > 0) {
+      if (
+        !this.pullStartedFromZone
+        && !this.isTouchOnPullRefreshZone(event)
+        && this.pullToRefreshService.getScrollTop() > 0
+      ) {
         this.pullTracking = false;
         this.pullRefreshOffset = 0;
         return;
@@ -404,10 +411,12 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
     this.pullTouchEndHandler = () => {
       if (!this.pullTracking) {
+        this.pullStartedFromZone = false;
         return;
       }
       const shouldRefresh = this.pullRefreshOffset >= this.pullRefreshThreshold;
       this.pullTracking = false;
+      this.pullStartedFromZone = false;
       this.pullRefreshOffset = 0;
       if (shouldRefresh) {
         void this.runPullRefresh();
@@ -436,6 +445,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.pullTouchMoveHandler = null;
     this.pullTouchEndHandler = null;
     this.pullTracking = false;
+    this.pullStartedFromZone = false;
     this.pullRefreshOffset = 0;
     this.pullRefreshing = false;
   }

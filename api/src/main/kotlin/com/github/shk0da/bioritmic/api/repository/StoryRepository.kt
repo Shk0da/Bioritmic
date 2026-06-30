@@ -44,6 +44,18 @@ interface StoryRepository : CoroutineCrudRepository<Story, Long> {
     @Query("DELETE FROM stories WHERE expires_at < :now")
     suspend fun deleteExpired(now: Timestamp)
 
+    @Query("SELECT * FROM stories WHERE expires_at < :now")
+    suspend fun findExpiredBefore(now: Timestamp): List<Story>
+
+    @Query(
+        """
+        SELECT DISTINCT trim(leading '/api/v1/photos/s3/' from media_url)
+        FROM stories
+        WHERE media_url IS NOT NULL AND media_url LIKE '/api/v1/photos/s3/%'
+        """
+    )
+    suspend fun findAllMediaS3Keys(): List<String>
+
     @Transactional(readOnly = true)
     @Query(
         """

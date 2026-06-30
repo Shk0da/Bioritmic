@@ -175,12 +175,17 @@ class StoryService(
         storyViewRepository.deleteByStoryId(storyId)
         storyRepository.deleteById(storyId)
 
-        extractS3Key(story.mediaUrl)?.let { s3Service.deletePhoto(it) }
+        S3Service.keyFromPhotoUrl(story.mediaUrl)?.let { s3Service.deletePhoto(it) }
     }
 
     @Transactional(transactionManager = transactionManager)
     suspend fun deleteExpiredStories() {
-        storyRepository.deleteExpired(Timestamp(System.currentTimeMillis()))
+        val now = Timestamp(System.currentTimeMillis())
+        val expiredStories = storyRepository.findExpiredBefore(now)
+        expiredStories.forEach { story ->
+            S3Service.keyFromPhotoUrl(story.mediaUrl)?.let { s3Service.deletePhoto(it) }
+        }
+        storyRepository.deleteExpired(now)
     }
 
     private suspend fun readFileBytes(file: FilePart): ByteArray = withContext(Dispatchers.IO) {
@@ -212,18 +217,6 @@ class StoryService(
             ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         if (!user.isVerified) {
             throw ApiException(ErrorCode.USER_NOT_VERIFIED)
-        }
-    }
-
-    private fun extractS3Key(mediaUrl: String?): String? {
-        if (mediaUrl.isNullOrBlank()) {
-            return null
-        }
-        val prefix = "/api/v1/photos/s3/"
-        return if (mediaUrl.startsWith(prefix)) {
-            mediaUrl.removePrefix(prefix)
-        } else {
-            null
         }
     }
 }
