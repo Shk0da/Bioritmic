@@ -50,6 +50,7 @@ class SecurityConfiguration(
         "$API_WITH_VERSION_1/logout",
         "$API_WITH_VERSION_1/update-email",
         "$API_WITH_VERSION_1/config/client",
+        "$API_WITH_VERSION_1/config/firebase-sw.js",
         "$API_WITH_VERSION_1/user/*/photo",
         "/management/actuator/health",
         "/management/actuator/info"

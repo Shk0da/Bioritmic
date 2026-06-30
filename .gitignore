@@ -60,7 +60,9 @@ kafka-logs
 ._*
 .Spotlight-V100
 .Trashes
-Icon?
+# macOS custom folder icon (name is literally "Icon" + carriage return).
+# Do not use "Icon?" — it also ignores ui/src/assets/icons/ on case-insensitive filesystems.
+Icon
 ehthumbs.db
 Thumbs.db
 
