@@ -11,6 +11,7 @@ import {
   getZodiacEmoji,
   getZodiacSignName,
 } from '../../shared/utils/user-profile-display.util';
+import { AvatarStatusBadgeComponent } from '../../shared/components/avatar-status-badge/avatar-status-badge.component';
 
 interface UserWithPhoto extends UserInfo {
   photoDataUrl?: string | null;
@@ -19,7 +20,7 @@ interface UserWithPhoto extends UserInfo {
 @Component({
   selector: 'app-bookmarks',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, AvatarStatusBadgeComponent],
   template: `
     <div class="page-header mb-4">
       <h1 class="page-title">
@@ -76,6 +77,11 @@ interface UserWithPhoto extends UserInfo {
                       [src]="getMatchPhotoUrl(user)"
                       class="match-avatar"
                       [alt]="user.name">
+                    <app-avatar-status-badge
+                      [emoji]="user.statusEmoji"
+                      [position]="user.statusPosition"
+                      size="sm">
+                    </app-avatar-status-badge>
                     @if (user.isOnline) {
                       <span class="online-dot"></span>
                     }
@@ -125,6 +131,11 @@ interface UserWithPhoto extends UserInfo {
                   [src]="user.photoDataUrl || ''"
                   class="card-img-top user-card-img"
                   [alt]="user.name">
+                <app-avatar-status-badge
+                  [emoji]="user.statusEmoji"
+                  [position]="user.statusPosition"
+                  size="md">
+                </app-avatar-status-badge>
                 <div class="user-card-overlay">
                   <button class="btn-remove" (click)="removeBookmark(user.id)" title="Удалить">
                     <i class="bi bi-x-lg"></i>
