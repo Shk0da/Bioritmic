@@ -368,19 +368,35 @@ interface ChatMessage extends UserMail {
                 (change)="onPhotoSelected($event)">
             </div>
             <div class="input-wrapper">
-              <input
+              <textarea
                 #messageInput
-                type="text"
                 class="message-input"
                 data-testid="message-input"
                 placeholder="Написать сообщение..."
                 [(ngModel)]="newMessage"
                 name="newMessage"
+                rows="1"
+                [attr.maxlength]="maxMessageLength"
                 [disabled]="sending"
-                (keydown.enter)="sendMessage()">
-              <button type="button" class="emoji-btn" title="Смайлы" (click)="toggleEmojiPicker()">
-                <i class="bi bi-emoji-smile"></i>
-              </button>
+                (input)="onMessageInput()"
+                (keydown.enter)="onMessageInputKeydown($event)"></textarea>
+              <div class="input-actions" [class.single-line]="!messageInputExpanded">
+                @if (newMessage) {
+                  <button
+                    type="button"
+                    class="message-input-clear"
+                    data-testid="message-input-clear"
+                    title="Очистить"
+                    aria-label="Очистить текст"
+                    [disabled]="sending"
+                    (click)="clearMessageInput()">
+                    <i class="bi bi-x-circle-fill"></i>
+                  </button>
+                }
+                <button type="button" class="emoji-btn" title="Смайлы" (click)="toggleEmojiPicker()">
+                  <i class="bi bi-emoji-smile"></i>
+                </button>
+              </div>
             </div>
             <button
               type="button"
@@ -1229,7 +1245,7 @@ interface ChatMessage extends UserMail {
     .input-wrapper {
       flex: 1;
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       background: var(--bg-secondary);
       border-radius: 24px;
       padding: 0.5rem 0.875rem;
@@ -1242,9 +1258,56 @@ interface ChatMessage extends UserMail {
       border: none;
       background: transparent;
       font-size: 1rem;
+      line-height: 1.4;
       outline: none;
       color: var(--text-primary);
       min-width: 0;
+      resize: none;
+      overflow-y: hidden;
+      max-height: 9rem;
+      padding: 0;
+      margin: 0;
+    }
+
+    .input-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      flex-shrink: 0;
+      gap: 0.125rem;
+      align-self: flex-end;
+
+      &.single-line {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.25rem;
+      }
+    }
+
+    .message-input-clear {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.5rem;
+      height: 1.5rem;
+
+      &:hover:not(:disabled) {
+        color: var(--text-secondary);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     }
 
     .emoji-btn {
@@ -1253,7 +1316,13 @@ interface ChatMessage extends UserMail {
       color: var(--text-secondary);
       font-size: 1.2rem;
       cursor: pointer;
-      padding: 0.25rem;
+      padding: 0;
+      width: 1.5rem;
+      height: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
 
       &:hover { color: var(--accent-pink); }
     }
@@ -1325,7 +1394,15 @@ interface ChatMessage extends UserMail {
 
       .emoji-btn {
         font-size: 1.05rem;
-        padding: 0.2rem;
+        width: 1.4rem;
+        height: 1.4rem;
+        padding: 0;
+      }
+
+      .message-input-clear {
+        width: 1.4rem;
+        height: 1.4rem;
+        font-size: 0.9rem;
       }
     }
 
@@ -1435,7 +1512,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   @Output() conversationLoaded = new EventEmitter<void>();
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
-  @ViewChild('messageInput') private messageInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('messageInput') private messageInput?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('messageInputContainer') private messageInputContainer?: ElementRef<HTMLElement>;
   @ViewChild('photoInput') private photoInput?: ElementRef<HTMLInputElement>;
   @ViewChild('videoPreview') private videoPreview?: ElementRef<HTMLVideoElement>;
@@ -1448,7 +1525,9 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   otherUserName?: string;
   otherUserPhotoUrl: string | null = null;
   otherUserOnline = false;
+  readonly maxMessageLength = 1024;
   newMessage = '';
+  messageInputExpanded = false;
   currentUserId?: string;
   isBlocked = false;
   showEmojiPicker = false;
@@ -1483,6 +1562,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   private programmaticScroll = false;
   private isRefreshing = false;
   private readonly conversationPageSize = CONVERSATION_PAGE_SIZE;
+  private static readonly MESSAGE_INPUT_MAX_HEIGHT_PX = 144;
   private photoLoadRetries = new Map<number, number>();
   private photoLoadTimers = new Map<number, ReturnType<typeof setTimeout>>();
   private photoLoadingIds = new Set<number>();
@@ -1609,7 +1689,8 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   sendMessage(): void {
-    if (!this.newMessage.trim() || this.isBlocked || this.sending) {
+    const trimmed = this.newMessage.trim();
+    if (!trimmed || trimmed.length > this.maxMessageLength || this.isBlocked || this.sending) {
       return;
     }
 
@@ -1617,13 +1698,14 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.stickToBottom = true;
     const message: UserMail = {
       to: this.userId,
-      message: this.newMessage.trim(),
+      message: trimmed,
       replyToMessageId: this.replyingToMessage?.id ?? null
     };
 
     this.mailboxService.sendMail(message).pipe(takeUntil(this.destroy$)).subscribe({
       next: (page) => {
         this.newMessage = '';
+        this.resizeMessageInput();
         this.replyingToMessage = null;
         this.sending = false;
         this.mergeConversationPage(page, { scrollToBottom: true, smoothScroll: true });
@@ -1654,7 +1736,63 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   addEmoji(emoji: string): void {
-    this.newMessage += emoji;
+    const remaining = this.maxMessageLength - this.newMessage.length;
+    if (remaining <= 0) {
+      return;
+    }
+    this.newMessage += emoji.slice(0, remaining);
+    this.resizeMessageInput();
+  }
+
+  onMessageInput(): void {
+    this.resizeMessageInput();
+  }
+
+  clearMessageInput(): void {
+    if (!this.newMessage || this.sending) {
+      return;
+    }
+    this.resetMessageInputDraft();
+    this.focusMessageInput();
+  }
+
+  private resetMessageInputDraft(): void {
+    if (!this.newMessage) {
+      return;
+    }
+    this.newMessage = '';
+    this.messageInputExpanded = false;
+    this.resizeMessageInput();
+  }
+
+  onMessageInputKeydown(event: Event): void {
+    if (!(event instanceof KeyboardEvent)) {
+      return;
+    }
+    if (event.shiftKey || event.isComposing) {
+      return;
+    }
+    event.preventDefault();
+    this.sendMessage();
+  }
+
+  private resizeMessageInput(): void {
+    const textarea = this.messageInput?.nativeElement;
+    if (!textarea) {
+      return;
+    }
+    textarea.style.height = 'auto';
+    const scrollHeight = textarea.scrollHeight;
+    const maxHeight = ConversationPanelComponent.MESSAGE_INPUT_MAX_HEIGHT_PX;
+    textarea.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+    textarea.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden';
+    this.messageInputExpanded = this.isMessageInputMultiLine(textarea, scrollHeight);
+  }
+
+  private isMessageInputMultiLine(textarea: HTMLTextAreaElement, scrollHeight: number): boolean {
+    const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight);
+    const singleLineHeight = Number.isFinite(lineHeight) ? lineHeight : 22;
+    return scrollHeight > singleLineHeight + 2;
   }
 
   toggleMessageReactionPicker(messageId: number, event?: Event): void {
@@ -1744,6 +1882,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       this.scrollToBottom();
     }
     input.focus({ preventScroll: true });
+    this.resizeMessageInput();
   }
 
   cancelReply(): void {
@@ -1917,6 +2056,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     }
     this.pendingPhotoCaption = this.newMessage.trim() || undefined;
     this.newMessage = '';
+    this.resizeMessageInput();
     this.photoCropSourceFile = file;
     this.photoCropVisible = true;
   }
@@ -1934,6 +2074,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     if (this.pendingPhotoCaption) {
       this.newMessage = this.pendingPhotoCaption;
       this.pendingPhotoCaption = undefined;
+      this.resizeMessageInput();
     }
   }
 
@@ -2167,6 +2308,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.voiceDurationLoads.clear();
     this.messages = [];
     this.newMessage = '';
+    this.resizeMessageInput();
     this.replyingToMessage = null;
     this.isBlocked = false;
     this.showEmojiPicker = false;
@@ -2953,6 +3095,8 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   private pullRefreshConversation(): Promise<void> {
     this.stickToBottom = true;
     this.lastScrollTop = 0;
+    this.resetMessageInputDraft();
+    this.showEmojiPicker = false;
     return this.reloadConversation(true, true, false);
   }
 
