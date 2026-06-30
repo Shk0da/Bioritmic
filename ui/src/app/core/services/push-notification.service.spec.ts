@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
 import { PushNotificationService } from './push-notification.service';
+import { AuthService } from './auth.service';
 
 describe('PushNotificationService', () => {
   let service: PushNotificationService;
@@ -19,10 +21,17 @@ describe('PushNotificationService', () => {
         ready: Promise.resolve({
           active: { state: 'activated' },
         }),
+        addEventListener: jasmine.createSpy('addEventListener'),
       },
     });
     TestBed.configureTestingModule({
-      providers: [PushNotificationService, provideHttpClient(), provideHttpClientTesting()]
+      providers: [
+        PushNotificationService,
+        { provide: AuthService, useValue: { isAuthenticated: () => true } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+      ],
     });
     service = TestBed.inject(PushNotificationService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -70,6 +79,18 @@ describe('PushNotificationService', () => {
 
     await disablePromise;
     expect(service.isEnabled()).toBeFalse();
+  });
+
+  it('should resolve mailbox conversation url from push data', () => {
+    expect(PushNotificationService.resolveNotificationUrl({
+      type: 'mailbox',
+      userId: 'abc-123',
+    })).toBe('/mailbox/abc-123');
+    expect(PushNotificationService.resolveNotificationUrl({ type: 'mailbox' })).toBe('/mailbox');
+    expect(PushNotificationService.resolveNotificationUrl({ type: 'meeting' })).toBe('/meetings');
+    expect(PushNotificationService.resolveNotificationUrl({ type: 'meeting', url: '/meetings' })).toBe('/meetings');
+    expect(PushNotificationService.resolveNotificationUrl({ url: '/meetings' })).toBe('/meetings');
+    expect(PushNotificationService.resolveNotificationUrl({ url: '//evil.com' })).toBe('/');
   });
 
   it('ensureRegistered should fetch client config before choosing push mode', async () => {

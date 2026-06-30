@@ -274,7 +274,7 @@ class MailboxService(
         val sender = userService.findUserById(senderId)
         val senderName = sender?.name?.takeIf { it.isNotBlank() } ?: "Пользователь"
         val preview = pushPreview(userMail)
-        pushNotificationService.notifyNewMessage(userMail.toUserId!!, senderName, preview)
+        pushNotificationService.notifyNewMessage(userMail.toUserId!!, senderId, senderName, preview)
     }
 
     private fun pushPreview(userMail: UserMail): String {

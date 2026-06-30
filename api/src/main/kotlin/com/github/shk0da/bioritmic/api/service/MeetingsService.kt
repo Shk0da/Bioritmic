@@ -96,7 +96,7 @@ class MeetingsService(
                     val senderName = sender?.name?.takeIf { it.isNotBlank() } ?: "Пользователь"
                     specs.forEach { spec ->
                         spec.otherUserId?.let { otherId ->
-                            pushNotificationService.notifyNewMeeting(otherId, senderName)
+                            pushNotificationService.notifyNewMeeting(otherId, userId, senderName)
                         }
                     }
                 }

@@ -2,7 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { PushNotificationService } from '../../../core/services/push-notification.service';
 import { AuthorizationModel } from '../../../core/models/user.model';
+import { sanitizePushNavigationUrl } from '../../../shared/utils/push-navigation.util';
 
 @Component({
   selector: 'app-login',
@@ -205,6 +207,7 @@ export class LoginComponent implements OnInit {
 
   constructor(
     private authService: AuthService,
+    private pushService: PushNotificationService,
     private router: Router,
     private route: ActivatedRoute
   ) {}
@@ -229,7 +232,14 @@ export class LoginComponent implements OnInit {
         this.authService.setAuth(token);
         this.authService.loadCurrentUser().subscribe(() => {
           this.loading = false;
-          this.router.navigate(['/swipe']);
+          const queryReturnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+          const pushReturnUrl = this.pushService.consumeReturnUrl();
+          const returnUrl = sanitizePushNavigationUrl(queryReturnUrl || pushReturnUrl || '');
+          if (returnUrl !== '/') {
+            void this.router.navigateByUrl(returnUrl);
+          } else {
+            void this.router.navigate(['/swipe']);
+          }
         });
       },
       error: (error) => {

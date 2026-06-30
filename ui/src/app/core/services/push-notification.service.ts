@@ -1,8 +1,14 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { FirebaseApp } from 'firebase/app';
 import { Messaging } from 'firebase/messaging';
 import { firstValueFrom, Subject } from 'rxjs';
+import { AuthService } from './auth.service';
+import {
+  resolvePushNotificationUrl,
+  sanitizePushNavigationUrl,
+} from '../../shared/utils/push-navigation.util';
 
 export interface FirebaseClientConfig {
   enabled: boolean;
@@ -39,8 +45,53 @@ export class PushNotificationService {
   private readonly apiUrl = '/api/v1/user';
   private readonly PUSH_ENABLED_KEY = 'bioritmic_push_enabled';
   private readonly FCM_MODE_KEY = 'bioritmic_push_fcm';
+  private readonly RETURN_URL_KEY = 'bioritmic_push_return_url';
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private authService: AuthService,
+  ) {
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', (event: MessageEvent) => {
+        this.handleServiceWorkerMessage(event);
+      });
+    }
+  }
+
+  static resolveNotificationUrl(data?: Record<string, string | undefined> | null): string {
+    return resolvePushNotificationUrl(data);
+  }
+
+  consumeReturnUrl(): string | null {
+    const url = sessionStorage.getItem(this.RETURN_URL_KEY);
+    if (url) {
+      sessionStorage.removeItem(this.RETURN_URL_KEY);
+    }
+    return url ? sanitizePushNavigationUrl(url) : null;
+  }
+
+  clearLocalPushState(): void {
+    this.currentToken = null;
+    this.setEnabled(false);
+  }
+
+  private handleServiceWorkerMessage(event: MessageEvent): void {
+    const data = event.data as { type?: string; url?: string } | null;
+    if (data?.type === 'push-navigate' && data.url) {
+      this.navigateFromPush(data.url);
+    }
+  }
+
+  private navigateFromPush(url: string): void {
+    const safeUrl = sanitizePushNavigationUrl(url);
+    if (!this.authService.isAuthenticated()) {
+      sessionStorage.setItem(this.RETURN_URL_KEY, safeUrl);
+      void this.router.navigate(['/auth/login']);
+      return;
+    }
+    void this.router.navigateByUrl(safeUrl, { onSameUrlNavigation: 'reload' });
+  }
 
   isSupported(): boolean {
     return typeof window !== 'undefined' &&
@@ -116,13 +167,14 @@ export class PushNotificationService {
       );
       this.config = response.firebase;
       if (!this.config?.enabled || !this.config.vapidKey) {
-        this.initPromise = null;
+        this.resetInitState();
         return false;
       }
 
       const { isSupported: isMessagingSupported } = await import('firebase/messaging');
       if (!await isMessagingSupported()) {
         console.warn('Firebase messaging is not supported in this browser');
+        this.resetInitState();
         return false;
       }
 
@@ -151,9 +203,9 @@ export class PushNotificationService {
       onMessage(this.messaging, (payload) => {
         this.messageSubject.next(payload);
         this.showLocalNotification(
-          payload.notification?.title || 'Bioritmic',
-          payload.notification?.body || '',
-          payload.data?.['type']
+          payload.notification?.title || payload.data?.['title'] || 'Bioritmic',
+          payload.notification?.body || payload.data?.['body'] || '',
+          payload.data ?? undefined
         );
       });
 
@@ -317,26 +369,32 @@ export class PushNotificationService {
     return !!this.config?.enabled;
   }
 
-  showLocalNotification(title: string, body: string, type?: string): void {
+  showLocalNotification(
+    title: string,
+    body: string,
+    data?: Record<string, string | undefined> | string
+  ): void {
     if (!this.isActive()) {
       return;
     }
+    const payload = typeof data === 'string' ? { type: data } : data;
     if (this.getMode() === 'fcm' && document.visibilityState !== 'visible') {
       return;
     }
-    if (document.visibilityState === 'visible' && !type) {
+    if (document.visibilityState === 'visible' && !payload?.['type']) {
       return;
     }
 
-    const url = type === 'mailbox' ? '/mailbox' : type === 'meeting' ? '/meetings' : '/';
+    const url = PushNotificationService.resolveNotificationUrl(payload);
     const notification = new Notification(title, {
       body,
       icon: '/assets/icons/icon-192.png',
-      badge: '/assets/icons/icon-192.png'
+      badge: '/assets/icons/icon-192.png',
+      data: payload,
     });
     notification.onclick = () => {
       window.focus();
-      window.location.href = url;
+      this.navigateFromPush(url);
       notification.close();
     };
   }

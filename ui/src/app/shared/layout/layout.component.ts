@@ -211,6 +211,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private userSubscription: Subscription | null = null;
   private prevUnreadCount = 0;
   private prevMeetingsCount = 0;
+  private unreadBaselineSet = false;
+  private meetingsBaselineSet = false;
+  private pushInitDone = false;
 
   constructor(
     private authService: AuthService,
@@ -234,6 +237,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
         void this.initPushNotifications();
       } else {
         this.stopPolling();
+        this.pushInitDone = false;
       }
     });
 
@@ -276,6 +280,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   private async initPushNotifications(): Promise<void> {
+    if (this.pushInitDone) {
+      return;
+    }
+    this.pushInitDone = true;
     this.pushService.syncEnabledWithPermission();
     if (this.pushService.isActive()) {
       await this.pushService.ensureRegistered();
@@ -297,6 +305,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
       clearInterval(this.pollingIntervalId);
       this.pollingIntervalId = null;
     }
+    this.unreadBaselineSet = false;
+    this.meetingsBaselineSet = false;
+    this.prevUnreadCount = 0;
+    this.prevMeetingsCount = 0;
   }
 
   private destroy$ = new Subject<void>();
@@ -310,7 +322,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.mailboxService.getBadgeCount(since).pipe(takeUntil(this.destroy$)).subscribe({
       next: (res) => {
         this.isLoadingUnread = false;
-        if (res.count > this.prevUnreadCount && this.prevUnreadCount > 0) {
+        if (!this.unreadBaselineSet) {
+          this.unreadBaselineSet = true;
+        } else if (res.count > this.prevUnreadCount && this.pushService.getMode() !== 'fcm') {
           this.pushService.showLocalNotification('Новое сообщение', 'У вас новые сообщения', 'mailbox');
         }
         this.prevUnreadCount = res.count;
@@ -328,8 +342,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.meetingsService.getBadgeCount(since).pipe(takeUntil(this.destroy$)).subscribe({
       next: (res) => {
         this.isLoadingMeetings = false;
-        if (res.count > this.prevMeetingsCount && this.prevMeetingsCount > 0) {
-          this.pushService.showLocalNotification('Новая встреча', 'У вас новые предложения встреч', 'meeting');
+        if (!this.meetingsBaselineSet) {
+          this.meetingsBaselineSet = true;
+        } else if (res.count > this.prevMeetingsCount && this.pushService.getMode() !== 'fcm') {
+          this.pushService.showLocalNotification('Новая встреча', 'У вас новые предложения встреч', {
+            type: 'meeting',
+            url: '/meetings',
+          });
         }
         this.prevMeetingsCount = res.count;
         this.newMeetingsCount = res.count;
@@ -391,6 +410,15 @@ export class LayoutComponent implements OnInit, OnDestroy {
   logout(event?: Event): void {
     if (event) {
       event.preventDefault();
+    }
+    void this.performLogout();
+  }
+
+  private async performLogout(): Promise<void> {
+    try {
+      await this.pushService.disable();
+    } catch {
+      this.pushService.clearLocalPushState();
     }
     this.authService.logout().subscribe({
       complete: () => {

@@ -67,6 +67,7 @@ class PushNotificationService(
             return
         }
 
+        val safeData = sanitizePushData(data)
         val tokens = userPushTokenRepository.findAllByUserId(userId)
         if (tokens.isEmpty()) {
             log.debug("No push tokens found for userId: {}", userId)
@@ -76,7 +77,7 @@ class PushNotificationService(
         tokens.forEach { pushToken ->
             try {
                 val message = if (pushToken.platform == "web") {
-                    val webData = data + mapOf(
+                    val webData = safeData + mapOf(
                         "title" to title,
                         "body" to body,
                     )
@@ -98,7 +99,7 @@ class PushNotificationService(
                                 .setBody(body)
                                 .build()
                         )
-                        .putAllData(data)
+                        .putAllData(safeData)
                         .build()
                 }
 
@@ -114,23 +115,63 @@ class PushNotificationService(
         }
     }
 
-    suspend fun notifyNewMessage(recipientId: UUID, senderName: String, preview: String) {
+    suspend fun notifyNewMessage(recipientId: UUID, senderId: UUID, senderName: String, preview: String) {
         val body = if (preview.length > 80) preview.take(80) + "…" else preview
         sendPushNotification(
             recipientId,
             "Новое сообщение",
             "$senderName: $body",
-            mapOf("type" to "mailbox")
+            pushNavigationData("mailbox", senderId),
         )
     }
 
-    suspend fun notifyNewMeeting(recipientId: UUID, senderName: String) {
+    suspend fun notifyNewMeeting(recipientId: UUID, senderId: UUID, senderName: String) {
         sendPushNotification(
             recipientId,
             "Новая встреча",
             "$senderName предлагает встретиться",
-            mapOf("type" to "meeting")
+            pushNavigationData("meeting", senderId),
         )
+    }
+
+    private fun pushNavigationData(type: String, userId: UUID? = null): Map<String, String> {
+        val url = when (type) {
+            "mailbox" -> if (userId != null) "/mailbox/$userId" else "/mailbox"
+            "meeting" -> "/meetings"
+            else -> "/"
+        }
+        return buildMap {
+            put("type", type)
+            put("url", sanitizeNavigationUrl(url))
+            userId?.let { put("userId", it.toString()) }
+        }
+    }
+
+    private fun sanitizePushData(data: Map<String, String>): Map<String, String> {
+        if (!data.containsKey("url")) {
+            return data
+        }
+        return data + ("url" to sanitizeNavigationUrl(data["url"]))
+    }
+
+    private fun sanitizeNavigationUrl(url: String?): String {
+        if (url.isNullOrBlank()) {
+            return "/"
+        }
+        val trimmed = url.trim()
+        if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
+            return "/"
+        }
+        if (trimmed.contains("://") || trimmed.contains("\\")) {
+            return "/"
+        }
+        val path = trimmed.substringBefore('?').substringBefore('#')
+        if (path == "/") {
+            return "/"
+        }
+        val allowedPrefixes = listOf("/mailbox", "/meetings", "/swipe", "/profile", "/settings", "/bookmarks", "/user/")
+        val allowed = allowedPrefixes.any { prefix -> path == prefix || path.startsWith("$prefix/") }
+        return if (allowed) path else "/"
     }
 
     private fun isFirebaseInitialized(): Boolean {

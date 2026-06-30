@@ -3,7 +3,7 @@ import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { map } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 
-const UNVERIFIED_ALLOWED_ROUTES = ['/swipe', '/auth', '/profile', '/settings'];
+const UNVERIFIED_ALLOWED_ROUTES = ['/swipe', '/auth', '/profile', '/settings', '/mailbox'];
 
 export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
@@ -12,7 +12,9 @@ export const authGuard: CanActivateFn = (_route, state) => {
   return authService.ensureSessionRestored().pipe(
     map((): boolean | UrlTree => {
       if (!authService.isAuthenticated()) {
-        return router.createUrlTree(['/auth/login']);
+        return router.createUrlTree(['/auth/login'], {
+          queryParams: state.url && state.url !== '/' ? { returnUrl: state.url } : undefined,
+        });
       }
 
       const user = authService.getCurrentUser();

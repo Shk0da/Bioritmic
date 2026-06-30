@@ -37,29 +37,72 @@ if (config.enabled && config.apiKey) {
   });
 }
 
+function sanitizePushNavigationUrl(url) {
+  if (!url || typeof url !== 'string') {
+    return '/';
+  }
+  const trimmed = url.trim();
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) {
+    return '/';
+  }
+  if (trimmed.includes('://') || trimmed.includes('\\')) {
+    return '/';
+  }
+  const path = trimmed.split('?')[0].split('#')[0];
+  const allowedPrefixes = ['/mailbox', '/meetings', '/swipe', '/profile', '/settings', '/bookmarks', '/user/'];
+  if (path === '/') {
+    return '/';
+  }
+  const allowed = allowedPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+  return allowed ? trimmed.split('#')[0] : '/';
+}
+
+function resolveNotificationUrl(data) {
+  if (data?.url) {
+    return sanitizePushNavigationUrl(data.url);
+  }
+  const type = data?.type;
+  const userId = data?.userId;
+  if (type === 'mailbox') {
+    return userId ? sanitizePushNavigationUrl(`/mailbox/${userId}`) : '/mailbox';
+  }
+  if (type === 'meeting') {
+    return '/meetings';
+  }
+  return '/';
+}
+
+function pickClient(windowClients) {
+  const sameOrigin = windowClients.filter((client) => client.url.startsWith(self.location.origin));
+  const appClient = sameOrigin.find((client) => {
+    const path = new URL(client.url).pathname;
+    return !path.startsWith('/auth');
+  });
+  const visibleClient = sameOrigin.find((client) => client.visibilityState === 'visible');
+  return appClient || visibleClient || sameOrigin[0] || null;
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const type = event.notification.data?.type;
-  let url = '/';
-  if (type === 'mailbox') {
-    url = '/mailbox';
-  } else if (type === 'meeting') {
-    url = '/meetings';
-  }
+  const url = resolveNotificationUrl(event.notification.data || {});
+  const absoluteUrl = new URL(url, self.location.origin).href;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      for (const client of windowClients) {
-        if ('focus' in client) {
-          if ('navigate' in client) {
-            return client.navigate(url).then(() => client.focus());
+      const client = pickClient(windowClients);
+      if (client) {
+        const path = new URL(client.url).pathname;
+        if (path.startsWith('/auth')) {
+          if (clients.openWindow) {
+            return clients.openWindow(absoluteUrl);
           }
-          client.focus();
           return undefined;
         }
+        client.postMessage({ type: 'push-navigate', url });
+        return client.focus();
       }
       if (clients.openWindow) {
-        return clients.openWindow(url);
+        return clients.openWindow(absoluteUrl);
       }
       return undefined;
     })

@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { GeolocationService } from './core/services/geolocation.service';
 import { AuthService } from './core/services/auth.service';
+import { PushNotificationService } from './core/services/push-notification.service';
 import { ModalComponent } from './core/services/modal.service';
 import { initStandalonePwaClass } from './shared/utils/pwa.util';
 
@@ -21,7 +22,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
   constructor(
     private geolocationService: GeolocationService,
-    private authService: AuthService
+    private authService: AuthService,
+    _pushService: PushNotificationService,
   ) {}
 
   ngOnInit(): void {

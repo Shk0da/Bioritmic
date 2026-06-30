@@ -9,6 +9,7 @@ import {
 import { Observable, throwError, BehaviorSubject } from 'rxjs';
 import { catchError, filter, take, switchMap } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
+import { PushNotificationService } from '../services/push-notification.service';
 import { UserToken } from '../models/user.model';
 
 let isRefreshing = false;
@@ -16,6 +17,7 @@ const refreshTokenSubject: BehaviorSubject<UserToken | null> = new BehaviorSubje
 
 export const authInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEvent<unknown>> => {
   const authService = inject(AuthService);
+  const pushService = inject(PushNotificationService);
   const token = authService.getToken();
 
   let authReq = req.clone({ withCredentials: true });
@@ -30,9 +32,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEv
       if (error.status === 401 || error.status === 403) {
         if (authReq.url.includes('/logout')) {
           authService.clearAuth();
+          pushService.clearLocalPushState();
           return throwError(() => error);
         }
-        return handle401Error(authReq, next, authService);
+        return handle401Error(authReq, next, authService, pushService);
       }
       return throwError(() => error);
     })
@@ -42,7 +45,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEv
 function handle401Error(
   request: HttpRequest<unknown>,
   next: HttpHandlerFn,
-  authService: AuthService
+  authService: AuthService,
+  pushService: PushNotificationService,
 ): Observable<HttpEvent<unknown>> {
   if (!isRefreshing) {
     isRefreshing = true;
@@ -73,6 +77,7 @@ function handle401Error(
       catchError((error) => {
         isRefreshing = false;
         authService.clearAuth();
+        pushService.clearLocalPushState();
         return throwError(() => error);
       })
     );
