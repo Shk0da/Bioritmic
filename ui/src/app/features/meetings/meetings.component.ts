@@ -23,7 +23,7 @@ interface MeetingWithUser extends UserMeeting {
       <h1 class="page-title">
         <i class="bi bi-calendar-event me-2"></i>Встречи
       </h1>
-      <p class="text-muted">Предложения встреч от других пользователей</p>
+      <p class="text-muted page-subtitle d-none d-md-block">Предложения встреч от других пользователей</p>
     </div>
 
     @if (loading) {

@@ -13,8 +13,8 @@ describe('user-profile-display.util', () => {
   });
 
   it('getGenderLabel should return readable gender', () => {
-    expect(getGenderLabel(Gender.MAN)).toBe('Мужской');
-    expect(getGenderLabel(Gender.WOMAN)).toBe('Женский');
+    expect(getGenderLabel(Gender.MAN)).toBe('Муж');
+    expect(getGenderLabel(Gender.WOMAN)).toBe('Жен');
   });
 
   it('getZodiacEmoji should use horo when available', () => {

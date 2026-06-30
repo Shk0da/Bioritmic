@@ -1281,6 +1281,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   @Input() showBackButton = false;
   @Output() back = new EventEmitter<void>();
   @Output() messageSent = new EventEmitter<void>();
+  @Output() conversationLoaded = new EventEmitter<void>();
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
   @ViewChild('messageInput') private messageInput?: ElementRef<HTMLInputElement>;
@@ -2125,6 +2126,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
           this.loading = false;
           this.scrollBehavior = 'auto';
           this.shouldScroll = true;
+          this.conversationLoaded.emit();
           if (!this.refreshInterval) {
             this.refreshInterval = setInterval(() => this.refreshMessages(), 3000);
           }

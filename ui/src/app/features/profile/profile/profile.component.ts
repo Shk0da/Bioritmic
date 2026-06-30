@@ -25,11 +25,11 @@ import { ToastService } from '../../../core/services/toast.service';
       <h1 class="page-title">
         <i class="bi bi-person-circle me-2"></i>Мой профиль
       </h1>
-      <p class="text-muted">Информация о вашем аккаунте</p>
+      <p class="text-muted page-subtitle d-none d-md-block">Информация о вашем аккаунте</p>
     </div>
 
-    <div class="row">
-      <div class="col-12 col-lg-4 mb-4">
+    <div class="row profile-layout">
+      <div class="col-12 col-lg-4 mb-4 profile-col">
         <div class="card profile-card text-center">
           <div class="card-body py-4">
             <div class="profile-avatar-wrap mx-auto mb-3">
@@ -134,7 +134,7 @@ import { ToastService } from '../../../core/services/toast.service';
         </div>
       </div>
 
-      <div class="col-12 col-lg-8">
+      <div class="col-12 col-lg-8 profile-col">
         <div class="card">
           <div class="card-header">
             <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Информация</h6>
@@ -252,6 +252,13 @@ import { ToastService } from '../../../core/services/toast.service';
     </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
     .page-header {
       padding: 1rem 0;
     }
@@ -414,6 +421,18 @@ import { ToastService } from '../../../core/services/toast.service';
 
       i {
         font-size: 1.75rem;
+      }
+    }
+
+    @media (max-width: 767.98px), (hover: none) and (pointer: coarse) {
+      .profile-layout {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .profile-col {
+        padding-left: 0;
+        padding-right: 0;
       }
     }
   `]

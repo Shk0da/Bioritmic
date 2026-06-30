@@ -26,7 +26,7 @@ interface UserWithPhoto extends UserInfo {
       <h1 class="page-title">
         <i class="bi bi-bookmark-heart me-2"></i>Избранное
       </h1>
-      <p class="text-muted">Сохранённые профили</p>
+      <p class="text-muted page-subtitle d-none d-md-block">Сохранённые профили</p>
     </div>
 
     @if (matchesLoading) {
@@ -140,13 +140,13 @@ interface UserWithPhoto extends UserInfo {
               <div class="card-body">
                 <h5 class="user-card-name">{{ user.name }}</h5>
                 <p class="user-card-info text-muted">
-                  {{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }} лет,
-                  <span class="user-card-gender" [attr.title]="getGenderLabel(user.gender)">
-                    <span class="gender-symbol">{{ getGenderSymbol(user.gender) }}</span>
-                    {{ getGenderLabel(user.gender) }}
+                  <span class="user-card-meta-item">{{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }} лет,</span>
+                  <span class="user-card-meta-item user-card-gender" [attr.title]="getGenderLabel(user.gender)">
+                    <span class="gender-symbol" aria-hidden="true">{{ getGenderSymbol(user.gender) }}</span>
+                    <span>{{ getGenderLabel(user.gender) }}</span>
                   </span>
                   @if (getZodiacEmoji(user.horo, user.birthday)) {
-                    <span class="user-card-zodiac" [attr.title]="getZodiacSignName(user.horo, user.birthday)">
+                    <span class="user-card-meta-item user-card-zodiac" [attr.title]="getZodiacSignName(user.horo, user.birthday)">
                       {{ getZodiacEmoji(user.horo, user.birthday) }}
                     </span>
                   }
@@ -277,29 +277,42 @@ interface UserWithPhoto extends UserInfo {
 
     .user-card-info {
       font-size: 0.9rem;
+      line-height: 1.45;
       margin-bottom: 0.25rem;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.35rem;
     }
 
-    .user-card-gender {
+    .user-card-meta-item {
       display: inline-flex;
       align-items: center;
       gap: 0.2rem;
+      vertical-align: middle;
+      margin-right: 0.35rem;
+      max-width: 100%;
+    }
+
+    .user-card-meta-item:last-child {
+      margin-right: 0;
+    }
+
+    .user-card-gender {
+      white-space: nowrap;
     }
 
     .gender-symbol {
-      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1em;
       line-height: 1;
+      flex-shrink: 0;
       color: var(--accent-pink, #fd297b);
       font-weight: 600;
     }
 
     .user-card-zodiac {
-      font-size: 1rem;
+      font-size: 1em;
       line-height: 1;
+      flex-shrink: 0;
     }
 
     .user-card-distance {

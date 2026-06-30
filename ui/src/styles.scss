@@ -141,6 +141,13 @@ app-root {
   overscroll-behavior-x: none;
 }
 
+app-layout {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
 // ==========================================
 // Scrollbar
 // ==========================================
@@ -511,6 +518,7 @@ option { background: var(--card-bg); color: var(--text-primary); }
     justify-content: space-between;
     gap: 0.5rem;
     min-width: 0;
+    width: 100%;
   }
 
   .header-logo {
@@ -550,9 +558,18 @@ option { background: var(--card-bg); color: var(--text-primary); }
   max-width: 100%;
   overflow-x: clip;
   box-sizing: border-box;
+
+  > * {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
 }
 
 .row {
+  width: 100%;
   max-width: 100%;
 }
 
@@ -882,6 +899,8 @@ option { background: var(--card-bg); color: var(--text-primary); }
     .header-content {
       position: relative;
       z-index: 1;
+      width: 100%;
+      min-width: 0;
     }
 
     .header-logo {
@@ -1074,12 +1093,73 @@ option { background: var(--card-bg); color: var(--text-primary); }
     padding-bottom: calc(1rem + var(--app-safe-bottom));
   }
 
+  .page-header {
+    display: none !important;
+  }
+
+  :is(
+    app-settings-hub,
+    app-settings,
+    app-notifications-settings,
+    app-feedback-settings,
+    app-danger-zone-settings
+  ) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+
+    > .row {
+      margin-left: 0;
+      margin-right: 0;
+
+      > [class*='col-'] {
+        padding-left: 0;
+        padding-right: 0;
+      }
+    }
+  }
+
+  app-location {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+
+    .location-page > .row {
+      margin-left: 0;
+      margin-right: 0;
+
+      > [class*='col-'] {
+        padding-left: 0;
+        padding-right: 0;
+      }
+    }
+  }
+
+  app-blocked-users {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+
+    .page-container {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+  }
+
   .card { .card-header { padding: 1rem 1.25rem; font-size: 1rem; } .card-body { padding: 1.25rem; } }
 }
 
 @media (max-width: 480px) {
   .site-header {
-    .nav-btn { width: 34px; height: 34px; font-size: 0.95rem; }
+    .nav-btn { width: 32px; height: 32px; font-size: 0.9rem; }
+    .header-nav,
+    .user-menu { gap: 0.05rem; }
+    padding-left: calc(0.35rem + var(--app-safe-left));
+    padding-right: calc(0.35rem + var(--app-safe-right));
   }
 
   .verification-alert {

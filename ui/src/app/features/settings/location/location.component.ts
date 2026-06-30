@@ -25,7 +25,7 @@ import { PageBackLinkComponent } from '../../../shared/components/page-back-link
       </div>
 
       <div class="row">
-        <div class="col-md-8 mx-auto">
+        <div class="col-12 col-md-8 mx-auto">
           <div class="card location-card">
             <div class="card-body">
               @if (loading) {
@@ -174,6 +174,12 @@ import { PageBackLinkComponent } from '../../../shared/components/page-back-link
     </div>
   `,
   styles: [`
+    .location-page {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
     .location-page-header {
       margin-bottom: 0.75rem;
       padding: 0.25rem 0;

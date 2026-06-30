@@ -53,7 +53,7 @@ export function getGenderSymbol(gender?: Gender | string): string {
 }
 
 export function getGenderLabel(gender?: Gender | string): string {
-  return isMaleGender(gender) ? 'Мужской' : 'Женский';
+  return isMaleGender(gender) ? 'Муж' : 'Жен';
 }
 
 export function getZodiacEmoji(horo?: number, birthday?: string): string {

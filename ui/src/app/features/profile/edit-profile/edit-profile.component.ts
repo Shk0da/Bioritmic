@@ -30,8 +30,8 @@ import {
       </div>
     }
 
-    <div class="row">
-      <div class="col-md-8 mx-auto">
+    <div class="row profile-layout">
+      <div class="col-12 col-md-8 mx-auto profile-col">
         <div class="card">
           <div class="card-header">
             <h5 class="mb-0">Редактирование профиля</h5>
@@ -89,7 +89,7 @@ import {
 
             <form (ngSubmit)="save()" novalidate>
               <div class="row">
-                <div class="col-md-6 mb-3">
+                <div class="col-12 col-md-6 mb-3">
                   <label for="name" class="form-label">Имя</label>
                   <input
                     type="text"
@@ -100,7 +100,7 @@ import {
                     required>
                 </div>
 
-                <div class="col-md-6 mb-3">
+                <div class="col-12 col-md-6 mb-3">
                   <label for="email" class="form-label">Email</label>
                   <input
                     type="email"
@@ -114,7 +114,7 @@ import {
               </div>
 
               <div class="row mb-3">
-                <div class="col-md-8">
+                <div class="col-12 col-md-8">
                   <label for="newEmail" class="form-label">Сменить email</label>
                   <input
                     type="email"
@@ -124,7 +124,7 @@ import {
                     name="newEmail"
                     placeholder="Новый email">
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
+                <div class="col-12 col-md-4 d-flex align-items-end">
                   <button type="button" class="btn btn-outline-primary w-100" (click)="requestEmailChange()" [disabled]="!newEmail || savingEmail">
                     @if (savingEmail) {
                       <span class="spinner-border spinner-border-sm"></span>
@@ -152,7 +152,7 @@ import {
               </div>
 
               <div class="row">
-                <div class="col-md-6 mb-3">
+                <div class="col-12 col-md-6 mb-3">
                   <label for="birthday" class="form-label">Дата рождения</label>
                   <input
                     type="date"
@@ -164,7 +164,7 @@ import {
                     required>
                 </div>
 
-                <div class="col-md-6 mb-3">
+                <div class="col-12 col-md-6 mb-3">
                   <label for="gender" class="form-label">Пол</label>
                   <select
                     class="form-control"
@@ -202,6 +202,13 @@ import {
     </app-image-crop-modal>
   `,
   styles: [`
+    :host {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
     .saving-overlay {
       position: fixed;
       inset: 0;
@@ -259,6 +266,18 @@ import {
 
     .avatar-preview .photo-loading-overlay {
       border-radius: 50%;
+    }
+
+    @media (max-width: 767.98px), (hover: none) and (pointer: coarse) {
+      .profile-layout {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .profile-col {
+        padding-left: 0;
+        padding-right: 0;
+      }
     }
   `]
 })

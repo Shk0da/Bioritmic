@@ -13,6 +13,7 @@ interface UserConversation {
   userPhotoUrl?: string | null;
   lastMessage: string;
   lastMessageTime: unknown;
+  hasUnread?: boolean;
 }
 
 @Component({
@@ -24,7 +25,7 @@ interface UserConversation {
       <h1 class="page-title">
         <i class="bi bi-chat-heart me-2"></i>Сообщения
       </h1>
-      <p class="text-muted mb-0">Ваши диалоги</p>
+      <p class="text-muted mb-0 page-subtitle d-none d-md-block">Ваши диалоги</p>
     </div>
 
     @if (loading && conversations.length === 0 && !selectedUserId) {
@@ -55,7 +56,9 @@ interface UserConversation {
           </div>
           <div class="conversation-list">
             @for (conv of conversations; track conv.userId) {
-              <div class="conversation-swipe-wrap">
+              <div
+                class="conversation-swipe-wrap"
+                [class.swipe-delete-revealed]="isSwipeDeleteRevealed(conv.userId)">
                 <div
                   class="conversation-swipe-actions"
                   role="button"
@@ -69,17 +72,24 @@ interface UserConversation {
                 <div
                   class="conversation-item"
                   [class.active]="conv.userId === selectedUserId"
+                  [class.unread]="conv.hasUnread"
                   [class.swipe-dragging]="swipeDragUserId === conv.userId"
                   [style.transform]="getItemTransform(conv.userId)"
+                  [attr.aria-label]="conv.hasUnread ? (conv.userName || 'Пользователь') + ', новое сообщение' : null"
                   (click)="onConversationClick(conv.userId)"
                   (touchstart)="onSwipeStart(conv.userId, $event)"
                   (touchmove)="onSwipeMove(conv.userId, $event)"
                   (touchend)="onSwipeEnd(conv.userId)"
                   (touchcancel)="onSwipeEnd(conv.userId)">
-                  <img
-                    [src]="conv.userPhotoUrl || 'assets/img/default-avatar.svg'"
-                    class="conversation-avatar"
-                    [alt]="conv.userName || 'User'">
+                  <div class="conversation-avatar-wrap">
+                    <img
+                      [src]="conv.userPhotoUrl || 'assets/img/default-avatar.svg'"
+                      class="conversation-avatar"
+                      [alt]="conv.userName || 'User'">
+                    @if (conv.hasUnread) {
+                      <span class="conversation-unread-dot" aria-hidden="true"></span>
+                    }
+                  </div>
                   <div class="conversation-body min-w-0">
                     <div class="conversation-top">
                       <h6 class="conversation-name mb-0">{{ conv.userName || 'Пользователь' }}</h6>
@@ -106,7 +116,8 @@ interface UserConversation {
               [userId]="selectedUserId"
               [showBackButton]="isMobileView"
               (back)="closeChat()"
-              (messageSent)="onMessageSent()">
+              (messageSent)="onMessageSent()"
+              (conversationLoaded)="onConversationLoaded()">
             </app-conversation-panel>
           } @else {
             <div class="chat-placeholder">
@@ -211,6 +222,29 @@ interface UserConversation {
         border-left: 3px solid var(--accent-pink);
         padding-left: calc(1rem - 3px);
       }
+
+      &.unread:not(.active) {
+        background: rgba(253, 41, 123, 0.04);
+      }
+    }
+
+    .conversation-avatar-wrap {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+    }
+
+    .conversation-unread-dot {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-pink);
+      border: 2px solid var(--card-bg);
+      box-shadow: 0 0 0 1px rgba(253, 41, 123, 0.25);
     }
 
     .conversation-avatar {
@@ -241,11 +275,20 @@ interface UserConversation {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+
+      .conversation-item.unread & {
+        font-weight: 700;
+      }
     }
 
     .conversation-preview {
       color: var(--text-secondary);
       font-size: 0.875rem;
+
+      .conversation-item.unread & {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
     }
 
     .conversation-time {
@@ -260,13 +303,9 @@ interface UserConversation {
       color: var(--text-muted);
       padding: 0.35rem;
       opacity: 0;
-      transition: all 0.2s ease;
+      pointer-events: none;
+      transition: opacity 0.2s ease, color 0.2s ease;
       flex-shrink: 0;
-
-      .conversation-item:hover &,
-      .conversation-item.active & {
-        opacity: 1;
-      }
 
       &:hover {
         color: var(--accent-red);
@@ -328,6 +367,12 @@ interface UserConversation {
       .chat-placeholder {
         display: flex;
       }
+
+      .conversation-item:hover .btn-delete,
+      .conversation-item:focus-within .btn-delete {
+        opacity: 1;
+        pointer-events: auto;
+      }
     }
 
     @media (max-width: 991.98px) {
@@ -347,11 +392,18 @@ interface UserConversation {
         border: none;
         cursor: pointer;
         padding: 0;
+        visibility: hidden;
+        pointer-events: none;
 
         i {
           font-size: 1.05rem;
           line-height: 1;
         }
+      }
+
+      .conversation-swipe-wrap.swipe-delete-revealed .conversation-swipe-actions {
+        visibility: visible;
+        pointer-events: auto;
       }
 
       .conversation-item {
@@ -411,6 +463,7 @@ export class MailboxComponent implements OnInit, OnDestroy {
   private pageable: PageableRequest = { page: 0, size: 100 };
   private currentUserId?: string;
   private destroy$ = new Subject<void>();
+  private refreshInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private mailboxService: MailboxService,
@@ -431,14 +484,32 @@ export class MailboxComponent implements OnInit, OnDestroy {
     this.loadCurrentUserId();
 
     this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
-      this.selectedUserId = params.get('userId');
+      const nextSelectedUserId = params.get('userId');
+      const wasSelected = !!this.selectedUserId;
+      const openedConversation = !!nextSelectedUserId && nextSelectedUserId !== this.selectedUserId;
+      this.selectedUserId = nextSelectedUserId;
       if (this.selectedUserId) {
         this.ensureSelectedConversationInList();
+        if (openedConversation) {
+          this.clearConversationUnread(this.selectedUserId);
+        }
+      } else if (wasSelected) {
+        this.loadMessages();
       }
     });
+
+    this.refreshInterval = setInterval(() => {
+      if (!this.loading) {
+        this.loadMessages();
+      }
+    }, 30_000);
   }
 
   ngOnDestroy(): void {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -527,6 +598,13 @@ export class MailboxComponent implements OnInit, OnDestroy {
     return offset ? `translateX(${offset}px)` : '';
   }
 
+  isSwipeDeleteRevealed(userId: string): boolean {
+    if (this.swipeDragUserId === userId) {
+      return this.swipeOffset < 0;
+    }
+    return this.getSavedSwipeOffset(userId) < -this.swipeOpenThreshold;
+  }
+
   private getSavedSwipeOffset(userId: string): number {
     return this.openedSwipeOffsets[userId] ?? 0;
   }
@@ -563,6 +641,13 @@ export class MailboxComponent implements OnInit, OnDestroy {
   }
 
   onMessageSent(): void {
+    this.loadMessages();
+  }
+
+  onConversationLoaded(): void {
+    if (this.selectedUserId) {
+      this.clearConversationUnread(this.selectedUserId);
+    }
     this.loadMessages();
   }
 
@@ -606,11 +691,19 @@ export class MailboxComponent implements OnInit, OnDestroy {
 
   private groupByUsers(): void {
     const userMap = new Map<string, UserMail>();
+    const unreadUsers = new Set<string>();
 
     this.messages.forEach(message => {
       const otherUserId = message.from === this.currentUserId ? message.to : message.from;
       if (!otherUserId) {
         return;
+      }
+      if (
+        message.to === this.currentUserId
+        && message.from === otherUserId
+        && message.isRead !== true
+      ) {
+        unreadUsers.add(otherUserId);
       }
       const existing = userMap.get(otherUserId);
       if (!existing || this.isNewer(message.timestamp, existing.timestamp)) {
@@ -626,7 +719,8 @@ export class MailboxComponent implements OnInit, OnDestroy {
       userName: prevNames.get(userId),
       userPhotoUrl: prevPhotos.get(userId) ?? this.userService.peekCachedPhotoUrl(userId, 'thumb'),
       lastMessage: this.formatConversationPreview(message),
-      lastMessageTime: message.timestamp
+      lastMessageTime: message.timestamp,
+      hasUnread: unreadUsers.has(userId) && userId !== this.selectedUserId,
     }));
 
     this.conversations.sort((a, b) => {
@@ -666,7 +760,8 @@ export class MailboxComponent implements OnInit, OnDestroy {
       userName: undefined,
       userPhotoUrl: this.userService.peekCachedPhotoUrl(this.selectedUserId, 'thumb'),
       lastMessage: '',
-      lastMessageTime: { seconds: Math.floor(Date.now() / 1000) }
+      lastMessageTime: { seconds: Math.floor(Date.now() / 1000) },
+      hasUnread: false,
     };
     this.conversations = [conv, ...this.conversations];
 
@@ -691,6 +786,13 @@ export class MailboxComponent implements OnInit, OnDestroy {
         conv.userPhotoUrl = null;
       }
     });
+  }
+
+  private clearConversationUnread(userId: string): void {
+    const conversation = this.conversations.find(conv => conv.userId === userId);
+    if (conversation) {
+      conversation.hasUnread = false;
+    }
   }
 
   private isNewer(timeA: unknown, timeB: unknown): boolean {
