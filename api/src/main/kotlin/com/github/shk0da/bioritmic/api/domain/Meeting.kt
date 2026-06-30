@@ -37,6 +37,12 @@ class Meeting : Serializable {
     @Column("status")
     var status: String? = "PENDING"
 
+    @Column("description")
+    var description: String? = null
+
+    @Column("scheduled_at")
+    var scheduledAt: Timestamp? = null
+
     companion object {
         private const val serialVersionUID = 1L
 
@@ -47,6 +53,8 @@ class Meeting : Serializable {
             meeting.otherUserLat = userMeeting.lat
             meeting.otherUserLon = userMeeting.lon
             meeting.distance = userMeeting.distance
+            meeting.description = userMeeting.description?.trim()
+            meeting.scheduledAt = userMeeting.scheduledAt
             meeting.timestamp = Timestamp(System.currentTimeMillis())
             meeting.status = "PENDING"
             return meeting

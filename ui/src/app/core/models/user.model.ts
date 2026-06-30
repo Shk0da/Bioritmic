@@ -92,6 +92,8 @@ export interface UserMeeting {
   lat: number;
   lon: number;
   distance: number;
+  description?: string;
+  scheduledAt?: Timestamp | string;
   timestamp?: Timestamp;
   status?: string;
   senderName?: string;
@@ -119,6 +121,8 @@ export interface UserInfo {
   lon?: number;
   name?: string;
   bio?: string;
+  statusEmoji?: string | null;
+  statusPosition?: string | null;
   isOnline?: boolean;
   lastActiveAt?: string;
   isVerified?: boolean;

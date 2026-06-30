@@ -5,6 +5,7 @@ import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_V
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
 import com.github.shk0da.bioritmic.api.model.mailbox.ConversationPageModel
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
+import com.github.shk0da.bioritmic.testutil.testMeeting
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.domain.UserModel
@@ -220,7 +221,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
 
     @Test
     fun `create meeting between alice and bob`() {
-        val meeting = UserMeeting(userId = bobId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(bobId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .headers(auth(aliceToken))
@@ -233,7 +234,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
     @Test
     fun `bob sees meeting from alice`() {
         // Alice sends meeting to Bob
-        val meeting = UserMeeting(userId = bobId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(bobId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .headers(auth(aliceToken))
@@ -257,7 +258,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
     @Test
     fun `alice does not see her own sent meeting`() {
         // Alice sends meeting to Bob
-        val meeting = UserMeeting(userId = bobId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(bobId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .headers(auth(aliceToken))
@@ -279,7 +280,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
     @Test
     fun `accept meeting changes status`() {
         // Alice sends to Bob
-        val meeting = UserMeeting(userId = bobId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(bobId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .headers(auth(aliceToken))
@@ -308,7 +309,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
     @Test
     fun `decline meeting hides it from list`() {
         // Alice sends to Bob
-        val meeting = UserMeeting(userId = bobId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(bobId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .headers(auth(aliceToken))
@@ -338,7 +339,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
 
     @Test
     fun `self meeting is filtered out`() {
-        val meeting = UserMeeting(userId = aliceId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(aliceId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .headers(auth(aliceToken))
@@ -636,7 +637,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .expectStatus().isOk
 
         // 3. Alice sends meeting to Bob
-        val meeting = UserMeeting(userId = bobId, lat = 55.75, lon = 37.61, distance = 5.0)
+        val meeting = testMeeting(bobId, distance = 5.0)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .headers(auth(aliceToken))
@@ -686,7 +687,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
     @Test
     fun `block prevents messaging and meeting visibility`() {
         // Alice sends meeting to Bob
-        val meeting = UserMeeting(userId = bobId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(bobId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .headers(auth(aliceToken))
@@ -722,7 +723,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
     @Test
     fun `three users interactions`() {
         // Alice sends meeting to Charlie
-        val meetingAtoC = UserMeeting(userId = charlieId, lat = 55.75, lon = 37.61, distance = 3.0)
+        val meetingAtoC = testMeeting(charlieId, distance = 3.0)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .headers(auth(aliceToken))
@@ -732,7 +733,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .expectStatus().isOk
 
         // Bob sends meeting to Charlie
-        val meetingBtoC = UserMeeting(userId = charlieId, lat = 55.76, lon = 37.62, distance = 7.0)
+        val meetingBtoC = testMeeting(charlieId, lat = 55.76, lon = 37.62, distance = 7.0)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .headers(auth(bobToken))

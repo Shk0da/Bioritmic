@@ -126,16 +126,16 @@ firebase:
 rate-limit:
   enabled: true
   public-auth:
-    max-requests: 10
+    max-requests: 20
     window-seconds: 60
   global-ip:
-    max-requests: 300
+    max-requests: 600
     window-seconds: 60
   user-default:
-    max-requests: 120
+    max-requests: 240
     window-seconds: 60
   user-write:
-    max-requests: 30
+    max-requests: 60
     window-seconds: 60
   cleanup-interval-seconds: 300
   excluded-path-prefixes:

@@ -19,13 +19,14 @@ import {
 } from '../../shared/utils/biorhythm-labels.util';
 import { StoriesBarComponent } from '../../shared/components/stories-bar/stories-bar.component';
 import { MatchModalComponent } from '../../shared/components/match-modal/match-modal.component';
+import { AvatarStatusBadgeComponent } from '../../shared/components/avatar-status-badge/avatar-status-badge.component';
 import { ShareService } from '../../core/services/share.service';
 import { ModalService } from '../../core/services/modal.service';
 
 @Component({
   selector: 'app-swipe',
   standalone: true,
-  imports: [RouterLink, FormsModule, NgClass, StoriesBarComponent, MatchModalComponent],
+  imports: [RouterLink, FormsModule, NgClass, StoriesBarComponent, MatchModalComponent, AvatarStatusBadgeComponent],
   template: `
     <div class="swipe-container">
       <div class="stories-row">
@@ -99,6 +100,11 @@ import { ModalService } from '../../core/services/modal.service';
             >
               <!-- Фото пользователя -->
               <div class="card-photo" [style.backgroundImage]="'url(' + (card.photoDataUrl || card.user.image || '') + ' '">
+                <app-avatar-status-badge
+                  [emoji]="card.user.statusEmoji"
+                  [position]="card.user.statusPosition"
+                  size="md">
+                </app-avatar-status-badge>
                 <div class="photo-overlay"></div>
 
                 <!-- Информация на карточке -->
@@ -204,6 +210,11 @@ import { ModalService } from '../../core/services/modal.service';
             @for (card of cards; track card.user.id) {
               <div class="profile-card">
                 <div class="profile-card-photo" [style.backgroundImage]="'url(' + (card.photoDataUrl || card.user.image || '') + ' '">
+                  <app-avatar-status-badge
+                    [emoji]="card.user.statusEmoji"
+                    [position]="card.user.statusPosition"
+                    size="md">
+                  </app-avatar-status-badge>
                   <div class="online-badge"></div>
                 </div>
                 <div class="profile-card-body">

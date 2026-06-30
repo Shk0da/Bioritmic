@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { BiorhythmDetailComponent } from '../../shared/components/biorhythm-detail/biorhythm-detail.component';
 import { Subject, takeUntil } from 'rxjs';
 import { ModalService } from '../../core/services/modal.service';
+import { isFutureDatetimeLocalValue, parseDatetimeLocalValue, toDatetimeLocalValue } from '../../shared/utils/datetime-local.util';
 import {
   getSummaryCompatibility,
   getSummaryCompatibilityAverage,
@@ -124,7 +125,7 @@ import {
                 <span>Встреча отправлена</span>
               </button>
             } @else {
-              <button class="action-btn action-meeting" (click)="sendMeetingRequest()">
+              <button class="action-btn action-meeting" (click)="openMeetingModal()">
                 <i class="bi bi-calendar-heart"></i>
                 <span>Встреча</span>
               </button>
@@ -189,6 +190,53 @@ import {
                       <span class="spinner-border spinner-border-sm me-1"></span>
                     }
                     <i class="bi bi-send me-1"></i>Отправить жалобу
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (showMeetingModal) {
+            <div class="report-modal-overlay" (click)="closeMeetingModal()">
+              <div class="report-modal" (click)="$event.stopPropagation()">
+                <div class="report-modal-header">
+                  <h5><i class="bi bi-calendar-heart me-2"></i>Предложить встречу</h5>
+                  <button class="report-modal-close" (click)="closeMeetingModal()"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="report-modal-body">
+                  <p class="report-modal-user">
+                    Встреча с <strong>{{ user?.name }}</strong>
+                  </p>
+                  <div class="mb-3">
+                    <label class="form-label" for="meetingDescription">Место и описание *</label>
+                    <textarea
+                      id="meetingDescription"
+                      class="form-control"
+                      rows="3"
+                      [(ngModel)]="meetingDescription"
+                      maxlength="500"
+                      placeholder="Например: кафе на Тверской, у входа с цветами"></textarea>
+                  </div>
+                  <div>
+                    <label class="form-label" for="meetingScheduledAt">Дата и время *</label>
+                    <input
+                      id="meetingScheduledAt"
+                      type="datetime-local"
+                      class="form-control"
+                      [(ngModel)]="meetingScheduledAt"
+                      [min]="minMeetingDateTime">
+                  </div>
+                </div>
+                <div class="report-modal-footer">
+                  <button class="btn btn-cancel" (click)="closeMeetingModal()">Отмена</button>
+                  <button
+                    class="btn btn-report meeting-submit-btn"
+                    [disabled]="!canSubmitMeeting || meetingSending"
+                    (click)="submitMeetingRequest()">
+                    @if (meetingSending) {
+                      <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-send me-1"></i>Отправить
                   </button>
                 </div>
               </div>
@@ -670,6 +718,14 @@ import {
         &:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); transform: translateY(-1px); }
         &:disabled { opacity: 0.5; cursor: not-allowed; }
       }
+
+      .meeting-submit-btn {
+        background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+        color: white;
+
+        &:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4); transform: translateY(-1px); }
+        &:disabled { opacity: 0.5; cursor: not-allowed; }
+      }
     }
 
     @media (max-width: 768px) {
@@ -693,6 +749,10 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   selectedReason = '';
   reportDescription = '';
   reportSending = false;
+  showMeetingModal = false;
+  meetingDescription = '';
+  meetingScheduledAt = '';
+  meetingSending = false;
 
   reportReasons = [
     { value: 'SPAM', label: 'Спам или фейковый профиль', icon: 'bi-envelope-exclamation' },
@@ -907,16 +967,65 @@ export class UserDetailComponent implements OnInit, OnDestroy {
       userId: this.user.id,
       lat: this.user.lat || 0,
       lon: this.user.lon || 0,
-      distance: this.user.distance || 1
+      distance: this.user.distance || 1,
+      description: this.meetingDescription.trim(),
+      scheduledAt: new Date(this.getMeetingScheduledTimestamp()).toISOString(),
     };
 
+    this.meetingSending = true;
     this.meetingsService.createMeeting(meeting).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
+        this.meetingSending = false;
         this.meetingSent = true;
+        this.showMeetingModal = false;
         this.modalService.alert('Предложение встречи отправлено!');
       },
-      error: () => { /* shown by HTTP interceptor */ }
+      error: () => {
+        this.meetingSending = false;
+      }
     });
+  }
+
+  openMeetingModal(): void {
+    this.meetingDescription = '';
+    this.meetingScheduledAt = this.defaultMeetingDateTime();
+    this.showMeetingModal = true;
+  }
+
+  closeMeetingModal(): void {
+    if (this.meetingSending) return;
+    this.showMeetingModal = false;
+  }
+
+  get minMeetingDateTime(): string {
+    return toDatetimeLocalValue(new Date());
+  }
+
+  get canSubmitMeeting(): boolean {
+    return !!this.meetingDescription.trim() && !!this.meetingScheduledAt;
+  }
+
+  submitMeetingRequest(): void {
+    if (!this.canSubmitMeeting) {
+      this.toastService.error('Укажите место и время встречи');
+      return;
+    }
+    if (!isFutureDatetimeLocalValue(this.meetingScheduledAt)) {
+      this.toastService.error('Время встречи должно быть в будущем');
+      return;
+    }
+    this.sendMeetingRequest();
+  }
+
+  private defaultMeetingDateTime(): string {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    date.setHours(18, 0, 0, 0);
+    return toDatetimeLocalValue(date);
+  }
+
+  private getMeetingScheduledTimestamp(): number {
+    return parseDatetimeLocalValue(this.meetingScheduledAt);
   }
 
   async cancelMeeting(): Promise<void> {

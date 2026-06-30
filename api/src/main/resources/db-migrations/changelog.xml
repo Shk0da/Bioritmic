@@ -21,6 +21,8 @@
     <include file="v1/0033-add-mailbox-media.xml" relativeToChangelogFile="true"/>
     <include file="v1/0034-add-mailbox-reply.xml" relativeToChangelogFile="true"/>
     <include file="v1/0035-create-mailbox-reactions.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0036-add-user-status-emoji.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0037-add-meeting-details.xml" relativeToChangelogFile="true"/>
     <!-- -->
 
     <!--  Seeding  -->

@@ -3,6 +3,7 @@ package com.github.shk0da.bioritmic.controller.meetings
 import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
+import com.github.shk0da.bioritmic.testutil.testMeeting
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import com.github.shk0da.bioritmic.domain.UserModel
 import org.junit.jupiter.api.BeforeEach
@@ -11,6 +12,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
 import java.util.UUID
+import java.sql.Timestamp
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 
@@ -71,7 +73,7 @@ class MeetingStatusTest : ApiApplicationTests() {
 
     @Test
     fun `decline meeting changes status and hides it from list`() {
-        val meeting = UserMeeting(userId = userBId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(userBId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .header(HttpHeaders.AUTHORIZATION, userAToken)
@@ -114,7 +116,7 @@ class MeetingStatusTest : ApiApplicationTests() {
 
     @Test
     fun `accept meeting changes status in DB`() {
-        val meeting = UserMeeting(userId = userBId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(userBId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .header(HttpHeaders.AUTHORIZATION, userAToken)
@@ -143,7 +145,7 @@ class MeetingStatusTest : ApiApplicationTests() {
 
     @Test
     fun `sender sees accepted meeting banner data on meetings page`() {
-        val meeting = UserMeeting(userId = userBId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(userBId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .header(HttpHeaders.AUTHORIZATION, userAToken)
@@ -175,7 +177,7 @@ class MeetingStatusTest : ApiApplicationTests() {
 
     @Test
     fun `resend meeting after decline resets status to pending`() {
-        val meeting = UserMeeting(userId = userBId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(userBId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .header(HttpHeaders.AUTHORIZATION, userAToken)
@@ -214,7 +216,7 @@ class MeetingStatusTest : ApiApplicationTests() {
 
     @Test
     fun `self meeting is not created`() {
-        val meeting = UserMeeting(userId = userAId, lat = 55.75, lon = 37.61, distance = 10.0)
+        val meeting = testMeeting(userAId)
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/meetings")
             .header(HttpHeaders.AUTHORIZATION, userAToken)
@@ -234,5 +236,21 @@ class MeetingStatusTest : ApiApplicationTests() {
             .returnResult()
             .responseBody ?: emptyList()
         assertEquals(0, meetings.size, "Self-meeting should be filtered out")
+    }
+
+    @Test
+    fun `create meeting rejects past scheduledAt`() {
+        val meeting = testMeeting(
+            userId = userBId,
+            scheduledAt = Timestamp(System.currentTimeMillis() - 86_400_000),
+        )
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(meeting)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
     }
 }

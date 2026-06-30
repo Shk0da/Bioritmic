@@ -116,6 +116,36 @@ class UserControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun updateMeStatusTest() {
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf(
+                "statusEmoji" to "🔥",
+                "statusPosition" to "BOTTOM_LEFT"
+            )))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.statusEmoji").isEqualTo("🔥")
+            .jsonPath("$.statusPosition").isEqualTo("BOTTOM_LEFT")
+    }
+
+    @Test
+    fun updateMeStatusRejectsUnknownEmoji() {
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("statusEmoji" to "🚀")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
+    }
+
+    @Test
     fun updateMeGenderTest() {
         webTestClient.patch()
             .uri("$API_WITH_VERSION_1/user/me")

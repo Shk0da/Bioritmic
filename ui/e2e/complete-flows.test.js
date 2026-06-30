@@ -20,6 +20,7 @@ const {
   getAuthToken,
   getCurrentUserId,
   sendApiRequest,
+  toDatetimeLocalValue,
 } = require('./helpers');
 
 let driverA, driverB;
@@ -521,6 +522,25 @@ describe('Полный профиль пользователя', function () {
     const btnText = await meetingBtn.getText();
     assert.ok(btnText.includes('Встреча'), `Текст кнопки: ${btnText}`);
     await meetingBtn.click();
+    await driverA.sleep(500);
+
+    const descriptionInput = await driverA.wait(
+      until.elementLocated(By.css('#meetingDescription')),
+      10000
+    );
+    await descriptionInput.clear();
+    await descriptionInput.sendKeys('Кафе на Тверской');
+
+    const dateInput = await driverA.findElement(By.css('#meetingScheduledAt'));
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(18, 0, 0, 0);
+    const localValue = toDatetimeLocalValue(tomorrow);
+    await dateInput.clear();
+    await dateInput.sendKeys(localValue);
+
+    const submitBtn = await driverA.findElement(By.css('.meeting-submit-btn'));
+    await submitBtn.click();
     await driverA.sleep(2000);
 
     const sentBtn = await isElementPresent(driverA, By.css('.action-meeting-sent'));

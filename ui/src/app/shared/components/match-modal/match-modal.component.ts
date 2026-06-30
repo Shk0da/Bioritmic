@@ -230,10 +230,14 @@ interface Confetti {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fd297b;
+      color: #ff2d55 !important;
       font-size: 1.3rem;
       animation: badgePulse 1.5s ease infinite;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+
+      i {
+        color: #ff2d55 !important;
+      }
     }
 
     @keyframes badgePulse {
@@ -249,7 +253,7 @@ interface Confetti {
 
     .btn-match-message {
       background: white;
-      color: #fd297b;
+      color: #111827 !important;
       border: none;
       border-radius: 25px;
       padding: 0.85rem 1.5rem;
@@ -259,10 +263,18 @@ interface Confetti {
       transition: all 0.3s ease;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 
+      i {
+        color: #111827 !important;
+      }
+
       &:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-        color: #fd297b;
+        color: #111827 !important;
+
+        i {
+          color: #111827 !important;
+        }
       }
     }
 

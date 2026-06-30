@@ -1,19 +1,27 @@
 import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, switchMap, EMPTY, catchError } from 'rxjs';
 import { UserService, photoSizeForLargeDisplay } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 import { BoostService, BoostInfo } from '../../../core/services/boost.service';
 import { ShareService } from '../../../core/services/share.service';
 import { ModalService } from '../../../core/services/modal.service';
+import { AvatarStatusBadgeComponent } from '../../../shared/components/avatar-status-badge/avatar-status-badge.component';
+import {
+  DEFAULT_USER_STATUS_POSITION,
+  normalizeUserStatusPosition,
+  PROFILE_STATUS_EMOJIS,
+  USER_STATUS_POSITIONS,
+  UserStatusPosition,
+} from '../../../shared/utils/user-status.util';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [RouterLink, NgClass],
+  imports: [RouterLink, NgClass, AvatarStatusBadgeComponent],
   template: `
     <div class="page-header mb-4">
       <h1 class="page-title">
@@ -26,12 +34,83 @@ import { ModalService } from '../../../core/services/modal.service';
       <div class="col-12 col-lg-4 mb-4">
         <div class="card profile-card text-center">
           <div class="card-body py-4">
-            <img
-              [src]="photoDataUrl || user?.image || ''"
-              class="profile-avatar mx-auto mb-3"
-              [alt]="user?.name">
+            <div class="profile-avatar-wrap mx-auto mb-3">
+              <img
+                [src]="photoDataUrl || user?.image || ''"
+                class="profile-avatar"
+                [alt]="user?.name">
+              <app-avatar-status-badge
+                [emoji]="user?.statusEmoji"
+                [position]="user?.statusPosition"
+                size="lg">
+              </app-avatar-status-badge>
+            </div>
             <h4 class="mb-1">{{ user?.name }}</h4>
             <p class="text-muted small mb-3">{{ user?.email }}</p>
+
+            <div class="status-collapse mb-3 text-start">
+              <button
+                type="button"
+                class="status-collapse-toggle"
+                (click)="toggleStatusPanel()"
+                [attr.aria-expanded]="statusPanelOpen">
+                <span class="status-collapse-title">
+                  <i class="bi bi-emoji-smile me-2"></i>Поставить статус на фото
+                </span>
+                <i class="bi status-collapse-chevron" [class.bi-chevron-up]="statusPanelOpen" [class.bi-chevron-down]="!statusPanelOpen"></i>
+              </button>
+
+              @if (statusPanelOpen) {
+                <div class="status-collapse-body">
+                  <p class="text-muted small mb-3">Эмодзи будет виден на вашей карточке в поиске</p>
+                  <div class="status-emoji-grid">
+                    @for (emoji of statusEmojis; track emoji) {
+                      <button
+                        type="button"
+                        class="status-emoji-btn"
+                        [class.selected]="user?.statusEmoji === emoji"
+                        [disabled]="statusSaving"
+                        (click)="selectStatusEmoji(emoji)">
+                        {{ emoji }}
+                      </button>
+                    }
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm mt-2"
+                    (click)="clearStatusEmoji()"
+                    [disabled]="!user?.statusEmoji || statusSaving">
+                    Убрать статус
+                  </button>
+
+                  @if (user?.statusEmoji) {
+                    <div class="status-position-picker mt-3">
+                      <div class="form-label mb-2">Положение на фото</div>
+                      <div class="status-position-options">
+                        @for (option of statusPositions; track option.value) {
+                          <button
+                            type="button"
+                            class="status-position-btn"
+                            [class.selected]="user?.statusPosition === option.value"
+                            [disabled]="statusSaving"
+                            (click)="selectStatusPosition(option.value)">
+                            {{ option.label }}
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  @if (statusSaving) {
+                    <div class="status-saving-indicator mt-2">
+                      <span class="spinner-border spinner-border-sm me-2"></span>
+                      <span class="text-muted small">Сохранение...</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
             <div class="profile-actions">
               <a [routerLink]="['/profile/me/edit']" class="btn btn-outline-primary">
                 <i class="bi bi-pencil me-2"></i>Редактировать
@@ -186,9 +265,18 @@ import { ModalService } from '../../../core/services/modal.service';
     }
 
     .profile-card {
+      .profile-avatar-wrap {
+        position: relative;
+        width: 180px;
+        height: 180px;
+      }
+
       .profile-avatar {
         width: 180px;
         height: 180px;
+        border-radius: 50%;
+        object-fit: cover;
+        display: block;
       }
     }
 
@@ -200,6 +288,112 @@ import { ModalService } from '../../../core/services/modal.service';
 
     .profile-actions .btn {
       width: 100%;
+    }
+
+    .status-collapse {
+      border-top: 1px solid var(--border-color, #e5e7eb);
+      border-bottom: 1px solid var(--border-color, #e5e7eb);
+      padding: 0.75rem 0;
+    }
+
+    .status-collapse-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border: none;
+      background: transparent;
+      color: var(--text-primary, #1f2937);
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .status-collapse-title {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .status-collapse-chevron {
+      color: var(--text-muted, #6b7280);
+      flex-shrink: 0;
+    }
+
+    .status-collapse-body {
+      padding-top: 0.25rem;
+    }
+
+    .status-emoji-grid {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      gap: 0.35rem;
+    }
+
+    .status-emoji-btn {
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      border-radius: 10px;
+      font-size: 1.25rem;
+      line-height: 1;
+      padding: 0.35rem;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        border-color: var(--accent-pink);
+      }
+
+      &.selected {
+        border-color: var(--accent-pink);
+        background: rgba(253, 41, 123, 0.1);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+
+    .status-position-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .status-position-btn {
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-radius: 999px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.82rem;
+      cursor: pointer;
+
+      &.selected {
+        border-color: var(--accent-pink);
+        color: var(--accent-pink);
+        background: rgba(253, 41, 123, 0.1);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+
+    .status-saving-indicator {
+      display: flex;
+      align-items: center;
+    }
+
+    @media (max-width: 576px) {
+      .status-emoji-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
     }
 
     .boost-active {
@@ -226,22 +420,27 @@ import { ModalService } from '../../../core/services/modal.service';
 export class ProfileComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
+  readonly statusEmojis = PROFILE_STATUS_EMOJIS;
+  readonly statusPositions = USER_STATUS_POSITIONS;
   user: UserInfo | null = null;
   photoDataUrl: string | null = null;
   blockedCount = 0;
   activeBoost: BoostInfo | null = null;
   boostActivating = false;
   sharing = false;
+  statusPanelOpen = false;
+  statusSaving = false;
 
+  private statusSaveTrigger$ = new Subject<void>();
   private boostCountdownInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private userService: UserService,
     private authService: AuthService,
-    private sanitizer: DomSanitizer,
     private boostService: BoostService,
     private shareService: ShareService,
-    private modalService: ModalService
+    private modalService: ModalService,
+    private toastService: ToastService
   ) {
     this.destroyRef.onDestroy(() => {
       this.destroy$.next();
@@ -252,6 +451,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.setupStatusAutoSave();
     this.loadProfile();
     this.loadBlockedCount();
     this.loadActiveBoost();
@@ -277,9 +477,91 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private loadProfile(): void {
     this.userService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe({
       next: (user: UserInfo) => {
-        this.user = user;
+        this.user = {
+          ...user,
+          statusEmoji: user.statusEmoji ?? null,
+          statusPosition: user.statusEmoji
+            ? normalizeUserStatusPosition(user.statusPosition)
+            : null,
+        };
         this.loadPhoto();
       }
+    });
+  }
+
+  toggleStatusPanel(): void {
+    this.statusPanelOpen = !this.statusPanelOpen;
+  }
+
+  selectStatusEmoji(emoji: string): void {
+    if (!this.user) return;
+    if (this.user.statusEmoji === emoji) {
+      this.clearStatusEmoji();
+      return;
+    }
+    this.user = {
+      ...this.user,
+      statusEmoji: emoji,
+      statusPosition: this.user.statusPosition || DEFAULT_USER_STATUS_POSITION,
+    };
+    this.saveStatus();
+  }
+
+  clearStatusEmoji(): void {
+    if (!this.user?.statusEmoji) return;
+    this.user = {
+      ...this.user,
+      statusEmoji: null,
+      statusPosition: null,
+    };
+    this.saveStatus();
+  }
+
+  selectStatusPosition(position: UserStatusPosition): void {
+    if (!this.user?.statusEmoji) return;
+    this.user = {
+      ...this.user,
+      statusPosition: position,
+    };
+    this.saveStatus();
+  }
+
+  private saveStatus(): void {
+    this.statusSaveTrigger$.next();
+  }
+
+  private setupStatusAutoSave(): void {
+    this.statusSaveTrigger$.pipe(
+      switchMap(() => {
+        if (!this.user) {
+          return EMPTY;
+        }
+        this.statusSaving = true;
+        return this.userService.updateUser({
+          statusEmoji: this.user.statusEmoji || '',
+          ...(this.user.statusEmoji
+            ? { statusPosition: this.user.statusPosition || DEFAULT_USER_STATUS_POSITION }
+            : {}),
+        }).pipe(
+          catchError(() => {
+            this.statusSaving = false;
+            this.toastService.error('Не удалось сохранить статус');
+            this.loadProfile();
+            return EMPTY;
+          })
+        );
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe((user) => {
+      this.user = {
+        ...this.user,
+        ...user,
+        statusEmoji: user.statusEmoji ?? null,
+        statusPosition: user.statusEmoji
+          ? normalizeUserStatusPosition(user.statusPosition)
+          : null,
+      };
+      this.statusSaving = false;
     });
   }
 

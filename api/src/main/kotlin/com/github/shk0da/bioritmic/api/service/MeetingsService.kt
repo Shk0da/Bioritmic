@@ -10,7 +10,6 @@ import com.github.shk0da.bioritmic.api.repository.MailboxRepository
 import com.github.shk0da.bioritmic.api.repository.MeetingStatusUpdater
 import com.github.shk0da.bioritmic.api.repository.MeetingsRepository
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
@@ -57,23 +56,42 @@ class MeetingsService(
         if (checkSize(totalCount, maximumUserMeetingsSize, ErrorCode.MANY_MEETINGS)) {
             try {
                 val specs = meetingList.map { Meeting.of(userId, it) }
-                if (specs.isNotEmpty()) {
-                    val values = specs.joinToString(", ") { spec ->
-                        "('${spec.userId}'::uuid, '${spec.otherUserId}'::uuid, " +
-                            "${spec.otherUserLat}, ${spec.otherUserLon}, " +
-                            "${spec.distance}, '${spec.timestamp}', 'PENDING')"
-                    }
+                specs.forEach { spec ->
+                    validateScheduledAt(spec.scheduledAt)
                     databaseClient.sql(
-                        """INSERT INTO meetings(user_id, other_user_id, other_user_lat, other_user_lon, distance, timestamp, status)
-                           VALUES $values
-                           ON CONFLICT (user_id, other_user_id) DO UPDATE
-                           SET other_user_lat = excluded.other_user_lat,
-                               other_user_lon = excluded.other_user_lon,
-                               distance = excluded.distance,
-                               timestamp = excluded.timestamp,
-                               status = 'PENDING'"""
-                    ).fetch().rowsUpdated().awaitFirstOrNull()
+                        """
+                        INSERT INTO meetings(
+                            user_id, other_user_id, other_user_lat, other_user_lon,
+                            distance, timestamp, status, description, scheduled_at
+                        )
+                        VALUES (
+                            :userId, :otherUserId, :otherUserLat, :otherUserLon,
+                            :distance, :timestamp, 'PENDING', :description, :scheduledAt
+                        )
+                        ON CONFLICT (user_id, other_user_id) DO UPDATE
+                        SET other_user_lat = excluded.other_user_lat,
+                            other_user_lon = excluded.other_user_lon,
+                            distance = excluded.distance,
+                            timestamp = excluded.timestamp,
+                            status = 'PENDING',
+                            description = excluded.description,
+                            scheduled_at = excluded.scheduled_at
+                        """
+                    )
+                        .bind("userId", spec.userId!!)
+                        .bind("otherUserId", spec.otherUserId!!)
+                        .bind("otherUserLat", spec.otherUserLat!!)
+                        .bind("otherUserLon", spec.otherUserLon!!)
+                        .bind("distance", spec.distance!!)
+                        .bind("timestamp", spec.timestamp!!)
+                        .bind("description", spec.description.orEmpty())
+                        .bind("scheduledAt", spec.scheduledAt!!)
+                        .fetch()
+                        .rowsUpdated()
+                        .awaitFirstOrNull()
+                }
 
+                if (specs.isNotEmpty()) {
                     val sender = userService.findUserById(userId)
                     val senderName = sender?.name?.takeIf { it.isNotBlank() } ?: "Пользователь"
                     specs.forEach { spec ->
@@ -178,5 +196,18 @@ class MeetingsService(
     @Transactional(readOnly = true)
     suspend fun countIncomingSince(userId: UUID, sinceMs: Long): Long {
         return meetingsRepository.countIncomingSince(userId, java.sql.Timestamp(sinceMs))
+    }
+
+    private fun validateScheduledAt(scheduledAt: Timestamp?) {
+        if (scheduledAt == null || scheduledAt.time < System.currentTimeMillis() - SCHEDULED_AT_TOLERANCE_MS) {
+            throw ApiException(
+                ErrorCode.INVALID_PARAMETER,
+                mapOf(Pair(ErrorCode.Constants.PARAMETER_NAME, "scheduledAt"))
+            )
+        }
+    }
+
+    companion object {
+        private const val SCHEDULED_AT_TOLERANCE_MS = 60_000L
     }
 }

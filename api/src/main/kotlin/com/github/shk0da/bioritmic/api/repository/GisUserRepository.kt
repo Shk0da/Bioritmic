@@ -40,7 +40,7 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
         val lonMax = lon + lonDelta
 
         var sql = """
-            SELECT usr.id, usr.name, usr.birthday, usr.gender, gis.lat, gis.lon, gis.distance
+            SELECT usr.id, usr.name, usr.birthday, usr.gender, usr.status_emoji, usr.status_position, gis.lat, gis.lon, gis.distance
             FROM users AS usr, (
                 SELECT *, (point(lat, lon) <@> point(:lat, :lon)) AS distance
                 FROM gis_data
@@ -108,6 +108,8 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
                     this.birthday = (row["birthday"] as? LocalDateTime)
                         ?.let { Timestamp.from(it.toInstant(defaultZone)) }
                     this.gender = (row["gender"] as? Number)?.toShort()
+                    this.statusEmoji = row["status_emoji"] as? String
+                    this.statusPosition = row["status_position"] as? String
                     this.lat = (row["lat"] as? Double) ?: (row["lat"] as? Number)?.toDouble()
                     this.lon = (row["lon"] as? Double) ?: (row["lon"] as? Number)?.toDouble()
                     this.distance = (row["distance"] as? Double) ?: (row["distance"] as? Number)?.toDouble()

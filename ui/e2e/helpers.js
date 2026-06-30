@@ -609,6 +609,12 @@ async function registerAndVerifyUser(driver, user) {
   return me.id;
 }
 
+function toDatetimeLocalValue(date) {
+  const local = new Date(date);
+  local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
+  return local.toISOString().slice(0, 16);
+}
+
 module.exports = {
   BASE_URL,
   API_URL,
@@ -653,4 +659,5 @@ module.exports = {
   getCurrentUserId,
   sendApiRequest,
   clickHeaderNav,
+  toDatetimeLocalValue,
 };

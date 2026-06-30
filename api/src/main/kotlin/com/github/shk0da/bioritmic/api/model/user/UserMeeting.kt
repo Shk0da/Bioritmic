@@ -6,13 +6,17 @@ import com.github.shk0da.bioritmic.api.domain.Meeting
 import com.github.shk0da.bioritmic.api.model.BasicPresentation
 import java.sql.Timestamp
 import java.util.UUID
+import javax.validation.constraints.NotBlank
 import javax.validation.constraints.NotNull
+import javax.validation.constraints.Size
 
 data class UserMeeting(
     @field:NotNull val userId: UUID?,
     @field:NotNull val lat: Double?,
     @field:NotNull val lon: Double?,
     @field:NotNull val distance: Double?,
+    @field:NotBlank @field:Size(max = 500) val description: String?,
+    @field:NotNull val scheduledAt: Timestamp?,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     var timestamp: Timestamp? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
@@ -38,6 +42,8 @@ data class UserMeeting(
                 lat = lat,
                 lon = lon,
                 distance = meeting.distance,
+                description = meeting.description,
+                scheduledAt = meeting.scheduledAt,
                 timestamp = meeting.timestamp,
                 status = meeting.status?.takeIf { it.isNotBlank() } ?: "PENDING",
                 outgoing = isCurrentUserCreator,
@@ -47,6 +53,11 @@ data class UserMeeting(
 
     @JsonIgnore
     fun isFilledInput(): Boolean {
-        return null != userId && null != lat && null != lon && null != distance
+        return userId != null &&
+            lat != null &&
+            lon != null &&
+            distance != null &&
+            !description.isNullOrBlank() &&
+            scheduledAt != null
     }
 }

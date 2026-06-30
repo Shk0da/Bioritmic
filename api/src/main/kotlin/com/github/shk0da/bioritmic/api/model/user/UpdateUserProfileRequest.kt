@@ -12,4 +12,6 @@ data class UpdateUserProfileRequest(
     val birthday: Date? = null,
     val gender: Gender? = null,
     val bio: String? = null,
+    val statusEmoji: String? = null,
+    val statusPosition: UserStatusPosition? = null,
 ) : BasicPresentation

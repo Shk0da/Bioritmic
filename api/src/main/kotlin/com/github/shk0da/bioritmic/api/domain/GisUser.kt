@@ -22,6 +22,10 @@ class GisUser {
 
     var distance: Double? = null
 
+    var statusEmoji: String? = null
+
+    var statusPosition: String? = null
+
     fun getGender(): Gender? {
         if (null == this.gender || Gender.values().size < this.gender!!.toInt()) {
             return null

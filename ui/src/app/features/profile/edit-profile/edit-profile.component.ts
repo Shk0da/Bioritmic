@@ -5,6 +5,10 @@ import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 import { Subject, takeUntil } from 'rxjs';
 import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
+import { AvatarStatusBadgeComponent } from '../../../shared/components/avatar-status-badge/avatar-status-badge.component';
+import {
+  normalizeUserStatusPosition,
+} from '../../../shared/utils/user-status.util';
 import {
   maxBirthdayForMinAge,
   meetsMinimumAge,
@@ -14,7 +18,7 @@ import {
 @Component({
   selector: 'app-edit-profile',
   standalone: true,
-  imports: [RouterLink, FormsModule, ImageCropModalComponent],
+  imports: [RouterLink, FormsModule, ImageCropModalComponent, AvatarStatusBadgeComponent],
   template: `
     @if (saving) {
       <div class="saving-overlay">
@@ -34,7 +38,7 @@ import {
           <div class="card-body">
             <!-- Фото профиля -->
             <div class="text-center mb-4 d-flex flex-column align-items-center">
-              <div class="position-relative d-inline-block">
+              <div class="avatar-preview position-relative d-inline-block">
                 @if (saving) {
                   <div class="photo-loading-overlay">
                     <div class="spinner-border text-primary" role="status">
@@ -54,7 +58,12 @@ import {
                     <i class="bi bi-person-fill fs-1"></i>
                   </div>
                 }
-                <label for="photoUpload" class="btn btn-primary btn-sm position-absolute" style="bottom: 0; right: 0; border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                <app-avatar-status-badge
+                  [emoji]="user.statusEmoji"
+                  [position]="user.statusPosition"
+                  size="lg">
+                </app-avatar-status-badge>
+                <label for="photoUpload" class="btn btn-primary btn-sm position-absolute" style="bottom: 0; right: 0; border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                     <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                     <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
@@ -246,6 +255,10 @@ import {
       background: var(--bg-secondary);
       color: var(--text-muted);
     }
+
+    .avatar-preview .photo-loading-overlay {
+      border-radius: 50%;
+    }
   `]
 })
 export class EditProfileComponent implements OnInit, OnDestroy {
@@ -286,6 +299,10 @@ export class EditProfileComponent implements OnInit, OnDestroy {
           ...user,
           birthday: this.formatBirthday(user.birthday),
           gender: this.normalizeGender(user.gender),
+          statusEmoji: user.statusEmoji ?? null,
+          statusPosition: user.statusEmoji
+            ? normalizeUserStatusPosition(user.statusPosition)
+            : null,
         };
         if (user.id) {
           this.loadPhoto(user.id);
@@ -421,7 +438,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
       name: this.user.name,
       birthday: this.user.birthday,
       gender: this.normalizeGender(this.user.gender),
-      bio: bio || ''
+      bio: bio || '',
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         if (this.photoFile) {

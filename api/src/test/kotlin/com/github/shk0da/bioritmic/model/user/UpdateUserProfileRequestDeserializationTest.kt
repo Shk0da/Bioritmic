@@ -33,4 +33,18 @@ class UpdateUserProfileRequestDeserializationTest {
         assertEquals(Gender.WOMAN, request.gender)
         assertEquals("Hello", request.bio)
     }
+
+    @Test
+    fun deserializesStatusFields() {
+        val request = mapper.readValue<UpdateUserProfileRequest>(
+            """
+            {
+              "statusEmoji": "🔥",
+              "statusPosition": "TOP_LEFT"
+            }
+            """.trimIndent()
+        )
+        assertEquals("🔥", request.statusEmoji)
+        assertEquals(com.github.shk0da.bioritmic.api.model.user.UserStatusPosition.TOP_LEFT, request.statusPosition)
+    }
 }

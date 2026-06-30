@@ -2,13 +2,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { RouterTestingModule } from '@angular/router/testing';
-import { of, throwError } from 'rxjs';
+import { of } from 'rxjs';
 import { ProfileComponent } from './profile.component';
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { BoostService } from '../../../core/services/boost.service';
 import { ShareService } from '../../../core/services/share.service';
 import { ModalService } from '../../../core/services/modal.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 
 describe('ProfileComponent', () => {
@@ -33,10 +34,11 @@ describe('ProfileComponent', () => {
     Object.defineProperty(authService, 'currentUser$', { get: () => of(mockUser) });
     authService.getCurrentUser.and.returnValue(mockUser);
 
-    userService = jasmine.createSpyObj('UserService', ['getCurrentUser', 'getBlockedUsers', 'getPhoto']);
+    userService = jasmine.createSpyObj('UserService', ['getCurrentUser', 'getBlockedCount', 'resolveProfilePhotoUrl', 'updateUser']);
     userService.getCurrentUser.and.returnValue(of(mockUser));
-    userService.getBlockedUsers.and.returnValue(of([]));
-    userService.getPhoto.and.returnValue(throwError(() => new Error('no photo')));
+    userService.getBlockedCount.and.returnValue(of({ count: 0 }));
+    userService.resolveProfilePhotoUrl.and.returnValue(of(null));
+    userService.updateUser.and.returnValue(of(mockUser));
 
     boostService = jasmine.createSpyObj('BoostService', ['activateBoost', 'getCurrentBoost']);
     boostService.getCurrentBoost.and.returnValue(of(null));
@@ -47,6 +49,8 @@ describe('ProfileComponent', () => {
     const modalService = jasmine.createSpyObj('ModalService', ['alert']);
     modalService.alert.and.returnValue(Promise.resolve());
 
+    const toastService = jasmine.createSpyObj('ToastService', ['error', 'success']);
+
     await TestBed.configureTestingModule({
       imports: [ProfileComponent, RouterTestingModule],
       providers: [
@@ -56,7 +60,8 @@ describe('ProfileComponent', () => {
         { provide: UserService, useValue: userService },
         { provide: BoostService, useValue: boostService },
         { provide: ShareService, useValue: shareService },
-        { provide: ModalService, useValue: modalService }
+        { provide: ModalService, useValue: modalService },
+        { provide: ToastService, useValue: toastService }
       ]
     }).compileComponents();
 
@@ -64,7 +69,13 @@ describe('ProfileComponent', () => {
     component = fixture.componentInstance;
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
+  it('should save status immediately when emoji is selected', () => {
+    fixture.detectChanges();
+    component.statusPanelOpen = true;
+    component.selectStatusEmoji('🔥');
+    expect(userService.updateUser).toHaveBeenCalledWith({
+      statusEmoji: '🔥',
+      statusPosition: 'BOTTOM_RIGHT'
+    });
   });
 });

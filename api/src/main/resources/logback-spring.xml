@@ -18,15 +18,57 @@
         </encoder>
     </appender>
 
-    <logger name="com.github.shk0da.bioritmic" level="DEBUG"/>
-    <logger name="org.springframework" level="INFO"/>
-    <logger name="org.springframework.web" level="INFO"/>
-    <logger name="org.springframework.security" level="WARN"/>
-    <logger name="io.r2dbc" level="WARN"/>
-    <logger name="org.hibernate" level="WARN"/>
+    <!-- Production: no SQL / R2DBC debug noise -->
+    <springProfile name="production">
+        <logger name="com.github.shk0da.bioritmic" level="INFO"/>
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.springframework.web" level="WARN"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="org.springframework.r2dbc" level="WARN"/>
+        <logger name="io.r2dbc" level="WARN"/>
+        <logger name="io.r2dbc.postgresql.QUERY" level="WARN"/>
+        <logger name="io.r2dbc.postgresql.PARAM" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
 
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-    </root>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- Local develop: verbose SQL tracing -->
+    <springProfile name="develop">
+        <logger name="com.github.shk0da.bioritmic" level="DEBUG"/>
+        <logger name="com.github.shk0da.bioritmic.api" level="DEBUG"/>
+        <logger name="io.r2dbc.postgresql.QUERY" level="DEBUG"/>
+        <logger name="io.r2dbc.postgresql.PARAM" level="DEBUG"/>
+        <logger name="org.springframework.r2dbc.core.DefaultDatabaseClient" level="DEBUG"/>
+        <logger name="org.springframework.r2dbc.connection.R2dbcTransactionManager" level="DEBUG"/>
+        <logger name="org.springframework" level="INFO"/>
+        <logger name="org.springframework.web" level="INFO"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="io.r2dbc" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- Docker dev / test / other non-production profiles -->
+    <springProfile name="!production &amp; !develop">
+        <logger name="com.github.shk0da.bioritmic" level="INFO"/>
+        <logger name="org.springframework" level="INFO"/>
+        <logger name="org.springframework.web" level="INFO"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="org.springframework.r2dbc" level="WARN"/>
+        <logger name="io.r2dbc" level="WARN"/>
+        <logger name="io.r2dbc.postgresql.QUERY" level="WARN"/>
+        <logger name="io.r2dbc.postgresql.PARAM" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
 
 </configuration>

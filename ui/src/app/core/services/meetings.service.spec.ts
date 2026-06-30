@@ -27,7 +27,14 @@ describe('MeetingsService', () => {
   });
 
   it('createMeeting should POST array', () => {
-    service.createMeeting({ userId: '2', lat: 55, lon: 37, distance: 10 }).subscribe();
+    service.createMeeting({
+      userId: '2',
+      lat: 55,
+      lon: 37,
+      distance: 10,
+      description: 'Кафе',
+      scheduledAt: new Date(Date.now() + 86400000).toISOString()
+    }).subscribe();
     const req = httpMock.expectOne('/api/v1/meetings');
     expect(req.request.method).toBe('POST');
     expect(Array.isArray(req.request.body)).toBeTrue();

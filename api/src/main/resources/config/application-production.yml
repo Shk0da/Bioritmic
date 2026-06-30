@@ -5,6 +5,18 @@ springdoc:
   swagger-ui:
     enabled: false
 
+logging:
+  level:
+    root: INFO
+    com.github.shk0da.bioritmic: INFO
+    org.springframework: WARN
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.springframework.r2dbc: WARN
+    io.r2dbc: WARN
+    io.r2dbc.postgresql.QUERY: WARN
+    io.r2dbc.postgresql.PARAM: WARN
+
 management:
   endpoints:
     web:

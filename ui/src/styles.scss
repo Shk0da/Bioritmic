@@ -259,19 +259,31 @@ option { background: var(--card-bg); color: var(--text-primary); }
 // ==========================================
 .table {
   color: var(--text-primary);
+  --bs-table-color: var(--text-primary);
+  --bs-table-striped-color: var(--text-primary);
+  --bs-table-active-color: var(--text-primary);
+  --bs-table-hover-color: var(--text-primary);
   --bs-table-bg: transparent;
   --bs-table-striped-bg: var(--bg-table-stripe);
   --bs-table-hover-bg: var(--bg-hover);
 
   thead th {
     border-bottom-color: var(--border-color);
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-weight: 600;
   }
 
-  tbody td { border-top-color: var(--border-color); }
+  tbody td {
+    color: var(--text-primary);
+    border-top-color: var(--border-color);
+  }
+
   &.table-hover tbody tr:hover { background-color: var(--bg-hover); }
-  &.table-striped > tbody > tr:nth-of-type(odd) > * { background-color: var(--bg-table-stripe); }
+  &.table-striped > tbody > tr:nth-of-type(odd) > * {
+    --bs-table-color-type: var(--text-primary);
+    background-color: var(--bg-table-stripe);
+    color: var(--text-primary);
+  }
 }
 
 // ==========================================
@@ -620,7 +632,7 @@ option { background: var(--card-bg); color: var(--text-primary); }
 
   // General text (skip alerts — they use their own palette)
   :is(h1, h2, h3, h4, h5, h6, p, span, label, a, td, th, li, div):not(.alert):not(.alert *) {
-    &:not([class*="text-"]):not(.gradient-text):not(.match-title):not(.match-subtitle) {
+    &:not([class*="text-"]):not(.gradient-text):not(.match-title):not(.match-subtitle):not(.btn-match-message):not(.match-heart-badge) {
       color: var(--text-primary);
     }
   }
@@ -673,9 +685,31 @@ option { background: var(--card-bg); color: var(--text-primary); }
   // Tables inside cards
   .card table {
     color: var(--text-primary);
+    --bs-table-color: var(--text-primary);
+    --bs-table-striped-color: var(--text-primary);
+    --bs-table-active-color: var(--text-primary);
+    --bs-table-hover-color: var(--text-primary);
     --bs-table-bg: transparent;
     --bs-table-hover-bg: var(--bg-hover);
     tbody td { color: var(--text-primary); border-top-color: var(--border-color); }
+    thead th { color: var(--text-primary); }
+  }
+
+  // Tables outside cards (e.g. admin panel)
+  .table {
+    --bs-table-color: var(--text-primary);
+    --bs-table-striped-color: var(--text-primary);
+    --bs-table-active-color: var(--text-primary);
+    --bs-table-hover-color: var(--text-primary);
+
+    thead th,
+    tbody td {
+      color: var(--text-primary);
+    }
+  }
+
+  .table-responsive .table > :not(caption) > * > * {
+    color: var(--text-primary);
   }
 
   // List group items

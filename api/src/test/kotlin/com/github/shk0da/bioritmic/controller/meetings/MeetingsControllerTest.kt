@@ -3,7 +3,7 @@ package com.github.shk0da.bioritmic.controller.meetings
 import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
-import com.github.shk0da.bioritmic.api.model.user.UserMeeting
+import com.github.shk0da.bioritmic.testutil.testMeeting
 import com.github.shk0da.bioritmic.domain.UserModel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -70,11 +70,8 @@ class MeetingsControllerTest : ApiApplicationTests() {
     fun createMeetingsTest() {
         val currentUserId = userId ?: throw IllegalStateException("User ID is null")
         val meetings = listOf(
-            UserMeeting(
+            testMeeting(
                 userId = currentUserId,
-                lat = 55.75,
-                lon = 37.61,
-                distance = 10.0
             )
         )
 

@@ -17,7 +17,9 @@ import com.github.shk0da.bioritmic.api.model.user.UpdateUserProfileRequest
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserSettingsModel
+import com.github.shk0da.bioritmic.api.model.user.UserStatusPosition
 import com.github.shk0da.bioritmic.api.repository.GisDataRepository
+import com.github.shk0da.bioritmic.api.constants.ProfileStatusConstants.ALLOWED_STATUS_EMOJIS
 import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_BANNED
 import com.github.shk0da.bioritmic.api.repository.UserBlockRepository
 import com.github.shk0da.bioritmic.api.repository.UserPhotoRepository
@@ -59,6 +61,7 @@ class UserService(
     companion object {
         private const val CONTENT_TYPE_JPEG = "image/jpeg"
         private const val BIO_MAX_LENGTH = 500
+        private const val STATUS_EMOJI_MAX_LENGTH = 16
     }
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
@@ -176,6 +179,28 @@ class UserService(
                 )
             }
             user.bio = trimmed.ifEmpty { null }
+        }
+        if (request.statusEmoji != null) {
+            val trimmed = request.statusEmoji.trim()
+            if (trimmed.length > STATUS_EMOJI_MAX_LENGTH) {
+                throw ApiException(
+                    ErrorCode.INVALID_PARAMETER,
+                    mapOf(Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME, "statusEmoji"))
+                )
+            }
+            user.statusEmoji = trimmed.ifEmpty { null }
+            if (user.statusEmoji != null && user.statusEmoji !in ALLOWED_STATUS_EMOJIS) {
+                throw ApiException(
+                    ErrorCode.INVALID_PARAMETER,
+                    mapOf(Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME, "statusEmoji"))
+                )
+            }
+            if (user.statusEmoji == null) {
+                user.statusPosition = null
+            }
+        }
+        if (request.statusPosition != null && user.statusEmoji != null) {
+            user.statusPosition = request.statusPosition.name
         }
         return userRepository.save(user)
     }

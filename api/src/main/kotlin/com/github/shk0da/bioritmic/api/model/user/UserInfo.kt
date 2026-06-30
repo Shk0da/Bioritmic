@@ -47,7 +47,9 @@ data class UserInfo(
     val isVerified: Boolean? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val isBanned: Boolean? = null,
-    val bio: String? = null
+    val bio: String? = null,
+    val statusEmoji: String? = null,
+    val statusPosition: String? = null,
 ) : BasicPresentation {
 
     companion object {
@@ -75,7 +77,9 @@ data class UserInfo(
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
                 image = ImageUtils.getProfileImageUri(user.id!!),
                 isVerified = user.isVerified,
-                bio = user.bio
+                bio = user.bio,
+                statusEmoji = user.statusEmoji,
+                statusPosition = user.statusPosition
             )
         }
 
@@ -88,7 +92,9 @@ data class UserInfo(
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
                 image = ImageUtils.getProfileImageUri(user.id!!),
                 isVerified = user.isVerified,
-                bio = user.bio
+                bio = user.bio,
+                statusEmoji = user.statusEmoji,
+                statusPosition = user.statusPosition
             )
         }
 
@@ -102,7 +108,9 @@ data class UserInfo(
                 lat = gisUser.lat,
                 lon = gisUser.lon,
                 distance = gisUser.distance,
-                image = ImageUtils.getProfileImageUri(gisUser.id!!)
+                image = ImageUtils.getProfileImageUri(gisUser.id!!),
+                statusEmoji = gisUser.statusEmoji,
+                statusPosition = gisUser.statusPosition
             )
         }
 
@@ -125,7 +133,9 @@ data class UserInfo(
                 isBioCompatible = isBioCompatible,
                 isHoroCompatible = isHoroCompatible,
                 isFullCompatible = isFullCompatible,
-                image = ImageUtils.getProfileImageUri(gisUser.id!!)
+                image = ImageUtils.getProfileImageUri(gisUser.id!!),
+                statusEmoji = gisUser.statusEmoji,
+                statusPosition = gisUser.statusPosition
             )
         }
 
@@ -146,7 +156,9 @@ data class UserInfo(
                 isHoroCompatible = isHoroCompatible,
                 isFullCompatible = isFullCompatible,
                 image = ImageUtils.getProfileImageUri(user.id!!),
-                bio = user.bio
+                bio = user.bio,
+                statusEmoji = user.statusEmoji,
+                statusPosition = user.statusPosition
             )
         }
     }

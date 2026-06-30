@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { UserService } from '../../core/services/user.service';
-import { UserMeeting, PageableRequest, UserInfo } from '../../core/models/user.model';
+import { UserMeeting, PageableRequest, UserInfo, Timestamp } from '../../core/models/user.model';
 import { ModalService } from '../../core/services/modal.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Subject, takeUntil } from 'rxjs';
@@ -23,7 +23,7 @@ interface MeetingWithUser extends UserMeeting {
       <h1 class="page-title">
         <i class="bi bi-calendar-event me-2"></i>Встречи
       </h1>
-      <p class="text-muted">Предложения встреч рядом с вами</p>
+      <p class="text-muted">Предложения встреч от других пользователей</p>
     </div>
 
     @if (loading) {
@@ -63,8 +63,14 @@ interface MeetingWithUser extends UserMeeting {
                   <strong>{{ meeting.userName || 'Пользователь' }}</strong> принял(а) ваше предложение встречи.
                 </p>
                 <p class="accepted-meeting-meta mb-0">
-                  <i class="bi bi-signpost-2 me-1"></i>
-                  Расстояние: <strong>{{ meeting.distance.toFixed(1) }} км</strong>
+                  @if (meeting.description) {
+                    <span class="d-block mb-1">
+                      <i class="bi bi-geo-alt me-1"></i>{{ meeting.description }}
+                    </span>
+                  }
+                  <span class="d-block">
+                    <i class="bi bi-calendar-event me-1"></i>{{ formatMeetingDateTime(meeting.scheduledAt) }}
+                  </span>
                 </p>
               </div>
               <div class="accepted-meeting-actions d-flex gap-2">
@@ -97,8 +103,14 @@ interface MeetingWithUser extends UserMeeting {
                   Вы приняли предложение встречи от <strong>{{ meeting.userName || 'пользователя' }}</strong>.
                 </p>
                 <p class="accepted-meeting-meta mb-0">
-                  <i class="bi bi-signpost-2 me-1"></i>
-                  Расстояние: <strong>{{ meeting.distance.toFixed(1) }} км</strong>
+                  @if (meeting.description) {
+                    <span class="d-block mb-1">
+                      <i class="bi bi-geo-alt me-1"></i>{{ meeting.description }}
+                    </span>
+                  }
+                  <span class="d-block">
+                    <i class="bi bi-calendar-event me-1"></i>{{ formatMeetingDateTime(meeting.scheduledAt) }}
+                  </span>
                 </p>
               </div>
               <div class="accepted-meeting-actions d-flex gap-2">
@@ -136,9 +148,15 @@ interface MeetingWithUser extends UserMeeting {
                       <span class="badge bg-warning">Ожидает ответа</span>
                     </div>
                     <div class="meeting-details">
+                      @if (meeting.description) {
+                        <p class="small text-muted mb-1">
+                          <i class="bi bi-geo-alt me-1"></i>
+                          <strong>{{ meeting.description }}</strong>
+                        </p>
+                      }
                       <p class="small text-muted mb-0">
-                        <i class="bi bi-signpost-2 me-1"></i>
-                        Расстояние: <strong>{{ meeting.distance.toFixed(1) }} км</strong>
+                        <i class="bi bi-calendar-event me-1"></i>
+                        {{ formatMeetingDateTime(meeting.scheduledAt) }}
                       </p>
                     </div>
                   </div>
@@ -503,5 +521,34 @@ export class MeetingsComponent implements OnInit, OnDestroy {
         this.toastService.error('Ошибка отказа от встречи');
       }
     });
+  }
+
+  formatMeetingDateTime(timestamp?: Timestamp | string): string {
+    const ms = this.toTimestampMs(timestamp);
+    if (!ms) {
+      return 'Время не указано';
+    }
+    return new Date(ms).toLocaleString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  private toTimestampMs(timestamp?: Timestamp | string): number {
+    if (!timestamp) {
+      return 0;
+    }
+    if (typeof timestamp === 'string') {
+      const ms = Date.parse(timestamp);
+      return Number.isFinite(ms) ? ms : 0;
+    }
+    if (typeof timestamp !== 'object') {
+      return 0;
+    }
+    const ts = timestamp as { seconds?: number; time?: number };
+    return ts.time || (ts.seconds ? ts.seconds * 1000 : 0);
   }
 }

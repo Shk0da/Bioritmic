@@ -45,6 +45,12 @@ class User {
     @Column("bio")
     var bio: String? = null
 
+    @Column("status_emoji")
+    var statusEmoji: String? = null
+
+    @Column("status_position")
+    var statusPosition: String? = null
+
     @Column("last_active_at")
     var lastActiveAt: Timestamp? = null
 
