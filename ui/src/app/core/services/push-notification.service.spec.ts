@@ -8,6 +8,19 @@ describe('PushNotificationService', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: {
+        register: jasmine.createSpy('register').and.resolveTo({
+          active: { state: 'activated' },
+          installing: null,
+          waiting: null,
+        }),
+        ready: Promise.resolve({
+          active: { state: 'activated' },
+        }),
+      },
+    });
     TestBed.configureTestingModule({
       providers: [PushNotificationService, provideHttpClient(), provideHttpClientTesting()]
     });
@@ -57,5 +70,30 @@ describe('PushNotificationService', () => {
 
     await disablePromise;
     expect(service.isEnabled()).toBeFalse();
+  });
+
+  it('ensureRegistered should fetch client config before choosing push mode', async () => {
+    service.setEnabled(true);
+    spyOnProperty(Notification, 'permission', 'get').and.returnValue('granted');
+
+    const resultPromise = service.ensureRegistered();
+    const req = httpMock.expectOne('/api/v1/config/client');
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      firebase: {
+        enabled: false,
+        apiKey: '',
+        authDomain: '',
+        projectId: '',
+        storageBucket: '',
+        messagingSenderId: '',
+        appId: '',
+        vapidKey: '',
+      },
+    });
+
+    const result = await resultPromise;
+    expect(result.enabled).toBeTrue();
+    expect(result.mode).toBe('local');
   });
 });

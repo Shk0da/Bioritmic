@@ -28,7 +28,7 @@ import { PageBackLinkComponent } from '../../../shared/components/page-back-link
                   <p class="small text-muted mb-0">О новых сообщениях и предложениях встреч</p>
                   @if (pushEnabled && pushMode === 'local') {
                     <p class="small text-muted mb-0 mt-1">
-                      Работают, пока открыта вкладка приложения (Firebase не настроен на сервере).
+                      Работают, пока открыта вкладка приложения.
                     </p>
                   }
                   @if (pushMessage) {
@@ -98,6 +98,15 @@ export class NotificationsSettingsComponent implements OnInit {
     this.pushMode = this.pushService.getMode();
     this.isStandalone = this.pushService.isStandalone();
     this.showInstallHint = this.pushService.isIos() && !this.isStandalone;
+    void this.refreshPushState();
+  }
+
+  private async refreshPushState(): Promise<void> {
+    if (!this.pushEnabled) {
+      return;
+    }
+    const result = await this.pushService.ensureRegistered();
+    this.pushMode = result.enabled && result.mode !== 'none' ? result.mode : null;
   }
 
   async togglePush(): Promise<void> {
@@ -127,6 +136,12 @@ export class NotificationsSettingsComponent implements OnInit {
           );
         } else if (result.reason === 'dismissed') {
           this.pushMessage = 'Разрешение на уведомления не получено.';
+        } else if (result.reason === 'fcm-unavailable') {
+          await this.modalService.alert(
+            'Не удалось подключить Firebase push. Проверьте, что приложение открыто как PWA, и перезапустите его после обновления.',
+            'Push недоступен'
+          );
+          this.pushMessage = 'Firebase push не подключён.';
         }
       }
     } finally {

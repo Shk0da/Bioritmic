@@ -20,7 +20,7 @@ export type PushNotificationMode = 'fcm' | 'local';
 export interface PushEnableResult {
   enabled: boolean;
   mode: PushNotificationMode | 'none';
-  reason?: 'unsupported' | 'denied' | 'dismissed';
+  reason?: 'unsupported' | 'denied' | 'dismissed' | 'fcm-unavailable';
 }
 
 @Injectable({
@@ -29,20 +29,23 @@ export interface PushEnableResult {
 export class PushNotificationService {
   private firebaseApp: FirebaseApp | null = null;
   private messaging: Messaging | null = null;
+  private serviceWorkerRegistration: ServiceWorkerRegistration | null = null;
   private messageSubject = new Subject<{ notification?: { title?: string; body?: string }; data?: Record<string, string> }>();
   public messages$ = this.messageSubject.asObservable();
   private currentToken: string | null = null;
   private config: FirebaseClientConfig | null = null;
-  private initPromise: Promise<void> | null = null;
+  private initPromise: Promise<boolean> | null = null;
 
   private readonly apiUrl = '/api/v1/user';
   private readonly PUSH_ENABLED_KEY = 'bioritmic_push_enabled';
+  private readonly FCM_MODE_KEY = 'bioritmic_push_fcm';
 
   constructor(private http: HttpClient) {}
 
   isSupported(): boolean {
     return typeof window !== 'undefined' &&
-      'Notification' in window;
+      'Notification' in window &&
+      'serviceWorker' in navigator;
   }
 
   isEnabled(): boolean {
@@ -51,6 +54,9 @@ export class PushNotificationService {
 
   setEnabled(enabled: boolean): void {
     localStorage.setItem(this.PUSH_ENABLED_KEY, enabled ? 'true' : 'false');
+    if (!enabled) {
+      localStorage.removeItem(this.FCM_MODE_KEY);
+    }
   }
 
   syncEnabledWithPermission(): void {
@@ -69,7 +75,10 @@ export class PushNotificationService {
     if (!this.isActive()) {
       return null;
     }
-    return this.currentToken ? 'fcm' : 'local';
+    if (this.currentToken || localStorage.getItem(this.FCM_MODE_KEY) === 'true') {
+      return 'fcm';
+    }
+    return this.config?.enabled ? null : 'local';
   }
 
   isStandalone(): boolean {
@@ -81,7 +90,7 @@ export class PushNotificationService {
     return /iPad|iPhone|iPod/.test(navigator.userAgent);
   }
 
-  async initialize(): Promise<void> {
+  async initialize(): Promise<boolean> {
     if (this.initPromise) {
       return this.initPromise;
     }
@@ -89,9 +98,16 @@ export class PushNotificationService {
     return this.initPromise;
   }
 
-  private async doInitialize(): Promise<void> {
+  private resetInitState(): void {
+    this.initPromise = null;
+    this.messaging = null;
+    this.firebaseApp = null;
+    this.serviceWorkerRegistration = null;
+  }
+
+  private async doInitialize(): Promise<boolean> {
     if (!this.isSupported()) {
-      return;
+      return false;
     }
 
     try {
@@ -100,12 +116,22 @@ export class PushNotificationService {
       );
       this.config = response.firebase;
       if (!this.config?.enabled || !this.config.vapidKey) {
-        return;
+        this.initPromise = null;
+        return false;
       }
 
-      if ('serviceWorker' in navigator) {
-        await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      const { isSupported: isMessagingSupported } = await import('firebase/messaging');
+      if (!await isMessagingSupported()) {
+        console.warn('Firebase messaging is not supported in this browser');
+        return false;
       }
+
+      this.serviceWorkerRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/',
+        updateViaCache: 'none',
+      });
+      await navigator.serviceWorker.ready;
+      await this.waitForActiveServiceWorker(this.serviceWorkerRegistration);
 
       const [{ initializeApp }, { getMessaging, onMessage }] = await Promise.all([
         import('firebase/app'),
@@ -130,9 +156,38 @@ export class PushNotificationService {
           payload.data?.['type']
         );
       });
+
+      return true;
     } catch (error) {
       console.warn('Push notifications unavailable:', error);
+      this.resetInitState();
+      return false;
     }
+  }
+
+  private async waitForActiveServiceWorker(registration: ServiceWorkerRegistration): Promise<void> {
+    if (registration.active) {
+      return;
+    }
+
+    const worker = registration.installing || registration.waiting;
+    if (!worker) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      if (worker.state === 'activated') {
+        resolve();
+        return;
+      }
+      const onStateChange = (): void => {
+        if (worker.state === 'activated') {
+          worker.removeEventListener('statechange', onStateChange);
+          resolve();
+        }
+      };
+      worker.addEventListener('statechange', onStateChange);
+    });
   }
 
   async enable(): Promise<PushEnableResult> {
@@ -140,8 +195,7 @@ export class PushNotificationService {
       return { enabled: false, mode: 'none', reason: 'unsupported' };
     }
 
-    await this.initialize();
-
+    const firebaseReady = await this.initialize();
     const permission = await Notification.requestPermission();
     if (permission === 'denied') {
       this.setEnabled(false);
@@ -152,27 +206,79 @@ export class PushNotificationService {
       return { enabled: false, mode: 'none', reason: 'dismissed' };
     }
 
-    if (this.messaging && this.config?.enabled && this.config.vapidKey && 'serviceWorker' in navigator) {
+    if (this.config?.enabled && this.config.vapidKey) {
+      if (!firebaseReady || !this.messaging || !this.serviceWorkerRegistration) {
+        this.setEnabled(false);
+        return { enabled: false, mode: 'none', reason: 'fcm-unavailable' };
+      }
+
       try {
-        const { getToken } = await import('firebase/messaging');
-        const registration = await navigator.serviceWorker.ready;
-        const token = await getToken(this.messaging, {
-          vapidKey: this.config.vapidKey,
-          serviceWorkerRegistration: registration
-        });
+        const token = await this.obtainFcmToken();
         if (token) {
           this.currentToken = token;
           await this.registerToken(token);
           this.setEnabled(true);
+          localStorage.setItem(this.FCM_MODE_KEY, 'true');
           return { enabled: true, mode: 'fcm' };
         }
       } catch (error) {
-        console.warn('FCM token unavailable, using local notifications:', error);
+        console.warn('FCM token unavailable:', error);
       }
+
+      this.setEnabled(false);
+      return { enabled: false, mode: 'none', reason: 'fcm-unavailable' };
     }
 
     this.setEnabled(true);
+    localStorage.removeItem(this.FCM_MODE_KEY);
     return { enabled: true, mode: 'local' };
+  }
+
+  async ensureRegistered(): Promise<PushEnableResult> {
+    if (!this.isActive()) {
+      return { enabled: false, mode: 'none' };
+    }
+
+    const firebaseReady = await this.initialize();
+    if (!this.config?.enabled || !this.config.vapidKey) {
+      localStorage.removeItem(this.FCM_MODE_KEY);
+      return { enabled: true, mode: 'local' };
+    }
+
+    if (!firebaseReady || !this.messaging || !this.serviceWorkerRegistration) {
+      localStorage.removeItem(this.FCM_MODE_KEY);
+      return { enabled: true, mode: 'local' };
+    }
+
+    try {
+      const token = await this.obtainFcmToken();
+      if (!token) {
+        localStorage.removeItem(this.FCM_MODE_KEY);
+        return { enabled: true, mode: 'local' };
+      }
+      if (token !== this.currentToken) {
+        this.currentToken = token;
+        await this.registerToken(token);
+      }
+      localStorage.setItem(this.FCM_MODE_KEY, 'true');
+      return { enabled: true, mode: 'fcm' };
+    } catch (error) {
+      console.warn('FCM token refresh failed:', error);
+      localStorage.removeItem(this.FCM_MODE_KEY);
+      return { enabled: true, mode: 'local' };
+    }
+  }
+
+  private async obtainFcmToken(): Promise<string | null> {
+    if (!this.messaging || !this.config?.vapidKey || !this.serviceWorkerRegistration) {
+      return null;
+    }
+
+    const { getToken } = await import('firebase/messaging');
+    return getToken(this.messaging, {
+      vapidKey: this.config.vapidKey,
+      serviceWorkerRegistration: this.serviceWorkerRegistration,
+    });
   }
 
   async requestPermission(): Promise<string | null> {
@@ -199,6 +305,7 @@ export class PushNotificationService {
       await firstValueFrom(this.http.delete(`${this.apiUrl}/me/push-token`));
     } finally {
       this.currentToken = null;
+      localStorage.removeItem(this.FCM_MODE_KEY);
     }
   }
 
@@ -212,6 +319,9 @@ export class PushNotificationService {
 
   showLocalNotification(title: string, body: string, type?: string): void {
     if (!this.isActive()) {
+      return;
+    }
+    if (this.getMode() === 'fcm' && document.visibilityState !== 'visible') {
       return;
     }
     if (document.visibilityState === 'visible' && !type) {

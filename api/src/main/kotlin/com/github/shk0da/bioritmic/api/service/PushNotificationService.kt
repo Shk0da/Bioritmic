@@ -9,6 +9,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingException
 import com.google.firebase.messaging.Message
 import com.google.firebase.messaging.Notification
+import com.google.firebase.messaging.WebpushConfig
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -17,7 +18,7 @@ import java.util.UUID
 
 @Service
 class PushNotificationService(
-    private val userPushTokenRepository: UserPushTokenRepository
+    private val userPushTokenRepository: UserPushTokenRepository,
 ) {
 
     private val log = LoggerFactory.getLogger(PushNotificationService::class.java)
@@ -74,14 +75,32 @@ class PushNotificationService(
 
         tokens.forEach { pushToken ->
             try {
-                val message = Message.builder()
-                    .setToken(pushToken.token)
-                    .setNotification(Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build())
-                    .putAllData(data)
-                    .build()
+                val message = if (pushToken.platform == "web") {
+                    val webData = data + mapOf(
+                        "title" to title,
+                        "body" to body,
+                    )
+                    Message.builder()
+                        .setToken(pushToken.token)
+                        .setWebpushConfig(
+                            WebpushConfig.builder()
+                                .putAllData(webData)
+                                .build()
+                        )
+                        .putAllData(webData)
+                        .build()
+                } else {
+                    Message.builder()
+                        .setToken(pushToken.token)
+                        .setNotification(
+                            Notification.builder()
+                                .setTitle(title)
+                                .setBody(body)
+                                .build()
+                        )
+                        .putAllData(data)
+                        .build()
+                }
 
                 FirebaseMessaging.getInstance().send(message)
                 log.debug("Push notification sent to userId: {} platform: {}", userId, pushToken.platform)

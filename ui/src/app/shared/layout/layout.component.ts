@@ -278,7 +278,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private async initPushNotifications(): Promise<void> {
     this.pushService.syncEnabledWithPermission();
     if (this.pushService.isActive()) {
-      await this.pushService.requestPermission();
+      await this.pushService.ensureRegistered();
     }
   }
 
