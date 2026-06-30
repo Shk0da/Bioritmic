@@ -22,6 +22,7 @@ import { UserMail, UserInfo, MailMediaType, MailReactionType } from '../../../co
 import { ModalService } from '../../../core/services/modal.service';
 import { Subject, takeUntil } from 'rxjs';
 import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
+import { formatMessageDateTime, formatMessageTime } from '../../../shared/utils/timestamp.util';
 
 interface ChatMessage extends UserMail {
   isCurrentUser?: boolean;
@@ -177,7 +178,11 @@ interface ChatMessage extends UserMail {
                   <div class="message-text">{{ message.message }}</div>
                 }
                 <div class="message-meta">
-                  <span class="message-time">{{ getMessageTime(message.timestamp) }}</span>
+                  <span
+                    class="message-time"
+                    [attr.title]="getMessageDateTime(message.timestamp)">
+                    {{ getMessageTime(message.timestamp) }}
+                  </span>
                   @if (message.id && !selectionMode) {
                     <button
                       type="button"
@@ -1421,18 +1426,11 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   getMessageTime(timestamp: unknown): string {
-    if (!timestamp || typeof timestamp !== 'object') {
-      return '';
-    }
-    const ts = timestamp as { seconds?: number; time?: number };
-    const seconds = ts.seconds || ts.time;
-    if (!seconds) {
-      return '';
-    }
-    return new Date(seconds * 1000).toLocaleTimeString('ru-RU', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatMessageTime(timestamp);
+  }
+
+  getMessageDateTime(timestamp: unknown): string {
+    return formatMessageDateTime(timestamp);
   }
 
   toggleEmojiPicker(): void {

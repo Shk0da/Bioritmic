@@ -6,6 +6,7 @@ import { UserMail, PageableRequest, UserInfo } from '../../core/models/user.mode
 import { ModalService } from '../../core/services/modal.service';
 import { ConversationPanelComponent } from './conversation-panel/conversation-panel.component';
 import { Subject, takeUntil } from 'rxjs';
+import { parseTimestampMs, formatMessageTime } from '../../shared/utils/timestamp.util';
 
 interface UserConversation {
   userId: string;
@@ -813,11 +814,8 @@ export class MailboxComponent implements OnInit, OnDestroy {
   }
 
   private getTimestampSeconds(timestamp: unknown): number {
-    if (!timestamp || typeof timestamp !== 'object') {
-      return 0;
-    }
-    const ts = timestamp as { seconds?: number; time?: number };
-    return ts.seconds || ts.time || 0;
+    const ms = parseTimestampMs(timestamp);
+    return ms != null ? Math.floor(ms / 1000) : 0;
   }
 
   async deleteConversation(userId: string): Promise<void> {
@@ -838,19 +836,6 @@ export class MailboxComponent implements OnInit, OnDestroy {
   }
 
   getMessageDate(timestamp: unknown): string {
-    if (!timestamp || typeof timestamp !== 'object') {
-      return '';
-    }
-    const ts = timestamp as { seconds?: number; time?: number };
-    const seconds = ts.seconds || ts.time;
-    if (!seconds) {
-      return '';
-    }
-    return new Date(seconds * 1000).toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatMessageTime(timestamp);
   }
 }
