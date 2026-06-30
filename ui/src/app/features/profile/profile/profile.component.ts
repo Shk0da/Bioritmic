@@ -156,13 +156,13 @@ import { ModalService } from '../../../core/services/modal.service';
                 <span><i class="bi bi-chat-left-text me-2"></i>Обратная связь</span>
                 <i class="bi bi-chevron-right text-muted small"></i>
               </a>
-              <a routerLink="/settings/danger" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-danger">
-                <span><i class="bi bi-exclamation-triangle me-2"></i>Опасная зона</span>
-                <i class="bi bi-chevron-right text-muted small"></i>
-              </a>
               <a routerLink="/settings/blocked" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-slash-circle me-2"></i>Заблокированные</span>
                 <span class="badge bg-secondary">{{ blockedCount }}</span>
+              </a>
+              <a routerLink="/settings/danger" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-danger">
+                <span><i class="bi bi-exclamation-triangle me-2"></i>Опасная зона</span>
+                <i class="bi bi-chevron-right text-muted small"></i>
               </a>
             </div>
           </div>
