@@ -171,6 +171,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.name").isEqualTo("Bob")
+            .jsonPath("$.email").doesNotExist()
     }
 
     @Test

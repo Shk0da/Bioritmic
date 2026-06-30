@@ -50,6 +50,15 @@ class PhotoS3ControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun `should return 401 when downloading S3 photo without auth`() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/photos/s3/test-photo-key.jpg")
+            .accept(MediaType.IMAGE_JPEG)
+            .exchange()
+            .expectStatus().isUnauthorized
+    }
+
+    @Test
     fun `should return empty array when downloading non-existent S3 photo`() {
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/photos/s3/test-photo-key.jpg")
@@ -63,15 +72,17 @@ class PhotoS3ControllerTest : ApiApplicationTests() {
     fun `should handle invalid S3 key gracefully`() {
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/photos/s3/invalid-key.jpg")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.IMAGE_JPEG)
             .exchange()
             .expectStatus().isNotFound
     }
 
     @Test
-    fun `should handle nested S3 key path for feedback attachments`() {
+    fun `should deny feedback attachment without access`() {
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/photos/s3/feedback/1/test-attachment.jpg")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
             .accept(MediaType.IMAGE_JPEG)
             .exchange()
             .expectStatus().isNotFound

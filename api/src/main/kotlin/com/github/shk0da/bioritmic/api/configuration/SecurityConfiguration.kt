@@ -51,7 +51,6 @@ class SecurityConfiguration(
         "$API_WITH_VERSION_1/update-email",
         "$API_WITH_VERSION_1/config/client",
         "$API_WITH_VERSION_1/user/*/photo",
-        "/api/v1/photos/s3/**",
         "/management/actuator/health",
         "/management/actuator/info"
     )

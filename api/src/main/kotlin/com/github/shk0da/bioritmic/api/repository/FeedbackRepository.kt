@@ -30,4 +30,8 @@ interface FeedbackRepository : CoroutineCrudRepository<UserFeedback, Long> {
     @Modifying
     @Query("UPDATE user_feedback SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: Long, status: String)
+
+    @Transactional(readOnly = true)
+    @Query("SELECT * FROM user_feedback WHERE attachment_s3_key = :s3Key LIMIT 1")
+    suspend fun findByAttachmentS3Key(s3Key: String): UserFeedback?
 }

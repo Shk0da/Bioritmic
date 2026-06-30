@@ -949,7 +949,8 @@
 /* Адаптивность */
 @media (max-width: 768px) {
   .swipe-container {
-    height: calc(100dvh - var(--header-height) - var(--app-safe-bottom));
+    height: calc(100dvh - var(--header-height));
+    padding-bottom: var(--app-safe-bottom);
     width: 100%;
     max-width: 100%;
     margin: 0;
@@ -981,7 +982,6 @@
     gap: 0.5rem;
     margin: 0 calc(0.75rem + var(--app-safe-right)) 0.25rem calc(0.75rem + var(--app-safe-left));
     padding: 0.5rem 0.625rem;
-    padding-bottom: calc(0.5rem + var(--app-safe-bottom));
     background: var(--card-bg);
     border-radius: 999px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);

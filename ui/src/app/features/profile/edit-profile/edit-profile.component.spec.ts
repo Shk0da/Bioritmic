@@ -75,9 +75,22 @@ describe('EditProfileComponent', () => {
 
   it('should validate form fields', () => {
     fixture.detectChanges();
-    expect(component.isFormValid()).toBeTrue();
+    expect(component.isProfileValid()).toBeTrue();
+    expect(component.canSave()).toBeTrue();
     component.user.name = '';
-    expect(component.isFormValid()).toBeFalse();
+    expect(component.isProfileValid()).toBeFalse();
+    expect(component.canSave()).toBeFalse();
+  });
+
+  it('should allow save when only a new photo is selected', () => {
+    fixture.detectChanges();
+    component.user.name = '';
+    component.photoFile = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+    expect(component.canSave()).toBeTrue();
+    component.save();
+    expect(userService.updateUser).not.toHaveBeenCalled();
+    expect(userService.uploadPhoto).toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/profile/me']);
   });
 
   it('should delete photo after confirmation', () => {

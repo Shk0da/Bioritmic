@@ -3,13 +3,14 @@ import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, finalize, map, of, switchMap, takeUntil } from 'rxjs';
 import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
 import { AvatarStatusBadgeComponent } from '../../../shared/components/avatar-status-badge/avatar-status-badge.component';
 import {
   normalizeUserStatusPosition,
 } from '../../../shared/utils/user-status.util';
 import {
+  formatDateForInput,
   maxBirthdayForMinAge,
   meetsMinimumAge,
   MIN_AGE_PROFILE_MESSAGE
@@ -86,7 +87,7 @@ import {
               }
             </div>
 
-            <form (ngSubmit)="save()">
+            <form (ngSubmit)="save()" novalidate>
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label for="name" class="form-label">Имя</label>
@@ -179,7 +180,7 @@ import {
 
               <div class="d-flex justify-content-between">
                 <a routerLink="/profile/me" class="btn btn-outline-secondary">Отмена</a>
-                <button type="submit" class="btn btn-primary" [disabled]="!isFormValid() || saving">
+                <button type="submit" class="btn btn-primary" [disabled]="!canSave() || saving">
                   @if (saving) {
                     <span class="spinner-border spinner-border-sm me-2"></span>
                   }
@@ -319,6 +320,15 @@ export class EditProfileComponent implements OnInit, OnDestroy {
     if (typeof birthday === 'string') {
       return birthday.length >= 10 ? birthday.slice(0, 10) : birthday;
     }
+    if (birthday instanceof Date) {
+      return formatDateForInput(birthday);
+    }
+    if (typeof birthday === 'object' && birthday !== null && 'time' in birthday) {
+      const time = Number((birthday as { time?: number }).time);
+      if (!Number.isNaN(time)) {
+        return formatDateForInput(new Date(time));
+      }
+    }
     return '';
   }
 
@@ -416,61 +426,66 @@ export class EditProfileComponent implements OnInit, OnDestroy {
     });
   }
 
-  isFormValid(): boolean {
+  isProfileValid(): boolean {
     return !!(
-      this.user.name &&
-      this.user.email &&
+      this.user.name?.trim() &&
       this.user.birthday &&
       this.user.gender &&
       meetsMinimumAge(this.user.birthday)
     );
   }
 
+  canSave(): boolean {
+    return this.isProfileValid() || (!!this.photoFile && !!this.user.id);
+  }
+
   save(): void {
-    if (!this.user.birthday || !meetsMinimumAge(this.user.birthday)) {
+    if (!this.canSave()) {
+      return;
+    }
+
+    const shouldUpdateProfile = this.isProfileValid();
+    if (shouldUpdateProfile && (!this.user.birthday || !meetsMinimumAge(this.user.birthday))) {
       alert(MIN_AGE_PROFILE_MESSAGE);
       return;
     }
 
+    const pendingPhoto = this.photoFile;
     this.saving = true;
+    this.uploadingPhoto = !!pendingPhoto;
+
     const bio = this.user.bio?.trim();
-    this.userService.updateUser({
-      name: this.user.name,
-      birthday: this.user.birthday,
-      gender: this.normalizeGender(this.user.gender),
-      bio: bio || '',
-    }).pipe(takeUntil(this.destroy$)).subscribe({
+    const update$ = shouldUpdateProfile
+      ? this.userService.updateUser({
+          name: this.user.name,
+          birthday: this.user.birthday,
+          gender: this.normalizeGender(this.user.gender),
+          bio: bio || '',
+        }).pipe(map(() => void 0))
+      : of(void 0);
+
+    update$.pipe(
+      switchMap(() => pendingPhoto ? this.userService.uploadPhoto(pendingPhoto) : of(void 0)),
+      finalize(() => {
+        this.saving = false;
+        this.uploadingPhoto = false;
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe({
       next: () => {
-        if (this.photoFile) {
-          this.uploadingPhoto = true;
-          this.userService.uploadPhoto(this.photoFile).pipe(takeUntil(this.destroy$)).subscribe({
-            next: () => {
-              this.hasUploadedPhoto = true;
-              UserService.revokePhotoUrl(this.photoDataUrl);
-              const userId = this.user.id;
-              this.photoDataUrl = userId
-                ? this.userService.getProfilePhotoUrl(userId, Date.now(), 'full')
-                : null;
-              this.photoFile = null;
-              this.saving = false;
-              this.uploadingPhoto = false;
-              this.router.navigate(['/profile/me']);
-            },
-            error: () => {
-              this.saving = false;
-              this.uploadingPhoto = false;
-              alert('Профиль сохранён, но фото не загружено');
-              this.router.navigate(['/profile/me']);
-            }
-          });
-        } else {
-          this.saving = false;
-          this.router.navigate(['/profile/me']);
+        if (pendingPhoto) {
+          this.hasUploadedPhoto = true;
+          UserService.revokePhotoUrl(this.photoDataUrl);
+          const userId = this.user.id;
+          this.photoDataUrl = userId
+            ? this.userService.getProfilePhotoUrl(userId, Date.now(), 'full')
+            : null;
+          this.photoFile = null;
         }
+        this.router.navigate(['/profile/me']);
       },
       error: () => {
-        this.saving = false;
-        alert('Ошибка сохранения профиля');
+        alert(pendingPhoto ? 'Не удалось сохранить изменения' : 'Ошибка сохранения профиля');
       }
     });
   }

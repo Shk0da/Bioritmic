@@ -595,6 +595,255 @@ async function sendMediaMailViaApi(token, toUserId, mediaType, filePath, caption
   return resp.json();
 }
 
+const E2E_TEST_PHOTO = require('path').resolve(__dirname, 'fixtures', 'test-photo.png');
+const E2E_TEST_PHOTO_JPEG = require('path').resolve(__dirname, 'fixtures', 'test-photo.jpg');
+
+function buildImageFormData(filePath, fieldName = 'file') {
+  const fs = require('fs');
+  const path = require('path');
+  const buffer = fs.readFileSync(filePath);
+  const ext = path.extname(filePath).toLowerCase();
+  const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+  const form = new FormData();
+  form.append(fieldName, new Blob([buffer], { type: mime }), path.basename(filePath));
+  return form;
+}
+
+function isLikelyImageBuffer(buffer) {
+  const arr = new Uint8Array(buffer);
+  if (arr.length < 4) {
+    return false;
+  }
+  const isJpeg = arr[0] === 0xff && arr[1] === 0xd8;
+  const isPng = arr[0] === 0x89 && arr[1] === 0x50 && arr[2] === 0x4e && arr[3] === 0x47;
+  return isJpeg || isPng;
+}
+
+function extractS3KeyFromMediaUrl(mediaUrl) {
+  if (!mediaUrl) {
+    return null;
+  }
+  const prefix = '/api/v1/photos/s3/';
+  const idx = mediaUrl.indexOf(prefix);
+  if (idx === -1) {
+    return null;
+  }
+  return mediaUrl.substring(idx + prefix.length);
+}
+
+async function uploadProfilePhotoViaApi(token, filePath = E2E_TEST_PHOTO) {
+  const resp = await fetch(`${API_URL}/api/v1/user/me/photo`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: buildImageFormData(filePath),
+  });
+  if (resp.status !== 202 && resp.status !== 200) {
+    const text = await resp.text();
+    throw new Error(`uploadProfilePhotoViaApi failed: ${resp.status} ${text}`);
+  }
+}
+
+async function deleteProfilePhotoViaApi(token) {
+  const resp = await fetch(`${API_URL}/api/v1/user/me/photo`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (resp.status !== 204 && resp.status !== 200) {
+    const text = await resp.text();
+    throw new Error(`deleteProfilePhotoViaApi failed: ${resp.status} ${text}`);
+  }
+}
+
+async function fetchProfilePhoto(userId, token = null) {
+  const url = userId
+    ? `${API_URL}/api/v1/user/${userId}/photo`
+    : `${API_URL}/api/v1/user/me/photo`;
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const resp = await fetch(url, { headers });
+  const buffer = await resp.arrayBuffer();
+  return {
+    status: resp.status,
+    buffer,
+    contentType: resp.headers.get('content-type'),
+  };
+}
+
+async function getUserPhotosViaApi(token, userId) {
+  const resp = await fetch(`${API_URL}/api/v1/user/${userId}/photos`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`getUserPhotosViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+async function fetchS3Media(token, s3Key) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const resp = await fetch(`${API_URL}/api/v1/photos/s3/${s3Key}`, { headers });
+  const buffer = await resp.arrayBuffer();
+  return { status: resp.status, buffer };
+}
+
+async function createStoryViaApi(token, filePath = E2E_TEST_PHOTO, caption = null) {
+  const form = buildImageFormData(filePath);
+  if (caption) {
+    form.append('caption', caption);
+  }
+  const resp = await fetch(`${API_URL}/api/v1/stories`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`createStoryViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+async function deleteStoryViaApi(token, storyId) {
+  const resp = await fetch(`${API_URL}/api/v1/stories/${storyId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`deleteStoryViaApi failed: ${resp.status} ${text}`);
+  }
+}
+
+async function bookmarkUserViaApi(token, otherUserId) {
+  const resp = await fetch(`${API_URL}/api/v1/bookmarks`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify([{ userId: otherUserId }]),
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`bookmarkUserViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+async function getMailboxConversationViaApi(token, otherUserId) {
+  const resp = await fetch(`${API_URL}/api/v1/mailbox/conversation/${otherUserId}`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`getMailboxConversationViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+async function uploadProfilePhotoViaBrowser(driver, filePath = E2E_TEST_PHOTO) {
+  const fs = require('fs');
+  const base64 = fs.readFileSync(filePath).toString('base64');
+  const ext = require('path').extname(filePath).toLowerCase();
+  const mime = ext === '.png' ? 'image/png' : 'image/jpeg';
+  const filename = require('path').basename(filePath);
+
+  const result = await driver.executeAsyncScript(
+    async function (payload, callback) {
+      try {
+        const bytes = Uint8Array.from(atob(payload.base64), (c) => c.charCodeAt(0));
+        const blob = new Blob([bytes], { type: payload.mime });
+        const form = new FormData();
+        form.append('file', blob, payload.filename);
+        const resp = await fetch('/api/v1/user/me/photo', {
+          method: 'POST',
+          body: form,
+          credentials: 'include',
+        });
+        const text = await resp.text();
+        callback({ status: resp.status, text });
+      } catch (error) {
+        callback({ status: 0, text: String(error) });
+      }
+    },
+    { base64, mime, filename }
+  );
+
+  if (!result || result.status < 200 || result.status >= 300) {
+    throw new Error(`uploadProfilePhotoViaBrowser failed: ${JSON.stringify(result)}`);
+  }
+}
+
+async function openProfilePhotoCropModal(driver, filePath = E2E_TEST_PHOTO_JPEG) {
+  await navigateTo(driver, '/profile/me/edit');
+  const fileInput = await driver.wait(until.elementLocated(By.css('#photoUpload')), 10000);
+  await driver.executeScript(`
+    const input = arguments[0];
+    input.style.display = 'block';
+    input.style.visibility = 'visible';
+    input.style.opacity = '1';
+    input.style.position = 'relative';
+  `, fileInput);
+  await fileInput.sendKeys(filePath);
+  await driver.wait(until.elementLocated(By.css('.crop-overlay')), 10000);
+}
+
+async function uploadProfilePhotoViaUi(driver, filePath = E2E_TEST_PHOTO_JPEG) {
+  await openProfilePhotoCropModal(driver, filePath);
+  await waitAndClick(driver, By.xpath("//button[contains(normalize-space(.), 'Применить')]"));
+  await driver.sleep(500);
+  const submitBtn = await driver.wait(until.elementLocated(By.css('button[type="submit"]')), 10000);
+  await driver.executeScript('arguments[0].scrollIntoView({block: "center"});', submitBtn);
+  await driver.sleep(200);
+  await driver.executeScript('arguments[0].click();', submitBtn);
+  await waitForUrlContains(driver, '/profile/me', 20000);
+}
+
+async function deleteProfilePhotoViaUi(driver) {
+  await navigateTo(driver, '/profile/me/edit');
+  await driver.executeScript('window.confirm = () => true;');
+  const deleteBtn = await driver.wait(
+    until.elementLocated(By.xpath("//button[contains(normalize-space(.), 'Удалить фото')]")),
+    10000
+  );
+  await driver.executeScript('arguments[0].click();', deleteBtn);
+  await driver.sleep(1500);
+}
+
+async function waitForProfileImageLoaded(driver, selector = '.profile-avatar') {
+  await driver.wait(async () => {
+    try {
+      const img = await driver.findElement(By.css(selector));
+      const src = await img.getAttribute('src');
+      if (!src || src.startsWith('data:')) {
+        return true;
+      }
+      const complete = await driver.executeScript('return arguments[0].complete && arguments[0].naturalWidth > 0;', img);
+      return Boolean(complete);
+    } catch (_) {
+      return false;
+    }
+  }, 20000);
+}
+
+async function waitForHeroPhotoBackground(driver) {
+  await driver.wait(async () => {
+    try {
+      const hero = await driver.findElement(By.css('.hero-photo'));
+      const bg = await hero.getCssValue('background-image');
+      return Boolean(bg && bg !== 'none' && bg.includes('url'));
+    } catch (_) {
+      return false;
+    }
+  }, 20000);
+}
+
 async function registerAndVerifyUser(driver, user) {
   await resolveSeedAdminCredentials();
   await clearSession(driver);
@@ -653,6 +902,26 @@ module.exports = {
   selectProfileGender,
   setUserGisViaApi,
   sendMediaMailViaApi,
+  E2E_TEST_PHOTO,
+  E2E_TEST_PHOTO_JPEG,
+  buildImageFormData,
+  isLikelyImageBuffer,
+  extractS3KeyFromMediaUrl,
+  uploadProfilePhotoViaApi,
+  deleteProfilePhotoViaApi,
+  fetchProfilePhoto,
+  getUserPhotosViaApi,
+  fetchS3Media,
+  createStoryViaApi,
+  deleteStoryViaApi,
+  bookmarkUserViaApi,
+  getMailboxConversationViaApi,
+  uploadProfilePhotoViaBrowser,
+  openProfilePhotoCropModal,
+  uploadProfilePhotoViaUi,
+  deleteProfilePhotoViaUi,
+  waitForProfileImageLoaded,
+  waitForHeroPhotoBackground,
   navigateTo,
   getUserById,
   getAuthToken,

@@ -119,4 +119,14 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
     @Modifying
     @Query("DELETE FROM mailbox WHERE id IN (:ids) AND from_user_id = :userId")
     suspend fun deleteByIdsAndFromUserId(ids: List<Long>, userId: UUID): Int
+
+    @Transactional(readOnly = true)
+    @Query(
+        """
+        SELECT COUNT(*) FROM mailbox
+        WHERE media_s3_key = :s3Key
+          AND (from_user_id = :userId OR to_user_id = :userId)
+        """
+    )
+    suspend fun countByMediaS3KeyForParticipant(s3Key: String, userId: UUID): Long
 }

@@ -97,7 +97,7 @@ class UserController(
         val userInfo = if (null != user.birthday && null != currentUser.birthday) {
             ofWithCompare(user, Date(currentUser.birthday!!.toInstant().toEpochMilli()))
         } else {
-            UserInfo.of(user)
+            UserInfo.ofWithoutEmail(user)
         }
         return userInfo.copy(isBanned = isBanned)
     }

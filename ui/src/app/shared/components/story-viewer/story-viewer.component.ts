@@ -131,6 +131,8 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
       justify-content: center;
       z-index: 10000;
       animation: fadeIn 0.2s ease;
+      padding: var(--app-safe-top) var(--app-safe-right) var(--app-safe-bottom) var(--app-safe-left);
+      box-sizing: border-box;
     }
 
     @keyframes fadeIn {
@@ -142,17 +144,19 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
       width: 100%;
       max-width: 420px;
       height: 100%;
-      max-height: 100vh;
+      max-height: 100%;
       position: relative;
       display: flex;
       flex-direction: column;
       background: #000;
+      border-radius: 12px;
+      overflow: hidden;
     }
 
     .progress-container {
       display: flex;
       gap: 4px;
-      padding: 12px 12px 0;
+      padding: 10px 12px 0;
       position: absolute;
       top: 0;
       left: 0;
@@ -177,13 +181,13 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
 
     .story-header {
       position: absolute;
-      top: 20px;
+      top: 28px;
       left: 0;
       right: 0;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 12px;
+      padding: 0 8px 0 12px;
       z-index: 10;
     }
 
@@ -235,13 +239,19 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
     }
 
     .close-btn {
-      background: none;
+      background: rgba(0, 0, 0, 0.35);
       border: none;
       color: white;
-      font-size: 1.5rem;
+      font-size: 1.35rem;
       cursor: pointer;
-      padding: 4px 8px;
-      opacity: 0.8;
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      opacity: 0.92;
     }
 
     .close-btn:hover {
@@ -264,7 +274,7 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
 
     .story-caption {
       position: absolute;
-      bottom: 56px;
+      bottom: 64px;
       left: 12px;
       right: 72px;
       z-index: 12;
@@ -280,8 +290,8 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
       --reaction-size: 44px;
       --reaction-row-size: 35px;
       position: absolute;
-      bottom: 10px;
-      right: 10px;
+      bottom: 14px;
+      right: 12px;
       z-index: 12;
       display: flex;
       flex-direction: column;
@@ -475,7 +485,7 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
 
     .story-viewers {
       position: absolute;
-      bottom: 12px;
+      bottom: 16px;
       left: 12px;
       z-index: 12;
       display: flex;
@@ -487,7 +497,7 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
 
     .nav-hint {
       position: absolute;
-      top: 60px;
+      top: 72px;
       bottom: 0;
       cursor: pointer;
       z-index: 5;

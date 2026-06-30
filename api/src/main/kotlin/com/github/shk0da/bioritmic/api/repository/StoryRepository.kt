@@ -43,4 +43,21 @@ interface StoryRepository : CoroutineCrudRepository<Story, Long> {
     @Modifying
     @Query("DELETE FROM stories WHERE expires_at < :now")
     suspend fun deleteExpired(now: Timestamp)
+
+    @Transactional(readOnly = true)
+    @Query(
+        """
+        SELECT COUNT(*) FROM stories s
+        WHERE s.expires_at > NOW()
+          AND s.media_url LIKE CONCAT('%', :s3Key)
+          AND (
+            s.user_id = :viewerId
+            OR EXISTS (
+              SELECT 1 FROM bookmarks b
+              WHERE b.user_id = :viewerId AND b.other_user_id = s.user_id
+            )
+          )
+        """
+    )
+    suspend fun canViewerAccessStoryMedia(viewerId: UUID, s3Key: String): Long
 }
