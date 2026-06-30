@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { resolveHttpErrorMessage } from './http-error.util';
+import { isNickHttpError, resolveHttpErrorMessage } from './http-error.util';
 
 describe('resolveHttpErrorMessage', () => {
   it('should return network message for status 0', () => {
@@ -26,6 +26,14 @@ describe('resolveHttpErrorMessage', () => {
       error: { errors: [{ errorCode: 'API-412', message: 'The user blocked you.' }] },
     });
     expect(resolveHttpErrorMessage(error)).toContain('ограничил');
+  });
+
+  it('should use Russian message for API-409.1 nick conflict', () => {
+    const error = new HttpErrorResponse({
+      status: 409,
+      error: { errors: [{ errorCode: 'API-409.1', message: 'This nick is already taken.' }] },
+    });
+    expect(resolveHttpErrorMessage(error)).toContain('ник');
   });
 
   it('should hide email in user-not-found API message', () => {
@@ -64,5 +72,23 @@ describe('resolveHttpErrorMessage', () => {
   it('should fall back to generic server error', () => {
     const error = new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' });
     expect(resolveHttpErrorMessage(error)).toContain('Ошибка сервера');
+  });
+});
+
+describe('isNickHttpError', () => {
+  it('should detect nick conflict by error code', () => {
+    const error = new HttpErrorResponse({
+      status: 409,
+      error: { errors: [{ errorCode: 'API-409.1', message: 'This nick is already taken.' }] },
+    });
+    expect(isNickHttpError(error)).toBeTrue();
+  });
+
+  it('should detect nick validation by parameter name', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: { errors: [{ errorCode: 'API-400', message: 'Parameter [nick] value is invalid.' }] },
+    });
+    expect(isNickHttpError(error)).toBeTrue();
   });
 });

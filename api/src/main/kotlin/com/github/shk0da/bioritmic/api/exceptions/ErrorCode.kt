@@ -41,6 +41,7 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
     BAD_PHOTO("API-400.9", "Photo must be jpg or png.", HttpStatus.BAD_REQUEST),
 
     USER_EXISTS("API-409", "The user with this email is already registered.", HttpStatus.CONFLICT),
+    NICK_EXISTS("API-409.1", "This nick is already taken.", HttpStatus.CONFLICT),
 
     INVALID_URI("API-404", "Invalid URI.", HttpStatus.NOT_FOUND),
     USER_WITH_EMAIL_NOT_FOUND(

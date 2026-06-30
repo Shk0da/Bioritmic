@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { Subject, takeUntil, interval, finalize } from 'rxjs';
 import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StoryService } from '../../../core/services/story.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-story-viewer',
@@ -22,9 +23,23 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
 
           <div class="story-header">
             <div class="user-info">
-              <div class="user-avatar" [style.backgroundImage]="userPhoto ? 'url(' + userPhoto + ')' : ''">
-                @if (!userPhoto) {
-                  <i class="bi bi-person-fill"></i>
+              <div class="user-avatar-stack">
+                <div class="user-avatar" [style.backgroundImage]="userPhoto ? 'url(' + userPhoto + ')' : ''">
+                  @if (!userPhoto) {
+                    <i class="bi bi-person-fill"></i>
+                  }
+                </div>
+                @if (isOwnStories && currentStory) {
+                  <button
+                    type="button"
+                    class="story-lock-btn"
+                    data-testid="story-lock-btn"
+                    [class.locked]="currentStory.locked"
+                    [title]="currentStory.locked ? 'Открыть историю (ещё 12 ч)' : 'Закрепить историю'"
+                    [disabled]="togglingStoryLock"
+                    (click)="toggleCurrentStoryLock($event)">
+                    <i class="bi" [class.bi-lock-fill]="currentStory.locked" [class.bi-unlock]="!currentStory.locked"></i>
+                  </button>
                 }
               </div>
               @if (userId) {
@@ -198,6 +213,11 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
       min-width: 0;
     }
 
+    .user-avatar-stack {
+      position: relative;
+      flex-shrink: 0;
+    }
+
     .user-avatar {
       width: 36px;
       height: 36px;
@@ -214,6 +234,35 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
 
     .user-avatar i {
       color: #999;
+    }
+
+    .story-lock-btn {
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.55rem;
+      padding: 0;
+      cursor: pointer;
+      background: rgba(107, 114, 128, 0.92);
+      color: #d1d5db;
+      z-index: 1;
+
+      &.locked {
+        background: rgba(31, 41, 55, 0.96);
+        color: #ffffff;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
     }
 
     .user-name {
@@ -525,6 +574,7 @@ export class StoryViewerComponent implements OnChanges {
   @Input() userId = '';
   @Input() userName = '';
   @Input() userPhoto: string | null = null;
+  @Input() isOwnStories = false;
   @Output() closed = new EventEmitter<void>();
 
   readonly reactions = STORY_REACTIONS;
@@ -535,6 +585,7 @@ export class StoryViewerComponent implements OnChanges {
   selectedReaction: StoryReactionType | null = null;
   reactionCounts: StoryReactionCounts = {};
   reactionPickerOpen = false;
+  togglingStoryLock = false;
   private reactionSubmitting = false;
 
   private progressInterval$ = new Subject<void>();
@@ -553,7 +604,8 @@ export class StoryViewerComponent implements OnChanges {
 
   constructor(
     private storyService: StoryService,
-    private router: Router
+    private router: Router,
+    private toastService: ToastService
   ) {
     this.destroyRef.onDestroy(() => {
       this.unbindCenterReleaseListeners();
@@ -606,6 +658,44 @@ export class StoryViewerComponent implements OnChanges {
     });
 
     this.startProgress();
+  }
+
+  toggleCurrentStoryLock(event: Event): void {
+    event.stopPropagation();
+    const story = this.currentStory;
+    if (!story || !this.isOwnStories || this.togglingStoryLock) {
+      return;
+    }
+
+    const nextLocked = !story.locked;
+    this.togglingStoryLock = true;
+    this.storyService.setStoryLocked(story.id, nextLocked)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.applyStoryLockState(story.id, response.locked, response.expiresAt);
+          this.togglingStoryLock = false;
+        },
+        error: () => {
+          this.togglingStoryLock = false;
+          this.toastService.error('Не удалось изменить замок истории');
+        }
+      });
+  }
+
+  private applyStoryLockState(storyId: number, locked: boolean, expiresAt: number): void {
+    const updateStory = (item: Story): void => {
+      item.locked = locked;
+      item.expiresAt = expiresAt;
+    };
+
+    const storyInList = this.stories.find((item) => item.id === storyId);
+    if (storyInList) {
+      updateStory(storyInList);
+    }
+    if (this.currentStory?.id === storyId) {
+      updateStory(this.currentStory);
+    }
   }
 
   sendReaction(reaction: StoryReactionType, event?: Event): void {

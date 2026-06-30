@@ -1045,3 +1045,28 @@
     align-items: flex-start;
   }
 }
+
+@media (max-width: 1024px) {
+  [data-theme="dark"] {
+    .compatibility-badges .badge {
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+
+      &.heartfelt {
+        background: rgba(190, 24, 93, 0.92);
+        color: #ffffff;
+      }
+
+      &.physical {
+        background: rgba(220, 38, 38, 0.92);
+        color: #ffffff;
+      }
+
+      &.intellectual {
+        background: rgba(37, 99, 235, 0.92);
+        color: #ffffff;
+      }
+    }
+  }
+}

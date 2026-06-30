@@ -6,6 +6,7 @@ import { BlockedUsersComponent } from './blocked-users/blocked-users.component';
 import { NotificationsSettingsComponent } from './notifications-settings/notifications-settings.component';
 import { FeedbackSettingsComponent } from './feedback-settings/feedback-settings.component';
 import { DangerZoneSettingsComponent } from './danger-zone-settings/danger-zone-settings.component';
+import { AppearanceSettingsComponent } from './appearance-settings/appearance-settings.component';
 import { LAYOUT_CACHE_ROUTE_DATA } from '../../core/routing/layout-cache.util';
 
 export const SETTINGS_ROUTES: Routes = [
@@ -22,6 +23,11 @@ export const SETTINGS_ROUTES: Routes = [
   {
     path: 'notifications',
     component: NotificationsSettingsComponent,
+    data: LAYOUT_CACHE_ROUTE_DATA,
+  },
+  {
+    path: 'appearance',
+    component: AppearanceSettingsComponent,
     data: LAYOUT_CACHE_ROUTE_DATA,
   },
   {

@@ -31,6 +31,10 @@ export class ThemeService {
     this.theme.set(this.theme() === 'light' ? 'dark' : 'light');
   }
 
+  setTheme(theme: Theme): void {
+    this.theme.set(theme);
+  }
+
   isDark(): boolean {
     return this.theme() === 'dark';
   }

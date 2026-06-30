@@ -10,3 +10,10 @@ export function isStandalonePwa(): boolean {
 export function initStandalonePwaClass(): void {
   document.documentElement.classList.toggle('pwa-standalone', isStandalonePwa());
 }
+
+export function isCompactAppShell(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  return isStandalonePwa() || window.matchMedia('(max-width: 767.98px)').matches;
+}

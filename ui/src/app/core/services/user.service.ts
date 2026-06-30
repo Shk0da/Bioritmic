@@ -271,6 +271,17 @@ export class UserService {
     return this.http.get<BiorhythmDetail>(`/api/v1/biorhythm/${userId}/detail`);
   }
 
+  /** Backend returns PNG placeholder when the user has no real profile photo in storage. */
+  static isDefaultProfilePhoto(bytes: Uint8Array): boolean {
+    return (
+      bytes.length >= 4 &&
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47
+    );
+  }
+
   static createPhotoUrl(bytes: Uint8Array): string {
     return URL.createObjectURL(new Blob([bytes]));
   }

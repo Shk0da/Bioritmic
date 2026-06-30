@@ -58,6 +58,13 @@ describe('ThemeService', () => {
     expect(service.isDark()).toBeFalse();
   });
 
+  it('setTheme should apply selected theme', () => {
+    service.setTheme('dark');
+    expect(service.theme()).toBe('dark');
+    service.setTheme('light');
+    expect(service.theme()).toBe('light');
+  });
+
   it('constructor should persist initial theme to localStorage', () => {
     expect(localStorage.getItem('bioritmic_theme')).toBe('light');
   });

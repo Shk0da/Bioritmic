@@ -8,9 +8,10 @@ import { MailboxService } from '../../core/services/mailbox.service';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { PushNotificationService } from '../../core/services/push-notification.service';
-import { clearLayoutRouteCache } from '../../core/routing/mobile-route-reuse.strategy';
 import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
-import { isStandalonePwa } from '../utils/pwa.util';
+import { isCompactAppShell } from '../utils/pwa.util';
+import { logoutFromApp } from '../utils/logout.util';
+import { normalizeRouteUrl } from '../../core/routing/route-cache-refresh.util';
 import { Subject, Subscription, filter, takeUntil } from 'rxjs';
 
 @Component({
@@ -62,13 +63,20 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
         </nav>
 
         <div class="user-menu">
-          <button class="nav-btn theme-toggle" (click)="themeService.toggle()" [title]="themeService.isDark() ? 'Светлая тема' : 'Тёмная тема'">
+          <button
+            class="nav-btn theme-toggle header-desktop-only"
+            (click)="themeService.toggle()"
+            [title]="themeService.isDark() ? 'Светлая тема' : 'Тёмная тема'">
             <i class="bi" [ngClass]="themeService.isDark() ? 'bi-sun-fill' : 'bi-moon-stars-fill'"></i>
           </button>
           <a routerLink="/profile" class="nav-btn" title="Профиль">
             <i class="bi bi-person-circle"></i>
           </a>
-          <a href="#" (click)="logout($event)" class="nav-btn" title="Выйти">
+          <a
+            href="#"
+            (click)="logout($event)"
+            class="nav-btn header-desktop-only"
+            title="Выйти">
             <i class="bi bi-box-arrow-right"></i>
           </a>
         </div>
@@ -276,6 +284,25 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private pullTouchStartHandler: ((event: TouchEvent) => void) | null = null;
   private pullTouchMoveHandler: ((event: TouchEvent) => void) | null = null;
   private pullTouchEndHandler: (() => void) | null = null;
+  private pageSwipeStartX = 0;
+  private pageSwipeStartY = 0;
+  private pageSwipeTracking = false;
+  private pageSwipeTouchStartHandler: ((event: TouchEvent) => void) | null = null;
+  private pageSwipeTouchEndHandler: ((event: TouchEvent) => void) | null = null;
+  private readonly pageSwipeThreshold = 72;
+  private readonly pageSwipeMaxVerticalDelta = 56;
+  private static readonly PAGE_SWIPE_BLOCK_SELECTOR = [
+    '.swipe-card',
+    '.conversation-panel',
+    '.mailbox-composer',
+    '.stories-scroll',
+    'input',
+    'textarea',
+    'select',
+    'button',
+    'a',
+    '[data-no-page-swipe]',
+  ].join(', ');
 
   constructor(
     private authService: AuthService,
@@ -293,6 +320,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.updateHeaderScrollProgress();
     this.pullToRefreshService.setCurrentRoute(this.router.url);
     this.bindPullToRefresh();
+    this.bindPageSwipeNavigation();
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
       this.isUserAdmin = !!(user?.role && user.role.includes('ADMIN'));
@@ -325,6 +353,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.unbindPullToRefresh();
+    this.unbindPageSwipeNavigation();
     this.stopPolling();
     if (this.resendCooldownInterval) {
       clearInterval(this.resendCooldownInterval);
@@ -350,10 +379,119 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   private isPullToRefreshEnabled(): boolean {
-    if (typeof window === 'undefined') {
+    return isCompactAppShell();
+  }
+
+  private isPageSwipeNavigationEnabled(): boolean {
+    return isCompactAppShell();
+  }
+
+  private bindPageSwipeNavigation(): void {
+    this.unbindPageSwipeNavigation();
+    if (!this.isPageSwipeNavigationEnabled()) {
+      return;
+    }
+
+    this.pageSwipeTouchStartHandler = (event: TouchEvent) => {
+      if (event.touches.length !== 1 || this.pullTracking || this.pullRefreshing) {
+        this.pageSwipeTracking = false;
+        return;
+      }
+      if (this.shouldBlockPageSwipe(event)) {
+        this.pageSwipeTracking = false;
+        return;
+      }
+      this.pageSwipeStartX = event.touches[0]?.clientX ?? 0;
+      this.pageSwipeStartY = event.touches[0]?.clientY ?? 0;
+      this.pageSwipeTracking = true;
+    };
+
+    this.pageSwipeTouchEndHandler = (event: TouchEvent) => {
+      if (!this.pageSwipeTracking || event.changedTouches.length !== 1) {
+        this.pageSwipeTracking = false;
+        return;
+      }
+      const endX = event.changedTouches[0]?.clientX ?? 0;
+      const endY = event.changedTouches[0]?.clientY ?? 0;
+      const deltaX = endX - this.pageSwipeStartX;
+      const deltaY = Math.abs(endY - this.pageSwipeStartY);
+      this.pageSwipeTracking = false;
+
+      if (deltaY > this.pageSwipeMaxVerticalDelta) {
+        return;
+      }
+      if (deltaX >= this.pageSwipeThreshold) {
+        this.navigateHeaderNav(1);
+      } else if (deltaX <= -this.pageSwipeThreshold) {
+        this.navigateHeaderNav(-1);
+      }
+    };
+
+    document.addEventListener('touchstart', this.pageSwipeTouchStartHandler, { passive: true });
+    document.addEventListener('touchend', this.pageSwipeTouchEndHandler, { passive: true });
+    document.addEventListener('touchcancel', this.pageSwipeTouchEndHandler, { passive: true });
+  }
+
+  private unbindPageSwipeNavigation(): void {
+    if (this.pageSwipeTouchStartHandler) {
+      document.removeEventListener('touchstart', this.pageSwipeTouchStartHandler);
+    }
+    if (this.pageSwipeTouchEndHandler) {
+      document.removeEventListener('touchend', this.pageSwipeTouchEndHandler);
+      document.removeEventListener('touchcancel', this.pageSwipeTouchEndHandler);
+    }
+    this.pageSwipeTouchStartHandler = null;
+    this.pageSwipeTouchEndHandler = null;
+    this.pageSwipeTracking = false;
+  }
+
+  private shouldBlockPageSwipe(event: TouchEvent): boolean {
+    const target = this.getTouchTargetElement(event);
+    if (!target) {
       return false;
     }
-    return isStandalonePwa() || window.matchMedia('(max-width: 767.98px)').matches;
+    return !!target.closest(LayoutComponent.PAGE_SWIPE_BLOCK_SELECTOR);
+  }
+
+  private getHeaderNavRoutes(): string[] {
+    const routes = ['/swipe'];
+    if (this.isUserVerified) {
+      routes.push('/bookmarks', '/mailbox', '/meetings');
+    }
+    if (this.isUserAdmin) {
+      routes.push('/admin');
+    }
+    return routes;
+  }
+
+  private resolveCurrentNavIndex(routes: string[], url: string): number {
+    const path = normalizeRouteUrl(url.split('?')[0] ?? url);
+    for (let index = routes.length - 1; index >= 0; index--) {
+      const route = routes[index];
+      if (path === route || path.startsWith(`${route}/`)) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  private navigateHeaderNav(direction: 1 | -1): void {
+    const routes = this.getHeaderNavRoutes();
+    if (routes.length < 2) {
+      return;
+    }
+
+    let currentIndex = this.resolveCurrentNavIndex(routes, this.router.url);
+    if (currentIndex < 0) {
+      currentIndex = direction > 0 ? -1 : routes.length;
+    }
+
+    const nextIndex = currentIndex + direction;
+    if (nextIndex < 0 || nextIndex >= routes.length) {
+      return;
+    }
+
+    void this.router.navigateByUrl(routes[nextIndex]);
   }
 
   private bindPullToRefresh(): void {
@@ -651,26 +789,6 @@ export class LayoutComponent implements OnInit, OnDestroy {
     if (event) {
       event.preventDefault();
     }
-    void this.performLogout();
-  }
-
-  private async performLogout(): Promise<void> {
-    try {
-      await this.pushService.disable();
-    } catch {
-      this.pushService.clearLocalPushState();
-    }
-    this.authService.logout().subscribe({
-      complete: () => {
-        clearLayoutRouteCache();
-        this.authService.clearAuth();
-        this.router.navigate(['/auth/login']);
-      },
-      error: () => {
-        clearLayoutRouteCache();
-        this.authService.clearAuth();
-        this.router.navigate(['/auth/login']);
-      }
-    });
+    logoutFromApp(this.authService, this.pushService, this.router);
   }
 }

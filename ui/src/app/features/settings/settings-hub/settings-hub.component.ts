@@ -33,6 +33,10 @@ import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.serv
                 <span><i class="bi bi-bell me-2"></i>Уведомления и приложение</span>
                 <i class="bi bi-chevron-right text-muted small"></i>
               </a>
+              <a routerLink="/settings/appearance" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-palette me-2"></i>Оформление</span>
+                <i class="bi bi-chevron-right text-muted small"></i>
+              </a>
               <a routerLink="/settings/location" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-geo-alt me-2"></i>Моё местоположение</span>
                 <i class="bi bi-chevron-right text-muted small"></i>

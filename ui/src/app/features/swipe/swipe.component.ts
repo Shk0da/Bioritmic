@@ -25,6 +25,7 @@ import { ShareService } from '../../core/services/share.service';
 import { ModalService } from '../../core/services/modal.service';
 import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
 import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
+import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
 
 @Component({
   selector: 'app-swipe',
@@ -43,7 +44,7 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
 
       <!-- Мобильная версия: Tinder-карточки -->
       <div class="mobile-swipe-container">
-        @if (cards.length === 0 && !loading) {
+        @if (showNoCards) {
           <div class="no-cards">
             <div class="no-cards-icon">
               <i class="bi" [ngClass]="(geoDataMissing || locationRequired) ? 'bi-geo-alt' : 'bi-emoji-frown'"></i>
@@ -93,7 +94,7 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
             }
           </div>
         } @else {
-          @for (card of cards.slice(0, 2); track card.user.id; let i = $index) {
+          @for (card of displayCards.slice(0, 2); track card.user.id; let i = $index) {
             <div
               class="swipe-card"
               [class.top-card]="i === 0"
@@ -102,7 +103,7 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
               [style.z-index]="10 - i"
             >
               <!-- Фото пользователя -->
-              <div class="card-photo" [style.backgroundImage]="'url(' + (card.photoDataUrl || card.user.image || '') + ' '">
+              <div class="card-photo" [style.backgroundImage]="'url(' + card.photoDataUrl + ')'">
                 <app-avatar-status-badge
                   [emoji]="card.user.statusEmoji"
                   [position]="card.user.statusPosition"
@@ -159,7 +160,7 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
               <span class="visually-hidden">Загрузка...</span>
             </div>
           </div>
-        } @else if (cards.length === 0) {
+        } @else if (showNoCards) {
           <div class="no-cards-desktop text-center py-5">
             <div class="no-cards-icon">
               <i class="bi" [ngClass]="(geoDataMissing || locationRequired) ? 'bi-geo-alt' : 'bi-emoji-frown'"></i>
@@ -210,9 +211,9 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
           </div>
         } @else {
           <div class="profiles-grid">
-            @for (card of cards; track card.user.id) {
+            @for (card of displayCards; track card.user.id) {
               <div class="profile-card">
-                <div class="profile-card-photo" [style.backgroundImage]="'url(' + (card.photoDataUrl || card.user.image || '') + ' '">
+                <div class="profile-card-photo" [style.backgroundImage]="'url(' + card.photoDataUrl + ')'">
                   <app-avatar-status-badge
                     [emoji]="card.user.statusEmoji"
                     [position]="card.user.statusPosition"
@@ -274,24 +275,24 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
       <!-- Кнопки управления (только мобильные) -->
       @if (showMobileSwipeControls) {
       <div class="swipe-controls">
-        <button class="control-btn btn-undo" (click)="undoSwipe()" [disabled]="cards.length === 0 && !canUndo()" title="Отменить">
+        <button class="control-btn btn-undo" (click)="undoSwipe()" [disabled]="displayCards.length === 0 && !canUndo()" title="Отменить">
           <i class="bi bi-arrow-counterclockwise"></i>
         </button>
-        <button class="control-btn btn-dislike" data-testid="swipe-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)">
+        <button class="control-btn btn-dislike" data-testid="swipe-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="displayCards.length === 0 || (!isPro && swipeRemaining <= 0)">
           <i class="bi bi-x-lg"></i>
         </button>
-        <button class="control-btn btn-superlike" (click)="manualSwipe(SwipeDirection.UP)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)" title="Супер-лайк">
+        <button class="control-btn btn-superlike" (click)="manualSwipe(SwipeDirection.UP)" [disabled]="displayCards.length === 0 || (!isPro && swipeRemaining <= 0)" title="Супер-лайк">
           <i class="bi bi-star-fill"></i>
         </button>
         <button
           type="button"
           class="control-btn btn-profile"
-          [disabled]="cards.length === 0 || !isUserVerified"
+          [disabled]="displayCards.length === 0 || !isUserVerified"
           [title]="isUserVerified ? 'Профиль' : 'Доступно после верификации email'"
-          (click)="openProfile(cards[0])">
+          (click)="openProfile(displayCards[0])">
           <i class="bi bi-person"></i>
         </button>
-        <button class="control-btn btn-like" (click)="manualSwipe(SwipeDirection.RIGHT)" [disabled]="cards.length === 0 || (!isPro && swipeRemaining <= 0)">
+        <button class="control-btn btn-like" (click)="manualSwipe(SwipeDirection.RIGHT)" [disabled]="displayCards.length === 0 || (!isPro && swipeRemaining <= 0)">
           <i class="bi bi-heart-fill"></i>
         </button>
       </div>
@@ -408,6 +409,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   matchedUserPhoto: string | null = null;
   currentUserPhoto: string | null = null;
   currentUserId: string | null = null;
+  currentProfileLinkId = '';
   currentUserName = '';
   sharing = false;
 
@@ -429,7 +431,14 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnInit(): void {
     const user = this.authService.getCurrentUser();
     this.currentUserId = user?.id ?? null;
+    this.currentProfileLinkId = user ? resolveProfileLinkId(user) : '';
     this.currentUserName = user?.name ?? 'Профиль';
+    this.userService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (freshUser) => {
+        this.currentProfileLinkId = resolveProfileLinkId(freshUser);
+        this.currentUserName = freshUser.name ?? 'Профиль';
+      }
+    });
     this.isUserVerified = user?.isVerified !== false;
     this.loadUserSettings();
     this.loadSwipeLimit();
@@ -567,8 +576,13 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
       next: (users) => {
         this.swipeService.setCards(users);
         this.cards = this.swipeService.getCards();
-        this.loadVisiblePhotos();
-        this.loading = false;
+        if (users.length === 0) {
+          this.loading = false;
+        } else {
+          this.loadVisiblePhotos(() => {
+            this.loading = false;
+          });
+        }
       },
       error: (err) => {
         this.loading = false;
@@ -596,42 +610,85 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  private loadVisiblePhotos(): void {
+  private loadVisiblePhotos(onComplete?: () => void): void {
     const isMobileLayout = window.matchMedia('(max-width: 1024px)').matches;
     const photoSize: PhotoSize = photoSizeForLargeDisplay();
     const cardsToLoad = isMobileLayout ? this.cards.slice(0, 2) : this.cards;
+
+    if (cardsToLoad.length === 0) {
+      onComplete?.();
+      return;
+    }
+
+    let remaining = cardsToLoad.length;
+    const finishOne = () => {
+      remaining--;
+      if (remaining <= 0) {
+        if (this.displayCards.length === 0 && this.cards.length > 0) {
+          this.loadVisiblePhotos(onComplete);
+          return;
+        }
+        onComplete?.();
+      }
+    };
+
     cardsToLoad.forEach(card => {
-      if (card.user.id && !card.photoDataUrl) {
-        this.userService.getPhoto(card.user.id, photoSize).pipe(takeUntil(this.destroy$)).subscribe({
-          next: (bytes: Uint8Array) => {
+      if (!card.user.id || card.photoDataUrl) {
+        if (!card.user.id) {
+          this.removeCardWithoutPhoto(card);
+        }
+        finishOne();
+        return;
+      }
+
+      this.userService.getPhoto(card.user.id, photoSize).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (bytes: Uint8Array) => {
+          if (UserService.isDefaultProfilePhoto(bytes)) {
+            this.removeCardWithoutPhoto(card);
+          } else {
             this.userService.releasePhotoUrl(card.photoDataUrl);
             card.photoDataUrl = UserService.createPhotoUrl(bytes);
-          },
-          error: () => {
-            card.photoDataUrl = this.userService.getProfilePhotoUrl(card.user.id!, undefined, photoSize);
+            this.cards = [...this.cards];
           }
-        });
-      }
+          finishOne();
+        },
+        error: () => {
+          this.removeCardWithoutPhoto(card);
+          finishOne();
+        }
+      });
     });
   }
 
   loadNextPhoto(): void {
     const nextIndex = 2;
-    if (this.cards.length > nextIndex) {
-      const card = this.cards[nextIndex];
-      if (card.user.id && !card.photoDataUrl) {
-        const photoSize = photoSizeForLargeDisplay();
-        this.userService.getPhoto(card.user.id, photoSize).pipe(takeUntil(this.destroy$)).subscribe({
-          next: (bytes: Uint8Array) => {
-            this.userService.releasePhotoUrl(card.photoDataUrl);
-            card.photoDataUrl = UserService.createPhotoUrl(bytes);
-          },
-          error: () => {
-            card.photoDataUrl = this.userService.getProfilePhotoUrl(card.user.id!, undefined, photoSize);
-          }
-        });
-      }
+    if (this.cards.length <= nextIndex) {
+      return;
     }
+
+    const card = this.cards[nextIndex];
+    if (!card.user.id || card.photoDataUrl) {
+      if (!card.user.id) {
+        this.removeCardWithoutPhoto(card);
+      }
+      return;
+    }
+
+    const photoSize = photoSizeForLargeDisplay();
+    this.userService.getPhoto(card.user.id, photoSize).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (bytes: Uint8Array) => {
+        if (UserService.isDefaultProfilePhoto(bytes)) {
+          this.removeCardWithoutPhoto(card);
+        } else {
+          this.userService.releasePhotoUrl(card.photoDataUrl);
+          card.photoDataUrl = UserService.createPhotoUrl(bytes);
+          this.cards = [...this.cards];
+        }
+      },
+      error: () => {
+        this.removeCardWithoutPhoto(card);
+      }
+    });
   }
 
   getAge(birthday?: string, age?: number): number {
@@ -754,7 +811,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   manualSwipe(direction: SwipeDirection): void {
-    if (this.cards.length === 0) return;
+    if (this.displayCards.length === 0) return;
 
     const card = this.swipeService.swipe(direction);
     if (card) {
@@ -806,6 +863,11 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
+  private removeCardWithoutPhoto(card: SwipeCard): void {
+    this.userService.releasePhotoUrl(card.photoDataUrl);
+    this.removeCardFromLists(card);
+  }
+
   private removeCardFromLists(card: SwipeCard): void {
     const index = this.cards.indexOf(card);
     if (index >= 0) {
@@ -820,8 +882,16 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
+  get displayCards(): SwipeCard[] {
+    return this.cards.filter((card) => !!card.photoDataUrl);
+  }
+
+  get showNoCards(): boolean {
+    return !this.loading && this.displayCards.length === 0;
+  }
+
   get showMobileSwipeControls(): boolean {
-    if (this.cards.length > 0 || this.loading) {
+    if (this.displayCards.length > 0 || this.loading) {
       return true;
     }
     return this.geoDataMissing || this.locationRequired || !!this.searchError;
@@ -832,12 +902,13 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   async shareProfile(): Promise<void> {
-    if (!this.currentUserId || this.sharing) {
+    const profileLinkId = this.currentProfileLinkId || this.currentUserId;
+    if (!profileLinkId || this.sharing) {
       return;
     }
     this.sharing = true;
     try {
-      const result = await this.shareService.shareProfile(this.currentUserId, this.currentUserName);
+      const result = await this.shareService.shareProfile(profileLinkId, this.currentUserName);
       if (result === 'copied') {
         await this.modalService.alert('Ссылка на профиль скопирована в буфер обмена');
       } else if (result === 'failed') {
@@ -903,7 +974,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private onKeyDown(event: KeyboardEvent): void {
     if (this.showFilters || this.loading) return;
-    if (this.cards.length === 0) return;
+    if (this.displayCards.length === 0) return;
 
     switch (event.key) {
       case 'ArrowRight':

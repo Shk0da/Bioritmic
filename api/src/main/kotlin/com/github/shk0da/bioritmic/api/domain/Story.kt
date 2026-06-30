@@ -24,6 +24,9 @@ class Story {
     @Column("expires_at")
     var expiresAt: Timestamp? = null
 
+    @Column("locked")
+    var locked: Boolean = false
+
     @Column("created_at")
     var createdAt: Timestamp? = null
 }

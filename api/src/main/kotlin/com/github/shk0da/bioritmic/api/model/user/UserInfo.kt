@@ -17,6 +17,7 @@ data class UserInfo(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val id: UUID? = null,
     val name: String? = null,
+    val nick: String? = null,
     val email: String? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     val birthday: Date? = null,
@@ -80,6 +81,7 @@ data class UserInfo(
                 id = user.id,
                 name = user.name,
                 email = user.email,
+                nick = user.nick,
                 birthday = Date(user.birthday!!.time),
                 gender = user.getGender(),
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
@@ -97,6 +99,7 @@ data class UserInfo(
             return UserInfo(
                 id = user.id,
                 name = user.name,
+                nick = user.nick,
                 birthday = Date(user.birthday!!.time),
                 gender = user.getGender(),
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),
@@ -164,6 +167,7 @@ data class UserInfo(
             return UserInfo(
                 id = user.id,
                 name = user.name,
+                nick = user.nick,
                 age = biorhythmService.calculateAge(Date(user.birthday!!.time)),
                 gender = user.getGender(),
                 horo = biorhythmService.getNumZodiac(Date(user.birthday!!.time)),

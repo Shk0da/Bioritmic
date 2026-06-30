@@ -7,6 +7,7 @@ import java.util.Date
 
 data class UpdateUserProfileRequest(
     val name: String? = null,
+    val nick: String? = null,
     val email: String? = null,
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     val birthday: Date? = null,

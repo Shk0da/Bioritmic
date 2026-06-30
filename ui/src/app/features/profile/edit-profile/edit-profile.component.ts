@@ -14,11 +14,14 @@ import {
   normalizeUserStatusPosition,
 } from '../../../shared/utils/user-status.util';
 import {
-  formatDateForInput,
   maxBirthdayForMinAge,
   meetsMinimumAge,
+  birthdayValidationMessage,
   MIN_AGE_PROFILE_MESSAGE
 } from '../../../shared/utils/age-validation.util';
+import { isValidNick, nickValidationMessage, resolveProfileLinkId } from '../../../shared/utils/profile-link.util';
+import { isNickHttpError, resolveHttpErrorMessage } from '../../../core/utils/http-error.util';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-edit-profile',
@@ -117,6 +120,30 @@ import {
                 </div>
               </div>
 
+              <div class="mb-3">
+                <label for="nick" class="form-label">Ник</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="nick"
+                  [(ngModel)]="user.nick"
+                  (ngModelChange)="onNickChange()"
+                  name="nick"
+                  maxlength="32"
+                  placeholder="my_nick"
+                  autocomplete="off">
+                @if (nickError) {
+                  <div class="text-danger small mt-1">{{ nickError }}</div>
+                } @else if (nickFieldHint) {
+                  <div class="text-danger small mt-1">{{ nickFieldHint }}</div>
+                }
+                @if (user.id) {
+                  <div class="form-text mt-1">
+                    Ссылка на ваш профиль: {{ profileLinkPreview }}
+                  </div>
+                }
+              </div>
+
               <div class="row mb-3">
                 <div class="col-12 col-md-8">
                   <label for="newEmail" class="form-label">Сменить email</label>
@@ -166,6 +193,9 @@ import {
                     [max]="maxBirthday"
                     name="birthday"
                     required>
+                  @if (birthdayFieldHint) {
+                    <div class="text-danger small mt-1">{{ birthdayFieldHint }}</div>
+                  }
                 </div>
 
                 <div class="col-12 col-md-6 mb-3">
@@ -299,9 +329,27 @@ export class EditProfileComponent implements OnInit, OnDestroy {
   saving = false;
   uploadingPhoto = false;
   hasUploadedPhoto = false;
+  nickError = '';
   private destroy$ = new Subject<void>();
   private readonly destroyRef = inject(DestroyRef);
   private readonly pullToRefreshService = inject(PullToRefreshService);
+
+  get profileLinkPreview(): string {
+    const segment = resolveProfileLinkId(this.user);
+    if (!segment) {
+      return '';
+    }
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bioritmic.ru';
+    return `${origin}/user/${segment}`;
+  }
+
+  get nickFieldHint(): string | null {
+    return nickValidationMessage(this.user.nick ?? '');
+  }
+
+  get birthdayFieldHint(): string | null {
+    return birthdayValidationMessage(this.user.birthday ?? '');
+  }
 
   constructor(
     private userService: UserService,
@@ -334,6 +382,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
           statusPosition: user.statusEmoji
             ? normalizeUserStatusPosition(user.statusPosition)
             : null,
+          nick: user.nick ?? '',
         };
         if (user.id) {
           this.loadPhoto(user.id);
@@ -348,15 +397,26 @@ export class EditProfileComponent implements OnInit, OnDestroy {
       return '';
     }
     if (typeof birthday === 'string') {
+      const isoMatch = /^(\d{4}-\d{2}-\d{2})/.exec(birthday);
+      if (isoMatch) {
+        return isoMatch[1];
+      }
       return birthday.length >= 10 ? birthday.slice(0, 10) : birthday;
     }
     if (birthday instanceof Date) {
-      return formatDateForInput(birthday);
+      const year = birthday.getUTCFullYear();
+      const month = String(birthday.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(birthday.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
     if (typeof birthday === 'object' && birthday !== null && 'time' in birthday) {
       const time = Number((birthday as { time?: number }).time);
       if (!Number.isNaN(time)) {
-        return formatDateForInput(new Date(time));
+        const parsed = new Date(time);
+        const year = parsed.getUTCFullYear();
+        const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       }
     }
     return '';
@@ -459,17 +519,32 @@ export class EditProfileComponent implements OnInit, OnDestroy {
     });
   }
 
-  isProfileValid(): boolean {
+  onNickChange(): void {
+    if (this.nickError) {
+      this.nickError = '';
+    }
+  }
+
+  hasRequiredProfileFields(): boolean {
+    const nick = this.user.nick?.trim() ?? '';
     return !!(
       this.user.name?.trim() &&
       this.user.birthday &&
       this.user.gender &&
-      meetsMinimumAge(this.user.birthday)
+      isValidNick(nick)
     );
   }
 
+  isProfileValid(): boolean {
+    return this.hasRequiredProfileFields() && meetsMinimumAge(this.user.birthday!);
+  }
+
   canSave(): boolean {
-    return this.isProfileValid() || (!!this.photoFile && !!this.user.id);
+    const nick = this.user.nick?.trim() ?? '';
+    if (nick && !isValidNick(nick)) {
+      return false;
+    }
+    return this.hasRequiredProfileFields() || (!!this.photoFile && !!this.user.id);
   }
 
   save(): void {
@@ -477,13 +552,26 @@ export class EditProfileComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const shouldUpdateProfile = this.isProfileValid();
+    const nick = this.user.nick?.trim() ?? '';
+    const nickMessage = nickValidationMessage(nick);
+    if (nickMessage) {
+      this.nickError = nickMessage;
+      return;
+    }
+    this.nickError = '';
+
+    const pendingPhoto = this.photoFile;
+    let shouldUpdateProfile = this.hasRequiredProfileFields();
+
     if (shouldUpdateProfile && (!this.user.birthday || !meetsMinimumAge(this.user.birthday))) {
       void this.modalService.alert(MIN_AGE_PROFILE_MESSAGE, 'Возраст');
+      shouldUpdateProfile = false;
+    }
+
+    if (!shouldUpdateProfile && !pendingPhoto) {
       return;
     }
 
-    const pendingPhoto = this.photoFile;
     this.saving = true;
     this.uploadingPhoto = !!pendingPhoto;
 
@@ -494,6 +582,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
           birthday: this.user.birthday,
           gender: this.normalizeGender(this.user.gender),
           bio: bio || '',
+          nick,
         }).pipe(map(() => void 0))
       : of(void 0);
 
@@ -517,11 +606,16 @@ export class EditProfileComponent implements OnInit, OnDestroy {
         }
         this.router.navigate(['/profile/me']);
       },
-      error: () => {
-        void this.modalService.alert(
-          pendingPhoto ? 'Не удалось сохранить изменения' : 'Ошибка сохранения профиля',
-          'Ошибка'
-        );
+      error: (err) => {
+        const message = resolveHttpErrorMessage(err as HttpErrorResponse);
+        if (isNickHttpError(err as HttpErrorResponse)) {
+          this.nickError = message;
+        } else {
+          void this.modalService.alert(
+            pendingPhoto ? 'Не удалось сохранить изменения' : message,
+            'Ошибка'
+          );
+        }
       }
     });
   }

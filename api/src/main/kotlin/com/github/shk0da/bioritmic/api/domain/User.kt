@@ -42,6 +42,9 @@ class User {
     @Column("register_date")
     var registerDate: Timestamp? = null
 
+    @Column("nick")
+    var nick: String? = null
+
     @Column("bio")
     var bio: String? = null
 

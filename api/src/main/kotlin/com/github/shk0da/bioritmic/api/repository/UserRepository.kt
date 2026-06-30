@@ -34,6 +34,13 @@ interface UserRepository : CoroutineCrudRepository<User, UUID> {
     @Query("UPDATE users SET last_active_at = :lastActiveAt WHERE id = :userId")
     suspend fun updateLastActiveAt(userId: UUID, lastActiveAt: java.sql.Timestamp)
 
+    @Transactional(readOnly = true)
+    suspend fun findByNick(nick: String): User?
+
+    @Transactional(readOnly = true)
+    @Query("SELECT COUNT(*) FROM users WHERE nick = :nick AND id != :excludeId")
+    suspend fun countByNickExcludingId(@Param("nick") nick: String, @Param("excludeId") excludeId: UUID): Long
+
     @Query("SELECT COUNT(*) FROM users")
     suspend fun countAll(): Long
 

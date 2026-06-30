@@ -62,6 +62,9 @@ class UserService(
         private const val CONTENT_TYPE_JPEG = "image/jpeg"
         private const val BIO_MAX_LENGTH = 500
         private const val STATUS_EMOJI_MAX_LENGTH = 16
+        private const val NICK_MAX_LENGTH = 32
+        private val NICK_PATTERN = Regex("^[a-zA-Z0-9_-]+$")
+        private val RESERVED_NICKS = setOf("me", "blocked", "settings")
         private val CUSTOM_STATUS_REGEX = Regex("^CUSTOM:(\\d{1,3}):(\\d{1,3})$", RegexOption.IGNORE_CASE)
     }
 
@@ -80,6 +83,14 @@ class UserService(
     @Transactional(readOnly = true)
     suspend fun findUserById(id: UUID): User? {
         return userRepository.findById(id)
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun findUserByIdentifier(identifier: String): User? {
+        runCatching { UUID.fromString(identifier) }.getOrNull()?.let { uuid ->
+            userRepository.findById(uuid)?.let { return it }
+        }
+        return userRepository.findByNick(identifier)
     }
 
     @Transactional(readOnly = true)
@@ -181,6 +192,18 @@ class UserService(
             }
             user.bio = trimmed.ifEmpty { null }
         }
+        if (request.nick != null) {
+            val trimmed = request.nick.trim()
+            if (trimmed.isEmpty()) {
+                user.nick = null
+            } else {
+                validateNick(trimmed)
+                if (userRepository.countByNickExcludingId(trimmed, userId) > 0) {
+                    throw ApiException(ErrorCode.NICK_EXISTS)
+                }
+                user.nick = trimmed
+            }
+        }
         if (request.statusEmoji != null) {
             val trimmed = request.statusEmoji.trim()
             if (trimmed.length > STATUS_EMOJI_MAX_LENGTH) {
@@ -209,6 +232,30 @@ class UserService(
             user.statusPosition = normalizedPosition
         }
         return userRepository.save(user)
+    }
+
+    private fun validateNick(nick: String) {
+        if (nick.length > NICK_MAX_LENGTH) {
+            throw ApiException(
+                ErrorCode.INVALID_PARAMETER_SIZE,
+                mapOf(
+                    Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME, "nick"),
+                    Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE_LENGTH, NICK_MAX_LENGTH.toString())
+                )
+            )
+        }
+        if (!NICK_PATTERN.matches(nick)) {
+            throw ApiException(
+                ErrorCode.INVALID_PARAMETER,
+                mapOf(Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME, "nick"))
+            )
+        }
+        if (nick.lowercase() in RESERVED_NICKS) {
+            throw ApiException(
+                ErrorCode.INVALID_PARAMETER,
+                mapOf(Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME, "nick"))
+            )
+        }
     }
 
     private fun normalizeStatusPosition(rawValue: String?): String? {

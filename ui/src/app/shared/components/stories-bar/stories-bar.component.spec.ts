@@ -22,6 +22,7 @@ describe('StoriesBarComponent', () => {
     mediaUrl: '/my-story.jpg',
     expiresAt: Date.now() + 3600000,
     createdAt: Date.now(),
+    locked: false,
     viewerCount: 0,
     viewedByCurrentUser: false
   };
@@ -36,6 +37,7 @@ describe('StoriesBarComponent', () => {
         mediaUrl: '/m1',
         expiresAt: Date.now() + 3600000,
         createdAt: Date.now(),
+        locked: false,
         viewerCount: 0,
         viewedByCurrentUser: false
       }
@@ -99,6 +101,7 @@ describe('StoriesBarComponent', () => {
     const group = component.storyGroups[0];
     component.openViewer(group);
     expect(component.viewerVisible).toBeTrue();
+    expect(component.viewerIsOwnStories).toBeFalse();
     expect(component.viewerStories).toEqual(group.stories);
   });
 
@@ -106,6 +109,7 @@ describe('StoriesBarComponent', () => {
     fixture.detectChanges();
     component.openMyStory();
     expect(component.viewerVisible).toBeTrue();
+    expect(component.viewerIsOwnStories).toBeTrue();
     expect(component.viewerStories).toEqual(component.myStories);
   });
 
@@ -120,6 +124,12 @@ describe('StoriesBarComponent', () => {
     expect(modalService.confirm).toHaveBeenCalled();
     expect(storyService.deleteStory).toHaveBeenCalledWith(10);
     expect(toastService.success).toHaveBeenCalled();
+  });
+
+  it('should not render lock button on story bar card', () => {
+    fixture.detectChanges();
+    const lockBtn = fixture.nativeElement.querySelector('[data-testid="story-lock-btn"]');
+    expect(lockBtn).toBeNull();
   });
 
   it('should reload stories after creation', () => {

@@ -45,6 +45,7 @@ class StoryService(
 
     companion object {
         private const val STORY_EXPIRY_HOURS = 24L
+        private const val STORY_UNLOCK_EXTEND_HOURS = 12L
         private const val FEED_STORY_LIMIT = 200
         private const val MAX_CAPTION_LENGTH = 500
         private const val MAX_STORY_IMAGE_BYTES = 5 * 1024 * 1024
@@ -81,6 +82,7 @@ class StoryService(
             this.caption = caption?.trim()?.takeIf { it.isNotEmpty() }?.take(MAX_CAPTION_LENGTH)
             this.expiresAt = Timestamp(System.currentTimeMillis() + TimeUnit.HOURS.toMillis(STORY_EXPIRY_HOURS))
             this.createdAt = Timestamp(System.currentTimeMillis())
+            this.locked = false
         }
 
         return try {
@@ -111,6 +113,7 @@ class StoryService(
                 "caption" to story.caption,
                 "expiresAt" to story.expiresAt?.time,
                 "createdAt" to story.createdAt?.time,
+                "locked" to story.locked,
                 "viewerCount" to (viewerCounts[story.id] ?: 0),
                 "viewedByCurrentUser" to (story.id in viewedByUser),
                 "currentUserReaction" to reactionsByUser[story.id],
@@ -176,6 +179,31 @@ class StoryService(
         storyRepository.deleteById(storyId)
 
         S3Service.keyFromPhotoUrl(story.mediaUrl)?.let { s3Service.deletePhoto(it) }
+    }
+
+    @Transactional(transactionManager = transactionManager)
+    suspend fun setStoryLocked(storyId: Long, currentUserId: UUID, locked: Boolean): Map<String, Any?> {
+        val story = storyRepository.findById(storyId)
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Story not found"))
+        val authorId = story.userId
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Story not found"))
+        if (authorId != currentUserId) {
+            throw ApiException(ErrorCode.ACCESS_DENIED)
+        }
+
+        story.locked = locked
+        if (!locked) {
+            story.expiresAt = Timestamp(
+                System.currentTimeMillis() + TimeUnit.HOURS.toMillis(STORY_UNLOCK_EXTEND_HOURS)
+            )
+        }
+
+        val saved = storyRepository.save(story)
+        return mapOf(
+            "id" to saved.id,
+            "locked" to saved.locked,
+            "expiresAt" to saved.expiresAt?.time
+        )
     }
 
     @Transactional(transactionManager = transactionManager)

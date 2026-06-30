@@ -1,5 +1,6 @@
 package com.github.shk0da.bioritmic.api.controller
 
+import com.github.shk0da.bioritmic.api.model.story.StoryLockRequest
 import com.github.shk0da.bioritmic.api.model.story.StoryReactionRequest
 import com.github.shk0da.bioritmic.api.service.StoryService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestPart
@@ -39,8 +41,18 @@ class StoryController(
             "mediaUrl" to story.mediaUrl,
             "caption" to story.caption,
             "expiresAt" to story.expiresAt?.time,
-            "createdAt" to story.createdAt?.time
+            "createdAt" to story.createdAt?.time,
+            "locked" to story.locked
         )
+    }
+
+    @PutMapping("/{id}/lock", produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun setStoryLocked(
+        @PathVariable id: Long,
+        @RequestBody @Valid request: StoryLockRequest
+    ): Map<String, Any?> {
+        val userId = getUserId()
+        return storyService.setStoryLocked(id, userId, request.locked)
     }
 
     @PostMapping("/{id}/view", produces = [MediaType.APPLICATION_JSON_VALUE])

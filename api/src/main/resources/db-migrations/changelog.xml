@@ -25,6 +25,8 @@
     <include file="v1/0037-add-meeting-details.xml" relativeToChangelogFile="true"/>
     <include file="v1/0038-create-swipe-skips.xml" relativeToChangelogFile="true"/>
     <include file="v1/0039-add-mailbox-reply-target-unavailable.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0040-add-story-locked.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0041-add-user-nick.xml" relativeToChangelogFile="true"/>
     <!-- -->
 
     <!--  Seeding  -->

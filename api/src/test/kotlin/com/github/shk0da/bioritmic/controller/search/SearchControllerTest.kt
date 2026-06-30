@@ -149,6 +149,66 @@ class SearchControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun searchExcludesUsersWithSecondaryPhotoOnlyTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val lat = 55.7558
+        val lon = 37.6173
+
+        val secondaryOnlyEmail = "secondary_photo_$suffix@gmail.com"
+        val (secondaryOnlyId, _) = registerNearbyUser(secondaryOnlyEmail, lat, lon)
+        verifyUser(secondaryOnlyId)
+        insertPhoto(secondaryOnlyId, photoOrder = 1)
+
+        val withProfilePhotoEmail = "profile_photo_$suffix@gmail.com"
+        val (withProfilePhotoId, _) = registerNearbyUser(withProfilePhotoEmail, lat, lon)
+        verifyUser(withProfilePhotoId)
+        insertPhoto(withProfilePhotoId, photoOrder = 0)
+
+        configureSearchSettings()
+        authToken = authorizeUser(defaultUserModel.email)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/search")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[?(@.id == '$secondaryOnlyId')]").doesNotExist()
+            .jsonPath("$[?(@.id == '$withProfilePhotoId')]").exists()
+    }
+
+    @Test
+    fun searchExcludesUsersWithEmptyS3KeyTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val lat = 55.7558
+        val lon = 37.6173
+
+        val emptyKeyEmail = "empty_s3_key_$suffix@gmail.com"
+        val (emptyKeyId, _) = registerNearbyUser(emptyKeyEmail, lat, lon)
+        verifyUser(emptyKeyId)
+        insertPhoto(emptyKeyId, photoOrder = 0, s3Key = "")
+
+        val withPhotoEmail = "valid_photo_$suffix@gmail.com"
+        val (withPhotoId, _) = registerNearbyUser(withPhotoEmail, lat, lon)
+        verifyUser(withPhotoId)
+        insertPhoto(withPhotoId)
+
+        configureSearchSettings()
+        authToken = authorizeUser(defaultUserModel.email)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/search")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[?(@.id == '$emptyKeyId')]").doesNotExist()
+            .jsonPath("$[?(@.id == '$withPhotoId')]").exists()
+    }
+
+    @Test
     fun searchPromotesBoostedProfilesTest() {
         val suffix = UUID.randomUUID().toString().substring(0, 8)
         val baseLat = 55.7558
@@ -424,15 +484,16 @@ class SearchControllerTest : ApiApplicationTests() {
         }
     }
 
-    private fun insertPhoto(targetUserId: UUID) {
-        val s3Key = "test/photos/$targetUserId/profile.jpg"
+    private fun insertPhoto(targetUserId: UUID, photoOrder: Int = 0, s3Key: String? = null) {
+        val resolvedS3Key = s3Key ?: "test/photos/$targetUserId/profile.jpg"
         liquibaseDataSource.connection.use { connection ->
             connection.prepareStatement(
                 "INSERT INTO user_photos (user_id, photo_order, s3_key, content_type, created_at) " +
-                    "VALUES (?, 0, ?, 'image/jpeg', NOW())"
+                    "VALUES (?, ?, ?, 'image/jpeg', NOW())"
             ).use { statement ->
                 statement.setObject(1, targetUserId)
-                statement.setString(2, s3Key)
+                statement.setInt(2, photoOrder)
+                statement.setString(3, resolvedS3Key)
                 statement.executeUpdate()
             }
         }

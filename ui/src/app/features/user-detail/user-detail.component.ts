@@ -903,12 +903,13 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     this.userService.getUserById(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (user) => {
         this.user = user;
-        this.loadPhoto(userId);
+        const resolvedId = user.id ?? userId;
+        this.loadPhoto(resolvedId);
         if (!user.isBanned && !this.isOwnProfile) {
-          this.loadBookmarkStatus(userId);
-          this.loadBlockStatus(userId);
-          this.loadBlockedByStatus(userId);
-          this.loadMeetingStatus(userId);
+          this.loadBookmarkStatus(resolvedId);
+          this.loadBlockStatus(resolvedId);
+          this.loadBlockedByStatus(resolvedId);
+          this.loadMeetingStatus(resolvedId);
         }
         this.loading = false;
       },
@@ -923,7 +924,8 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     if (!this.user || this.loading) {
       return;
     }
-    this.userService.getUserById(userId).pipe(takeUntil(this.destroy$)).subscribe({
+    const identifier = this.user.id ?? userId;
+    this.userService.getUserById(identifier).pipe(takeUntil(this.destroy$)).subscribe({
       next: (freshUser) => {
         if (!this.user) {
           return;

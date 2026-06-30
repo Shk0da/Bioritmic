@@ -17,6 +17,9 @@ import { ToastService } from '../../../core/services/toast.service';
 import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
 import { normalizeRouteUrl } from '../../../core/routing/route-cache-refresh.util';
 import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.service';
+import { PushNotificationService } from '../../../core/services/push-notification.service';
+import { logoutFromApp } from '../../../shared/utils/logout.util';
+import { resolveProfileLinkId } from '../../../shared/utils/profile-link.util';
 
 @Component({
   selector: 'app-profile',
@@ -166,14 +169,6 @@ import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.serv
                 <p class="mb-0 bio-text">{{ user?.bio }}</p>
               </div>
             }
-
-            <hr class="my-4">
-            <div class="mb-0">
-              <label class="text-muted small d-block mb-2">Совместимость</label>
-              <p class="text-muted small mb-0">
-                Для того чтобы увидеть совместимость, выберите профиль другого человека.
-              </p>
-            </div>
           </div>
         </div>
 
@@ -220,6 +215,10 @@ import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.serv
                 <span><i class="bi bi-bell me-2"></i>Уведомления и приложение</span>
                 <i class="bi bi-chevron-right text-muted small"></i>
               </a>
+              <a routerLink="/settings/appearance" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-palette me-2"></i>Оформление</span>
+                <i class="bi bi-chevron-right text-muted small"></i>
+              </a>
               <a routerLink="/settings/location" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-geo-alt me-2"></i>Моё местоположение</span>
                 <i class="bi bi-chevron-right text-muted small"></i>
@@ -236,6 +235,12 @@ import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.serv
                 <span><i class="bi bi-exclamation-triangle me-2"></i>Опасная зона</span>
                 <i class="bi bi-chevron-right text-muted small"></i>
               </a>
+              <button
+                type="button"
+                class="list-group-item list-group-item-action profile-logout-item d-flex align-items-center"
+                (click)="logout()">
+                <span><i class="bi bi-box-arrow-right me-2"></i>Выйти</span>
+              </button>
             </div>
           </div>
         </div>
@@ -415,6 +420,38 @@ import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.serv
       }
     }
 
+    .profile-logout-item {
+      width: 100%;
+      text-align: left;
+      color: #ef4444;
+      font-weight: 600;
+      border-top: 1px solid var(--border-color);
+      margin-top: 0.25rem;
+
+      span,
+      i {
+        color: inherit;
+      }
+
+      &:hover,
+      &:focus-visible {
+        color: #dc2626;
+        background: color-mix(in srgb, #ef4444 8%, var(--card-bg));
+        border-color: color-mix(in srgb, #ef4444 30%, var(--border-color));
+      }
+    }
+
+    :host-context([data-theme="dark"]) .profile-logout-item {
+      color: #f87171;
+
+      &:hover,
+      &:focus-visible {
+        color: #fca5a5;
+        background: rgba(248, 113, 113, 0.12);
+        border-color: rgba(248, 113, 113, 0.35);
+      }
+    }
+
     @media (max-width: 767.98px), (hover: none) and (pointer: coarse) {
       .profile-layout {
         margin-left: 0;
@@ -453,7 +490,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     private shareService: ShareService,
     private modalService: ModalService,
     private toastService: ToastService,
-    private router: Router
+    private router: Router,
+    private pushService: PushNotificationService,
   ) {
     this.destroyRef.onDestroy(() => {
       this.destroy$.next();
@@ -710,7 +748,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }
     this.sharing = true;
     try {
-      const result = await this.shareService.shareProfile(this.user.id, this.user.name || 'Профиль');
+      const profileId = resolveProfileLinkId(this.user);
+      const result = await this.shareService.shareProfile(profileId, this.user.name || 'Профиль');
       if (result === 'copied') {
         await this.modalService.alert('Ссылка на профиль скопирована в буфер обмена');
       } else if (result === 'failed') {
@@ -745,5 +784,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.boostCountdownInterval = null;
       }
     }, 1000);
+  }
+
+  logout(): void {
+    logoutFromApp(this.authService, this.pushService, this.router);
   }
 }

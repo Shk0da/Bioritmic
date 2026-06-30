@@ -146,6 +146,193 @@ class UserControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun updateMeNickTest() {
+        val nick = "test_nick_${UUID.randomUUID().toString().substring(0, 8)}"
+
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("nick" to nick)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.nick").isEqualTo(nick)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/$nick")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.nick").isEqualTo(nick)
+    }
+
+    @Test
+    fun updateMeNickRejectsDuplicateTest() {
+        val nick = "dupnick_${UUID.randomUUID().toString().substring(0, 8)}"
+
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("nick" to nick)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val otherUser = UserModel(
+            name = "Other User",
+            email = "other_${UUID.randomUUID()}@gmail.com",
+            password = "Test12345",
+            birthday = "1990-01-01"
+        )
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(otherUser))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(email = otherUser.email, password = otherUser.password!!)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val otherAuth = authTokenCache.entries
+            .map { it.value }
+            .last { it.userId != userId }
+        val otherToken = "Bearer ${otherAuth.accessToken}"
+
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, otherToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("nick" to nick)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isEqualTo(409)
+    }
+
+    @Test
+    fun updateMeNickAllowsDifferentCaseTest() {
+        val base = UUID.randomUUID().toString().substring(0, 8)
+        val nickLower = "nick_${base.lowercase()}"
+        val nickUpper = "nick_${base.uppercase()}"
+
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("nick" to nickLower)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val otherUser = UserModel(
+            name = "Other User",
+            email = "other_${UUID.randomUUID()}@gmail.com",
+            password = "Test12345",
+            birthday = "1990-01-01"
+        )
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(otherUser))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(email = otherUser.email, password = otherUser.password!!)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val otherAuth = authTokenCache.entries
+            .map { it.value }
+            .last { it.userId != userId }
+        val otherToken = "Bearer ${otherAuth.accessToken}"
+
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, otherToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("nick" to nickUpper)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.nick").isEqualTo(nickUpper)
+    }
+
+    @Test
+    fun updateMeNickRejectsInvalidCharactersTest() {
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("nick" to "bad nick!")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
+    }
+
+    @Test
+    fun updateMeNickRejectsReservedNickTest() {
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("nick" to "me")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
+    }
+
+    @Test
+    fun updateMeNickCanBeClearedTest() {
+        val nick = "clear_me_${UUID.randomUUID().toString().substring(0, 8)}"
+
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("nick" to nick)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.nick").isEqualTo(nick)
+
+        webTestClient.patch()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("nick" to "")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.nick").doesNotExist()
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/$nick")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isNotFound
+    }
+
+    @Test
     fun updateMeStatusTest() {
         webTestClient.patch()
             .uri("$API_WITH_VERSION_1/user/me")

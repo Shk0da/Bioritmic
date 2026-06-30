@@ -15,18 +15,18 @@ import java.util.UUID
 interface StoryRepository : CoroutineCrudRepository<Story, Long> {
 
     @Transactional(readOnly = true)
-    @Query("SELECT * FROM stories WHERE user_id = :userId AND expires_at > NOW() ORDER BY created_at DESC")
+    @Query("SELECT * FROM stories WHERE user_id = :userId AND (expires_at > NOW() OR locked = TRUE) ORDER BY created_at DESC")
     suspend fun findActiveByUserId(userId: UUID): List<Story>
 
     @Transactional(readOnly = true)
-    @Query("SELECT * FROM stories WHERE expires_at > NOW() ORDER BY created_at DESC LIMIT :limit")
+    @Query("SELECT * FROM stories WHERE (expires_at > NOW() OR locked = TRUE) ORDER BY created_at DESC LIMIT :limit")
     suspend fun findAllActive(limit: Int = 200): List<Story>
 
     @Transactional(readOnly = true)
     @Query(
         """
         SELECT s.* FROM stories s
-        WHERE s.expires_at > NOW()
+        WHERE (s.expires_at > NOW() OR s.locked = TRUE)
           AND (
             s.user_id = :viewerId
             OR EXISTS (
@@ -41,10 +41,10 @@ interface StoryRepository : CoroutineCrudRepository<Story, Long> {
     suspend fun findActiveBookmarkedByViewer(viewerId: UUID, limit: Int = 200): List<Story>
 
     @Modifying
-    @Query("DELETE FROM stories WHERE expires_at < :now")
+    @Query("DELETE FROM stories WHERE expires_at < :now AND locked = FALSE")
     suspend fun deleteExpired(now: Timestamp)
 
-    @Query("SELECT * FROM stories WHERE expires_at < :now")
+    @Query("SELECT * FROM stories WHERE expires_at < :now AND locked = FALSE")
     suspend fun findExpiredBefore(now: Timestamp): List<Story>
 
     @Query(
@@ -60,7 +60,7 @@ interface StoryRepository : CoroutineCrudRepository<Story, Long> {
     @Query(
         """
         SELECT COUNT(*) FROM stories s
-        WHERE s.expires_at > NOW()
+        WHERE (s.expires_at > NOW() OR s.locked = TRUE)
           AND s.media_url LIKE CONCAT('%', :s3Key)
           AND (
             s.user_id = :viewerId

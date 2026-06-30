@@ -87,13 +87,14 @@ class UserController(
         userService.deleteUserById(userId)
     }
 
-    // GET /user/{id} <- UserInfo. id - hash?? of real id
+    // GET /user/{id} <- UserInfo. id — UUID or unique nick
     @GetMapping(value = ["/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    suspend fun user(@PathVariable id: UUID): UserInfo {
+    suspend fun user(@PathVariable id: String): UserInfo {
         val currentUserId = getUserId()
-        val user = userService.findUserById(id) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        val isBanned = userService.isUserBanned(id)
-        val userInfo = if (currentUserId == id) {
+        val user = userService.findUserByIdentifier(id) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val resolvedId = user.id!!
+        val isBanned = userService.isUserBanned(resolvedId)
+        val userInfo = if (currentUserId == resolvedId) {
             UserInfo.ofWithoutEmail(user)
         } else {
             val currentUser = userService.findUserById(currentUserId)

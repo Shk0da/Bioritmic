@@ -80,6 +80,24 @@ export function meetsMinimumAge(
   ) >= minAge;
 }
 
+export function isBirthdayIsoFormat(birthday: string): boolean {
+  return parseBirthdayParts(birthday) !== null;
+}
+
+export function birthdayValidationMessage(birthday: string): string | null {
+  const trimmed = birthday.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (!isBirthdayIsoFormat(trimmed)) {
+    return 'Укажите корректную дату рождения';
+  }
+  if (!meetsMinimumAge(trimmed)) {
+    return MIN_AGE_PROFILE_MESSAGE;
+  }
+  return null;
+}
+
 export const MIN_AGE_REGISTRATION_MESSAGE = `Регистрация доступна с ${MIN_REGISTRATION_AGE} лет`;
 export const MIN_AGE_PROFILE_MESSAGE = `Укажите дату рождения: вам должно быть не менее ${MIN_REGISTRATION_AGE} лет`;
 /** @deprecated Use MIN_AGE_REGISTRATION_MESSAGE */

@@ -95,3 +95,4 @@ Thumbs.db
 /minio-project/
 .env
 *-firebase-adminsdk-*.json
+.gradle-local

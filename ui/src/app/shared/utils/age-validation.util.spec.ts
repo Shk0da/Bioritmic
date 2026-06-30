@@ -2,7 +2,9 @@ import {
   formatDateForInput,
   maxBirthdayForMinAge,
   meetsMinimumAge,
-  MIN_REGISTRATION_AGE
+  birthdayValidationMessage,
+  MIN_REGISTRATION_AGE,
+  MIN_AGE_PROFILE_MESSAGE,
 } from './age-validation.util';
 
 describe('age-validation.util', () => {
@@ -30,5 +32,12 @@ describe('age-validation.util', () => {
 
   it('should reject invalid birthday format', () => {
     expect(meetsMinimumAge('2020-13-40', MIN_REGISTRATION_AGE, referenceDate)).toBeFalse();
+  });
+
+  it('should validate birthday format and age in birthdayValidationMessage', () => {
+    expect(birthdayValidationMessage('')).toBeNull();
+    expect(birthdayValidationMessage('30.06.2026')).toContain('корректную');
+    expect(birthdayValidationMessage('2026-06-30')).toBe(MIN_AGE_PROFILE_MESSAGE);
+    expect(birthdayValidationMessage('2012-06-27')).toBeNull();
   });
 });

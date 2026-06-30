@@ -3,16 +3,23 @@ package com.github.shk0da.bioritmic.controller
 import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
+import com.github.shk0da.bioritmic.api.service.StoryService
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.web.reactive.function.BodyInserters
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class StoryControllerTest : ApiApplicationTests() {
+
+    @Autowired
+    lateinit var storyService: StoryService
 
     private lateinit var authToken: String
     private var userId: UUID? = null
@@ -80,6 +87,7 @@ class StoryControllerTest : ApiApplicationTests() {
                 require(url.startsWith("/api/v1/photos/s3/stories/")) { "Unexpected mediaUrl: $url" }
             }
             .jsonPath("$.caption").isEqualTo("Test story")
+            .jsonPath("$.locked").isEqualTo(false)
     }
 
     @Test
@@ -341,6 +349,249 @@ class StoryControllerTest : ApiApplicationTests() {
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isForbidden
+    }
+
+    @Test
+    fun `should lock and unlock own story`() {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData(storyMultipartBody().build()))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        var storyId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].id")
+            .value { id: Any -> storyId = (id as Number).toLong() }
+            .jsonPath("$[0].locked").isEqualTo(false)
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/stories/$storyId/lock")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("locked" to true)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.locked").isEqualTo(true)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].locked").isEqualTo(true)
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/stories/$storyId/lock")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("locked" to false)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.locked").isEqualTo(false)
+            .jsonPath("$.expiresAt").exists()
+    }
+
+    @Test
+    fun `should deny locking story for non-author`() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val authorEmail = "story_lock_author_$suffix@gmail.com"
+        val viewerEmail = "story_lock_viewer_$suffix@gmail.com"
+
+        registerUser(authorEmail, "Story Author")
+        registerUser(viewerEmail, "Story Viewer")
+
+        val authorToken = loginToken(authorEmail)
+        val viewerToken = loginToken(viewerEmail)
+        verifyUser(userIdFromToken(authorToken))
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authorToken)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData(storyMultipartBody().build()))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        var storyId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authorToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].id")
+            .value { id: Any -> storyId = (id as Number).toLong() }
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/stories/$storyId/lock")
+            .header(HttpHeaders.AUTHORIZATION, viewerToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("locked" to true)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isForbidden
+    }
+
+    @Test
+    fun `should keep locked story in feed after expiration`() {
+        val storyId = createStoryAndGetId()
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/stories/$storyId/lock")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("locked" to true)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        expireStory(storyId)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.length()").isEqualTo(1)
+            .jsonPath("$[0].id").isEqualTo(storyId.toInt())
+            .jsonPath("$[0].locked").isEqualTo(true)
+    }
+
+    @Test
+    fun `should delete expired unlocked story during cleanup`() {
+        val storyId = createStoryAndGetId()
+        expireStory(storyId)
+
+        runBlocking { storyService.deleteExpiredStories() }
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.length()").isEqualTo(0)
+    }
+
+    @Test
+    fun `should not delete expired locked story during cleanup`() {
+        val storyId = createStoryAndGetId()
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/stories/$storyId/lock")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("locked" to true)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        expireStory(storyId)
+        runBlocking { storyService.deleteExpiredStories() }
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.length()").isEqualTo(1)
+            .jsonPath("$[0].id").isEqualTo(storyId.toInt())
+            .jsonPath("$[0].locked").isEqualTo(true)
+    }
+
+    @Test
+    fun `should extend story lifetime for twelve hours when unlocked`() {
+        val storyId = createStoryAndGetId()
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/stories/$storyId/lock")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("locked" to true)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        expireStory(storyId)
+
+        var expiresAt = 0L
+        val now = System.currentTimeMillis()
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/stories/$storyId/lock")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("locked" to false)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.locked").isEqualTo(false)
+            .jsonPath("$.expiresAt")
+            .value { value: Any -> expiresAt = (value as Number).toLong() }
+
+        val twelveHoursMs = TimeUnit.HOURS.toMillis(12)
+        val toleranceMs = TimeUnit.MINUTES.toMillis(2)
+        require(expiresAt > now) { "expiresAt should be in the future after unlock" }
+        require(expiresAt <= now + twelveHoursMs + toleranceMs) {
+            "expiresAt should be within 12 hours after unlock, got delta=${expiresAt - now}ms"
+        }
+    }
+
+    private fun createStoryAndGetId(): Long {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData(storyMultipartBody().build()))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        var storyId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/stories")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].id")
+            .value { id: Any -> storyId = (id as Number).toLong() }
+        return storyId
+    }
+
+    private fun expireStory(storyId: Long) {
+        liquibaseDataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "UPDATE stories SET expires_at = NOW() - INTERVAL '1 hour' WHERE id = ?"
+            ).use { statement ->
+                statement.setLong(1, storyId)
+                statement.executeUpdate()
+            }
+        }
     }
 
     private fun storyMultipartBody(caption: String? = null): MultipartBodyBuilder {

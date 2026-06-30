@@ -122,6 +122,7 @@ export interface UserInfo {
   lat?: number;
   lon?: number;
   name?: string;
+  nick?: string | null;
   bio?: string;
   statusEmoji?: string | null;
   statusPosition?: string | null;

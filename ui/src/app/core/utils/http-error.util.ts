@@ -8,6 +8,7 @@ interface ApiErrorBody {
 const ERROR_CODE_MESSAGES_RU: Record<string, string> = {
   'API-412': 'К сожалению, пользователь ограничил с вами общение.',
   'API-409': 'Пользователь с таким email уже зарегистрирован.',
+  'API-409.1': 'Этот ник уже занят.',
   'API-400.7': 'Неверный код восстановления.',
   'API-400.9': 'Фото должно быть в формате JPG или PNG.',
   'API-403.1': 'Подтвердите аккаунт для этой операции.',
@@ -37,6 +38,21 @@ function resolveApiErrorItem(item: { message?: string; errorCode?: string }): st
     return 'Укажите местоположение в настройках, чтобы видеть людей рядом.';
   }
   return message || null;
+}
+
+export function isNickHttpError(error: HttpErrorResponse): boolean {
+  const body = error.error as ApiErrorBody | null;
+  if (body && typeof body === 'object' && Array.isArray(body.errors)) {
+    return body.errors.some((item) => {
+      const code = item.errorCode?.trim();
+      if (code === 'API-409.1') {
+        return true;
+      }
+      const message = item.message?.toLowerCase() ?? '';
+      return message.includes('parameter [nick]') || message.includes('[nick]');
+    });
+  }
+  return /ник/i.test(resolveHttpErrorMessage(error));
 }
 
 export function resolveHttpErrorMessage(error: HttpErrorResponse): string {

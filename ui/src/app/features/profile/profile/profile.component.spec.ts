@@ -78,4 +78,24 @@ describe('ProfileComponent', () => {
       statusPosition: 'BOTTOM_RIGHT'
     });
   });
+
+  it('should share profile using nick when it is set', async () => {
+    const shareService = TestBed.inject(ShareService) as jasmine.SpyObj<ShareService>;
+    fixture.detectChanges();
+    component.user = { ...mockUser, nick: 'alex_42' };
+
+    await component.shareProfile();
+
+    expect(shareService.shareProfile).toHaveBeenCalledWith('alex_42', 'Test User');
+  });
+
+  it('should share profile using id when nick is not set', async () => {
+    const shareService = TestBed.inject(ShareService) as jasmine.SpyObj<ShareService>;
+    fixture.detectChanges();
+    component.user = { ...mockUser };
+
+    await component.shareProfile();
+
+    expect(shareService.shareProfile).toHaveBeenCalledWith('1', 'Test User');
+  });
 });

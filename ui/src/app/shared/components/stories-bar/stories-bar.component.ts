@@ -82,6 +82,7 @@ import { AvatarStatusBadgeComponent } from '../avatar-status-badge/avatar-status
       [userId]="viewerUserId"
       [userName]="viewerUserName"
       [userPhoto]="viewerUserPhoto"
+      [isOwnStories]="viewerIsOwnStories"
       (closed)="onViewerClosed()">
     </app-story-viewer>
   `,
@@ -215,6 +216,7 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
   viewerUserId = '';
   viewerUserName = '';
   viewerUserPhoto: string | null = null;
+  viewerIsOwnStories = false;
   deletingStories = false;
 
   private destroy$ = new Subject<void>();
@@ -266,6 +268,7 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
       this.viewerUserId = user?.id ?? '';
       this.viewerUserName = user?.name ?? 'Вы';
       this.viewerUserPhoto = this.currentUserPhoto;
+      this.viewerIsOwnStories = true;
       this.viewerVisible = true;
       return;
     }
@@ -280,6 +283,7 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
     this.viewerUserId = group.userId;
     this.viewerUserName = group.userName;
     this.viewerUserPhoto = group.userPhoto;
+    this.viewerIsOwnStories = false;
     this.viewerVisible = true;
   }
 
@@ -321,6 +325,7 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
     this.viewerUserId = '';
     this.viewerUserName = '';
     this.viewerUserPhoto = null;
+    this.viewerIsOwnStories = false;
     this.loadStories();
   }
 

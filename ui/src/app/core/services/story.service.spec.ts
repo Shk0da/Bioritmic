@@ -56,4 +56,23 @@ describe('StoryService', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush({ success: true });
   });
+
+  it('setStoryLocked should PUT /{id}/lock', () => {
+    service.setStoryLocked(5, true).subscribe();
+    const req = httpMock.expectOne('/api/v1/stories/5/lock');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ locked: true });
+    req.flush({ id: 5, locked: true, expiresAt: Date.now() });
+  });
+
+  it('setStoryLocked should unlock story', () => {
+    let response: { locked: boolean } | undefined;
+    service.setStoryLocked(5, false).subscribe((result) => {
+      response = result;
+    });
+    const req = httpMock.expectOne('/api/v1/stories/5/lock');
+    expect(req.request.body).toEqual({ locked: false });
+    req.flush({ id: 5, locked: false, expiresAt: Date.now() + 12 * 3600000 });
+    expect(response?.locked).toBeFalse();
+  });
 });

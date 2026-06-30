@@ -13,10 +13,17 @@ export interface Story {
   caption?: string;
   expiresAt: number;
   createdAt: number;
+  locked: boolean;
   viewerCount: number;
   viewedByCurrentUser: boolean;
   currentUserReaction?: StoryReactionType | null;
   reactionCounts?: StoryReactionCounts;
+}
+
+export interface StoryLockResponse {
+  id: number;
+  locked: boolean;
+  expiresAt: number;
 }
 
 export interface StoryReactionResponse {
@@ -71,5 +78,9 @@ export class StoryService {
 
   deleteStory(id: number): Observable<{ success: boolean }> {
     return this.http.delete<{ success: boolean }>(`${this.apiUrl}/${id}`);
+  }
+
+  setStoryLocked(id: number, locked: boolean): Observable<StoryLockResponse> {
+    return this.http.put<StoryLockResponse>(`${this.apiUrl}/${id}/lock`, { locked });
   }
 }

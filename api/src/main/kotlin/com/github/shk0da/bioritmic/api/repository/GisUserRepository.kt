@@ -51,7 +51,11 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
               AND EXISTS (
                 SELECT 1 FROM user_photos up
                 WHERE up.user_id = usr.id
-                  AND (up.s3_key IS NOT NULL OR up.photo_bytes IS NOT NULL)
+                  AND up.photo_order = 0
+                  AND (
+                    (up.s3_key IS NOT NULL AND up.s3_key <> '')
+                    OR up.photo_bytes IS NOT NULL
+                  )
               )
               AND NOT EXISTS (
                 SELECT 1 FROM user_roles ur

@@ -42,12 +42,27 @@ describe('UserService', () => {
     req.flush({ id: '42' });
   });
 
+  it('getUserById should GET /api/v1/user/{nick}', () => {
+    service.getUserById('alex_42').subscribe();
+    const req = httpMock.expectOne('/api/v1/user/alex_42');
+    expect(req.request.method).toBe('GET');
+    req.flush({ id: '42', nick: 'alex_42' });
+  });
+
   it('updateUser should PATCH /api/v1/user/me', () => {
     service.updateUser({ name: 'New' }).subscribe();
     const req = httpMock.expectOne('/api/v1/user/me');
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ name: 'New' });
     req.flush({ name: 'New' });
+  });
+
+  it('updateUser should PATCH nick to /api/v1/user/me', () => {
+    service.updateUser({ nick: 'alex_42' }).subscribe();
+    const req = httpMock.expectOne('/api/v1/user/me');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ nick: 'alex_42' });
+    req.flush({ nick: 'alex_42' });
   });
 
   it('deleteUser should DELETE /api/v1/user/me', () => {
@@ -122,6 +137,18 @@ describe('UserService', () => {
     const req = httpMock.expectOne('/api/v1/user/me/gis');
     expect(req.request.method).toBe('POST');
     req.flush({});
+  });
+
+  it('isDefaultProfilePhoto should detect PNG placeholder bytes', () => {
+    const pngHeader = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+    const jpegHeader = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+    expect(UserService.isDefaultProfilePhoto(pngHeader)).toBeTrue();
+    expect(UserService.isDefaultProfilePhoto(jpegHeader)).toBeFalse();
+  });
+
+  it('isDefaultProfilePhoto should return false for too-short byte arrays', () => {
+    expect(UserService.isDefaultProfilePhoto(new Uint8Array([0x89, 0x50]))).toBeFalse();
+    expect(UserService.isDefaultProfilePhoto(new Uint8Array())).toBeFalse();
   });
 
   it('getPhoto with userId should GET /api/v1/user/{id}/photo', () => {
