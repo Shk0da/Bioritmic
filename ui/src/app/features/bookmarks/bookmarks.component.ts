@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { UserService } from '../../core/services/user.service';
 import { MatchService, MatchesResponse } from '../../core/services/match.service';
@@ -568,12 +568,12 @@ export class BookmarksComponent implements OnInit {
   matchesLoading = false;
   loading = false;
   pageable: PageableRequest = { page: 0, size: 20 };
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor(
     private bookmarksService: BookmarksService,
     private userService: UserService,
-    private matchService: MatchService,
-    private sanitizer: DomSanitizer
+    private matchService: MatchService
   ) {}
 
   ngOnInit(): void {
@@ -588,7 +588,7 @@ export class BookmarksComponent implements OnInit {
         this.matchesCount = response.count;
         this.matchesBlurred = response.blurred;
         if (!response.blurred && response.matches.length > 0) {
-          this.matches = response.matches.map(m => ({ ...m, photoDataUrl: null }));
+          this.matches = response.matches.map(m => this.withCachedPhoto(m));
           this.loadMatchPhotos();
         } else {
           this.matches = [];
@@ -602,27 +602,21 @@ export class BookmarksComponent implements OnInit {
   }
 
   private loadMatchPhotos(): void {
-    this.matches.forEach(user => {
-      if (user.id) {
-        this.userService.getPhoto(user.id, 'card').subscribe({
-          next: (bytes: Uint8Array) => {
-            user.photoDataUrl = this.bytesToDataUrl(bytes);
-          },
-          error: () => {
-            user.photoDataUrl = user.id
-              ? this.userService.getProfilePhotoUrl(user.id, 0, 'card')
-              : null;
-          }
-        });
-      }
-    });
+    this.matches.forEach(user => this.loadUserPhoto(user));
   }
 
   getMatchPhotoUrl(user: UserWithPhoto): string {
     if (user.photoDataUrl) {
       return user.photoDataUrl;
     }
-    return user.id ? this.userService.getProfilePhotoUrl(user.id, 0, 'card') : '';
+    if (user.id) {
+      const cached = this.userService.peekCachedPhotoUrl(user.id, 'card');
+      if (cached) {
+        return cached;
+      }
+      return this.userService.getProfilePhotoUrl(user.id, UserService.photoCacheVersion(), 'card');
+    }
+    return '';
   }
 
   getPlaceholderArray(count: number): number[] {
@@ -633,7 +627,7 @@ export class BookmarksComponent implements OnInit {
     this.loading = true;
     this.bookmarksService.getBookmarks(this.pageable).subscribe({
       next: (users) => {
-        this.users = users;
+        this.users = users.map(user => this.withCachedPhoto(user));
         this.loadPhotos();
         this.loading = false;
       },
@@ -644,31 +638,33 @@ export class BookmarksComponent implements OnInit {
   }
 
   private loadPhotos(): void {
-    this.users.forEach(user => {
-      if (user.id) {
-        this.userService.getPhoto(user.id, 'card').subscribe({
-          next: (bytes: Uint8Array) => {
-            user.photoDataUrl = this.bytesToDataUrl(bytes);
-          },
-          error: () => {
-            user.photoDataUrl = null;
-          }
-        });
+    this.users.forEach(user => this.loadUserPhoto(user));
+  }
+
+  private withCachedPhoto(user: UserWithPhoto): UserWithPhoto {
+    if (!user.id) {
+      return { ...user, photoDataUrl: null };
+    }
+    return {
+      ...user,
+      photoDataUrl: this.userService.peekCachedPhotoUrl(user.id, 'card'),
+    };
+  }
+
+  private loadUserPhoto(user: UserWithPhoto): void {
+    if (!user.id) {
+      return;
+    }
+    this.userService.getCachedPhotoUrl(user.id, 'card').pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (url) => {
+        user.photoDataUrl = url;
+      },
+      error: () => {
+        user.photoDataUrl = null;
       }
     });
-  }
-
-  private bytesToDataUrl(bytes: Uint8Array): string {
-    const base64 = this.uint8ArrayToBase64(bytes);
-    return `data:image/jpeg;base64,${base64}`;
-  }
-
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   removeBookmark(userId: string | undefined): void {

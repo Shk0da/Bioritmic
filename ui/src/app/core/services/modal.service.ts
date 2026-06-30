@@ -121,8 +121,8 @@ export class ModalService {
       justify-content: center;
       z-index: 10000;
       padding: 1rem;
-      padding-top: calc(1rem + env(safe-area-inset-top));
-      padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+      padding-top: calc(1rem + var(--app-safe-top));
+      padding-bottom: calc(1rem + var(--app-safe-bottom));
       pointer-events: auto;
       animation: fadeIn 0.2s ease;
     }

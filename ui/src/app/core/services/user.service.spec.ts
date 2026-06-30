@@ -7,11 +7,18 @@ import { GisData, UserSettings } from '../models/user.model';
 describe('UserService', () => {
   let service: UserService;
   let httpMock: HttpTestingController;
+  let authService: jasmine.SpyObj<AuthService>;
 
   beforeEach(() => {
+    authService = jasmine.createSpyObj('AuthService', ['getCurrentUser']);
+    authService.getCurrentUser.and.returnValue(null);
+
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [UserService, AuthService]
+      providers: [
+        UserService,
+        { provide: AuthService, useValue: authService },
+      ]
     });
     service = TestBed.inject(UserService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -212,5 +219,67 @@ describe('UserService', () => {
     const req = httpMock.expectOne('/api/v1/biorhythm/42/detail');
     expect(req.request.method).toBe('GET');
     req.flush({ physical: 0.8 });
+  });
+
+  it('getCachedPhotoUrl should return cached url without a second HTTP request', () => {
+    let firstUrl: string | null | undefined;
+    let secondUrl: string | null | undefined;
+
+    service.getCachedPhotoUrl('42', 'card').subscribe((url) => { firstUrl = url; });
+    const req = httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo') && r.params.get('size') === 'card');
+    req.flush(new ArrayBuffer(16));
+
+    service.getCachedPhotoUrl('42', 'card').subscribe((url) => { secondUrl = url; });
+
+    expect(firstUrl).toBeTruthy();
+    expect(secondUrl).toBe(firstUrl);
+    httpMock.expectNone((r) => r.url.includes('/api/v1/user/42/photo'));
+  });
+
+  it('peekCachedPhotoUrl should return url after cache is populated', () => {
+    service.getCachedPhotoUrl('42', 'card').subscribe();
+    const req = httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo'));
+    req.flush(new ArrayBuffer(16));
+
+    expect(service.peekCachedPhotoUrl('42', 'card')).toBeTruthy();
+  });
+
+  it('getCachedPhotoUrl should not cache failed photo requests', () => {
+    service.getCachedPhotoUrl('42', 'card').subscribe();
+    httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo')).flush(null, { status: 404, statusText: 'Not Found' });
+
+    expect(service.peekCachedPhotoUrl('42', 'card')).toBeNull();
+
+    service.getCachedPhotoUrl('42', 'card').subscribe();
+    httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo')).flush(new ArrayBuffer(16));
+  });
+
+  it('invalidatePhotoCache should force a new HTTP request', () => {
+    service.getCachedPhotoUrl('42', 'card').subscribe();
+    httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo')).flush(new ArrayBuffer(16));
+
+    service.invalidatePhotoCache('42');
+    service.getCachedPhotoUrl('42', 'card').subscribe();
+    httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo')).flush(new ArrayBuffer(16));
+  });
+
+  it('uploadPhoto should invalidate only current user photo cache', () => {
+    authService.getCurrentUser.and.returnValue({ id: 'me', name: 'Me', email: 'me@test.com' });
+
+    service.getCachedPhotoUrl('42', 'card').subscribe();
+    httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo')).flush(new ArrayBuffer(16));
+    expect(service.peekCachedPhotoUrl('42', 'card')).toBeTruthy();
+
+    service.getCachedPhotoUrl('me', 'card').subscribe();
+    httpMock.expectOne((r) => r.url.includes('/api/v1/user/me/photo')).flush(new ArrayBuffer(16));
+    expect(service.peekCachedPhotoUrl('me', 'card')).toBeTruthy();
+
+    const file = new File([''], 'test.png', { type: 'image/png' });
+    service.uploadPhoto(file).subscribe();
+    const uploadReq = httpMock.expectOne('/api/v1/user/me/photo');
+    uploadReq.flush(null);
+
+    expect(service.peekCachedPhotoUrl('me', 'card')).toBeNull();
+    expect(service.peekCachedPhotoUrl('42', 'card')).toBeTruthy();
   });
 });

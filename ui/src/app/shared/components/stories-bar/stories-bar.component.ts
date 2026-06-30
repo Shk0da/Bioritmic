@@ -330,7 +330,8 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.userService.resolveProfilePhotoUrl(userId).pipe(takeUntil(this.destroy$)).subscribe({
+    this.currentUserPhoto = this.userService.peekCachedPhotoUrl(userId, 'card');
+    this.userService.getCachedPhotoUrl(userId, 'card').pipe(takeUntil(this.destroy$)).subscribe({
       next: (url) => {
         this.currentUserPhoto = url;
       },
@@ -386,6 +387,8 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
 
   private loadUserProfiles(): void {
     for (const group of this.storyGroups) {
+      group.userPhoto = this.userService.peekCachedPhotoUrl(group.userId, 'card');
+
       this.userService.getUserById(group.userId).pipe(takeUntil(this.destroy$)).subscribe({
         next: (user) => {
           group.userName = user.name || '';
@@ -395,7 +398,7 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
         }
       });
 
-      this.userService.resolveProfilePhotoUrl(group.userId).pipe(takeUntil(this.destroy$)).subscribe({
+      this.userService.getCachedPhotoUrl(group.userId, 'card').pipe(takeUntil(this.destroy$)).subscribe({
         next: (url) => {
           group.userPhoto = url;
         },

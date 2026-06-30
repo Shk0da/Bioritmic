@@ -357,6 +357,9 @@ interface ChatMessage extends UserMail {
       height: 100%;
       min-height: 0;
       background: var(--bg-secondary);
+      padding-left: var(--app-safe-left);
+      padding-right: var(--app-safe-right);
+      box-sizing: border-box;
     }
 
     .chat-subheader {
@@ -483,7 +486,7 @@ interface ChatMessage extends UserMail {
       align-items: center;
       gap: 0.75rem;
       padding: 0.75rem 1rem;
-      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+      padding-bottom: calc(0.75rem + var(--app-safe-bottom));
       background: var(--card-bg);
       border-top: 1px solid var(--border-color);
       flex-shrink: 0;
@@ -950,7 +953,7 @@ interface ChatMessage extends UserMail {
       flex-wrap: wrap;
       gap: 0.625rem;
       padding: 0.75rem 1rem;
-      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+      padding-bottom: calc(0.75rem + var(--app-safe-bottom));
       background: var(--card-bg);
       border-top: 1px solid var(--border-color);
       flex-shrink: 0;
@@ -1104,7 +1107,7 @@ interface ChatMessage extends UserMail {
       .message-input-container {
         gap: 0.45rem;
         padding: 0.625rem 0.75rem;
-        padding-bottom: calc(0.625rem + env(safe-area-inset-bottom));
+        padding-bottom: calc(0.625rem + var(--app-safe-bottom));
       }
 
       .input-wrapper {
@@ -1768,7 +1771,6 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.voicePreloadGeneration += 1;
     this.voiceDurations.clear();
     this.voiceDurationLoads.clear();
-    UserService.revokePhotoUrl(this.otherUserPhotoUrl);
     this.messages = [];
     this.newMessage = '';
     this.replyingToMessage = null;
@@ -2105,10 +2107,10 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   private loadOtherUserPhoto(): void {
-    this.userService.getPhoto(this.userId).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (bytes: Uint8Array) => {
-        UserService.revokePhotoUrl(this.otherUserPhotoUrl);
-        this.otherUserPhotoUrl = UserService.createPhotoUrl(bytes);
+    this.otherUserPhotoUrl = this.userService.peekCachedPhotoUrl(this.userId, 'thumb');
+    this.userService.getCachedPhotoUrl(this.userId, 'thumb').pipe(takeUntil(this.destroy$)).subscribe({
+      next: (url) => {
+        this.otherUserPhotoUrl = url;
       },
       error: () => {
         this.otherUserPhotoUrl = null;
@@ -2197,6 +2199,5 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.stopVoicePlayback();
     this.destroy$.next();
     this.destroy$.complete();
-    UserService.revokePhotoUrl(this.otherUserPhotoUrl);
   }
 }

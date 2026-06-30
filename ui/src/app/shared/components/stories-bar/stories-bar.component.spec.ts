@@ -42,10 +42,10 @@ describe('StoriesBarComponent', () => {
     ]));
     storyService.deleteStory.and.returnValue(of({ success: true }));
 
-    userService = jasmine.createSpyObj('UserService', ['getUserById', 'getUserPhotos', 'resolveProfilePhotoUrl']);
+    userService = jasmine.createSpyObj('UserService', ['getUserById', 'getCachedPhotoUrl', 'peekCachedPhotoUrl']);
     userService.getUserById.and.returnValue(of({ id: 'u2', name: 'Alice' }));
-    userService.getUserPhotos.and.returnValue(of([]));
-    userService.resolveProfilePhotoUrl.and.returnValue(of(null));
+    userService.peekCachedPhotoUrl.and.returnValue(null);
+    userService.getCachedPhotoUrl.and.returnValue(of(null));
 
     authService = jasmine.createSpyObj('AuthService', ['getCurrentUser']);
     authService.getCurrentUser.and.returnValue({ id: 'u1', name: 'Me', email: 'me@test.com', isVerified: true });

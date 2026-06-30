@@ -46,6 +46,22 @@
   --alert-warning-border: rgba(217, 119, 6, 0.35);
   --alert-warning-accent: #d97706;
   --alert-warning-link: #b45309;
+
+  --pwa-edge-inset: 0px;
+  --app-safe-top: calc(env(safe-area-inset-top, 0px) + var(--pwa-edge-inset));
+  --app-safe-right: calc(env(safe-area-inset-right, 0px) + var(--pwa-edge-inset));
+  --app-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--pwa-edge-inset));
+  --app-safe-left: calc(env(safe-area-inset-left, 0px) + var(--pwa-edge-inset));
+}
+
+@media (display-mode: standalone) {
+  :root {
+    --pwa-edge-inset: 6px;
+  }
+}
+
+html.pwa-standalone {
+  --pwa-edge-inset: 6px;
 }
 
 // ==========================================
@@ -470,9 +486,9 @@ option { background: var(--card-bg); color: var(--text-primary); }
   background: var(--tinder-gradient);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   padding: 0.75rem 1.5rem;
-  padding-top: calc(0.75rem + env(safe-area-inset-top));
-  padding-left: calc(1.5rem + env(safe-area-inset-left));
-  padding-right: calc(1.5rem + env(safe-area-inset-right));
+  padding-top: calc(0.75rem + var(--app-safe-top));
+  padding-left: calc(1.5rem + var(--app-safe-left));
+  padding-right: calc(1.5rem + var(--app-safe-right));
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -526,9 +542,9 @@ option { background: var(--card-bg); color: var(--text-primary); }
 
 .main-container {
   padding: 1.5rem;
-  padding-left: max(1.5rem, env(safe-area-inset-left));
-  padding-right: max(1.5rem, env(safe-area-inset-right));
-  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  padding-left: max(1.5rem, var(--app-safe-left));
+  padding-right: max(1.5rem, var(--app-safe-right));
+  padding-bottom: calc(1.5rem + var(--app-safe-bottom));
   background: transparent;
   width: 100%;
   max-width: 100%;
@@ -833,9 +849,9 @@ option { background: var(--card-bg); color: var(--text-primary); }
     box-shadow: none;
     isolation: isolate;
     padding: 0.5rem 0.75rem;
-    padding-top: calc(0.5rem + env(safe-area-inset-top));
-    padding-left: calc(0.5rem + env(safe-area-inset-left));
-    padding-right: calc(0.5rem + env(safe-area-inset-right));
+    padding-top: calc(0.5rem + var(--app-safe-top));
+    padding-left: calc(0.5rem + var(--app-safe-left));
+    padding-right: calc(0.5rem + var(--app-safe-right));
 
     .site-header__gradient,
     .site-header__glass {
@@ -1052,9 +1068,9 @@ option { background: var(--card-bg); color: var(--text-primary); }
 
   .main-container {
     padding: 1rem;
-    padding-left: max(1rem, env(safe-area-inset-left));
-    padding-right: max(1rem, env(safe-area-inset-right));
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding-left: max(1rem, var(--app-safe-left));
+    padding-right: max(1rem, var(--app-safe-right));
+    padding-bottom: calc(1rem + var(--app-safe-bottom));
   }
 
   .card { .card-header { padding: 1rem 1.25rem; font-size: 1rem; } .card-body { padding: 1.25rem; } }

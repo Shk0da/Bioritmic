@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { GeolocationService } from './core/services/geolocation.service';
 import { AuthService } from './core/services/auth.service';
 import { ModalComponent } from './core/services/modal.service';
+import { initStandalonePwaClass } from './shared/utils/pwa.util';
 
 @Component({
   selector: 'app-root',
@@ -24,6 +25,7 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    initStandalonePwaClass();
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       if (user) {
         this.geolocationService.startTracking();

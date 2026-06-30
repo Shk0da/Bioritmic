@@ -441,7 +441,6 @@ export class MailboxComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    this.conversations.forEach(conv => UserService.revokePhotoUrl(conv.userPhotoUrl));
   }
 
   selectConversation(userId: string): void {
@@ -625,7 +624,7 @@ export class MailboxComponent implements OnInit, OnDestroy {
     this.conversations = Array.from(userMap.entries()).map(([userId, message]) => ({
       userId,
       userName: prevNames.get(userId),
-      userPhotoUrl: prevPhotos.get(userId) ?? null,
+      userPhotoUrl: prevPhotos.get(userId) ?? this.userService.peekCachedPhotoUrl(userId, 'thumb'),
       lastMessage: this.formatConversationPreview(message),
       lastMessageTime: message.timestamp
     }));
@@ -665,7 +664,7 @@ export class MailboxComponent implements OnInit, OnDestroy {
     const conv: UserConversation = {
       userId: this.selectedUserId,
       userName: undefined,
-      userPhotoUrl: null,
+      userPhotoUrl: this.userService.peekCachedPhotoUrl(this.selectedUserId, 'thumb'),
       lastMessage: '',
       lastMessageTime: { seconds: Math.floor(Date.now() / 1000) }
     };
@@ -684,10 +683,9 @@ export class MailboxComponent implements OnInit, OnDestroy {
   }
 
   private loadUserPhoto(conv: UserConversation): void {
-    this.userService.getPhoto(conv.userId).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (bytes: Uint8Array) => {
-        UserService.revokePhotoUrl(conv.userPhotoUrl);
-        conv.userPhotoUrl = UserService.createPhotoUrl(bytes);
+    this.userService.getCachedPhotoUrl(conv.userId, 'thumb').pipe(takeUntil(this.destroy$)).subscribe({
+      next: (url) => {
+        conv.userPhotoUrl = url;
       },
       error: () => {
         conv.userPhotoUrl = null;
