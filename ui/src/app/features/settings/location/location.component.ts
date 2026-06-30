@@ -9,6 +9,8 @@ import { GeoCountry, GeoPlace, GeoService } from '../../../core/services/geo.ser
 import { GisData } from '../../../core/models/user.model';
 import { PageBackLinkComponent } from '../../../shared/components/page-back-link/page-back-link.component';
 import { ModalService } from '../../../core/services/modal.service';
+import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
+import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.service';
 
 @Component({
   selector: 'app-location',
@@ -393,6 +395,7 @@ import { ModalService } from '../../../core/services/modal.service';
 })
 export class LocationComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
   private readonly citySearch$ = new Subject<string>();
 
   gisData: GisData | null = null;
@@ -422,6 +425,13 @@ export class LocationComponent implements OnInit {
     this.setupCitySearch();
     this.loadCountries();
     this.loadLocation();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/settings/location', () => ({
+      refresh: () => {
+        this.loadCountries();
+        this.loadLocation();
+      },
+      isEnabled: () => !this.loading,
+    }));
   }
 
   get canSave(): boolean {

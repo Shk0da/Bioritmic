@@ -6,6 +6,7 @@ import {
   HostListener,
   OnChanges,
   OnDestroy,
+  AfterViewInit,
   SimpleChanges,
   ViewChild,
   ElementRef,
@@ -23,6 +24,10 @@ import { ModalService } from '../../../core/services/modal.service';
 import { Subject, takeUntil } from 'rxjs';
 import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
 import { formatMessageDateTime, formatMessageTime } from '../../../shared/utils/timestamp.util';
+import { isSystemMailMessage } from '../../../shared/utils/mail-system-message.util';
+import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
+import { normalizeRouteUrl } from '../../../core/routing/route-cache-refresh.util';
+import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.service';
 
 interface ChatMessage extends UserMail {
   isCurrentUser?: boolean;
@@ -34,7 +39,7 @@ interface ChatMessage extends UserMail {
   imports: [RouterLink, FormsModule, ImageCropModalComponent],
   template: `
     <div class="conversation-panel">
-      <div class="chat-subheader">
+      <div class="chat-subheader" data-pull-refresh-zone>
         @if (showBackButton) {
           <button type="button" class="back-btn" (click)="back.emit()" aria-label="Назад к списку">
             <i class="bi bi-arrow-left"></i>
@@ -69,7 +74,11 @@ interface ChatMessage extends UserMail {
         }
       </div>
 
-      <div #scrollContainer class="messages-container" (scroll)="onMessagesScroll($event)">
+      <div
+        #scrollContainer
+        class="messages-container"
+        data-testid="messages-container"
+        (scroll)="onMessagesScroll($event)">
         @if (loadingOlder) {
           <div class="load-older-indicator">
             <div class="spinner-border spinner-border-sm text-secondary" role="status">
@@ -91,6 +100,22 @@ interface ChatMessage extends UserMail {
           </div>
         } @else {
           @for (message of messages; track message.id) {
+            @if (isSystemMessage(message)) {
+              <div
+                class="message-wrapper system"
+                [attr.data-message-id]="message.id ?? null">
+                <div class="system-message">
+                  <span class="system-message-text">{{ message.message }}</span>
+                  @if (message.timestamp) {
+                    <span
+                      class="system-message-time"
+                      [attr.title]="getMessageDateTime(message.timestamp)">
+                      {{ getMessageTime(message.timestamp) }}
+                    </span>
+                  }
+                </div>
+              </div>
+            } @else {
             <div
               class="message-wrapper"
               [class.outgoing]="message.isCurrentUser"
@@ -183,7 +208,7 @@ interface ChatMessage extends UserMail {
                     [attr.title]="getMessageDateTime(message.timestamp)">
                     {{ getMessageTime(message.timestamp) }}
                   </span>
-                  @if (message.id && !selectionMode) {
+                  @if (message.id && !selectionMode && !isSystemMessage(message)) {
                     <button
                       type="button"
                       class="message-reaction-toggle"
@@ -193,7 +218,7 @@ interface ChatMessage extends UserMail {
                       <i class="bi bi-emoji-smile"></i>
                     </button>
                   }
-                  @if (message.id && !selectionMode) {
+                  @if (message.id && !selectionMode && !isSystemMessage(message)) {
                     <button
                       type="button"
                       class="reply-btn"
@@ -238,6 +263,7 @@ interface ChatMessage extends UserMail {
                 }
               </div>
             </div>
+            }
           }
         }
       </div>
@@ -324,6 +350,7 @@ interface ChatMessage extends UserMail {
                 #messageInput
                 type="text"
                 class="message-input"
+                data-testid="message-input"
                 placeholder="Написать сообщение..."
                 [(ngModel)]="newMessage"
                 name="newMessage"
@@ -550,11 +577,15 @@ interface ChatMessage extends UserMail {
     .messages-container {
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 1rem;
       display: flex;
       flex-direction: column;
       gap: 0.625rem;
       min-height: 0;
+      overscroll-behavior-y: contain;
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
     }
 
     .load-older-indicator {
@@ -573,6 +604,33 @@ interface ChatMessage extends UserMail {
 
     .message-wrapper.incoming { align-self: flex-start; }
     .message-wrapper.outgoing { align-self: flex-end; flex-direction: row-reverse; }
+
+    .message-wrapper.system {
+      align-self: center;
+      max-width: 90%;
+      justify-content: center;
+    }
+
+    .system-message {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.125rem;
+      padding: 0.25rem 0.5rem;
+      text-align: center;
+    }
+
+    .system-message-text {
+      font-style: italic;
+      color: var(--text-muted, #6c757d);
+      font-size: 0.875rem;
+      line-height: 1.35;
+    }
+
+    .system-message-time {
+      font-size: 0.6875rem;
+      color: var(--text-muted, #adb5bd);
+    }
 
     .message-avatar {
       width: 28px;
@@ -1165,6 +1223,21 @@ interface ChatMessage extends UserMail {
       }
     }
 
+    @media (max-width: 991.98px) {
+      :host {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        height: 100%;
+      }
+
+      .conversation-panel {
+        flex: 1;
+        min-height: 0;
+      }
+    }
+
     @media (max-width: 576px) {
       .message-wrapper {
         max-width: 88%;
@@ -1293,9 +1366,10 @@ interface ChatMessage extends UserMail {
     }
   `]
 })
-export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterViewChecked {
+export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterViewInit, AfterViewChecked {
   @Input({ required: true }) userId!: string;
   @Input() showBackButton = false;
+  @Input() reloadToken = 0;
   @Output() back = new EventEmitter<void>();
   @Output() messageSent = new EventEmitter<void>();
   @Output() conversationLoaded = new EventEmitter<void>();
@@ -1337,13 +1411,19 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   readonly voiceWaveBars = [3, 6, 10, 5, 12, 8, 14, 7, 11, 6, 13, 9, 8, 12, 4, 10, 14, 6, 5, 11];
 
   private shouldScroll = false;
+  private viewInitialized = false;
   private scrollBehavior: ScrollBehavior = 'auto';
   private focusInputTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private scrollPinObserver: ResizeObserver | null = null;
+  private scrollPinStopTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private scrollPinActive = false;
+  private programmaticScroll = false;
   private refreshInterval: ReturnType<typeof setInterval> | null = null;
   private isRefreshing = false;
   private readonly conversationPageSize = CONVERSATION_PAGE_SIZE;
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
   private mediaRecorder: MediaRecorder | null = null;
   private mediaStream: MediaStream | null = null;
   private recordedChunks: Blob[] = [];
@@ -1378,9 +1458,32 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['userId'] && this.userId) {
+    const userIdChanged = !!changes['userId']?.currentValue
+      && changes['userId'].currentValue !== changes['userId'].previousValue;
+    const reloadTokenChanged = !!changes['reloadToken']
+      && !changes['reloadToken'].firstChange;
+
+    if (userIdChanged) {
       this.resetState();
       this.loadCurrentUserAndChat();
+    }
+    if (reloadTokenChanged && this.userId && !userIdChanged) {
+      this.reloadConversation(true, true);
+    }
+  }
+
+  ngAfterViewInit(): void {
+    this.viewInitialized = true;
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, (url) => {
+      const normalized = normalizeRouteUrl(url);
+      return normalized.startsWith('/mailbox/') && normalized !== '/mailbox';
+    }, () => ({
+      refresh: () => this.reloadConversation(true, true),
+      getScrollElement: () => this.scrollContainer?.nativeElement,
+      isEnabled: () => !this.loading && !this.loadingOlder && !this.isRefreshing,
+    }));
+    if (!this.loading && this.messages.length > 0) {
+      this.scrollToLatestMessages();
     }
   }
 
@@ -1486,8 +1589,12 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     return this.mailReactions.some(r => (message.reactionCounts?.[r.type] ?? 0) > 0);
   }
 
+  isSystemMessage(message: ChatMessage): boolean {
+    return isSystemMailMessage(message);
+  }
+
   startReply(message: ChatMessage): void {
-    if (!message.id || this.isBlocked || this.sending) {
+    if (!message.id || this.isBlocked || this.sending || this.isSystemMessage(message)) {
       return;
     }
     this.replyingToMessage = message;
@@ -1529,12 +1636,14 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     if (this.isBlocked || this.selectionMode || this.sending) {
       return;
     }
-    const container = this.messageInputContainer?.nativeElement;
     const input = this.messageInput?.nativeElement;
-    if (container) {
-      container.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+    if (!input) {
+      return;
     }
-    input?.focus({ preventScroll: !!container });
+    if (this.isMobileLayout()) {
+      this.scrollToBottom();
+    }
+    input.focus({ preventScroll: true });
   }
 
   cancelReply(): void {
@@ -1938,6 +2047,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   private resetState(): void {
+    this.clearScrollPin();
     this.clearFocusInputTimeout();
     this.clearRefreshInterval();
     this.cleanupRecording();
@@ -2013,7 +2123,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
 
   onReplyClick(message: ChatMessage, event: Event): void {
     event.stopPropagation();
-    if (this.selectionMode) {
+    if (this.selectionMode || this.isSystemMessage(message)) {
       return;
     }
     this.startReply(message);
@@ -2095,6 +2205,9 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   onMessagesScroll(event: Event): void {
+    if (this.scrollPinActive && !this.programmaticScroll) {
+      this.clearScrollPin();
+    }
     const el = event.target as HTMLElement;
     if (el.scrollTop <= 120 && this.hasMoreOlder && !this.loadingOlder && !this.loading) {
       this.loadOlderMessages();
@@ -2134,9 +2247,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
           this.hasMoreOlder = page.hasMore;
           this.preloadVoiceDurations(this.messages);
           this.loading = false;
-          this.scrollBehavior = 'auto';
-          this.shouldScroll = true;
-          this.conversationLoaded.emit();
+          this.onConversationReady();
           if (!this.refreshInterval) {
             this.refreshInterval = setInterval(() => this.refreshMessages(), 3000);
           }
@@ -2146,6 +2257,71 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
           this.loading = false;
         }
       });
+  }
+
+  private onConversationReady(scrollToBottom = true): void {
+    if (scrollToBottom) {
+      this.scrollToLatestMessages();
+    }
+    this.conversationLoaded.emit();
+  }
+
+  private scrollToLatestMessages(smooth = false): void {
+    this.scheduleScrollToBottom(smooth);
+    this.pinScrollToBottomWhileLayoutSettles();
+    this.ensureScrollToBottomWhenReady();
+  }
+
+  private ensureScrollToBottomWhenReady(attemptsLeft = 48): void {
+    if (attemptsLeft <= 0) {
+      return;
+    }
+    const scrolled = this.scrollToBottom();
+    const el = this.scrollContainer?.nativeElement as HTMLElement | undefined;
+    const layoutReady = !!el && el.clientHeight > 0;
+    const contentReady = !!el && el.scrollHeight > el.clientHeight + 2;
+    if (!this.viewInitialized || !layoutReady || (!contentReady && this.messages.length > 0 && !this.loading)) {
+      requestAnimationFrame(() => this.ensureScrollToBottomWhenReady(attemptsLeft - 1));
+      return;
+    }
+    if (!scrolled && layoutReady) {
+      requestAnimationFrame(() => this.ensureScrollToBottomWhenReady(attemptsLeft - 1));
+    }
+  }
+
+  private clearScrollPin(): void {
+    this.scrollPinActive = false;
+    if (this.scrollPinStopTimeoutId != null) {
+      clearTimeout(this.scrollPinStopTimeoutId);
+      this.scrollPinStopTimeoutId = null;
+    }
+    this.scrollPinObserver?.disconnect();
+    this.scrollPinObserver = null;
+  }
+
+  private pinScrollToBottomWhileLayoutSettles(): void {
+    const el = this.scrollContainer?.nativeElement as HTMLElement | undefined;
+    if (!el) {
+      window.setTimeout(() => this.pinScrollToBottomWhileLayoutSettles(), 50);
+      return;
+    }
+    this.clearScrollPin();
+    this.scrollPinActive = true;
+    const pin = () => {
+      if (this.scrollPinActive) {
+        this.scrollToBottom();
+      }
+    };
+    if (typeof ResizeObserver !== 'undefined') {
+      this.scrollPinObserver = new ResizeObserver(() => pin());
+      this.scrollPinObserver.observe(el);
+    }
+    pin();
+    const pinDurationMs = this.isMobileLayout() ? 3500 : 2000;
+    this.scrollPinStopTimeoutId = setTimeout(() => {
+      this.clearScrollPin();
+      pin();
+    }, pinDurationMs);
   }
 
   private loadOlderMessages(): void {
@@ -2275,8 +2451,11 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.messages = Array.from(byId.values()).sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
     this.preloadVoiceDurations(page.messages);
     if (options?.scrollToBottom) {
-      this.scrollBehavior = options.smoothScroll ? 'smooth' : 'auto';
-      this.shouldScroll = true;
+      if (options.smoothScroll) {
+        this.scheduleScrollToBottom(true);
+      } else {
+        this.scrollToLatestMessages();
+      }
     }
     this.cdr.markForCheck();
   }
@@ -2460,8 +2639,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
           this.messages = Array.from(byId.values()).sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
           this.preloadVoiceDurations(page.messages);
           if (hasNew && wasNearBottom) {
-            this.scrollBehavior = 'smooth';
-            this.shouldScroll = true;
+            this.scheduleScrollToBottom(true);
           }
           this.cdr.markForCheck();
         },
@@ -2469,15 +2647,96 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       });
   }
 
-  private scrollToBottom(): void {
+  private reloadConversation(scrollToBottom = true, silent = false): void {
+    if (!this.userId) {
+      return;
+    }
+    if (silent) {
+      if (this.loading || this.isRefreshing) {
+        return;
+      }
+    } else if (this.loading) {
+      return;
+    }
+
+    if (!silent) {
+      this.loading = true;
+      this.hasMoreOlder = false;
+    } else {
+      this.isRefreshing = true;
+    }
+
+    this.mailboxService.getConversation(this.userId, { size: this.conversationPageSize })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (page) => {
+          this.messages = this.mapToChatMessages(page.messages);
+          this.hasMoreOlder = page.hasMore;
+          this.preloadVoiceDurations(this.messages);
+          if (silent) {
+            this.isRefreshing = false;
+          } else {
+            this.loading = false;
+          }
+          if (scrollToBottom) {
+            if (silent) {
+              this.scrollToLatestMessages();
+            } else {
+              this.onConversationReady();
+            }
+          } else {
+            this.conversationLoaded.emit();
+          }
+          if (!this.refreshInterval) {
+            this.refreshInterval = setInterval(() => this.refreshMessages(), 3000);
+          }
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          if (silent) {
+            this.isRefreshing = false;
+          } else {
+            this.loading = false;
+          }
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  private scheduleScrollToBottom(smooth = false): void {
+    this.scrollBehavior = smooth ? 'smooth' : 'auto';
+    this.shouldScroll = true;
+    const scroll = () => this.scrollToBottom();
+    requestAnimationFrame(() => {
+      scroll();
+      requestAnimationFrame(scroll);
+    });
+    const delays = this.isMobileLayout() ? [80, 200, 450, 900, 1500, 2500, 3500] : [80, 200, 450, 900, 1500];
+    for (const delay of delays) {
+      window.setTimeout(scroll, delay);
+    }
+  }
+
+  private scrollToBottom(): boolean {
+    if (!this.scrollContainer?.nativeElement) {
+      return false;
+    }
+    this.programmaticScroll = true;
     try {
       const el = this.scrollContainer.nativeElement;
+      const top = el.scrollHeight;
+      el.scrollTop = top;
       el.scrollTo({
-        top: el.scrollHeight,
+        top,
         behavior: this.scrollBehavior
       });
+      return true;
     } catch {
-      // ignore
+      return false;
+    } finally {
+      requestAnimationFrame(() => {
+        this.programmaticScroll = false;
+      });
     }
   }
 
@@ -2493,6 +2752,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
       return;
     }
     this.teardownDone = true;
+    this.clearScrollPin();
     this.clearFocusInputTimeout();
     this.voicePreloadGeneration += 1;
     this.voiceDurationLoads.clear();

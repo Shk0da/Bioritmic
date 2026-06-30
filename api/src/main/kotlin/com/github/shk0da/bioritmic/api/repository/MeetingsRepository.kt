@@ -30,6 +30,12 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
     )
     suspend fun findSentAcceptedByUserId(userId: UUID, limit: Int, offset: Long): List<Meeting>
 
+    @Query(
+        "select * from meetings where user_id = :userId and user_id != other_user_id " +
+            "and (status is null or status = 'PENDING') order by timestamp desc limit :limit offset :offset"
+    )
+    suspend fun findSentPendingByUserId(userId: UUID, limit: Int, offset: Long): List<Meeting>
+
     @Query("delete from meetings where user_id = :userId")
     suspend fun deleteAllByUserId(userId: UUID)
 
@@ -38,6 +44,9 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
 
     @Query("select * from meetings where (user_id = :userId1 and other_user_id = :userId2) or (user_id = :userId2 and other_user_id = :userId1) limit 1")
     suspend fun findByUserPair(userId1: UUID, userId2: UUID): Meeting?
+
+    @Query("select * from meetings where user_id = :senderId and other_user_id = :recipientId limit 1")
+    suspend fun findBySenderAndRecipient(senderId: UUID, recipientId: UUID): Meeting?
 
     @Query("SELECT EXISTS(SELECT 1 FROM meetings WHERE user_id = :userId AND other_user_id = :otherUserId)")
     suspend fun existsByUserIdAndOtherUserId(userId: UUID, otherUserId: UUID): Boolean
@@ -76,6 +85,20 @@ class MeetingStatusUpdater(
             .bind("status", status)
             .bind("userId1", userId1)
             .bind("userId2", userId2)
+            .fetch()
+            .rowsUpdated()
+            .awaitFirstOrNull()
+            ?.toInt()
+            ?: 0
+    }
+
+    suspend fun updateStatusBySenderAndRecipient(senderId: UUID, recipientId: UUID, status: String): Int {
+        return databaseClient.sql(
+            "UPDATE meetings SET status = :status WHERE user_id = :senderId AND other_user_id = :recipientId"
+        )
+            .bind("status", status)
+            .bind("senderId", senderId)
+            .bind("recipientId", recipientId)
             .fetch()
             .rowsUpdated()
             .awaitFirstOrNull()

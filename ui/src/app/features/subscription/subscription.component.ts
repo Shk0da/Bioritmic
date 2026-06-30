@@ -4,6 +4,8 @@ import { Subject, takeUntil } from 'rxjs';
 import { SubscriptionService } from '../../core/services/subscription.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../core/services/toast.service';
+import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
+import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 import { UserInfo } from '../../core/models/user.model';
 
 @Component({
@@ -145,6 +147,7 @@ import { UserInfo } from '../../core/models/user.model';
 export class SubscriptionComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
 
   loading = true;
   isPro = false;
@@ -162,6 +165,10 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadSubscription();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/subscription', () => ({
+      refresh: () => this.loadSubscription(),
+      isEnabled: () => !this.loading,
+    }));
   }
 
   ngOnDestroy(): void {

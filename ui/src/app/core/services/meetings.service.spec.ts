@@ -61,4 +61,18 @@ describe('MeetingsService', () => {
     expect(req.request.method).toBe('PUT');
     req.flush({});
   });
+
+  it('hasSentMeeting should GET /{userId}/sent', () => {
+    service.hasSentMeeting('2').subscribe();
+    const req = httpMock.expectOne('/api/v1/meetings/2/sent');
+    expect(req.request.method).toBe('GET');
+    req.flush({ sent: true });
+  });
+
+  it('getBadgeCount should GET /badge with since param', () => {
+    service.getBadgeCount(12345).subscribe();
+    const req = httpMock.expectOne(r => r.url === '/api/v1/meetings/badge');
+    expect(req.request.params.get('since')).toBe('12345');
+    req.flush({ count: 2 });
+  });
 });

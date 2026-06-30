@@ -1,11 +1,15 @@
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
-import { RouterLink, Router, ActivatedRoute } from '@angular/router';
+import { Component, OnInit, OnDestroy, HostListener, DestroyRef, inject } from '@angular/core';
+import { RouterLink, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { UserService } from '../../core/services/user.service';
 import { UserMail, PageableRequest, UserInfo } from '../../core/models/user.model';
 import { ModalService } from '../../core/services/modal.service';
 import { ConversationPanelComponent } from './conversation-panel/conversation-panel.component';
-import { Subject, takeUntil } from 'rxjs';
+import { normalizeRouteUrl, subscribeCachedRouteRefresh } from '../../core/routing/route-cache-refresh.util';
+import { isLayoutCachingEnabled } from '../../core/routing/layout-cache.util';
+import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
+import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
+import { Subject, takeUntil, filter } from 'rxjs';
 import { parseTimestampMs, formatMessageTime } from '../../shared/utils/timestamp.util';
 
 interface UserConversation {
@@ -115,6 +119,7 @@ interface UserConversation {
           @if (selectedUserId) {
             <app-conversation-panel
               [userId]="selectedUserId"
+              [reloadToken]="conversationReloadToken"
               [showBackButton]="isMobileView"
               (back)="closeChat()"
               (messageSent)="onMessageSent()"
@@ -132,6 +137,11 @@ interface UserConversation {
     }
   `,
   styles: [`
+    :host {
+      display: block;
+      min-height: 0;
+    }
+
     .empty-state {
       max-width: 500px;
       margin: 2rem auto;
@@ -436,11 +446,31 @@ interface UserConversation {
       }
 
       .mailbox-card.chat-open {
-        min-height: calc(100dvh - var(--header-height) - 6rem);
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: calc(100dvh - var(--header-height) - 2.5rem);
+        height: calc(100dvh - var(--header-height) - 2.5rem);
+        max-height: calc(100dvh - var(--header-height) - 2.5rem);
+        overflow: hidden;
       }
 
       .mailbox-card.chat-open .mailbox-chat-panel {
-        min-height: calc(100dvh - var(--header-height) - 6rem);
+        flex: 1;
+        min-height: 0;
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      :host:has(.mailbox-card.chat-open) {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        height: calc(100dvh - var(--header-height) - 2.5rem);
+        max-height: calc(100dvh - var(--header-height) - 2.5rem);
       }
     }
   `]
@@ -449,6 +479,7 @@ export class MailboxComponent implements OnInit, OnDestroy {
   conversations: UserConversation[] = [];
   loading = false;
   selectedUserId: string | null = null;
+  conversationReloadToken = 0;
   isMobileView = false;
   swipeDragUserId: string | null = null;
   swipeOffset = 0;
@@ -465,6 +496,8 @@ export class MailboxComponent implements OnInit, OnDestroy {
   private currentUserId?: string;
   private destroy$ = new Subject<void>();
   private refreshInterval: ReturnType<typeof setInterval> | null = null;
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
 
   constructor(
     private mailboxService: MailboxService,
@@ -484,18 +517,45 @@ export class MailboxComponent implements OnInit, OnDestroy {
     localStorage.setItem('mailbox_last_read', Date.now().toString());
     this.loadCurrentUserId();
 
+    subscribeCachedRouteRefresh(this.router, this.destroyRef, (url) => {
+      return normalizeRouteUrl(url) === '/mailbox';
+    }, () => {
+      if (!this.selectedUserId) {
+        this.loadMessages();
+      }
+    });
+
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, (url) => normalizeRouteUrl(url) === '/mailbox', () => ({
+      refresh: () => this.loadMessages(),
+      isEnabled: () => !this.selectedUserId && !this.loading,
+    }));
+
     this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
       const nextSelectedUserId = params.get('userId');
       const wasSelected = !!this.selectedUserId;
       const openedConversation = !!nextSelectedUserId && nextSelectedUserId !== this.selectedUserId;
       this.selectedUserId = nextSelectedUserId;
       if (this.selectedUserId) {
+        if (this.route.snapshot.queryParamMap.has('refresh')) {
+          this.conversationReloadToken++;
+          void this.router.navigate(['/mailbox', this.selectedUserId], { replaceUrl: true });
+        }
         this.ensureSelectedConversationInList();
         if (openedConversation) {
           this.clearConversationUnread(this.selectedUserId);
         }
       } else if (wasSelected) {
         this.loadMessages();
+      }
+    });
+
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      takeUntil(this.destroy$),
+    ).subscribe((event) => {
+      const currentUrl = normalizeRouteUrl(event.urlAfterRedirects);
+      if (isLayoutCachingEnabled() && /^\/mailbox\/[^/]+$/.test(currentUrl)) {
+        this.conversationReloadToken++;
       }
     });
 

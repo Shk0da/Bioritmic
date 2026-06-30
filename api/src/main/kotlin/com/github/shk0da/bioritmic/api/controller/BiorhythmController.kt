@@ -23,6 +23,12 @@ class BiorhythmController(
     @GetMapping(value = ["/{userId}/detail"], produces = [APPLICATION_JSON_VALUE])
     suspend fun getBiorhythmDetail(@PathVariable userId: UUID): BiorhythmDetail {
         val currentUserId = getUserId()
+        if (currentUserId == userId) {
+            throw ApiException(
+                ErrorCode.INVALID_PARAMETER,
+                mapOf(ErrorCode.Constants.PARAMETER_NAME to "userId")
+            )
+        }
         val currentUser = userService.findUserById(currentUserId)
             ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val otherUser = userService.findUserById(userId)

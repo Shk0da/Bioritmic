@@ -48,6 +48,13 @@ describe('GeolocationService', () => {
       expect(userServiceSpy.getGisData).toHaveBeenCalled();
       expect(service['watchId']).toBeNull();
     });
+
+    it('should not restart tracking when watch is already active', () => {
+      authServiceSpy.isAuthenticated.and.returnValue(true);
+      service['watchId'] = 1;
+      service.startTracking();
+      expect(userServiceSpy.getGisData).not.toHaveBeenCalled();
+    });
   });
 
   describe('getCurrentPosition', () => {

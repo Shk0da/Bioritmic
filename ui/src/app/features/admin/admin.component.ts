@@ -5,6 +5,8 @@ import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { AdminService, AdminDashboard, Report, AdminUser, SystemMetrics, PaginatedUsersResponse, FeedbackItem, FeedbackStatus } from '../../core/services/admin.service';
 import { ModalService } from '../../core/services/modal.service';
 import { ToastService } from '../../core/services/toast.service';
+import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
+import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 import { NgClass, DecimalPipe, DatePipe } from '@angular/common';
 
 @Component({
@@ -506,6 +508,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private searchChange$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
   private reportsLoaded = false;
   private feedbackLoaded = false;
 
@@ -543,6 +546,27 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.searchChange$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe(() => this.loadUsers(0));
     this.loadDashboard();
     this.loadUsers();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/admin', () => ({
+      refresh: () => this.refreshAdminPage(),
+      isEnabled: () => !this.loadingUsers && !this.loadingReports && !this.loadingFeedback && !this.loadingMetrics,
+    }));
+  }
+
+  private refreshAdminPage(): void {
+    this.loadDashboard();
+    if (this.activeTab === 'users') {
+      this.loadUsers(this.currentPage);
+      return;
+    }
+    if (this.activeTab === 'reports') {
+      this.loadReports();
+      return;
+    }
+    if (this.activeTab === 'feedback') {
+      this.loadFeedback();
+      return;
+    }
+    this.loadMetrics();
   }
 
   setActiveTab(tab: 'users' | 'reports' | 'feedback' | 'metrics'): void {

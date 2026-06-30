@@ -1101,6 +1101,14 @@ option { background: var(--card-bg); color: var(--text-primary); }
     min-height: calc(100dvh - 4.5rem);
   }
 
+  app-mailbox {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
+
   :is(
     app-settings-hub,
     app-settings,

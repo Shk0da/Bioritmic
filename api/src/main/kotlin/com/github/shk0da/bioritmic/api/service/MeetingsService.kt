@@ -1,10 +1,11 @@
 package com.github.shk0da.bioritmic.api.service
 
 import com.github.shk0da.bioritmic.api.domain.Meeting
-import com.github.shk0da.bioritmic.api.domain.UserMail
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
+import com.github.shk0da.bioritmic.api.model.mailbox.MailSystemMessage
+import com.github.shk0da.bioritmic.api.model.mailbox.MeetingSystemMailMessages
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import com.github.shk0da.bioritmic.api.repository.MailboxRepository
 import com.github.shk0da.bioritmic.api.repository.MeetingStatusUpdater
@@ -39,8 +40,9 @@ class MeetingsService(
     suspend fun findAllMeetingsByUserId(userId: UUID, pageable: PageableRequest): List<Meeting> {
         val incoming = meetingsRepository.findIncomingByUserId(userId, pageable.pageSize, pageable.offset)
         val acceptedOutgoing = meetingsRepository.findSentAcceptedByUserId(userId, pageable.pageSize, pageable.offset)
+        val pendingOutgoing = meetingsRepository.findSentPendingByUserId(userId, pageable.pageSize, pageable.offset)
         val seen = mutableSetOf<Pair<UUID?, UUID?>>()
-        return (incoming + acceptedOutgoing)
+        return (incoming + acceptedOutgoing + pendingOutgoing)
             .filter { meeting ->
                 val key = meeting.userId to meeting.otherUserId
                 seen.add(key)
@@ -57,6 +59,9 @@ class MeetingsService(
             try {
                 val specs = meetingList.map { Meeting.of(userId, it) }
                 specs.forEach { spec ->
+                    val recipientId = spec.otherUserId
+                        ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("userId" to "userId"))
+                    ensureNotBlockedByRecipient(recipientId, userId)
                     validateScheduledAt(spec.scheduledAt)
                     databaseClient.sql(
                         """
@@ -109,11 +114,27 @@ class MeetingsService(
     }
 
     @Transactional
-    suspend fun deleteMetingWithUserId(currentUserId: UUID, userId: UUID): List<Meeting> {
+    suspend fun deleteMetingWithUserId(currentUserId: UUID, otherUserId: UUID): List<Meeting> {
+        val meeting = meetingsRepository.findBySenderAndRecipient(currentUserId, otherUserId)
+        if (meeting == null) {
+            val incomingMeeting = meetingsRepository.findBySenderAndRecipient(otherUserId, currentUserId)
+            if (incomingMeeting != null) {
+                throw ApiException(ErrorCode.ACCESS_DENIED)
+            }
+            return findAllMeetingsByUserId(currentUserId, defaultPageable)
+        }
+        if (meeting.userId != currentUserId) {
+            throw ApiException(ErrorCode.ACCESS_DENIED)
+        }
         try {
-            meetingsRepository.deleteByUserIdAndOtherUserId(currentUserId, userId)
+            val recipientId = meeting.otherUserId
+            val status = meeting.status?.takeIf { it.isNotBlank() } ?: "PENDING"
+            meetingsRepository.deleteByUserIdAndOtherUserId(currentUserId, otherUserId)
+            if (recipientId != null && (status == "PENDING" || status == "ACCEPTED")) {
+                notifyMeetingRevoked(currentUserId, recipientId, status == "ACCEPTED")
+            }
         } catch (ex: DataAccessException) {
-            log.error("Failed delete meetings for userId [{}]: {}", userId, ex.message, ex)
+            log.error("Failed delete meetings for userId [{}]: {}", otherUserId, ex.message, ex)
             throw ex
         }
         return findAllMeetingsByUserId(currentUserId, defaultPageable)
@@ -122,10 +143,10 @@ class MeetingsService(
     @Transactional
     suspend fun declineMeeting(currentUserId: UUID, senderUserId: UUID): Meeting? {
         log.info("declineMeeting: currentUserId={}, senderUserId={}", currentUserId, senderUserId)
-        val meeting = meetingsRepository.findByUserPair(senderUserId, currentUserId)
+        val meeting = meetingsRepository.findBySenderAndRecipient(senderUserId, currentUserId)
         log.info("declineMeeting: found meeting={}", meeting)
         if (meeting == null) {
-            log.warn("declineMeeting: no meeting found between {} and {}", senderUserId, currentUserId)
+            log.warn("declineMeeting: no meeting found from {} to {}", senderUserId, currentUserId)
             return null
         }
 
@@ -133,20 +154,23 @@ class MeetingsService(
             return meeting
         }
 
-        val updated = meetingStatusUpdater.updateStatus(senderUserId, currentUserId, "DECLINED")
+        val previousStatus = meeting.status?.takeIf { it.isNotBlank() } ?: "PENDING"
+        val updated = meetingStatusUpdater.updateStatusBySenderAndRecipient(senderUserId, currentUserId, "DECLINED")
         log.info("declineMeeting: updateStatus returned {}", updated)
 
-        val initiatorId = if (meeting.userId == currentUserId) meeting.otherUserId else meeting.userId
+        val initiatorId = meeting.userId
         if (initiatorId != null && initiatorId != currentUserId) {
-            val declineMessage = UserMail()
-            declineMessage.fromUserId = currentUserId
-            declineMessage.toUserId = initiatorId
-            declineMessage.message = "К сожалению, ваше предложение встречи отклонено."
-            declineMessage.timestamp = Timestamp(System.currentTimeMillis())
-            mailboxRepository.save(declineMessage)
+            val declineText = if (previousStatus == "ACCEPTED") {
+                MeetingSystemMailMessages.ACCEPTED_CANCELLED
+            } else {
+                MeetingSystemMailMessages.DECLINED
+            }
+            mailboxRepository.save(
+                MailSystemMessage.create(currentUserId, initiatorId, declineText)
+            )
         }
 
-        val result = meetingsRepository.findByUserPair(senderUserId, currentUserId)
+        val result = meetingsRepository.findBySenderAndRecipient(senderUserId, currentUserId)
         log.info("declineMeeting: result status={}", result?.status)
         return result
     }
@@ -154,15 +178,15 @@ class MeetingsService(
     @Transactional
     suspend fun acceptMeeting(currentUserId: UUID, otherUserId: UUID): Meeting? {
         log.info("acceptMeeting: currentUserId={}, otherUserId={}", currentUserId, otherUserId)
-        val meeting = meetingsRepository.findByUserPair(otherUserId, currentUserId)
+        val meeting = meetingsRepository.findBySenderAndRecipient(otherUserId, currentUserId)
         log.info("acceptMeeting: found meeting={}", meeting)
         if (meeting == null) {
-            log.warn("acceptMeeting: no meeting found between {} and {}", otherUserId, currentUserId)
+            log.warn("acceptMeeting: no meeting found from {} to {}", otherUserId, currentUserId)
             return null
         }
 
         if (meeting.status == "DECLINED") {
-            log.warn("acceptMeeting: meeting was declined between {} and {}", otherUserId, currentUserId)
+            log.warn("acceptMeeting: meeting was declined from {} to {}", otherUserId, currentUserId)
             return null
         }
 
@@ -170,20 +194,21 @@ class MeetingsService(
             return meeting
         }
 
-        val updated = meetingStatusUpdater.updateStatus(otherUserId, currentUserId, "ACCEPTED")
+        val updated = meetingStatusUpdater.updateStatusBySenderAndRecipient(otherUserId, currentUserId, "ACCEPTED")
         log.info("acceptMeeting: updateStatus returned {}", updated)
 
-        val initiatorId = if (meeting.userId == currentUserId) meeting.otherUserId else meeting.userId
+        val initiatorId = meeting.userId
         if (initiatorId != null && initiatorId != currentUserId) {
-            val acceptMessage = UserMail()
-            acceptMessage.fromUserId = currentUserId
-            acceptMessage.toUserId = initiatorId
-            acceptMessage.message = "Ваше предложение встречи принято!"
-            acceptMessage.timestamp = Timestamp(System.currentTimeMillis())
-            mailboxRepository.save(acceptMessage)
+            mailboxRepository.save(
+                MailSystemMessage.create(
+                    currentUserId,
+                    initiatorId,
+                    MeetingSystemMailMessages.ACCEPTED
+                )
+            )
         }
 
-        val result = meetingsRepository.findByUserPair(otherUserId, currentUserId)
+        val result = meetingsRepository.findBySenderAndRecipient(otherUserId, currentUserId)
         log.info("acceptMeeting: result status={}", result?.status)
         return result
     }
@@ -205,6 +230,21 @@ class MeetingsService(
                 mapOf(Pair(ErrorCode.Constants.PARAMETER_NAME, "scheduledAt"))
             )
         }
+    }
+
+    private suspend fun ensureNotBlockedByRecipient(recipientId: UUID, senderId: UUID) {
+        if (userService.isBlockedBy(recipientId, senderId)) {
+            throw ApiException(ErrorCode.USER_IS_BLOCKED)
+        }
+    }
+
+    private suspend fun notifyMeetingRevoked(senderId: UUID, recipientId: UUID, wasAccepted: Boolean) {
+        val text = if (wasAccepted) {
+            MeetingSystemMailMessages.REVOKED_ACCEPTED
+        } else {
+            MeetingSystemMailMessages.REVOKED_PENDING
+        }
+        mailboxRepository.save(MailSystemMessage.create(senderId, recipientId, text))
     }
 
     companion object {

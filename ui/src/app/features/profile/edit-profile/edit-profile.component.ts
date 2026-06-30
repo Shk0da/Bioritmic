@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { UserService } from '../../../core/services/user.service';
@@ -6,6 +6,9 @@ import { ModalService } from '../../../core/services/modal.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 import { Subject, finalize, map, of, switchMap, takeUntil } from 'rxjs';
 import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
+import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
+import { normalizeRouteUrl } from '../../../core/routing/route-cache-refresh.util';
+import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.service';
 import { AvatarStatusBadgeComponent } from '../../../shared/components/avatar-status-badge/avatar-status-badge.component';
 import {
   normalizeUserStatusPosition,
@@ -297,6 +300,8 @@ export class EditProfileComponent implements OnInit, OnDestroy {
   uploadingPhoto = false;
   hasUploadedPhoto = false;
   private destroy$ = new Subject<void>();
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
 
   constructor(
     private userService: UserService,
@@ -306,6 +311,10 @@ export class EditProfileComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadProfile();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, (url) => normalizeRouteUrl(url) === '/profile/me/edit', () => ({
+      refresh: () => this.loadProfile(),
+      isEnabled: () => !this.saving && !this.savingEmail,
+    }));
   }
 
   ngOnDestroy(): void {

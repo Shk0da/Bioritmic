@@ -68,7 +68,7 @@ export interface GisData {
   timestamp?: Date;
 }
 
-export type MailMediaType = 'VOICE' | 'PHOTO' | 'VIDEO_NOTE';
+export type MailMediaType = 'VOICE' | 'PHOTO' | 'VIDEO_NOTE' | 'SYSTEM';
 export type MailReactionType = 'LIKE' | 'HEART' | 'FIRE' | 'POOP' | 'CLOWN' | 'LOL' | 'CRY';
 export type MailReactionCounts = Partial<Record<MailReactionType, number>>;
 
@@ -85,6 +85,7 @@ export interface UserMail {
   currentUserReaction?: MailReactionType | null;
   reactionCounts?: MailReactionCounts;
   isRead?: boolean;
+  isSystem?: boolean;
 }
 
 export interface UserMeeting {

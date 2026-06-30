@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, DestroyRef, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Subject, takeUntil, switchMap, EMPTY } from 'rxjs';
 import { SearchService } from '../../core/services/search.service';
@@ -23,6 +23,8 @@ import { MatchModalComponent } from '../../shared/components/match-modal/match-m
 import { AvatarStatusBadgeComponent } from '../../shared/components/avatar-status-badge/avatar-status-badge.component';
 import { ShareService } from '../../core/services/share.service';
 import { ModalService } from '../../core/services/modal.service';
+import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
+import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 
 @Component({
   selector: 'app-swipe',
@@ -390,6 +392,8 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private boundOnKeyDown: ((e: KeyboardEvent) => void) | null = null;
   private destroy$ = new Subject<void>();
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
   private onlineTickInterval: ReturnType<typeof setInterval> | null = null;
   private onlineTickMs = Date.now();
 
@@ -429,6 +433,13 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.isUserVerified = user?.isVerified !== false;
     this.loadUserSettings();
     this.loadSwipeLimit();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/swipe', () => ({
+      refresh: () => {
+        this.loadSwipeLimit();
+        this.loadUserSettings();
+      },
+      isEnabled: () => !this.loading,
+    }));
 
     this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
       this.currentUserId = user?.id ?? null;
@@ -472,7 +483,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.boundOnKeyDown) {
       document.removeEventListener('keydown', this.boundOnKeyDown);
     }
-    this.cards.forEach(card => UserService.revokePhotoUrl(card.photoDataUrl));
+    this.cards.forEach(card => this.userService.releasePhotoUrl(card.photoDataUrl));
     if (this.onlineTickInterval) {
       clearInterval(this.onlineTickInterval);
       this.onlineTickInterval = null;
@@ -593,7 +604,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
       if (card.user.id && !card.photoDataUrl) {
         this.userService.getPhoto(card.user.id, photoSize).pipe(takeUntil(this.destroy$)).subscribe({
           next: (bytes: Uint8Array) => {
-            UserService.revokePhotoUrl(card.photoDataUrl);
+            this.userService.releasePhotoUrl(card.photoDataUrl);
             card.photoDataUrl = UserService.createPhotoUrl(bytes);
           },
           error: () => {
@@ -612,7 +623,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
         const photoSize = photoSizeForLargeDisplay();
         this.userService.getPhoto(card.user.id, photoSize).pipe(takeUntil(this.destroy$)).subscribe({
           next: (bytes: Uint8Array) => {
-            UserService.revokePhotoUrl(card.photoDataUrl);
+            this.userService.releasePhotoUrl(card.photoDataUrl);
             card.photoDataUrl = UserService.createPhotoUrl(bytes);
           },
           error: () => {

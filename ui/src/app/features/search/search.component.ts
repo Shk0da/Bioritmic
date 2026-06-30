@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { SearchService } from '../../core/services/search.service';
@@ -9,6 +9,8 @@ import {
   getSummaryCompatibility,
   getSummaryCompatibilityAverage,
 } from '../../shared/utils/biorhythm-labels.util';
+import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
+import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 
 interface UserWithPhoto extends UserInfo {
   photoDataUrl?: string | null;
@@ -125,6 +127,9 @@ export class SearchComponent implements OnInit {
     distance: 30
   };
 
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
+
   constructor(
     private searchService: SearchService,
     private userService: UserService,
@@ -133,6 +138,10 @@ export class SearchComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadUserSettings();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/search', () => ({
+      refresh: () => this.loadUserSettings(),
+      isEnabled: () => !this.loading,
+    }));
   }
 
   private loadUserSettings(): void {

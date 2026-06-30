@@ -112,4 +112,14 @@ class BiorhythmControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isUnauthorized
     }
+
+    @Test
+    fun `should return 400 for own profile biorhythm detail`() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/biorhythm/$userId/detail")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
+    }
 }

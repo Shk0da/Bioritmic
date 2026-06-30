@@ -85,12 +85,17 @@ export class PushNotificationService {
 
   private navigateFromPush(url: string): void {
     const safeUrl = sanitizePushNavigationUrl(url);
+    const target = this.router.parseUrl(safeUrl);
+    target.queryParams = {
+      ...target.queryParams,
+      refresh: String(Date.now()),
+    };
     if (!this.authService.isAuthenticated()) {
-      sessionStorage.setItem(this.RETURN_URL_KEY, safeUrl);
+      sessionStorage.setItem(this.RETURN_URL_KEY, this.router.serializeUrl(target));
       void this.router.navigate(['/auth/login']);
       return;
     }
-    void this.router.navigateByUrl(safeUrl, { onSameUrlNavigation: 'reload' });
+    void this.router.navigateByUrl(target, { onSameUrlNavigation: 'reload' });
   }
 
   isSupported(): boolean {
@@ -394,7 +399,17 @@ export class PushNotificationService {
     });
     notification.onclick = () => {
       window.focus();
-      this.navigateFromPush(url);
+      const target = this.router.parseUrl(url);
+      target.queryParams = {
+        ...target.queryParams,
+        refresh: String(Date.now()),
+      };
+      if (!this.authService.isAuthenticated()) {
+        sessionStorage.setItem(this.RETURN_URL_KEY, this.router.serializeUrl(target));
+        void this.router.navigate(['/auth/login']);
+      } else {
+        void this.router.navigateByUrl(target, { onSameUrlNavigation: 'reload' });
+      }
       notification.close();
     };
   }

@@ -5,7 +5,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { serverErrorInterceptor } from './core/interceptors/server-error.interceptor';
-import { shouldSkipLayoutViewTransition } from './core/routing/layout-cache.util';
+import { isLayoutCachingEnabled } from './core/routing/layout-cache.util';
 import { MobileRouteReuseStrategy, provideMobileRouteReuseStrategy } from './core/routing/mobile-route-reuse.strategy';
 
 export const appConfig: ApplicationConfig = {
@@ -14,13 +14,8 @@ export const appConfig: ApplicationConfig = {
       routes,
       withPreloading(PreloadAllModules),
       withComponentInputBinding(),
-      withViewTransitions({
-        onViewTransitionCreated: ({ transition }) => {
-          if (shouldSkipLayoutViewTransition()) {
-            transition.skipTransition();
-          }
-        },
-      }),
+      // View transitions conflict with detached route cache on mobile/PWA.
+      ...(isLayoutCachingEnabled() ? [] : [withViewTransitions()]),
     ),
     {
       provide: RouteReuseStrategy,

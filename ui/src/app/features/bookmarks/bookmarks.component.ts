@@ -1,11 +1,14 @@
 import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { UserService } from '../../core/services/user.service';
 import { MatchService, MatchesResponse } from '../../core/services/match.service';
 import { ModalService } from '../../core/services/modal.service';
 import { UserInfo, PageableRequest } from '../../core/models/user.model';
+import { subscribeCachedRouteRefresh } from '../../core/routing/route-cache-refresh.util';
+import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
+import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 import { AvatarStatusBadgeComponent } from '../../shared/components/avatar-status-badge/avatar-status-badge.component';
 import {
   getGenderLabel,
@@ -611,6 +614,7 @@ export class BookmarksComponent implements OnInit, OnDestroy {
   loading = false;
   pageable: PageableRequest = { page: 0, size: 20 };
   private readonly destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
   private onlineTickInterval: ReturnType<typeof setInterval> | null = null;
   private onlineTickMs = Date.now();
 
@@ -618,12 +622,24 @@ export class BookmarksComponent implements OnInit, OnDestroy {
     private bookmarksService: BookmarksService,
     private userService: UserService,
     private matchService: MatchService,
-    private modalService: ModalService
+    private modalService: ModalService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
     this.loadMatches();
     this.loadBookmarks();
+    subscribeCachedRouteRefresh(this.router, this.destroyRef, '/bookmarks', () => {
+      this.loadMatches(true);
+      this.loadBookmarks(true);
+    });
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/bookmarks', () => ({
+      refresh: () => {
+        this.loadMatches(true);
+        this.loadBookmarks(true);
+      },
+      isEnabled: () => !this.loading && !this.matchesLoading,
+    }));
     this.onlineTickInterval = setInterval(() => {
       this.onlineTickMs = Date.now();
     }, 30_000);
@@ -650,8 +666,10 @@ export class BookmarksComponent implements OnInit, OnDestroy {
     return this.onlineTickMs - lastActiveMs <= 60_000;
   }
 
-  private loadMatches(): void {
-    this.matchesLoading = true;
+  private loadMatches(silent = false): void {
+    if (!silent) {
+      this.matchesLoading = true;
+    }
     this.matchService.getMatches().subscribe({
       next: (response: MatchesResponse) => {
         this.matchesCount = response.count;
@@ -692,8 +710,10 @@ export class BookmarksComponent implements OnInit, OnDestroy {
     return Array.from({ length: Math.min(count, 6) }, (_, i) => i);
   }
 
-  private loadBookmarks(): void {
-    this.loading = true;
+  private loadBookmarks(silent = false): void {
+    if (!silent) {
+      this.loading = true;
+    }
     this.bookmarksService.getBookmarks(this.pageable).subscribe({
       next: (users) => {
         this.users = users.map(user => this.withCachedPhoto(user));
@@ -738,9 +758,11 @@ export class BookmarksComponent implements OnInit, OnDestroy {
 
   removeBookmark(userId: string | undefined): void {
     if (!userId) return;
+    const removedUser = this.users.find((user) => user.id === userId);
     this.bookmarksService.deleteBookmark(userId).subscribe({
       next: () => {
-        this.loadBookmarks();
+        this.userService.releasePhotoUrl(removedUser?.photoDataUrl);
+        this.users = this.users.filter((user) => user.id !== userId);
       },
       error: () => {
         void this.modalService.alert('Ошибка удаления из избранного', 'Ошибка');

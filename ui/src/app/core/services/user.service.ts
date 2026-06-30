@@ -281,6 +281,23 @@ export class UserService {
     }
   }
 
+  /** Revokes blob URLs owned by the caller; skips URLs still held in the shared photo cache. */
+  releasePhotoUrl(url: string | null | undefined): void {
+    if (!url?.startsWith('blob:') || this.isManagedPhotoUrl(url)) {
+      return;
+    }
+    UserService.revokePhotoUrl(url);
+  }
+
+  private isManagedPhotoUrl(url: string): boolean {
+    for (const entry of this.photoCache.values()) {
+      if (entry.url === url && Date.now() < entry.expiresAt) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private photoCacheKey(userId: string, size: PhotoSize): string {
     return `${userId}:${size}`;
   }

@@ -1,10 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../../core/services/settings.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ModalService } from '../../core/services/modal.service';
 import { UserSettings, Gender } from '../../core/models/user.model';
 import { PageBackLinkComponent } from '../../shared/components/page-back-link/page-back-link.component';
+import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
+import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 
 @Component({
   selector: 'app-settings',
@@ -115,6 +117,8 @@ export class SettingsComponent implements OnInit {
   saving = false;
 
   Gender = Gender;
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
 
   constructor(
     private settingsService: SettingsService,
@@ -131,6 +135,10 @@ export class SettingsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadSettings();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/settings/search', () => ({
+      refresh: () => this.loadSettings(),
+      isEnabled: () => !this.loading && !this.saving,
+    }));
   }
 
   private loadSettings(): void {

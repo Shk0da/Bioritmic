@@ -1,6 +1,5 @@
 import { Component, OnInit, OnDestroy, DestroyRef, inject } from '@angular/core';
 import { Router, RouterLink, NavigationEnd } from '@angular/router';
-import { NgClass } from '@angular/common';
 import { Subject, takeUntil, switchMap, EMPTY, catchError, filter } from 'rxjs';
 import { UserService, photoSizeForLargeDisplay } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -15,11 +14,14 @@ import {
   PROFILE_STATUS_EMOJIS,
 } from '../../../shared/utils/user-status.util';
 import { ToastService } from '../../../core/services/toast.service';
+import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
+import { normalizeRouteUrl } from '../../../core/routing/route-cache-refresh.util';
+import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.service';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [RouterLink, NgClass, AvatarStatusBadgeComponent],
+  imports: [RouterLink, AvatarStatusBadgeComponent],
   template: `
     <div class="page-header mb-4">
       <h1 class="page-title">
@@ -165,24 +167,13 @@ import { ToastService } from '../../../core/services/toast.service';
               </div>
             }
 
-            @if (user?.isBioCompatible !== undefined || user?.isHoroCompatible !== undefined) {
-              <hr class="my-4">
-              <div class="mb-3">
-                <label class="text-muted small d-block mb-2">Совместимость</label>
-                <div class="d-flex flex-wrap gap-2">
-                  @if (user?.isBioCompatible !== undefined) {
-                    <span class="badge" [ngClass]="user?.isBioCompatible ? 'bg-success' : 'bg-danger'">
-                      <i class="bi bi-dna me-1"></i>Био: {{ user?.isBioCompatible ? 'Да' : 'Нет' }}
-                    </span>
-                  }
-                  @if (user?.isHoroCompatible !== undefined) {
-                    <span class="badge" [ngClass]="user?.isHoroCompatible ? 'bg-success' : 'bg-danger'">
-                      <i class="bi bi-moon-stars me-1"></i>Гороскоп: {{ user?.isHoroCompatible ? 'Да' : 'Нет' }}
-                    </span>
-                  }
-                </div>
-              </div>
-            }
+            <hr class="my-4">
+            <div class="mb-0">
+              <label class="text-muted small d-block mb-2">Совместимость</label>
+              <p class="text-muted small mb-0">
+                Для того чтобы увидеть совместимость, выберите профиль другого человека.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -440,6 +431,7 @@ import { ToastService } from '../../../core/services/toast.service';
 export class ProfileComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
   readonly statusEmojis = PROFILE_STATUS_EMOJIS;
   user: UserInfo | null = null;
   photoDataUrl: string | null = null;
@@ -476,6 +468,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.loadProfile();
     this.loadBlockedCount();
     this.loadActiveBoost();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, (url) => normalizeRouteUrl(url) === '/profile/me', () => ({
+      refresh: () => {
+        this.loadProfile();
+        this.loadBlockedCount();
+        this.loadActiveBoost();
+      },
+    }));
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
       filter(() => this.isProfileMeRoute()),

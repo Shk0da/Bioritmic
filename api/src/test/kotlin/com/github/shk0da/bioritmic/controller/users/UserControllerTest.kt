@@ -82,6 +82,22 @@ class UserControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun getOwnUserByIdDoesNotReturnCompatibilityTest() {
+        val currentUserId = userId ?: throw IllegalStateException("User ID is null")
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/$currentUserId")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.id").isEqualTo(currentUserId.toString())
+            .jsonPath("$.compare").doesNotExist()
+            .jsonPath("$.isBioCompatible").doesNotExist()
+            .jsonPath("$.isHoroCompatible").doesNotExist()
+    }
+
+    @Test
     fun getMeReturnsOnlineStatusAndLastActiveAtTest() {
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/user/me")

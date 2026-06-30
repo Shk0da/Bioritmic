@@ -3,8 +3,10 @@ package com.github.shk0da.bioritmic.controller.mailbox
 import com.github.shk0da.bioritmic.ApiApplicationTests
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
 import com.github.shk0da.bioritmic.api.model.AuthorizationModel
+import com.github.shk0da.bioritmic.api.model.mailbox.MeetingSystemMailMessages
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
 import com.github.shk0da.bioritmic.domain.UserModel
+import com.github.shk0da.bioritmic.testutil.testMeeting
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
@@ -564,6 +566,74 @@ class MailboxControllerTest : ApiApplicationTests() {
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.count").isNumber
+    }
+
+    @Test
+    fun meetingSystemMessageCannotBeDeletedOrRepliedTest() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val userAEmail = "mailbox_system_a_$suffix@gmail.com"
+        val userBEmail = "mailbox_system_b_$suffix@gmail.com"
+
+        val userAId = registerAndGetUserId(userAEmail, "System A")
+        val userBId = registerAndGetUserId(userBEmail, "System B")
+        val tokenA = loginAndGetToken(userAEmail, userAId)
+        val tokenB = loginAndGetToken(userBEmail, userBId)
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(testMeeting(userBId))))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/meetings/$userAId/accept")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        var systemMessageId = 0L
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages.length()").isEqualTo(1)
+            .jsonPath("$.messages[0].message").isEqualTo(MeetingSystemMailMessages.ACCEPTED)
+            .jsonPath("$.messages[0].isSystem").isEqualTo(true)
+            .jsonPath("$.messages[0].mediaType").isEqualTo("SYSTEM")
+            .jsonPath("$.messages[0].id").value { id: Any -> systemMessageId = (id as Number).toLong() }
+
+        webTestClient.method(HttpMethod.DELETE)
+            .uri("$API_WITH_VERSION_1/mailbox/messages")
+            .header(HttpHeaders.AUTHORIZATION, tokenB)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("ids" to listOf(systemMessageId))))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isForbidden
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/mailbox")
+            .header(HttpHeaders.AUTHORIZATION, tokenA)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                BodyInserters.fromValue(
+                    UserMailModel(
+                        to = userBId,
+                        message = "Reply to system",
+                        replyToMessageId = systemMessageId
+                    )
+                )
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
     }
 
     @Test

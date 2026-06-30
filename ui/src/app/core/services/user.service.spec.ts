@@ -263,6 +263,21 @@ describe('UserService', () => {
     httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo')).flush(new ArrayBuffer(16));
   });
 
+  it('releasePhotoUrl should not revoke blob urls still held in the shared cache', () => {
+    let cachedUrl: string | null | undefined;
+    service.getCachedPhotoUrl('42', 'card').subscribe((url) => { cachedUrl = url; });
+    httpMock.expectOne((r) => r.url.includes('/api/v1/user/42/photo')).flush(new ArrayBuffer(16));
+
+    spyOn(URL, 'revokeObjectURL');
+    service.releasePhotoUrl(cachedUrl);
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+
+    const standaloneUrl = UserService.createPhotoUrl(new Uint8Array([1, 2, 3]));
+    service.releasePhotoUrl(standaloneUrl);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith(standaloneUrl);
+    UserService.revokePhotoUrl(standaloneUrl);
+  });
+
   it('uploadPhoto should invalidate only current user photo cache', () => {
     authService.getCurrentUser.and.returnValue({ id: 'me', name: 'Me', email: 'me@test.com' });
 

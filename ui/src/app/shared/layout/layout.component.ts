@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { RouterLink, RouterOutlet, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
@@ -9,6 +9,8 @@ import { MeetingsService } from '../../core/services/meetings.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { PushNotificationService } from '../../core/services/push-notification.service';
 import { clearLayoutRouteCache } from '../../core/routing/mobile-route-reuse.strategy';
+import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
+import { isStandalonePwa } from '../utils/pwa.util';
 import { Subject, Subscription, filter, takeUntil } from 'rxjs';
 
 @Component({
@@ -98,8 +100,28 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
           </div>
         </div>
       }
-      <div class="layout-outlet">
-        <router-outlet></router-outlet>
+      <div
+        class="layout-pull-host"
+        [class.layout-pull-active]="pullRefreshOffset > 0 || pullRefreshing"
+        [style.paddingTop.px]="pullRefreshing ? 40 : pullRefreshOffset">
+        @if (pullRefreshOffset > 0 || pullRefreshing) {
+          <div
+            class="layout-pull-refresh-indicator"
+            [class.ready]="pullRefreshOffset >= pullRefreshThreshold"
+            [style.minHeight.px]="pullRefreshing ? 40 : pullRefreshOffset">
+            @if (pullRefreshing) {
+              <div class="spinner-border spinner-border-sm text-secondary" role="status">
+                <span class="visually-hidden">Обновление...</span>
+              </div>
+            } @else {
+              <i class="bi bi-arrow-down-short layout-pull-refresh-icon"></i>
+            }
+          </div>
+        }
+        <div
+          class="layout-outlet">
+          <router-outlet></router-outlet>
+        </div>
       </div>
     </main>
   `,
@@ -185,6 +207,36 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
       }
     }
 
+    .layout-pull-host {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      transition: padding-top 0.15s ease;
+    }
+
+    .layout-pull-host.layout-pull-active {
+      transition: none;
+    }
+
+    .layout-pull-refresh-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      pointer-events: none;
+    }
+
+    .layout-pull-refresh-indicator.ready .layout-pull-refresh-icon {
+      transform: rotate(180deg);
+    }
+
+    .layout-pull-refresh-icon {
+      font-size: 1.5rem;
+      line-height: 1;
+      transition: transform 0.15s ease;
+    }
+
     .layout-outlet {
       position: relative;
       min-height: calc(100dvh - 5.5rem);
@@ -204,6 +256,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
   resendLoading = false;
   resendCooldown = 0;
   headerScrollProgress = 0;
+  pullRefreshOffset = 0;
+  pullRefreshing = false;
+  readonly pullRefreshThreshold = 64;
   private readonly headerScrollFadeDistance = 96;
   private resendCooldownInterval: ReturnType<typeof setInterval> | null = null;
   private pollingIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -214,6 +269,11 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private unreadBaselineSet = false;
   private meetingsBaselineSet = false;
   private pushInitDone = false;
+  private pullTracking = false;
+  private pullStartY = 0;
+  private pullTouchStartHandler: ((event: TouchEvent) => void) | null = null;
+  private pullTouchMoveHandler: ((event: TouchEvent) => void) | null = null;
+  private pullTouchEndHandler: (() => void) | null = null;
 
   constructor(
     private authService: AuthService,
@@ -222,11 +282,15 @@ export class LayoutComponent implements OnInit, OnDestroy {
     private meetingsService: MeetingsService,
     private router: Router,
     public themeService: ThemeService,
-    private pushService: PushNotificationService
+    private pushService: PushNotificationService,
+    private pullToRefreshService: PullToRefreshService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.updateHeaderScrollProgress();
+    this.pullToRefreshService.setCurrentRoute(this.router.url);
+    this.bindPullToRefresh();
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
       this.isUserAdmin = !!(user?.role && user.role.includes('ADMIN'));
@@ -242,9 +306,12 @@ export class LayoutComponent implements OnInit, OnDestroy {
     });
 
     this.routerSubscription = this.router.events
-      .pipe(filter(event => event instanceof NavigationEnd))
-      .subscribe((event: any) => {
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      )
+      .subscribe((event) => {
         this.updateHeaderScrollProgress();
+        this.pullToRefreshService.setCurrentRoute(event.urlAfterRedirects);
         if (event.urlAfterRedirects?.startsWith('/mailbox')) {
           this.markMessagesAsRead();
         }
@@ -255,6 +322,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.unbindPullToRefresh();
     this.stopPolling();
     if (this.resendCooldownInterval) {
       clearInterval(this.resendCooldownInterval);
@@ -263,7 +331,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
     this.routerSubscription?.unsubscribe();
     this.userSubscription?.unsubscribe();
-    UserService.revokePhotoUrl(this.userPhoto);
+    this.userService.releasePhotoUrl(this.userPhoto);
   }
 
   @HostListener('window:scroll')
@@ -277,6 +345,168 @@ export class LayoutComponent implements OnInit, OnDestroy {
     }
     const progress = Math.min(1, Math.max(0, window.scrollY / this.headerScrollFadeDistance));
     this.headerScrollProgress = Math.round(progress * 100) / 100;
+  }
+
+  private isPullToRefreshEnabled(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return isStandalonePwa() || window.matchMedia('(max-width: 767.98px)').matches;
+  }
+
+  private bindPullToRefresh(): void {
+    this.unbindPullToRefresh();
+    if (!this.isPullToRefreshEnabled()) {
+      return;
+    }
+
+    this.pullTouchStartHandler = (event: TouchEvent) => {
+      if (this.pullRefreshing || !this.pullToRefreshService.canPull()) {
+        return;
+      }
+      const pullFromZone = this.isTouchOnPullRefreshZone(event);
+      if (this.shouldDeferPullGesture(event)) {
+        return;
+      }
+      if (!pullFromZone && this.pullToRefreshService.getScrollTop() > 0) {
+        return;
+      }
+      this.pullStartY = event.touches[0]?.clientY ?? 0;
+      this.pullTracking = true;
+    };
+
+    this.pullTouchMoveHandler = (event: TouchEvent) => {
+      if (this.shouldDeferPullGesture(event)) {
+        this.pullTracking = false;
+        this.pullRefreshOffset = 0;
+        return;
+      }
+      if (!this.pullTracking || event.touches.length !== 1) {
+        return;
+      }
+      const deltaY = (event.touches[0]?.clientY ?? 0) - this.pullStartY;
+      if (deltaY <= 0) {
+        this.pullTracking = false;
+        this.pullRefreshOffset = 0;
+        return;
+      }
+      if (!this.isTouchOnPullRefreshZone(event) && this.pullToRefreshService.getScrollTop() > 0) {
+        this.pullTracking = false;
+        this.pullRefreshOffset = 0;
+        return;
+      }
+      this.pullRefreshOffset = Math.min(deltaY * 0.45, 96);
+      if (this.pullRefreshOffset > 12 && event.cancelable) {
+        event.preventDefault();
+      }
+      this.cdr.markForCheck();
+    };
+
+    this.pullTouchEndHandler = () => {
+      if (!this.pullTracking) {
+        return;
+      }
+      const shouldRefresh = this.pullRefreshOffset >= this.pullRefreshThreshold;
+      this.pullTracking = false;
+      this.pullRefreshOffset = 0;
+      if (shouldRefresh) {
+        void this.runPullRefresh();
+      }
+      this.cdr.markForCheck();
+    };
+
+    document.addEventListener('touchstart', this.pullTouchStartHandler, { passive: true });
+    document.addEventListener('touchmove', this.pullTouchMoveHandler, { passive: false });
+    document.addEventListener('touchend', this.pullTouchEndHandler, { passive: true });
+    document.addEventListener('touchcancel', this.pullTouchEndHandler, { passive: true });
+  }
+
+  private unbindPullToRefresh(): void {
+    if (this.pullTouchStartHandler) {
+      document.removeEventListener('touchstart', this.pullTouchStartHandler);
+    }
+    if (this.pullTouchMoveHandler) {
+      document.removeEventListener('touchmove', this.pullTouchMoveHandler);
+    }
+    if (this.pullTouchEndHandler) {
+      document.removeEventListener('touchend', this.pullTouchEndHandler);
+      document.removeEventListener('touchcancel', this.pullTouchEndHandler);
+    }
+    this.pullTouchStartHandler = null;
+    this.pullTouchMoveHandler = null;
+    this.pullTouchEndHandler = null;
+    this.pullTracking = false;
+    this.pullRefreshOffset = 0;
+    this.pullRefreshing = false;
+  }
+
+  private async runPullRefresh(): Promise<void> {
+    this.pullRefreshing = true;
+    this.cdr.markForCheck();
+    try {
+      await this.pullToRefreshService.execute();
+    } finally {
+      this.pullRefreshing = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private shouldDeferPullGesture(event: TouchEvent): boolean {
+    if (this.isTouchOnPullRefreshZone(event)) {
+      return false;
+    }
+    const touchTarget = this.getTouchTargetElement(event);
+    const activeScrollElement = this.pullToRefreshService.getActive()?.getScrollElement?.() ?? null;
+
+    if (activeScrollElement && touchTarget?.isConnected && activeScrollElement.contains(touchTarget)) {
+      return activeScrollElement.scrollTop > 0;
+    }
+
+    const scrollable = this.findScrollableAncestor(touchTarget);
+    if (!scrollable) {
+      return false;
+    }
+    if (scrollable === document.documentElement || scrollable === document.body) {
+      return false;
+    }
+    if (activeScrollElement && scrollable === activeScrollElement) {
+      return scrollable.scrollTop > 0;
+    }
+    return scrollable.scrollTop > 0;
+  }
+
+  private isTouchOnPullRefreshZone(event: TouchEvent): boolean {
+    const target = this.getTouchTargetElement(event);
+    return !!target?.closest('[data-pull-refresh-zone]');
+  }
+
+  private getTouchTargetElement(event: TouchEvent): Element | null {
+    if (event.target instanceof Element) {
+      return event.target;
+    }
+    const touch = event.touches[0] ?? event.changedTouches[0];
+    if (!touch) {
+      return null;
+    }
+    return document.elementFromPoint(touch.clientX, touch.clientY);
+  }
+
+  private findScrollableAncestor(element: Element | null): HTMLElement | null {
+    let el = element instanceof HTMLElement ? element : element?.parentElement ?? null;
+    while (el) {
+      if (el === document.documentElement || el === document.body) {
+        return el;
+      }
+      const style = window.getComputedStyle(el);
+      const overflowY = style.overflowY;
+      const canScrollY = (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay')
+        && el.scrollHeight > el.clientHeight + 1;
+      if (canScrollY) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
   }
 
   private async initPushNotifications(): Promise<void> {
@@ -372,7 +602,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private loadUserPhoto(userId: string): void {
     this.userService.getPhoto(userId).subscribe({
       next: (bytes: Uint8Array) => {
-        UserService.revokePhotoUrl(this.userPhoto);
+        this.userService.releasePhotoUrl(this.userPhoto);
         this.userPhoto = UserService.createPhotoUrl(bytes);
       },
       error: () => {

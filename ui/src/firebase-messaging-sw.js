@@ -82,9 +82,14 @@ function pickClient(windowClients) {
   return appClient || visibleClient || sameOrigin[0] || null;
 }
 
+function appendRefreshParam(url) {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}refresh=${Date.now()}`;
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = resolveNotificationUrl(event.notification.data || {});
+  const url = appendRefreshParam(resolveNotificationUrl(event.notification.data || {}));
   const absoluteUrl = new URL(url, self.location.origin).href;
 
   event.waitUntil(

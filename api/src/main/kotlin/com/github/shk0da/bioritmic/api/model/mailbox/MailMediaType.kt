@@ -3,7 +3,8 @@ package com.github.shk0da.bioritmic.api.model.mailbox
 enum class MailMediaType {
     VOICE,
     PHOTO,
-    VIDEO_NOTE;
+    VIDEO_NOTE,
+    SYSTEM;
 
     companion object {
         fun parse(value: String): MailMediaType? =

@@ -239,6 +239,226 @@ class MeetingStatusTest : ApiApplicationTests() {
     }
 
     @Test
+    fun `decline accepted meeting hides it from list`() {
+        val meeting = testMeeting(userBId)
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(meeting)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/meetings/$userAId/accept")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/meetings/$userAId/decline")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val recipientMeetings: List<UserMeeting> = webTestClient.get()
+            .uri("$API_WITH_VERSION_1/meetings?page=0&size=10")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBodyList(UserMeeting::class.java)
+            .returnResult()
+            .responseBody ?: emptyList()
+        assertEquals(0, recipientMeetings.size, "Declined accepted meeting should not appear for recipient")
+
+        val senderMeetings: List<UserMeeting> = webTestClient.get()
+            .uri("$API_WITH_VERSION_1/meetings?page=0&size=10")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBodyList(UserMeeting::class.java)
+            .returnResult()
+            .responseBody ?: emptyList()
+        assertEquals(0, senderMeetings.size, "Declined accepted meeting should not appear for sender")
+    }
+
+    @Test
+    fun `sender can revoke pending meeting`() {
+        val meeting = testMeeting(userBId)
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(meeting)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.delete()
+            .uri("$API_WITH_VERSION_1/meetings/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val senderMeetings: List<UserMeeting> = webTestClient.get()
+            .uri("$API_WITH_VERSION_1/meetings?page=0&size=10")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBodyList(UserMeeting::class.java)
+            .returnResult()
+            .responseBody ?: emptyList()
+        assertEquals(0, senderMeetings.size)
+
+        val recipientMeetings: List<UserMeeting> = webTestClient.get()
+            .uri("$API_WITH_VERSION_1/meetings?page=0&size=10")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBodyList(UserMeeting::class.java)
+            .returnResult()
+            .responseBody ?: emptyList()
+        assertEquals(0, recipientMeetings.size)
+    }
+
+    @Test
+    fun `sender can revoke accepted meeting`() {
+        val meeting = testMeeting(userBId)
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(meeting)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/meetings/$userAId/accept")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.delete()
+            .uri("$API_WITH_VERSION_1/meetings/$userBId")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val senderMeetings: List<UserMeeting> = webTestClient.get()
+            .uri("$API_WITH_VERSION_1/meetings?page=0&size=10")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBodyList(UserMeeting::class.java)
+            .returnResult()
+            .responseBody ?: emptyList()
+        assertEquals(0, senderMeetings.size)
+
+        val recipientMeetings: List<UserMeeting> = webTestClient.get()
+            .uri("$API_WITH_VERSION_1/meetings?page=0&size=10")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBodyList(UserMeeting::class.java)
+            .returnResult()
+            .responseBody ?: emptyList()
+        assertEquals(0, recipientMeetings.size)
+    }
+
+    @Test
+    fun `recipient cannot revoke meeting`() {
+        val meeting = testMeeting(userBId)
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(meeting)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.delete()
+            .uri("$API_WITH_VERSION_1/meetings/$userAId")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isForbidden
+    }
+
+    @Test
+    fun `create meeting to user who blocked sender returns 412`() {
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/user/$userAId/block")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val meeting = testMeeting(userBId)
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(meeting)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isEqualTo(412)
+    }
+
+    @Test
+    fun `accept meeting after reverse proposal with declined original succeeds`() {
+        val meetingFromA = testMeeting(userBId)
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(meetingFromA)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/meetings/$userAId/decline")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val meetingFromB = testMeeting(userAId)
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/meetings")
+            .header(HttpHeaders.AUTHORIZATION, userBToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(listOf(meetingFromB)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.put()
+            .uri("$API_WITH_VERSION_1/meetings/$userBId/accept")
+            .header(HttpHeaders.AUTHORIZATION, userAToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.success").isEqualTo(true)
+            .jsonPath("$.status").isEqualTo("ACCEPTED")
+    }
+
+    @Test
     fun `create meeting rejects past scheduledAt`() {
         val meeting = testMeeting(
             userId = userBId,

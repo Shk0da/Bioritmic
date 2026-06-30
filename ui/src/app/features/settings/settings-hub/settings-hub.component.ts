@@ -1,7 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { UserService } from '../../../core/services/user.service';
 import { PageBackLinkComponent } from '../../../shared/components/page-back-link/page-back-link.component';
+import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
+import { normalizeRouteUrl } from '../../../core/routing/route-cache-refresh.util';
+import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.service';
 
 @Component({
   selector: 'app-settings-hub',
@@ -55,10 +58,19 @@ import { PageBackLinkComponent } from '../../../shared/components/page-back-link
 })
 export class SettingsHubComponent implements OnInit {
   blockedCount = 0;
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
 
   constructor(private userService: UserService) {}
 
   ngOnInit(): void {
+    this.loadBlockedCount();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, (url) => normalizeRouteUrl(url) === '/settings', () => ({
+      refresh: () => this.loadBlockedCount(),
+    }));
+  }
+
+  private loadBlockedCount(): void {
     this.userService.getBlockedCount().subscribe({
       next: (res) => { this.blockedCount = res.count; },
       error: () => { this.blockedCount = 0; }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.shk0da.bioritmic.api.domain.UserMail
 import com.github.shk0da.bioritmic.api.model.mailbox.MailReactionType
 import com.github.shk0da.bioritmic.api.model.mailbox.MailMediaType
+import com.github.shk0da.bioritmic.api.model.mailbox.MailSystemMessage
 import java.sql.Timestamp
 import java.util.UUID
 import javax.validation.constraints.NotNull
@@ -25,7 +26,10 @@ data class UserMailModel(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY) val reactionCounts: Map<String, Int>? = null,
     @get:JsonProperty("isRead")
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    val messageRead: Boolean? = null
+    val messageRead: Boolean? = null,
+    @get:JsonProperty("isSystem")
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val systemMessage: Boolean? = null
 ) {
 
     companion object {
@@ -52,7 +56,8 @@ data class UserMailModel(
                 mediaUrl = mediaUrl,
                 currentUserReaction = currentUserReaction,
                 reactionCounts = validCounts,
-                messageRead = userMail.isRead
+                messageRead = userMail.isRead,
+                systemMessage = MailSystemMessage.isSystem(userMail)
             )
         }
 

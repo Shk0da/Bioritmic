@@ -236,7 +236,7 @@ export class LoginComponent implements OnInit {
           const pushReturnUrl = this.pushService.consumeReturnUrl();
           const returnUrl = sanitizePushNavigationUrl(queryReturnUrl || pushReturnUrl || '');
           if (returnUrl !== '/') {
-            void this.router.navigateByUrl(returnUrl);
+            void this.router.navigateByUrl(this.router.parseUrl(returnUrl));
           } else {
             void this.router.navigate(['/swipe']);
           }

@@ -16,6 +16,17 @@ async function createDriver() {
   return driver;
 }
 
+async function createMobileDriver() {
+  const driver = await new Builder()
+    .forBrowser('MicrosoftEdge')
+    .setEdgeOptions({
+      args: ['--headless', '--disable-gpu', '--no-sandbox', '--window-size=390,844'],
+    })
+    .build();
+  await driver.manage().setTimeouts({ implicit: 10000, page: 30000 });
+  return driver;
+}
+
 async function quitDriver(driver) {
   try {
     await driver.quit();
@@ -63,6 +74,51 @@ async function isElementPresent(driver, locator) {
   } catch (e) {
     return false;
   }
+}
+
+async function isElementVisible(driver, locator) {
+  try {
+    const el = await driver.findElement(locator);
+    return await el.isDisplayed();
+  } catch (e) {
+    return false;
+  }
+}
+
+async function getMessagesScrollState(driver) {
+  return driver.executeScript(`
+    const el = document.querySelector('[data-testid="messages-container"]');
+    if (!el) return null;
+    return {
+      scrollTop: el.scrollTop,
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+      distanceFromBottom: el.scrollHeight - el.scrollTop - el.clientHeight,
+    };
+  `);
+}
+
+async function waitForMessagesNearBottom(driver, tolerance = 96, timeout = 20000) {
+  await driver.wait(async () => {
+    const state = await getMessagesScrollState(driver);
+    return Boolean(state && state.distanceFromBottom <= tolerance);
+  }, timeout);
+}
+
+async function sendMailViaApi(token, toUserId, message) {
+  const resp = await fetch(`${API_URL}/api/v1/mailbox`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ to: toUserId, message }),
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`sendMailViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
 }
 
 async function getElementText(driver, locator) {
@@ -844,6 +900,15 @@ async function waitForHeroPhotoBackground(driver) {
   }, 20000);
 }
 
+async function confirmAppModal(driver, timeout = 5000) {
+  const confirmBtn = await driver.wait(
+    until.elementLocated(By.css('.modal-overlay .btn-confirm, .modal-overlay .btn-primary')),
+    timeout
+  );
+  await confirmBtn.click();
+  await driver.sleep(300);
+}
+
 async function registerAndVerifyUser(driver, user) {
   await resolveSeedAdminCredentials();
   await clearSession(driver);
@@ -864,6 +929,112 @@ function toDatetimeLocalValue(date) {
   return local.toISOString().slice(0, 16);
 }
 
+function buildMeetingPayload(toUserId, overrides = {}) {
+  const scheduledAt = new Date(Date.now() + 86_400_000).toISOString();
+  return {
+    userId: toUserId,
+    lat: 55.75,
+    lon: 37.61,
+    distance: 10,
+    description: 'E2E test meeting',
+    scheduledAt,
+    ...overrides,
+  };
+}
+
+async function createMeetingViaApi(token, toUserId, overrides = {}) {
+  const resp = await fetch(`${API_URL}/api/v1/meetings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify([buildMeetingPayload(toUserId, overrides)]),
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`createMeetingViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+async function getMeetingsViaApi(token, page = 0, size = 10) {
+  const resp = await fetch(`${API_URL}/api/v1/meetings?page=${page}&size=${size}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`getMeetingsViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+async function acceptMeetingViaApi(token, senderUserId) {
+  const resp = await fetch(`${API_URL}/api/v1/meetings/${senderUserId}/accept`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: '{}',
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`acceptMeetingViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+async function declineMeetingViaApi(token, senderUserId) {
+  const resp = await fetch(`${API_URL}/api/v1/meetings/${senderUserId}/decline`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: '{}',
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`declineMeetingViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+async function deleteMeetingViaApi(token, otherUserId) {
+  const resp = await fetch(`${API_URL}/api/v1/meetings/${otherUserId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`deleteMeetingViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+async function hasSentMeetingViaApi(token, otherUserId) {
+  const resp = await fetch(`${API_URL}/api/v1/meetings/${otherUserId}/sent`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`hasSentMeetingViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
+async function getMeetingsBadgeViaApi(token, sinceMs = 0) {
+  const resp = await fetch(`${API_URL}/api/v1/meetings/badge?since=${sinceMs}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`getMeetingsBadgeViaApi failed: ${resp.status} ${text}`);
+  }
+  return resp.json();
+}
+
 module.exports = {
   BASE_URL,
   API_URL,
@@ -871,12 +1042,16 @@ module.exports = {
   USER_B,
   SEED_ADMIN,
   createDriver,
+  createMobileDriver,
   quitDriver,
   waitAndClick,
   waitAndType,
   waitForText,
   waitForUrlContains,
   isElementPresent,
+  isElementVisible,
+  getMessagesScrollState,
+  waitForMessagesNearBottom,
   getElementText,
   getBodyText,
   assertNoRawJsonError,
@@ -886,6 +1061,7 @@ module.exports = {
   registerUserViaApi,
   registerAndVerifyUser,
   dismissOpenModals,
+  confirmAppModal,
   clearSession,
   loginUser,
   loginViaApi,
@@ -902,6 +1078,7 @@ module.exports = {
   selectProfileGender,
   setUserGisViaApi,
   sendMediaMailViaApi,
+  sendMailViaApi,
   E2E_TEST_PHOTO,
   E2E_TEST_PHOTO_JPEG,
   buildImageFormData,
@@ -929,4 +1106,12 @@ module.exports = {
   sendApiRequest,
   clickHeaderNav,
   toDatetimeLocalValue,
+  buildMeetingPayload,
+  createMeetingViaApi,
+  getMeetingsViaApi,
+  acceptMeetingViaApi,
+  declineMeetingViaApi,
+  deleteMeetingViaApi,
+  hasSentMeetingViaApi,
+  getMeetingsBadgeViaApi,
 };

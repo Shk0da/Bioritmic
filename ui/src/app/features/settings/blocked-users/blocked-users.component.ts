@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender, PageableRequest } from '../../../core/models/user.model';
 import { PageBackLinkComponent } from '../../../shared/components/page-back-link/page-back-link.component';
+import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
+import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.service';
 
 interface BlockedUser extends UserInfo {
   photoDataUrl?: string | null;
@@ -346,6 +348,8 @@ export class BlockedUsersComponent implements OnInit {
   hasMore = false;
   showConfirmModal = false;
   userToUnblock?: string;
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
 
   constructor(
     private userService: UserService
@@ -353,6 +357,13 @@ export class BlockedUsersComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadBlockedUsers();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/settings/blocked', () => ({
+      refresh: () => {
+        this.pageable.page = 0;
+        this.loadBlockedUsers();
+      },
+      isEnabled: () => !this.loading,
+    }));
   }
 
   private loadBlockedUsers(): void {

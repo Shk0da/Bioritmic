@@ -92,12 +92,17 @@ class UserController(
     suspend fun user(@PathVariable id: UUID): UserInfo {
         val currentUserId = getUserId()
         val user = userService.findUserById(id) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        val currentUser = userService.findUserById(currentUserId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val isBanned = userService.isUserBanned(id)
-        val userInfo = if (null != user.birthday && null != currentUser.birthday) {
-            ofWithCompare(user, Date(currentUser.birthday!!.toInstant().toEpochMilli()))
-        } else {
+        val userInfo = if (currentUserId == id) {
             UserInfo.ofWithoutEmail(user)
+        } else {
+            val currentUser = userService.findUserById(currentUserId)
+                ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+            if (user.birthday != null && currentUser.birthday != null) {
+                ofWithCompare(user, Date(currentUser.birthday!!.toInstant().toEpochMilli()))
+            } else {
+                UserInfo.ofWithoutEmail(user)
+            }
         }
         return userInfo.copy(isBanned = isBanned)
     }

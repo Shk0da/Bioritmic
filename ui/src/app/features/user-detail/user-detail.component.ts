@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgClass, NgStyle, NgIf, NgFor } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
 import { UserService } from '../../core/services/user.service';
+import { AuthService } from '../../core/services/auth.service';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { MeetingsService } from '../../core/services/meetings.service';
@@ -14,6 +15,9 @@ import { BiorhythmDetailComponent } from '../../shared/components/biorhythm-deta
 import { Subject, takeUntil } from 'rxjs';
 import { ModalService } from '../../core/services/modal.service';
 import { isFutureDatetimeLocalValue, parseDatetimeLocalValue, toDatetimeLocalValue } from '../../shared/utils/datetime-local.util';
+import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
+import { normalizeRouteUrl } from '../../core/routing/route-cache-refresh.util';
+import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 import {
   getSummaryCompatibility,
   getSummaryCompatibilityAverage,
@@ -66,7 +70,14 @@ import {
           </div>
 
           <!-- Compatibility Section -->
-          @if (user.compare) {
+          @if (isOwnProfile) {
+            <div class="compatibility-hint-section">
+              <h6 class="section-label">Совместимость</h6>
+              <p class="compatibility-hint-text mb-0">
+                Для того чтобы увидеть совместимость, выберите профиль другого человека.
+              </p>
+            </div>
+          } @else if (user.compare) {
             <div class="compatibility-section">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="section-label mb-0">Совместимость</h6>
@@ -113,6 +124,12 @@ import {
               <i class="bi bi-shield-exclamation"></i>
               <span>Пользователь нарушал правила и был забанен</span>
             </div>
+          } @else if (isOwnProfile) {
+            <div class="own-profile-actions">
+              <a routerLink="/profile/me" class="btn btn-outline-primary w-100">
+                <i class="bi bi-pencil me-2"></i>Редактировать мой профиль
+              </a>
+            </div>
           } @else {
           <div class="actions-grid">
             <button class="action-btn action-message" (click)="openChat()">
@@ -121,8 +138,13 @@ import {
             </button>
             @if (meetingSent) {
               <button class="action-btn action-meeting-sent" (click)="cancelMeeting()">
-                <i class="bi bi-calendar-check"></i>
-                <span>Встреча отправлена</span>
+                <i class="bi bi-x-circle"></i>
+                <span>Отозвать встречу</span>
+              </button>
+            } @else if (isBlockedByUser) {
+              <button class="action-btn action-meeting-disabled" disabled title="Пользователь ограничил взаимодействие">
+                <i class="bi bi-calendar-x"></i>
+                <span>Встреча недоступна</span>
               </button>
             } @else {
               <button class="action-btn action-meeting" (click)="openMeetingModal()">
@@ -244,7 +266,7 @@ import {
           }
 
           <!-- Biorhythm -->
-          @if (user.id) {
+          @if (!isOwnProfile && user.id) {
             <div class="biorhythm-section">
               <h6 class="section-label">Биоритмическая совместимость</h6>
               <app-biorhythm-detail [userId]="user.id"></app-biorhythm-detail>
@@ -368,9 +390,17 @@ import {
 
     .compatibility-section,
     .bio-section,
-    .biorhythm-section {
+    .biorhythm-section,
+    .compatibility-hint-section,
+    .own-profile-actions {
       padding: 1.25rem 1.5rem;
       border-top: 1px solid var(--border-light, #f3f4f6);
+    }
+
+    .compatibility-hint-text {
+      color: var(--text-muted, #6b7280);
+      font-size: 0.95rem;
+      line-height: 1.45;
     }
 
     .compat-bars {
@@ -526,6 +556,15 @@ import {
         grid-column: 1 / -1;
 
         &:hover { background: rgba(239, 68, 68, 0.08); border-color: #ef4444; color: #ef4444; }
+      }
+
+      &.action-meeting-disabled {
+        border-color: #d1d5db;
+        color: #9ca3af;
+        background: var(--bg-secondary, #f3f4f6);
+        grid-column: 1 / -1;
+        cursor: not-allowed;
+        opacity: 0.85;
       }
 
       &.action-bookmark {
@@ -743,6 +782,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   error: string | null = null;
   isBookmarked = false;
   isBlocked = false;
+  isBlockedByUser = false;
   meetingSent = false;
   isReported = false;
   showReportModal = false;
@@ -765,6 +805,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
   private onlineTickInterval: ReturnType<typeof setInterval> | null = null;
   private onlineTickMs = Date.now();
   private onlineStatusRefreshInterval: ReturnType<typeof setInterval> | null = null;
@@ -773,6 +814,7 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private userService: UserService,
+    private authService: AuthService,
     private bookmarksService: BookmarksService,
     private mailboxService: MailboxService,
     private meetingsService: MeetingsService,
@@ -788,6 +830,16 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     this.onlineTickInterval = setInterval(() => {
       this.onlineTickMs = Date.now();
     }, 30_000);
+
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, (url) => /^\/user\/[^/]+$/.test(normalizeRouteUrl(url)), () => ({
+      refresh: () => {
+        const userId = this.route.snapshot.paramMap.get('id');
+        if (userId) {
+          this.loadUser(userId);
+        }
+      },
+      isEnabled: () => !this.loading,
+    }));
 
     this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
       const userId = params.get('id');
@@ -852,9 +904,10 @@ export class UserDetailComponent implements OnInit, OnDestroy {
       next: (user) => {
         this.user = user;
         this.loadPhoto(userId);
-        if (!user.isBanned) {
+        if (!user.isBanned && !this.isOwnProfile) {
           this.loadBookmarkStatus(userId);
           this.loadBlockStatus(userId);
+          this.loadBlockedByStatus(userId);
           this.loadMeetingStatus(userId);
         }
         this.loading = false;
@@ -894,6 +947,13 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     this.userService.isBlocked(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (res) => { this.isBlocked = res.blocked; },
       error: () => { this.isBlocked = false; }
+    });
+  }
+
+  private loadBlockedByStatus(userId: string): void {
+    this.userService.isBlockedBy(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res) => { this.isBlockedByUser = res.blocked; },
+      error: () => { this.isBlockedByUser = false; }
     });
   }
 
@@ -988,6 +1048,11 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     return this.user?.gender === Gender.MAN ? 'Мужской' : 'Женский';
   }
 
+  get isOwnProfile(): boolean {
+    const currentUserId = this.authService.getCurrentUser()?.id;
+    return !!currentUserId && !!this.user?.id && currentUserId === this.user.id;
+  }
+
   getCompareDetails(): Array<{ name: string; label: string; value: number }> {
     return getSummaryCompatibility(this.user?.compare);
   }
@@ -1020,6 +1085,10 @@ export class UserDetailComponent implements OnInit, OnDestroy {
 
   sendMeetingRequest(): void {
     if (!this.user?.id) return;
+    if (this.isBlockedByUser) {
+      this.toastService.error('Пользователь ограничил взаимодействие с вами');
+      return;
+    }
 
     const meeting: UserMeeting = {
       userId: this.user.id,
@@ -1045,6 +1114,10 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   }
 
   openMeetingModal(): void {
+    if (this.isBlockedByUser) {
+      this.toastService.error('Пользователь ограничил взаимодействие с вами');
+      return;
+    }
     this.meetingDescription = '';
     this.meetingScheduledAt = this.defaultMeetingDateTime();
     this.showMeetingModal = true;
@@ -1090,15 +1163,15 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     if (!this.user?.id) return;
 
     const confirmed = await this.modalService.confirm(
-      `Отменить предложение встречи для ${this.user.name || 'пользователя'}?`,
-      'Отмена встречи'
+      `Отозвать предложение встречи для ${this.user.name || 'пользователя'}?`,
+      'Отзыв встречи'
     );
     if (!confirmed) return;
 
     this.meetingsService.deleteMeeting(this.user.id).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.meetingSent = false;
-        this.modalService.alert('Предложение встречи отменено');
+        this.toastService.success('Предложение встречи отозвано');
       },
       error: () => { /* shown by HTTP interceptor */ }
     });

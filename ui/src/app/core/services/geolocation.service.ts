@@ -35,7 +35,9 @@ const GEOLOCATION_ERROR = {
 export class GeolocationService implements OnDestroy {
   private watchId: number | null = null;
   private readonly UPDATE_INTERVAL = 60000;
+  private readonly WATCH_BACKOFF_MS = 5 * 60 * 1000;
   private lastUpdate = 0;
+  private watchBackoffUntil = 0;
   private locationSubscription: Subscription | null = null;
   private unavailableLogged = false;
 
@@ -55,12 +57,16 @@ export class GeolocationService implements OnDestroy {
     if (!this.authService.isAuthenticated() || !navigator.geolocation) {
       return;
     }
-
-    this.stopTracking();
+    if (this.watchId !== null) {
+      return;
+    }
+    if (Date.now() < this.watchBackoffUntil) {
+      return;
+    }
 
     this.userService.getGisData().subscribe({
       next: (gis) => {
-        if (gis) {
+        if (gis && this.watchId === null) {
           this.beginWatch();
         }
       }
@@ -219,6 +225,7 @@ export class GeolocationService implements OnDestroy {
 
   private handleSilentGeolocationError(error: GeolocationPositionError): void {
     if (error.code === GEOLOCATION_ERROR.PERMISSION_DENIED) {
+      this.watchBackoffUntil = Date.now() + this.WATCH_BACKOFF_MS;
       this.stopTracking();
       return;
     }
@@ -228,7 +235,11 @@ export class GeolocationService implements OnDestroy {
         this.unavailableLogged = true;
         console.debug('Geolocation unavailable, automatic updates paused.');
       }
-      this.stopTracking();
+      this.watchBackoffUntil = Date.now() + this.WATCH_BACKOFF_MS;
+      if (this.watchId !== null) {
+        navigator.geolocation.clearWatch(this.watchId);
+        this.watchId = null;
+      }
     }
   }
 

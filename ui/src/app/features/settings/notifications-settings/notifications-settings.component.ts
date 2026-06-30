@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { PushNotificationService } from '../../../core/services/push-notification.service';
 import { ModalService } from '../../../core/services/modal.service';
 import { PageBackLinkComponent } from '../../../shared/components/page-back-link/page-back-link.component';
+import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
+import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.service';
 
 @Component({
   selector: 'app-notifications-settings',
@@ -85,6 +87,8 @@ export class NotificationsSettingsComponent implements OnInit {
   pushMessage = '';
   showInstallHint = false;
   isStandalone = false;
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly pullToRefreshService = inject(PullToRefreshService);
 
   constructor(
     private pushService: PushNotificationService,
@@ -99,6 +103,17 @@ export class NotificationsSettingsComponent implements OnInit {
     this.isStandalone = this.pushService.isStandalone();
     this.showInstallHint = this.pushService.isIos() && !this.isStandalone;
     void this.refreshPushState();
+    registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/settings/notifications', () => ({
+      refresh: async () => {
+        this.pushSupported = this.pushService.isSupported();
+        this.pushService.syncEnabledWithPermission();
+        this.pushEnabled = this.pushService.isActive();
+        this.pushMode = this.pushService.getMode();
+        this.isStandalone = this.pushService.isStandalone();
+        this.showInstallHint = this.pushService.isIos() && !this.isStandalone;
+        await this.refreshPushState();
+      },
+    }));
   }
 
   private async refreshPushState(): Promise<void> {
