@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender, PageableRequest } from '../../../core/models/user.model';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { PageBackLinkComponent } from '../../../shared/components/page-back-link/page-back-link.component';
 
 interface BlockedUser extends UserInfo {
   photoDataUrl?: string | null;
@@ -11,9 +10,11 @@ interface BlockedUser extends UserInfo {
 @Component({
   selector: 'app-blocked-users',
   standalone: true,
-  imports: [RouterLink],
+  imports: [PageBackLinkComponent],
   template: `
     <div class="page-container">
+      <app-page-back-link link="/settings" label="Назад к настройкам"></app-page-back-link>
+
       <div class="page-header mb-4">
         <h1 class="page-title">
           <i class="bi bi-slash-circle me-2"></i>Заблокированные пользователи
@@ -347,8 +348,7 @@ export class BlockedUsersComponent implements OnInit {
   userToUnblock?: string;
 
   constructor(
-    private userService: UserService,
-    private sanitizer: DomSanitizer
+    private userService: UserService
   ) {}
 
   ngOnInit(): void {

@@ -117,12 +117,7 @@ import { StoryViewerComponent } from '../story-viewer/story-viewer.component';
     }
 
     .story-avatar-wrapper.viewed {
-      background: #bdbdbd;
-    }
-
-    .story-avatar-wrapper.viewed .story-avatar {
-      opacity: 0.5;
-      filter: grayscale(40%);
+      background: var(--text-muted, #9ca3af);
     }
 
     .story-item.viewed .story-name {

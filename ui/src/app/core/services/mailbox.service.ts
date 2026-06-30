@@ -36,7 +36,8 @@ export const MAIL_REACTIONS: { type: MailReactionType; emoji: string; label: str
   { type: 'FIRE', emoji: '🔥', label: 'Огонь' },
   { type: 'POOP', emoji: '💩', label: 'Какашка' },
   { type: 'CLOWN', emoji: '🤡', label: 'Клоун' },
-  { type: 'LOL', emoji: '😂', label: 'LOL' },
+  { type: 'LOL', emoji: '😂', label: 'Смех' },
+  { type: 'CRY', emoji: '😭', label: 'Плачу' },
 ];
 
 @Injectable({

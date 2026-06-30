@@ -299,7 +299,7 @@ describe('Настройки пользователя', function () {
   });
 
   it('Страница настроек содержит параметры поиска', async function () {
-    await navigateTo(driverA, '/settings');
+    await navigateTo(driverA, '/settings/search');
     await driverA.sleep(2000);
 
     const genderSelect = await isElementPresent(driverA, By.name('gender'));
@@ -329,10 +329,10 @@ describe('Настройки пользователя', function () {
     await driverA.sleep(2000);
   });
 
-  it('Ссылка "Заблокированные пользователи" ведёт на /settings/blocked', async function () {
-    await navigateTo(driverA, '/settings');
+  it('Ссылка "Заблокированные" ведёт на /settings/blocked', async function () {
+    await navigateTo(driverA, '/profile/me');
     await driverA.sleep(1000);
-    const blockedLink = await driverA.findElement(By.css('a[routerLink="/settings/blocked"]'));
+    const blockedLink = await driverA.findElement(By.css('a[href="/settings/blocked"]'));
     await blockedLink.click();
     await waitForUrlContains(driverA, '/settings/blocked', 10000);
     const url = await driverA.getCurrentUrl();

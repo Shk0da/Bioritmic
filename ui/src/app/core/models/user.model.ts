@@ -69,7 +69,7 @@ export interface GisData {
 }
 
 export type MailMediaType = 'VOICE' | 'PHOTO' | 'VIDEO_NOTE';
-export type MailReactionType = 'LIKE' | 'HEART' | 'FIRE' | 'POOP' | 'CLOWN' | 'LOL';
+export type MailReactionType = 'LIKE' | 'HEART' | 'FIRE' | 'POOP' | 'CLOWN' | 'LOL' | 'CRY';
 export type MailReactionCounts = Partial<Record<MailReactionType, number>>;
 
 export interface UserMail {

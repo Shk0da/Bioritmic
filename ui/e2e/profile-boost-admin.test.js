@@ -319,15 +319,15 @@ describe('Навигация из профиля', function () {
     await driver.sleep(2000);
 
     const settingsBtn = await driver.wait(
-      until.elementLocated(By.css('a[href="/settings"]')),
+      until.elementLocated(By.css('a[href="/settings/search"]')),
       10000
     );
     await settingsBtn.click();
 
-    await waitForUrlContains(driver, '/settings', 10000);
+    await waitForUrlContains(driver, '/settings/search', 10000);
 
     const url = await driver.getCurrentUrl();
-    assert.ok(url.includes('/settings'), `Должен быть переход на /settings, текущий URL: ${url}`);
+    assert.ok(url.includes('/settings/search'), `Должен быть переход на /settings/search, текущий URL: ${url}`);
   });
 
   it('Кнопка "Заблокированные" ведёт на страницу заблокированных', async function () {

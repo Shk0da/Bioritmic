@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-export type StoryReactionType = 'LIKE' | 'HEART' | 'FIRE' | 'POOP' | 'CLOWN' | 'LOL';
+export type StoryReactionType = 'LIKE' | 'HEART' | 'FIRE' | 'POOP' | 'CLOWN' | 'LOL' | 'CRY';
 
 export type StoryReactionCounts = Partial<Record<StoryReactionType, number>>;
 
@@ -36,7 +36,8 @@ export const STORY_REACTIONS: StoryReactionOption[] = [
   { type: 'FIRE', emoji: '🔥', label: 'Огонь' },
   { type: 'POOP', emoji: '💩', label: 'Какашка' },
   { type: 'CLOWN', emoji: '🤡', label: 'Клоун' },
-  { type: 'LOL', emoji: '😂', label: 'LOL' },
+  { type: 'LOL', emoji: '😂', label: 'Смех' },
+  { type: 'CRY', emoji: '😭', label: 'Плачу' },
 ];
 
 @Injectable({

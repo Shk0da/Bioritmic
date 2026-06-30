@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
+import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.UUID
 
@@ -85,7 +86,7 @@ class UserControllerTest : ApiApplicationTests() {
             id = null,
             name = "Updated Name",
             email = defaultUserModel.email,
-            birthday = Date()
+            birthday = SimpleDateFormat("yyyy-MM-dd").parse("1990-01-01")
         )
 
         webTestClient.put()

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { RouterLink, RouterOutlet, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
@@ -15,7 +15,12 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
   standalone: true,
   imports: [RouterLink, RouterOutlet, RouterLinkActive, NgClass],
   template: `
-    <header class="site-header">
+    <header
+      class="site-header"
+      [class.site-header--glass]="headerScrollProgress > 0.02"
+      [style.--header-scroll-progress]="headerScrollProgress">
+      <div class="site-header__gradient" aria-hidden="true"></div>
+      <div class="site-header__glass" aria-hidden="true"></div>
       <div class="header-content">
         <a class="header-logo" routerLink="/swipe" aria-label="Bioritmic">
           <div class="logo-couple">
@@ -187,6 +192,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
   isUserVerified = true;
   resendLoading = false;
   resendCooldown = 0;
+  headerScrollProgress = 0;
+  private readonly headerScrollFadeDistance = 96;
   private resendCooldownInterval: ReturnType<typeof setInterval> | null = null;
   private pollingIntervalId: ReturnType<typeof setInterval> | null = null;
   private routerSubscription: Subscription | null = null;
@@ -205,6 +212,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.updateHeaderScrollProgress();
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
       this.isUserAdmin = !!(user?.role && user.role.includes('ADMIN'));
@@ -221,6 +229,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.routerSubscription = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe((event: any) => {
+        this.updateHeaderScrollProgress();
         if (event.urlAfterRedirects?.startsWith('/mailbox')) {
           this.markMessagesAsRead();
         }
@@ -240,6 +249,19 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.routerSubscription?.unsubscribe();
     this.userSubscription?.unsubscribe();
     UserService.revokePhotoUrl(this.userPhoto);
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    this.updateHeaderScrollProgress();
+  }
+
+  private updateHeaderScrollProgress(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const progress = Math.min(1, Math.max(0, window.scrollY / this.headerScrollFadeDistance));
+    this.headerScrollProgress = Math.round(progress * 100) / 100;
   }
 
   private async initPushNotifications(): Promise<void> {

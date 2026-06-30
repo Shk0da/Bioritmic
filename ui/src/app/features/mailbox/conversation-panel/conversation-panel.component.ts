@@ -1235,7 +1235,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
 
   emojis = [
     '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
-    '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗',
+    '😉', '😊', '😋', '😭', '😎', '😍', '😘', '🥰',
     '❤️', '💕', '💖', '👍', '👏', '🙌', '👋', '✌️'
   ];
 

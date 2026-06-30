@@ -87,7 +87,11 @@ describe('Защищённые маршруты — редирект на лог
     '/mailbox',
     '/meetings',
     '/settings',
+    '/settings/search',
+    '/settings/notifications',
     '/settings/location',
+    '/settings/feedback',
+    '/settings/danger',
     '/settings/blocked',
     '/subscription',
     '/admin',
@@ -129,7 +133,11 @@ describe('Маршруты верифицированного пользоват
     { path: '/mailbox', url: '/mailbox', text: 'Сообщения' },
     { path: '/meetings', url: '/meetings', text: 'Встречи' },
     { path: '/settings', url: '/settings', text: 'Настройки' },
+    { path: '/settings/search', url: '/settings/search', text: 'Параметры поиска' },
+    { path: '/settings/notifications', url: '/settings/notifications', text: 'Уведомления и приложение' },
     { path: '/settings/location', url: '/settings/location', text: 'Моё местоположение' },
+    { path: '/settings/feedback', url: '/settings/feedback', text: 'Обратная связь' },
+    { path: '/settings/danger', url: '/settings/danger', text: 'Опасная зона' },
     { path: '/settings/blocked', url: '/settings/blocked', text: 'Заблокированные пользователи' },
     { path: '/subscription', url: '/subscription', text: 'Подписка' },
   ];
@@ -218,7 +226,7 @@ describe('Навигация через хедер — верифицирова�
   }
 
   it('Клик по логотипу ведёт на /swipe', async function () {
-    await navigateTo(driver, '/settings');
+    await navigateTo(driver, '/settings/search');
     await waitAndClick(driver, By.css('a.header-logo'));
     await waitForUrlContains(driver, '/swipe', 10000);
     await assertNoRawJsonError(driver);
@@ -250,7 +258,12 @@ describe('Маршруты неверифицированного пользов
     { path: '/profile/me', url: '/profile' },
     { path: '/profile/me/edit', url: '/profile/me/edit' },
     { path: '/settings', url: '/settings' },
+    { path: '/settings/search', url: '/settings/search' },
     { path: '/settings/location', url: '/settings/location' },
+    { path: '/settings/notifications', url: '/settings/notifications' },
+    { path: '/settings/feedback', url: '/settings/feedback' },
+    { path: '/settings/danger', url: '/settings/danger' },
+    { path: '/settings/blocked', url: '/settings/blocked' },
   ];
 
   for (const route of allowedRoutes) {

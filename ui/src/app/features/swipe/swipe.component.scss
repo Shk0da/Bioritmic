@@ -321,6 +321,23 @@
         font-weight: 600;
       }
     }
+
+    .invite-friends {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .invite-friends-label {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .invite-share-btn {
+      min-width: 180px;
+    }
   }
 }
 
@@ -355,6 +372,23 @@
       color: var(--text-primary);
       font-weight: 600;
     }
+  }
+
+  .invite-friends {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .invite-friends-label {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+  }
+
+  .invite-share-btn {
+    min-width: 180px;
   }
 }
 

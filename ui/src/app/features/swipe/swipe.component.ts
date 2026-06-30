@@ -19,6 +19,8 @@ import {
 } from '../../shared/utils/biorhythm-labels.util';
 import { StoriesBarComponent } from '../../shared/components/stories-bar/stories-bar.component';
 import { MatchModalComponent } from '../../shared/components/match-modal/match-modal.component';
+import { ShareService } from '../../core/services/share.service';
+import { ModalService } from '../../core/services/modal.service';
 
 @Component({
   selector: 'app-swipe',
@@ -70,6 +72,20 @@ import { MatchModalComponent } from '../../shared/components/match-modal/match-m
               <button class="btn btn-primary mt-3" (click)="openFilters()">
                 <i class="bi bi-funnel"></i> Изменить фильтры
               </button>
+              <div class="invite-friends">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary invite-share-btn"
+                  (click)="shareProfile()"
+                  [disabled]="!currentUserId || sharing">
+                  @if (sharing) {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                  } @else {
+                    <i class="bi bi-share me-2"></i>
+                  }
+                  Пригласи друзей
+                </button>
+              </div>
             }
           </div>
         } @else {
@@ -167,6 +183,20 @@ import { MatchModalComponent } from '../../shared/components/match-modal/match-m
               <button class="btn btn-primary mt-3" (click)="openFilters()">
                 <i class="bi bi-funnel"></i> Изменить фильтры
               </button>
+              <div class="invite-friends">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary invite-share-btn"
+                  (click)="shareProfile()"
+                  [disabled]="!currentUserId || sharing">
+                  @if (sharing) {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                  } @else {
+                    <i class="bi bi-share me-2"></i>
+                  }
+                  Пригласи друзей
+                </button>
+              </div>
             }
           </div>
         } @else {
@@ -226,6 +256,7 @@ import { MatchModalComponent } from '../../shared/components/match-modal/match-m
       </div>
 
       <!-- Кнопки управления (только мобильные) -->
+      @if (showMobileSwipeControls) {
       <div class="swipe-controls">
         <button class="control-btn btn-undo" (click)="undoSwipe()" [disabled]="cards.length === 0 && !canUndo()" title="Отменить">
           <i class="bi bi-arrow-counterclockwise"></i>
@@ -248,6 +279,7 @@ import { MatchModalComponent } from '../../shared/components/match-modal/match-m
           <i class="bi bi-heart-fill"></i>
         </button>
       </div>
+      }
 
       <!-- Счётчик свайпов и CTA -->
       @if (!isPro && swipeLimit > 0) {
@@ -355,6 +387,9 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   matchedUser: UserInfo | null = null;
   matchedUserPhoto: string | null = null;
   currentUserPhoto: string | null = null;
+  currentUserId: string | null = null;
+  currentUserName = '';
+  sharing = false;
 
   constructor(
     private searchService: SearchService,
@@ -365,15 +400,22 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     private matchService: MatchService,
     private subscriptionService: SubscriptionService,
     private authService: AuthService,
+    private shareService: ShareService,
+    private modalService: ModalService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
-    this.isUserVerified = this.authService.getCurrentUser()?.isVerified !== false;
+    const user = this.authService.getCurrentUser();
+    this.currentUserId = user?.id ?? null;
+    this.currentUserName = user?.name ?? 'Профиль';
+    this.isUserVerified = user?.isVerified !== false;
     this.loadUserSettings();
     this.loadSwipeLimit();
 
     this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
+      this.currentUserId = user?.id ?? null;
+      this.currentUserName = user?.name ?? 'Профиль';
       this.isUserVerified = user?.isVerified !== false;
       if (user?.isPro !== undefined) {
         this.isPro = user.isPro;
@@ -699,8 +741,32 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     }, 300);
   }
 
+  get showMobileSwipeControls(): boolean {
+    if (this.cards.length > 0 || this.loading) {
+      return true;
+    }
+    return this.geoDataMissing || this.locationRequired || !!this.searchError;
+  }
+
   openFilters(): void {
     this.showFilters = true;
+  }
+
+  async shareProfile(): Promise<void> {
+    if (!this.currentUserId || this.sharing) {
+      return;
+    }
+    this.sharing = true;
+    try {
+      const result = await this.shareService.shareProfile(this.currentUserId, this.currentUserName);
+      if (result === 'copied') {
+        await this.modalService.alert('Ссылка на профиль скопирована в буфер обмена');
+      } else if (result === 'failed') {
+        await this.modalService.alert('Не удалось поделиться профилем. Попробуйте ещё раз.');
+      }
+    } finally {
+      this.sharing = false;
+    }
   }
 
   closeMatchModal(): void {

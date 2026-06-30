@@ -6,7 +6,8 @@ enum class MailReactionType {
     FIRE,
     POOP,
     CLOWN,
-    LOL;
+    LOL,
+    CRY;
 
     companion object {
         fun parse(value: String): MailReactionType? =

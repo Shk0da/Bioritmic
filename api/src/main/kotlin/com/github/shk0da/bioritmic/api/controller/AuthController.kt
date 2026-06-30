@@ -24,6 +24,7 @@ import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.utils.AuthCookieHelper
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import com.github.shk0da.bioritmic.api.utils.PasswordValidator
+import com.github.shk0da.bioritmic.api.utils.ValidateUtils
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
@@ -63,6 +64,7 @@ class AuthController(
         with(userModel) {
             if (!isFilledInput()) throw ApiException(INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "user")))
             PasswordValidator.validate(password)
+            ValidateUtils.validateMinimumAge(birthday)
             if (userService.isUserExists(userModel.email)) throw ApiException(USER_EXISTS)
         }
         val assignFirstUserAdmin = appSecurityProperties.security.adminEmail.isBlank() &&

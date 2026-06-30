@@ -2,7 +2,14 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { resolveHttpErrorMessage } from '../../../core/utils/http-error.util';
 import { Gender, User } from '../../../core/models/user.model';
+import {
+  formatDateForInput,
+  maxBirthdayForMinAge,
+  meetsMinimumAge,
+  MIN_AGE_REGISTRATION_MESSAGE
+} from '../../../shared/utils/age-validation.util';
 
 @Component({
   selector: 'app-registration',
@@ -85,6 +92,7 @@ import { Gender, User } from '../../../core/models/user.model';
                   id="birthday"
                   [ngModel]="user.birthday"
                   (ngModelChange)="onBirthdayChange($event)"
+                  [max]="maxBirthday"
                   name="birthday"
                   required>
               </div>
@@ -192,11 +200,13 @@ import { Gender, User } from '../../../core/models/user.model';
   `]
 })
 export class RegistrationComponent {
+  readonly maxBirthday = maxBirthdayForMinAge();
+
   user: Partial<User> & { password: string; birthday: string } = {
     name: '',
     email: '',
     password: '',
-    birthday: this.formatDate(new Date()),
+    birthday: this.defaultBirthday(),
     gender: Gender.MAN
   };
   error = '';
@@ -208,22 +218,38 @@ export class RegistrationComponent {
     private router: Router
   ) {}
 
-  private formatDate(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  private defaultBirthday(): string {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - 18);
+    return formatDateForInput(date);
   }
 
   onBirthdayChange(value: string): void {
     this.user.birthday = value;
+    if (this.user.birthday && !meetsMinimumAge(this.user.birthday)) {
+      this.error = MIN_AGE_REGISTRATION_MESSAGE;
+    } else if (this.error === MIN_AGE_REGISTRATION_MESSAGE) {
+      this.error = '';
+    }
   }
 
   isFormValid(): boolean {
-    return !!(this.user.name && this.user.email && this.user.password && this.user.birthday && this.user.gender);
+    return !!(
+      this.user.name &&
+      this.user.email &&
+      this.user.password &&
+      this.user.birthday &&
+      this.user.gender &&
+      meetsMinimumAge(this.user.birthday)
+    );
   }
 
   onSubmit(): void {
+    if (!meetsMinimumAge(this.user.birthday)) {
+      this.error = MIN_AGE_REGISTRATION_MESSAGE;
+      return;
+    }
+
     this.error = '';
     this.loading = true;
     this.authService.register(this.user).subscribe({
@@ -251,7 +277,7 @@ export class RegistrationComponent {
       },
       error: (error) => {
         this.loading = false;
-        this.error = 'Пользователь с таким email уже существует';
+        this.error = resolveHttpErrorMessage(error);
       }
     });
   }

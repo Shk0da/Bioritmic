@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
+import java.util.Calendar
 import java.util.UUID
 
 class AuthControllerTest : ApiApplicationTests() {
@@ -52,6 +53,27 @@ class AuthControllerTest : ApiApplicationTests() {
             .jsonPath("$.errors.length()").isEqualTo(1)
             .jsonPath("$.errors[0].errorCode").isEqualTo(ErrorCode.USER_EXISTS.code)
             .jsonPath("$.errors[0].message").isEqualTo(ErrorCode.USER_EXISTS.message)
+    }
+
+    @Test
+    fun registrationShouldRejectUserYoungerThan14() {
+        val birthday = Calendar.getInstance().apply { add(Calendar.YEAR, -13) }.time
+        val formatter = java.text.SimpleDateFormat("yyyy-MM-dd")
+        val userModel = defaultUserModel.copy(
+            email = "young_${UUID.randomUUID()}@gmail.com",
+            birthday = formatter.format(birthday)
+        )
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(userModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
+            .expectBody()
+            .jsonPath("$.errors.length()").isEqualTo(1)
+            .jsonPath("$.errors[0].errorCode").isEqualTo(ErrorCode.INVALID_PARAMETER_RANGE.code)
     }
 
     @Test

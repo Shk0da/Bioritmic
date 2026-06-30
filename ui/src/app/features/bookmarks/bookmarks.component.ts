@@ -5,6 +5,12 @@ import { BookmarksService } from '../../core/services/bookmarks.service';
 import { UserService } from '../../core/services/user.service';
 import { MatchService, MatchesResponse } from '../../core/services/match.service';
 import { UserInfo, PageableRequest } from '../../core/models/user.model';
+import {
+  getGenderLabel,
+  getGenderSymbol,
+  getZodiacEmoji,
+  getZodiacSignName,
+} from '../../shared/utils/user-profile-display.util';
 
 interface UserWithPhoto extends UserInfo {
   photoDataUrl?: string | null;
@@ -129,12 +135,26 @@ interface UserWithPhoto extends UserInfo {
                 <h5 class="user-card-name">{{ user.name }}</h5>
                 <p class="user-card-info text-muted">
                   {{ user.age || (user.birthday ? getAge(user.birthday) : 'N/A') }} лет,
-                  {{ getGenderText(user.gender) }}
+                  <span class="user-card-gender" [attr.title]="getGenderLabel(user.gender)">
+                    <span class="gender-symbol">{{ getGenderSymbol(user.gender) }}</span>
+                    {{ getGenderLabel(user.gender) }}
+                  </span>
+                  @if (getZodiacEmoji(user.horo, user.birthday)) {
+                    <span class="user-card-zodiac" [attr.title]="getZodiacSignName(user.horo, user.birthday)">
+                      {{ getZodiacEmoji(user.horo, user.birthday) }}
+                    </span>
+                  }
                 </p>
                 @if (user.distance) {
                   <p class="user-card-distance small text-muted">
                     <i class="bi bi-geo-alt me-1"></i>{{ user.distance.toFixed(1) }} км
                   </p>
+                }
+                @if (user.bio?.trim()) {
+                  <div class="user-card-bio">
+                    <span class="user-card-bio-label">Обо мне</span>
+                    <p class="user-card-bio-text">{{ user.bio }}</p>
+                  </div>
                 }
               </div>
               <div class="card-footer">
@@ -233,18 +253,66 @@ interface UserWithPhoto extends UserInfo {
     .user-card-info {
       font-size: 0.9rem;
       margin-bottom: 0.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .user-card-gender {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .gender-symbol {
+      font-size: 1rem;
+      line-height: 1;
+      color: var(--accent-pink, #fd297b);
+      font-weight: 600;
+    }
+
+    .user-card-zodiac {
+      font-size: 1rem;
+      line-height: 1;
     }
 
     .user-card-distance {
       margin-bottom: 0;
     }
 
+    .user-card-bio {
+      margin-top: 0.75rem;
+    }
+
+    .user-card-bio-label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted, #9ca3af);
+      margin-bottom: 0.25rem;
+    }
+
+    .user-card-bio-text {
+      margin: 0;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      color: var(--text-secondary, #6b7280);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
     /* Matches section */
     .matches-section {
-      background: white;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: 12px;
       padding: 1.25rem;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      box-shadow: var(--shadow-sm);
     }
 
     .matches-title {
@@ -253,6 +321,7 @@ interface UserWithPhoto extends UserInfo {
       margin-bottom: 1rem;
       display: flex;
       align-items: center;
+      color: var(--text-primary);
     }
 
     .matches-blurred {
@@ -273,7 +342,7 @@ interface UserWithPhoto extends UserInfo {
       border-radius: 50%;
       overflow: hidden;
       flex-shrink: 0;
-      background: #e5e7eb;
+      background: var(--border-color);
     }
 
     .blurred-card-inner {
@@ -283,12 +352,12 @@ interface UserWithPhoto extends UserInfo {
       align-items: center;
       justify-content: center;
       position: relative;
-      background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+      background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--border-color) 100%);
     }
 
     .blurred-avatar {
       font-size: 2rem;
-      color: #94a3b8;
+      color: var(--text-muted);
     }
 
     .blurred-lock {
@@ -297,8 +366,8 @@ interface UserWithPhoto extends UserInfo {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(0, 0, 0, 0.15);
-      color: #475569;
+      background: rgba(0, 0, 0, 0.2);
+      color: var(--text-secondary);
       font-size: 1.25rem;
     }
 
@@ -310,18 +379,18 @@ interface UserWithPhoto extends UserInfo {
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      background: rgba(255, 255, 255, 0.85);
+      background: color-mix(in srgb, var(--card-bg) 88%, transparent);
       border-radius: 8px;
 
       i {
         font-size: 1.5rem;
-        color: var(--text-secondary, #6b7280);
+        color: var(--text-secondary);
       }
 
       p {
         margin: 0;
         font-size: 0.85rem;
-        color: var(--text-primary, #4b5563);
+        color: var(--text-primary);
         font-weight: 500;
         text-align: center;
         max-width: 250px;
@@ -379,12 +448,12 @@ interface UserWithPhoto extends UserInfo {
       align-items: center;
       gap: 0.4rem;
       text-decoration: none;
-      color: #1f2937;
+      color: var(--text-primary);
       transition: transform 0.2s ease;
 
       &:hover {
         transform: translateY(-3px);
-        color: #1f2937;
+        color: var(--text-primary);
       }
     }
 
@@ -408,8 +477,8 @@ interface UserWithPhoto extends UserInfo {
       right: 2px;
       width: 14px;
       height: 14px;
-      background: #22c55e;
-      border: 2.5px solid white;
+      background: var(--accent-green);
+      border: 2.5px solid var(--card-bg);
       border-radius: 50%;
       box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
     }
@@ -417,7 +486,7 @@ interface UserWithPhoto extends UserInfo {
     .match-name {
       font-size: 0.8rem;
       font-weight: 600;
-      color: var(--text-primary, #374151);
+      color: var(--text-primary);
       max-width: 80px;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -450,10 +519,12 @@ interface UserWithPhoto extends UserInfo {
       transition: all 0.3s ease;
       overflow: hidden;
       border-radius: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
 
       &:hover {
         transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        box-shadow: var(--shadow-md);
       }
     }
 
@@ -471,7 +542,7 @@ interface UserWithPhoto extends UserInfo {
     .match-card-name {
       font-size: 0.95rem;
       font-weight: 600;
-      color: var(--text-primary, #1f2937);
+      color: var(--text-primary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -612,7 +683,8 @@ export class BookmarksComponent implements OnInit {
     return age;
   }
 
-  getGenderText(gender?: string): string {
-    return gender === 'MAN' ? 'М' : 'Ж';
-  }
+  getGenderSymbol = getGenderSymbol;
+  getGenderLabel = getGenderLabel;
+  getZodiacEmoji = getZodiacEmoji;
+  getZodiacSignName = getZodiacSignName;
 }

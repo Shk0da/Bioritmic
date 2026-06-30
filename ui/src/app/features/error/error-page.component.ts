@@ -41,18 +41,13 @@ type ErrorCode = '401' | '403' | '404' | '500';
           <a [routerLink]="primaryLink()" class="btn btn-primary">
             <i class="bi me-2" [ngClass]="primaryIcon()"></i>{{ primaryLabel() }}
           </a>
-          @if (showReload()) {
-            <button type="button" class="btn btn-outline" (click)="reload()">
-              <i class="bi bi-arrow-clockwise me-2"></i>Обновить
-            </button>
-          }
         </div>
 
         <p class="error-hint">
           @if (showReload()) {
             @if (isAuthenticated()) {
               Если проблема повторяется, попробуйте позже или напишите в
-              <a routerLink="/settings">обратную связь</a>.
+              <a routerLink="/settings/feedback">обратную связь</a>.
             } @else {
               Если проблема повторяется, попробуйте позже.
             }
@@ -342,8 +337,4 @@ export class ErrorPageComponent {
   primaryIcon = computed(() =>
     this.normalizedCode() === '401' ? 'bi-box-arrow-in-right' : 'bi-house-heart'
   );
-
-  reload(): void {
-    window.location.reload();
-  }
 }

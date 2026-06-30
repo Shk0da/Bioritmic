@@ -6,6 +6,10 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE_END
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_VALUE_START
+import java.time.LocalDate
+import java.time.Period
+import java.time.ZoneOffset
+import java.util.Date
 
 object ValidateUtils {
 
@@ -26,6 +30,21 @@ object ValidateUtils {
         if (errors.isNotEmpty()) {
             throw ApiException(
                 ErrorCode.INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, errors.joinToString(", ")))
+            )
+        }
+    }
+
+    fun validateMinimumAge(birthday: Date, minAge: Int = MIN_AGE) {
+        val birthDate = birthday.toInstant().atZone(ZoneOffset.UTC).toLocalDate()
+        val age = Period.between(birthDate, LocalDate.now(ZoneOffset.UTC)).years
+        if (age < minAge) {
+            throw ApiException(
+                ErrorCode.INVALID_PARAMETER_RANGE,
+                mapOf(
+                    Pair(PARAMETER_NAME, "birthday"),
+                    Pair(PARAMETER_VALUE_START, minAge.toString()),
+                    Pair(PARAMETER_VALUE_END, MAX_AGE.toString())
+                )
             )
         }
     }

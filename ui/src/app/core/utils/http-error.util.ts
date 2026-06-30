@@ -27,6 +27,9 @@ function resolveApiErrorItem(item: { message?: string; errorCode?: string }): st
     return ERROR_CODE_MESSAGES_RU[code];
   }
   const message = item.message?.trim();
+  if (message && /parameter \[birthday\]/i.test(message)) {
+    return 'Вам должно быть не менее 14 лет';
+  }
   if (message && /user with email:/i.test(message)) {
     return 'Неверный email или пароль';
   }

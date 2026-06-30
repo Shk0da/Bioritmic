@@ -5,6 +5,11 @@ import { UserService } from '../../../core/services/user.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
 import { Subject, takeUntil } from 'rxjs';
 import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
+import {
+  maxBirthdayForMinAge,
+  meetsMinimumAge,
+  MIN_AGE_PROFILE_MESSAGE
+} from '../../../shared/utils/age-validation.util';
 
 @Component({
   selector: 'app-edit-profile',
@@ -144,6 +149,7 @@ import { ImageCropModalComponent } from '../../../shared/components/image-crop-m
                     class="form-control"
                     id="birthday"
                     [(ngModel)]="user.birthday"
+                    [max]="maxBirthday"
                     name="birthday"
                     required>
                 </div>
@@ -243,6 +249,7 @@ import { ImageCropModalComponent } from '../../../shared/components/image-crop-m
   `]
 })
 export class EditProfileComponent implements OnInit, OnDestroy {
+  readonly maxBirthday = maxBirthdayForMinAge();
   user: Partial<UserInfo> = {};
   photoFile: File | null = null;
   cropVisible = false;
@@ -361,7 +368,7 @@ export class EditProfileComponent implements OnInit, OnDestroy {
     if (!this.newEmail) return;
     this.savingEmail = true;
     this.emailChangeMessage = '';
-    this.userService.updateUser({ ...this.user, email: this.newEmail }).pipe(takeUntil(this.destroy$)).subscribe({
+    this.userService.updateUser({ email: this.newEmail }).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.savingEmail = false;
         this.emailChangeMessage = 'Письмо с подтверждением отправлено на текущий email.';
@@ -393,10 +400,21 @@ export class EditProfileComponent implements OnInit, OnDestroy {
   }
 
   isFormValid(): boolean {
-    return !!(this.user.name && this.user.email && this.user.birthday && this.user.gender);
+    return !!(
+      this.user.name &&
+      this.user.email &&
+      this.user.birthday &&
+      this.user.gender &&
+      meetsMinimumAge(this.user.birthday)
+    );
   }
 
   save(): void {
+    if (!this.user.birthday || !meetsMinimumAge(this.user.birthday)) {
+      alert(MIN_AGE_PROFILE_MESSAGE);
+      return;
+    }
+
     this.saving = true;
     const bio = this.user.bio?.trim();
     this.userService.updateUser({

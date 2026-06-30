@@ -6,7 +6,8 @@ enum class StoryReactionType {
     FIRE,
     POOP,
     CLOWN,
-    LOL;
+    LOL,
+    CRY;
 
     companion object {
         fun parse(value: String): StoryReactionType? =

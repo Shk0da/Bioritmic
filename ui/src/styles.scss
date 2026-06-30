@@ -454,6 +454,7 @@ option { background: var(--card-bg); color: var(--text-primary); }
 // Header
 // ==========================================
 .site-header {
+  --header-scroll-progress: 0;
   background: var(--tinder-gradient);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   padding: 0.75rem 1.5rem;
@@ -467,7 +468,14 @@ option { background: var(--card-bg); color: var(--text-primary); }
   max-width: 100%;
   overflow-x: clip;
 
+  .site-header__gradient,
+  .site-header__glass {
+    display: none;
+  }
+
   .header-content {
+    position: relative;
+    z-index: 1;
     max-width: 1200px;
     margin: 0 auto;
     display: flex;
@@ -551,6 +559,39 @@ option { background: var(--card-bg); color: var(--text-primary); }
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.page-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: var(--text-primary);
+
+    .page-back-link__icon {
+      background: var(--border-color);
+    }
+  }
+
+  &__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s ease;
+  }
 }
 
 // ==========================================
@@ -656,8 +697,23 @@ option { background: var(--card-bg); color: var(--text-primary); }
   .action-btn { color: var(--text-secondary); border-color: var(--border-color); background: var(--card-bg); }
 
   // Bookmarks / matches
-  .match-name { color: var(--text-primary); }
-  .user-card-name, .user-card-info { color: var(--text-primary); }
+  .matches-section {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+  }
+
+  .matches-title,
+  .match-name,
+  .match-link,
+  .match-card-name,
+  .user-card-name,
+  .user-card-info {
+    color: var(--text-primary);
+  }
+
+  .blurred-overlay {
+    background: color-mix(in srgb, var(--card-bg) 88%, transparent);
+  }
 
   // Settings
   .form-range::-webkit-slider-runnable-track { background: var(--border-color); }
@@ -738,10 +794,44 @@ option { background: var(--card-bg); color: var(--text-primary); }
 
 @media (max-width: 768px) {
   .site-header {
+    --p: var(--header-scroll-progress, 0);
+    background: transparent;
+    box-shadow: none;
+    isolation: isolate;
     padding: 0.5rem 0.75rem;
     padding-top: calc(0.5rem + env(safe-area-inset-top));
     padding-left: calc(0.5rem + env(safe-area-inset-left));
     padding-right: calc(0.5rem + env(safe-area-inset-right));
+
+    .site-header__gradient,
+    .site-header__glass {
+      display: block;
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .site-header__gradient {
+      z-index: 0;
+      background: var(--tinder-gradient);
+      opacity: calc(1 - var(--p));
+      transition: opacity 0.12s linear;
+    }
+
+    .site-header__glass {
+      z-index: 0;
+      opacity: var(--p);
+      background: color-mix(in srgb, var(--bg-primary) calc(var(--p) * 78%), transparent);
+      backdrop-filter: blur(calc(var(--p) * 18px)) saturate(calc(1 + var(--p) * 0.4));
+      -webkit-backdrop-filter: blur(calc(var(--p) * 18px)) saturate(calc(1 + var(--p) * 0.4));
+      border-bottom: 1px solid color-mix(in srgb, var(--border-color) calc(var(--p) * 65%), transparent);
+      transition: opacity 0.12s linear, backdrop-filter 0.12s linear;
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 1;
+    }
 
     .header-logo {
       font-size: 1.25rem;
@@ -754,6 +844,8 @@ option { background: var(--card-bg); color: var(--text-primary); }
 
       .logo-couple i {
         font-size: 1.35rem;
+        color: color-mix(in srgb, #ffffff calc((1 - var(--p)) * 100%), var(--accent-pink));
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, calc(var(--p) * 0.12)));
       }
     }
 
@@ -767,6 +859,34 @@ option { background: var(--card-bg); color: var(--text-primary); }
       height: 36px;
       font-size: 1rem;
       border-radius: 10px;
+      color: color-mix(in srgb, #ffffff calc((1 - var(--p)) * 100%), var(--text-primary));
+      background: color-mix(
+        in srgb,
+        #ffffff calc(var(--p) * 42%),
+        rgba(255, 255, 255, calc((1 - var(--p)) * 15%))
+      );
+      backdrop-filter: blur(calc(var(--p) * 12px));
+      -webkit-backdrop-filter: blur(calc(var(--p) * 12px));
+      border: 1px solid color-mix(in srgb, #ffffff calc(var(--p) * 45% + 12%), transparent);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, calc(var(--p) * 0.08));
+
+      &:hover {
+        background: color-mix(
+          in srgb,
+          #ffffff calc(var(--p) * 52% + 8%),
+          rgba(255, 255, 255, 0.22)
+        );
+        color: color-mix(in srgb, #ffffff calc((1 - var(--p)) * 100%), var(--text-primary));
+      }
+
+      &.active {
+        background: color-mix(
+          in srgb,
+          #ffffff calc(var(--p) * 58% + 10%),
+          rgba(255, 255, 255, 0.28)
+        );
+        color: color-mix(in srgb, #ffffff calc((1 - var(--p)) * 100%), var(--accent-pink));
+      }
     }
 
     .notification-badge {
@@ -775,6 +895,28 @@ option { background: var(--card-bg); color: var(--text-primary); }
       font-size: 0.6rem;
       top: 2px;
       right: -2px;
+      border-color: color-mix(in srgb, #ffffff calc((1 - var(--p)) * 100%), var(--card-bg));
+    }
+
+    &.site-header--glass {
+      .notification-badge {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+      }
+    }
+  }
+
+  [data-theme="dark"] .site-header {
+    .site-header__glass {
+      background: color-mix(in srgb, var(--bg-primary) calc(var(--p) * 88%), transparent);
+    }
+
+    .nav-btn {
+      background: color-mix(
+        in srgb,
+        rgba(255, 255, 255, 0.14) calc(var(--p) * 100%),
+        rgba(255, 255, 255, 0.08)
+      );
+      border-color: color-mix(in srgb, rgba(255, 255, 255, 0.22) calc(var(--p) * 100%), transparent);
     }
   }
 

@@ -140,8 +140,24 @@ import { ModalService } from '../../../core/services/modal.service';
           </div>
           <div class="card-body p-0">
             <div class="list-group list-group-flush">
-              <a routerLink="/settings" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+              <a routerLink="/settings/search" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-sliders me-2"></i>Параметры поиска</span>
+                <i class="bi bi-chevron-right text-muted small"></i>
+              </a>
+              <a routerLink="/settings/notifications" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bell me-2"></i>Уведомления и приложение</span>
+                <i class="bi bi-chevron-right text-muted small"></i>
+              </a>
+              <a routerLink="/settings/location" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-geo-alt me-2"></i>Моё местоположение</span>
+                <i class="bi bi-chevron-right text-muted small"></i>
+              </a>
+              <a routerLink="/settings/feedback" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-chat-left-text me-2"></i>Обратная связь</span>
+                <i class="bi bi-chevron-right text-muted small"></i>
+              </a>
+              <a routerLink="/settings/danger" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-danger">
+                <span><i class="bi bi-exclamation-triangle me-2"></i>Опасная зона</span>
                 <i class="bi bi-chevron-right text-muted small"></i>
               </a>
               <a routerLink="/settings/blocked" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
@@ -248,9 +264,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   private loadBlockedCount(): void {
-    this.userService.getBlockedUsers({ page: 0, size: 100 }).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (users) => {
-        this.blockedCount = users.length;
+    this.userService.getBlockedCount().pipe(takeUntil(this.destroy$)).subscribe({
+      next: ({ count }) => {
+        this.blockedCount = count;
       },
       error: () => {
         this.blockedCount = 0;

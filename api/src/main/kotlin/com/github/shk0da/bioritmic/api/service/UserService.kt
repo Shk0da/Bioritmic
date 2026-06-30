@@ -27,6 +27,7 @@ import com.github.shk0da.bioritmic.api.repository.UserSettingsRepository
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
 import com.github.shk0da.bioritmic.api.utils.ImageUtils.ImageTag
 import com.github.shk0da.bioritmic.api.utils.StringUtils.isNotBlank
+import com.github.shk0da.bioritmic.api.utils.ValidateUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactor.awaitSingle
@@ -160,6 +161,7 @@ class UserService(
             emailService.sendConfirmationChangeEmail(user.email!!, request.email, user.recoveryCode!!)
         }
         if (null != request.birthday) {
+            ValidateUtils.validateMinimumAge(request.birthday)
             user.birthday = Timestamp(request.birthday.time)
         }
         if (null != request.gender) {

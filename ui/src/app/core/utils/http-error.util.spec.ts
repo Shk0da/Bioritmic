@@ -48,6 +48,19 @@ describe('resolveHttpErrorMessage', () => {
     expect(resolveHttpErrorMessage(error)).toContain('местоположение');
   });
 
+  it('should map birthday age validation message to friendly text', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: {
+        errors: [{
+          errorCode: 'API-400.6',
+          message: 'Parameter [birthday] value is invalid. Valid range of values: [14-100].',
+        }],
+      },
+    });
+    expect(resolveHttpErrorMessage(error)).toBe('Вам должно быть не менее 14 лет');
+  });
+
   it('should fall back to generic server error', () => {
     const error = new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' });
     expect(resolveHttpErrorMessage(error)).toContain('Ошибка сервера');

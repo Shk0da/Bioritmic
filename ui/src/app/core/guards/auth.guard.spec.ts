@@ -117,9 +117,24 @@ describe('authGuard', () => {
 
     runGuard('/settings').subscribe(value => {
       expect(value).toBeTrue();
-      runGuard('/settings/location').subscribe(value2 => {
+      runGuard('/settings/search').subscribe(value2 => {
         expect(value2).toBeTrue();
-        done();
+        runGuard('/settings/location').subscribe(value3 => {
+          expect(value3).toBeTrue();
+          runGuard('/settings/notifications').subscribe(value4 => {
+            expect(value4).toBeTrue();
+            runGuard('/settings/feedback').subscribe(value5 => {
+              expect(value5).toBeTrue();
+              runGuard('/settings/danger').subscribe(value6 => {
+                expect(value6).toBeTrue();
+                runGuard('/settings/blocked').subscribe(value7 => {
+                  expect(value7).toBeTrue();
+                  done();
+                });
+              });
+            });
+          });
+        });
       });
     });
   });

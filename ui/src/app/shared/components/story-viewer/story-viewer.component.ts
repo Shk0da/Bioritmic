@@ -1,7 +1,7 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, DestroyRef, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
-import { Subject, takeUntil, interval } from 'rxjs';
+import { Subject, takeUntil, interval, finalize } from 'rxjs';
 import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StoryService } from '../../../core/services/story.service';
 
 @Component({
@@ -39,7 +39,7 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
               }
               <span class="story-time">{{ getTimeAgo(currentStory.createdAt) }}</span>
             </div>
-            <button type="button" class="close-btn" (click)="close()">
+            <button type="button" class="close-btn" aria-label="Закрыть" (click)="close()">
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
@@ -54,26 +54,55 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
             </div>
           }
 
-          <div class="story-reactions" (click)="$event.stopPropagation()">
-            @for (reaction of reactions; track reaction.type) {
+          <div
+            class="story-reactions-bar"
+            [class.expanded]="reactionPickerOpen"
+            (click)="$event.stopPropagation()">
+            @if (reactionPickerOpen) {
+              <div class="reaction-picker-options">
+                @for (reaction of reactions; track reaction.type) {
+                  <button
+                    type="button"
+                    class="reaction-picker-option"
+                    [class.selected]="selectedReaction === reaction.type"
+                    [attr.aria-label]="reaction.label"
+                    [attr.aria-pressed]="selectedReaction === reaction.type"
+                    [title]="reaction.label"
+                    (click)="sendReaction(reaction.type, $event)">
+                    {{ reaction.emoji }}
+                  </button>
+                }
+              </div>
+            }
+
+            <div class="story-reactions-row">
+              @for (reaction of reactions; track reaction.type) {
+                @if (getReactionCount(reaction.type) > 0) {
+                  <button
+                    type="button"
+                    class="reaction-chip"
+                    [class.selected]="selectedReaction === reaction.type"
+                    [attr.aria-label]="reaction.label"
+                    [attr.aria-pressed]="selectedReaction === reaction.type"
+                    [title]="reaction.label"
+                    (click)="sendReaction(reaction.type)">
+                    <span class="reaction-chip__emoji">{{ reaction.emoji }}</span>
+                    <span class="reaction-chip__count">{{ getReactionCount(reaction.type) }}</span>
+                  </button>
+                }
+              }
+
               <button
                 type="button"
-                class="reaction-btn"
-                [class.selected]="selectedReaction === reaction.type"
-                [class.with-count]="getReactionCount(reaction.type) > 0"
-                [attr.aria-label]="reaction.label"
-                [title]="reaction.label"
-                (click)="sendReaction(reaction.type)">
-                @if (getReactionCount(reaction.type) > 0) {
-                  <span class="story-reaction-pill">
-                    <span>{{ reaction.emoji }}</span>
-                    <span>{{ getReactionCount(reaction.type) }}</span>
-                  </span>
-                } @else {
-                  {{ reaction.emoji }}
-                }
+                class="reaction-picker-trigger"
+                [attr.aria-expanded]="reactionPickerOpen"
+                aria-label="Реакция на историю"
+                (click)="toggleReactionPicker($event)">
+                <span class="reaction-picker-trigger__icon" aria-hidden="true">
+                  <i class="bi bi-heart"></i>
+                </span>
               </button>
-            }
+            </div>
           </div>
 
           <div class="story-viewers">
@@ -238,6 +267,7 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
       bottom: 56px;
       left: 12px;
       right: 72px;
+      z-index: 12;
       color: white;
       font-size: 1rem;
       text-align: left;
@@ -246,75 +276,208 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
       border-radius: 8px;
     }
 
-    .story-reactions {
+    .story-reactions-bar {
+      --reaction-size: 44px;
+      --reaction-row-size: 35px;
       position: absolute;
       bottom: 10px;
       right: 10px;
+      z-index: 12;
       display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 0.25rem;
-      z-index: 11;
-      max-width: 55%;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.35rem;
+      max-width: calc(100% - 20px);
     }
 
-    .reaction-btn {
-      border: none;
-      background: transparent;
-      font-size: 1rem;
-      line-height: 1;
-      cursor: pointer;
+    .story-reactions-row {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.28rem;
+    }
+
+    .story-reactions-row .reaction-chip,
+    .story-reactions-row .reaction-picker-trigger {
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
       padding: 0;
-      opacity: 0.75;
-      transition: transform 0.15s ease, opacity 0.15s ease;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .reaction-picker-option {
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      padding: 0;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .story-reactions-row .reaction-chip,
+    .story-reactions-row .reaction-picker-trigger {
+      width: var(--reaction-row-size);
+      height: var(--reaction-row-size);
+      min-width: var(--reaction-row-size);
+    }
+
+    .reaction-picker-option {
+      width: var(--reaction-size);
+      height: var(--reaction-size);
+      min-width: var(--reaction-size);
+    }
+
+    .reaction-chip {
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: white;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .reaction-chip__emoji {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 0.92rem;
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .reaction-chip__count {
+      position: absolute;
+      right: -2px;
+      bottom: -1px;
+      min-width: 12px;
+      height: 12px;
+      padding: 0 2px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.82);
+      color: #fff;
+      font-size: 0.46rem;
+      font-weight: 700;
+      border: 1px solid rgba(255, 255, 255, 0.35);
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
 
-    .reaction-btn.with-count {
-      opacity: 1;
+    .reaction-chip:hover {
+      transform: scale(1.06);
+      background: rgba(255, 255, 255, 0.16);
     }
 
-    .reaction-btn:hover {
-      opacity: 1;
-      transform: scale(1.08);
+    .reaction-chip.selected {
+      border-color: #fd297b;
+      background: rgba(253, 41, 123, 0.32);
+      transform: scale(1.06);
     }
 
-    .reaction-btn.selected {
-      opacity: 1;
-      transform: scale(1.08);
+    .reaction-picker-trigger {
+      border: 1.5px dashed rgba(255, 255, 255, 0.42);
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      color: rgba(255, 255, 255, 0.92);
+      font-size: 0.92rem;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+      box-shadow: 0 3px 14px rgba(0, 0, 0, 0.18);
+      overflow: hidden;
     }
 
-    .story-reaction-pill {
+    .reaction-picker-trigger__icon {
       display: inline-flex;
       align-items: center;
-      gap: 0.2rem;
-      font-size: 0.72rem;
-      padding: 0.15rem 0.35rem;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.12);
-      color: rgba(255, 255, 255, 0.95);
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      line-height: 1;
+    }
+
+    .reaction-picker-trigger__icon i {
+      display: block;
+      line-height: 1;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .reaction-picker-trigger:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.62);
+      transform: scale(1.06);
+    }
+
+    .story-reactions-bar.expanded .story-reactions-row .reaction-picker-trigger {
+      border-style: solid;
+      border-color: rgba(255, 255, 255, 0.55);
+      background: rgba(0, 0, 0, 0.35);
+      font-size: 0.8rem;
+    }
+
+    .reaction-picker-options {
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: flex-end;
+      gap: 0.35rem;
+    }
+
+    .reaction-picker-option {
       border: 1px solid rgba(255, 255, 255, 0.28);
-      line-height: 1.2;
+      background: rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: white;
+      font-size: 1.15rem;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+      animation: reactionOptionRise 0.22s ease backwards;
+      overflow: hidden;
     }
 
-    .reaction-btn.selected .story-reaction-pill {
+    .reaction-picker-option:nth-child(1) { animation-delay: 0.02s; }
+    .reaction-picker-option:nth-child(2) { animation-delay: 0.04s; }
+    .reaction-picker-option:nth-child(3) { animation-delay: 0.06s; }
+    .reaction-picker-option:nth-child(4) { animation-delay: 0.08s; }
+    .reaction-picker-option:nth-child(5) { animation-delay: 0.1s; }
+    .reaction-picker-option:nth-child(6) { animation-delay: 0.12s; }
+    .reaction-picker-option:nth-child(7) { animation-delay: 0.14s; }
+
+    @keyframes reactionOptionRise {
+      from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.82);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .reaction-picker-option:hover {
+      transform: scale(1.08);
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .reaction-picker-option.selected {
       border-color: #fd297b;
-      color: #fff;
-      background: rgba(253, 41, 123, 0.28);
-    }
-
-    .reaction-btn:hover .story-reaction-pill {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(253, 41, 123, 0.32);
+      transform: scale(1.06);
     }
 
     .story-viewers {
       position: absolute;
       bottom: 12px;
       left: 12px;
+      z-index: 12;
       display: flex;
       align-items: center;
       gap: 4px;
@@ -346,7 +509,7 @@ import { STORY_REACTIONS, Story, StoryReactionCounts, StoryReactionType, StorySe
     }
   `]
 })
-export class StoryViewerComponent implements OnChanges, OnDestroy {
+export class StoryViewerComponent implements OnChanges {
   @Input() visible = false;
   @Input() stories: Story[] = [];
   @Input() userId = '';
@@ -361,16 +524,22 @@ export class StoryViewerComponent implements OnChanges, OnDestroy {
   progressWidth = 0;
   selectedReaction: StoryReactionType | null = null;
   reactionCounts: StoryReactionCounts = {};
+  reactionPickerOpen = false;
+  private reactionSubmitting = false;
 
   private progressInterval$ = new Subject<void>();
   private destroy$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
   private readonly STORY_DURATION = 5000;
   private readonly PROGRESS_INTERVAL = 50;
-  private isPaused = false;
+  private readonly pauseReasons = new Set<'picker' | 'center'>();
+  private centerHeld = false;
   private progressStartTime = 0;
   private progressElapsedOffset = 0;
-  private readonly centerReleaseHandler = (): void => this.resumeProgress();
+  private readonly centerReleaseHandler = (): void => {
+    this.centerHeld = false;
+    this.resumeProgress('center');
+  };
 
   constructor(
     private storyService: StoryService,
@@ -391,16 +560,9 @@ export class StoryViewerComponent implements OnChanges, OnDestroy {
       return;
     }
     if (changes['visible']?.currentValue === false) {
+      this.unbindCenterReleaseListeners();
       this.resetViewer();
     }
-  }
-
-  ngOnDestroy(): void {
-    this.unbindCenterReleaseListeners();
-    this.destroy$.next();
-    this.destroy$.complete();
-    this.progressInterval$.next();
-    this.progressInterval$.complete();
   }
 
   showStory(index: number): void {
@@ -413,33 +575,77 @@ export class StoryViewerComponent implements OnChanges, OnDestroy {
     this.currentStory = this.stories[index];
     this.progressWidth = 0;
     this.progressElapsedOffset = 0;
-    this.isPaused = false;
+    this.pauseReasons.clear();
+    this.centerHeld = false;
     this.unbindCenterReleaseListeners();
+    this.reactionPickerOpen = false;
     this.selectedReaction = this.currentStory.currentUserReaction ?? null;
     this.reactionCounts = { ...(this.currentStory.reactionCounts ?? {}) };
 
-    this.storyService.viewStory(this.currentStory.id).pipe(takeUntil(this.destroy$)).subscribe({
+    const storyId = this.currentStory.id;
+    this.storyService.viewStory(storyId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
-        this.currentStory!.viewedByCurrentUser = true;
+        const story = this.stories.find((item) => item.id === storyId);
+        if (story) {
+          story.viewedByCurrentUser = true;
+        }
+        if (this.currentStory?.id === storyId) {
+          this.currentStory.viewedByCurrentUser = true;
+        }
       }
     });
 
     this.startProgress();
   }
 
-  sendReaction(reaction: StoryReactionType): void {
-    if (!this.currentStory) {
+  sendReaction(reaction: StoryReactionType, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.currentStory || this.reactionSubmitting) {
       return;
     }
 
-    this.storyService.reactToStory(this.currentStory.id, reaction).pipe(takeUntil(this.destroy$)).subscribe({
+    const storyId = this.currentStory.id;
+    this.reactionSubmitting = true;
+    this.storyService.reactToStory(storyId, reaction).pipe(
+      takeUntil(this.destroy$),
+      finalize(() => {
+        this.reactionSubmitting = false;
+      })
+    ).subscribe({
       next: (response) => {
+        if (this.currentStory?.id !== storyId) {
+          return;
+        }
         this.selectedReaction = response.reaction ?? null;
-        this.currentStory!.currentUserReaction = response.reaction ?? null;
+        this.currentStory.currentUserReaction = response.reaction ?? null;
         this.reactionCounts = { ...response.reactionCounts };
-        this.currentStory!.reactionCounts = { ...response.reactionCounts };
+        this.currentStory.reactionCounts = { ...response.reactionCounts };
+        this.closeReactionPicker();
+      },
+      error: () => {
+        if (this.reactionPickerOpen) {
+          this.closeReactionPicker();
+        }
       }
     });
+  }
+
+  toggleReactionPicker(event: Event): void {
+    event.stopPropagation();
+    if (this.reactionPickerOpen) {
+      this.closeReactionPicker();
+      return;
+    }
+    this.reactionPickerOpen = true;
+    this.pauseProgress('picker');
+  }
+
+  closeReactionPicker(): void {
+    if (!this.reactionPickerOpen) {
+      return;
+    }
+    this.reactionPickerOpen = false;
+    this.resumeProgress('picker');
   }
 
   getReactionCount(reaction: StoryReactionType): number {
@@ -459,26 +665,34 @@ export class StoryViewerComponent implements OnChanges, OnDestroy {
   onCenterPress(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    this.pauseProgress();
+    if (this.centerHeld) {
+      return;
+    }
+    this.centerHeld = true;
+    this.pauseProgress('center');
+    this.unbindCenterReleaseListeners();
     document.addEventListener('mouseup', this.centerReleaseHandler);
     document.addEventListener('touchend', this.centerReleaseHandler);
     document.addEventListener('touchcancel', this.centerReleaseHandler);
   }
 
-  pauseProgress(): void {
-    if (this.isPaused) {
-      return;
+  pauseProgress(reason: 'picker' | 'center'): void {
+    const wasPaused = this.pauseReasons.size > 0;
+    this.pauseReasons.add(reason);
+    if (!wasPaused) {
+      this.progressElapsedOffset += Date.now() - this.progressStartTime;
+      this.progressInterval$.next();
     }
-    this.isPaused = true;
-    this.progressElapsedOffset += Date.now() - this.progressStartTime;
-    this.progressInterval$.next();
   }
 
-  resumeProgress(): void {
-    if (!this.isPaused) {
+  resumeProgress(reason: 'picker' | 'center'): void {
+    if (!this.pauseReasons.has(reason)) {
       return;
     }
-    this.isPaused = false;
+    this.pauseReasons.delete(reason);
+    if (this.pauseReasons.size > 0) {
+      return;
+    }
     this.unbindCenterReleaseListeners();
     this.startProgress();
   }
@@ -491,7 +705,7 @@ export class StoryViewerComponent implements OnChanges, OnDestroy {
 
   private startProgress(): void {
     this.progressInterval$.next();
-    if (this.isPaused) {
+    if (this.pauseReasons.size > 0) {
       return;
     }
 
@@ -527,6 +741,9 @@ export class StoryViewerComponent implements OnChanges, OnDestroy {
 
   close(): void {
     this.unbindCenterReleaseListeners();
+    this.reactionPickerOpen = false;
+    this.pauseReasons.clear();
+    this.centerHeld = false;
     this.progressInterval$.next();
     this.resetViewer();
     this.closed.emit();
@@ -539,7 +756,9 @@ export class StoryViewerComponent implements OnChanges, OnDestroy {
     this.progressWidth = 0;
     this.selectedReaction = null;
     this.reactionCounts = {};
-    this.isPaused = false;
+    this.reactionPickerOpen = false;
+    this.pauseReasons.clear();
+    this.centerHeld = false;
     this.progressElapsedOffset = 0;
   }
 

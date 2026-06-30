@@ -10,24 +10,25 @@ import {
   SimpleChanges,
   ViewChild,
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import {
   blobToFile,
-  clampPan,
-  computeBaseScale,
-  computeCropFrame,
+  computeImageDisplayRect,
   computeOutputSize,
-  computeSourceRect,
   cropImageToBlob,
+  cropRectToSourceRect,
+  CropRect,
   IMAGE_CROP_PRESETS,
   ImageCropPreset,
+  moveCropRect,
   readImageFromFile,
+  resizeCropRect,
+  ResizeHandle,
 } from '../../utils/image-crop.util';
 
 @Component({
   selector: 'app-image-crop-modal',
   standalone: true,
-  imports: [FormsModule],
+  imports: [],
   template: `
     @if (visible) {
       <div class="crop-overlay" (click)="cancel()">
@@ -40,34 +41,41 @@ import {
           <div
             #stage
             class="crop-stage"
-            (pointerdown)="onPointerDown($event)"
-            (pointermove)="onPointerMove($event)"
-            (pointerup)="onPointerUp($event)"
-            (pointercancel)="onPointerUp($event)"
-            (pointerleave)="onPointerUp($event)">
+            (pointermove)="onStagePointerMove($event)"
+            (pointerup)="onStagePointerUp($event)"
+            (pointercancel)="onStagePointerUp($event)"
+            (pointerleave)="onStagePointerUp($event)">
             @if (imageUrl) {
               <img
-                #preview
                 [src]="imageUrl"
                 class="crop-image"
-                [style.transform]="imageTransform"
+                [style.left.px]="imageRect.x"
+                [style.top.px]="imageRect.y"
+                [style.width.px]="imageRect.width"
+                [style.height.px]="imageRect.height"
                 alt=""
                 draggable="false">
             }
-            <div class="crop-frame" [style.width.px]="cropFrame.width" [style.height.px]="cropFrame.height"></div>
+
+            <div
+              class="crop-frame"
+              [style.left.px]="cropRect.x"
+              [style.top.px]="cropRect.y"
+              [style.width.px]="cropRect.width"
+              [style.height.px]="cropRect.height"
+              (pointerdown)="onFramePointerDown($event)">
+              <div class="crop-frame-inner"></div>
+              @for (handle of resizeHandles; track handle) {
+                <div
+                  class="resize-handle"
+                  [class]="'handle-' + handle"
+                  (pointerdown)="onResizePointerDown($event, handle)">
+                </div>
+              }
+            </div>
           </div>
 
-          <div class="crop-controls">
-            <label for="crop-zoom">Масштаб</label>
-            <input
-              id="crop-zoom"
-              type="range"
-              min="1"
-              max="3"
-              step="0.01"
-              [(ngModel)]="scale"
-              (ngModelChange)="onScaleChange()">
-          </div>
+          <p class="crop-hint">Перетащите рамку или потяните за края и углы</p>
 
           <div class="crop-footer">
             <button type="button" class="btn btn-secondary" (click)="cancel()" [disabled]="processing">
@@ -128,57 +136,62 @@ import {
       background: #111;
       overflow: hidden;
       touch-action: none;
-      cursor: grab;
       user-select: none;
-    }
-
-    .crop-stage:active {
-      cursor: grabbing;
     }
 
     .crop-image {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform-origin: center center;
-      max-width: none;
-      max-height: none;
+      object-fit: fill;
       pointer-events: none;
     }
 
     .crop-frame {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      border: 2px solid rgba(255, 255, 255, 0.95);
-      border-radius: 4px;
       box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+      cursor: move;
+      touch-action: none;
+    }
+
+    .crop-frame-inner {
+      position: absolute;
+      inset: 0;
+      border: 2px solid rgba(255, 255, 255, 0.95);
+      border-radius: 2px;
       pointer-events: none;
     }
 
-    .crop-controls {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.875rem 1rem;
-      border-top: 1px solid var(--border-color, #eee);
+    .resize-handle {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border: 2px solid #fd297b;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      z-index: 2;
     }
 
-    .crop-controls label {
-      font-size: 0.85rem;
+    .handle-nw { top: -9px; left: -9px; cursor: nwse-resize; }
+    .handle-n { top: -9px; left: calc(50% - 9px); cursor: ns-resize; }
+    .handle-ne { top: -9px; right: -9px; cursor: nesw-resize; }
+    .handle-e { top: calc(50% - 9px); right: -9px; cursor: ew-resize; }
+    .handle-se { bottom: -9px; right: -9px; cursor: nwse-resize; }
+    .handle-s { bottom: -9px; left: calc(50% - 9px); cursor: ns-resize; }
+    .handle-sw { bottom: -9px; left: -9px; cursor: nesw-resize; }
+    .handle-w { top: calc(50% - 9px); left: -9px; cursor: ew-resize; }
+
+    .crop-hint {
+      margin: 0;
+      padding: 0.75rem 1rem 0;
+      font-size: 0.8rem;
       color: var(--text-secondary, #666);
-      white-space: nowrap;
-    }
-
-    .crop-controls input[type='range'] {
-      flex: 1;
+      text-align: center;
     }
 
     .crop-footer {
       display: flex;
       gap: 0.75rem;
-      padding: 0 1rem 1rem;
+      padding: 1rem;
     }
 
     .crop-footer .btn {
@@ -204,28 +217,28 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
   @Output() cancelled = new EventEmitter<void>();
 
   @ViewChild('stage') stageRef?: ElementRef<HTMLElement>;
-  @ViewChild('preview') previewRef?: ElementRef<HTMLImageElement>;
+
+  readonly resizeHandles: ResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
   title = 'Обрезка фото';
   imageUrl: string | null = null;
   imageLoaded = false;
   processing = false;
 
-  cropFrame = { width: 280, height: 280 };
-  scale = 1;
-  offsetX = 0;
-  offsetY = 0;
-  imageTransform = 'translate(-50%, -50%)';
+  imageRect: CropRect = { x: 0, y: 0, width: 0, height: 0 };
+  cropRect: CropRect = { x: 0, y: 0, width: 0, height: 0 };
 
   private imageWidth = 0;
   private imageHeight = 0;
-  private dragging = false;
-  private dragStartX = 0;
-  private dragStartY = 0;
-  private dragOriginX = 0;
-  private dragOriginY = 0;
   private objectUrl: string | null = null;
   private loadGeneration = 0;
+
+  private interaction: 'move' | 'resize' | null = null;
+  private activeHandle: ResizeHandle | null = null;
+  private pointerId: number | null = null;
+  private startPointerX = 0;
+  private startPointerY = 0;
+  private startCropRect: CropRect = { x: 0, y: 0, width: 0, height: 0 };
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] || changes['sourceFile'] || changes['preset']) {
@@ -244,52 +257,56 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
   @HostListener('window:resize')
   onWindowResize(): void {
     if (this.visible && this.imageLoaded) {
-      this.updateCropFrame();
-      this.applyTransform();
+      this.updateLayout();
     }
   }
 
-  onScaleChange(): void {
-    this.applyTransform();
-  }
-
-  onPointerDown(event: PointerEvent): void {
-    if (!this.imageLoaded) {
+  onFramePointerDown(event: PointerEvent): void {
+    if (!this.imageLoaded || event.button !== 0) {
       return;
     }
-    this.dragging = true;
-    this.dragStartX = event.clientX;
-    this.dragStartY = event.clientY;
-    this.dragOriginX = this.offsetX;
-    this.dragOriginY = this.offsetY;
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    event.stopPropagation();
+    this.beginInteraction('move', event);
   }
 
-  onPointerMove(event: PointerEvent): void {
-    if (!this.dragging) {
+  onResizePointerDown(event: PointerEvent, handle: ResizeHandle): void {
+    if (!this.imageLoaded || event.button !== 0) {
       return;
     }
-    const next = clampPan(
-      this.imageWidth,
-      this.imageHeight,
-      this.cropFrame,
-      this.scale,
-      this.dragOriginX + (event.clientX - this.dragStartX),
-      this.dragOriginY + (event.clientY - this.dragStartY)
-    );
-    this.offsetX = next.offsetX;
-    this.offsetY = next.offsetY;
-    this.applyTransform();
+    event.stopPropagation();
+    this.activeHandle = handle;
+    this.beginInteraction('resize', event);
   }
 
-  onPointerUp(event: PointerEvent): void {
-    if (!this.dragging) {
+  onStagePointerMove(event: PointerEvent): void {
+    if (!this.interaction || this.pointerId !== event.pointerId) {
       return;
     }
-    this.dragging = false;
-    if (event.currentTarget instanceof HTMLElement && event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
+
+    const deltaX = event.clientX - this.startPointerX;
+    const deltaY = event.clientY - this.startPointerY;
+
+    if (this.interaction === 'move') {
+      this.cropRect = moveCropRect(this.startCropRect, deltaX, deltaY, this.imageRect);
+      return;
     }
+
+    if (this.interaction === 'resize' && this.activeHandle) {
+      this.cropRect = resizeCropRect(
+        this.startCropRect,
+        this.activeHandle,
+        deltaX,
+        deltaY,
+        this.imageRect
+      );
+    }
+  }
+
+  onStagePointerUp(event: PointerEvent): void {
+    if (this.pointerId !== event.pointerId) {
+      return;
+    }
+    this.endInteraction(event);
   }
 
   async confirm(): Promise<void> {
@@ -305,11 +322,13 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
       if (generation !== this.loadGeneration || !this.visible) {
         return;
       }
-      const sourceRect = computeSourceRect(this.imageWidth, this.imageHeight, this.cropFrame, {
-        scale: this.scale,
-        offsetX: this.offsetX,
-        offsetY: this.offsetY,
-      });
+
+      const sourceRect = cropRectToSourceRect(
+        this.cropRect,
+        this.imageRect,
+        this.imageWidth,
+        this.imageHeight
+      );
       const outputSize = computeOutputSize(
         sourceRect.width,
         sourceRect.height,
@@ -368,8 +387,7 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
         if (generation !== this.loadGeneration) {
           return;
         }
-        this.updateCropFrame();
-        this.applyTransform();
+        this.updateLayout();
       });
     } catch {
       if (generation !== this.loadGeneration) {
@@ -381,42 +399,37 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
     }
   }
 
-  private updateCropFrame(): void {
+  private updateLayout(): void {
     const stage = this.stageRef?.nativeElement;
-    if (!stage) {
+    if (!stage || !this.imageLoaded) {
       return;
     }
-    const options = IMAGE_CROP_PRESETS[this.preset];
-    this.cropFrame = computeCropFrame(stage.clientWidth, stage.clientHeight, options.aspectRatio);
+
+    this.imageRect = computeImageDisplayRect(
+      stage.clientWidth,
+      stage.clientHeight,
+      this.imageWidth,
+      this.imageHeight
+    );
+    this.cropRect = { ...this.imageRect };
   }
 
-  private applyTransform(): void {
-    const clamped = clampPan(
-      this.imageWidth,
-      this.imageHeight,
-      this.cropFrame,
-      this.scale,
-      this.offsetX,
-      this.offsetY
-    );
-    this.scale = clamped.scale;
-    this.offsetX = clamped.offsetX;
-    this.offsetY = clamped.offsetY;
+  private beginInteraction(type: 'move' | 'resize', event: PointerEvent): void {
+    this.interaction = type;
+    this.pointerId = event.pointerId;
+    this.startPointerX = event.clientX;
+    this.startPointerY = event.clientY;
+    this.startCropRect = { ...this.cropRect };
+    this.stageRef?.nativeElement.setPointerCapture(event.pointerId);
+  }
 
-    const baseScale = computeBaseScale(this.imageWidth, this.imageHeight, this.cropFrame);
-    const displayScale = baseScale * this.scale;
-    const displayWidth = this.imageWidth * displayScale;
-    const displayHeight = this.imageHeight * displayScale;
-
-    this.imageTransform =
-      `translate(calc(-50% + ${this.offsetX}px), calc(-50% + ${this.offsetY}px)) ` +
-      `scale(${displayScale})`;
-
-    const preview = this.previewRef?.nativeElement;
-    if (preview) {
-      preview.style.width = `${this.imageWidth}px`;
-      preview.style.height = `${this.imageHeight}px`;
+  private endInteraction(event: PointerEvent): void {
+    if (this.stageRef?.nativeElement.hasPointerCapture(event.pointerId)) {
+      this.stageRef.nativeElement.releasePointerCapture(event.pointerId);
     }
+    this.interaction = null;
+    this.activeHandle = null;
+    this.pointerId = null;
   }
 
   private toJpegFilename(filename: string): string {
@@ -430,12 +443,13 @@ export class ImageCropModalComponent implements OnChanges, OnDestroy {
     }
     this.imageLoaded = false;
     this.processing = false;
-    this.scale = 1;
-    this.offsetX = 0;
-    this.offsetY = 0;
     this.imageWidth = 0;
     this.imageHeight = 0;
-    this.dragging = false;
+    this.imageRect = { x: 0, y: 0, width: 0, height: 0 };
+    this.cropRect = { x: 0, y: 0, width: 0, height: 0 };
+    this.interaction = null;
+    this.activeHandle = null;
+    this.pointerId = null;
     if (this.objectUrl) {
       URL.revokeObjectURL(this.objectUrl);
       this.objectUrl = null;
