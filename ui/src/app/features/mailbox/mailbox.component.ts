@@ -11,6 +11,7 @@ import { registerPullToRefresh } from '../../core/routing/register-pull-to-refre
 import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 import { Subject, takeUntil } from 'rxjs';
 import { parseTimestampMs, formatMessageTime } from '../../shared/utils/timestamp.util';
+import { isSystemMailVisibleToViewer } from '../../shared/utils/mail-system-message.util';
 
 interface UserConversation {
   userId: string;
@@ -756,6 +757,9 @@ export class MailboxComponent implements OnInit, OnDestroy {
     const unreadUsers = new Set<string>();
 
     this.messages.forEach(message => {
+      if (!isSystemMailVisibleToViewer(message, this.currentUserId)) {
+        return;
+      }
       const otherUserId = message.from === this.currentUserId ? message.to : message.from;
       if (!otherUserId) {
         return;

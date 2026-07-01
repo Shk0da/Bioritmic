@@ -17,21 +17,16 @@ class S3OrphanCleanupServiceTest {
     @Test
     fun `cleanupOrphanedMedia deletes only unreferenced keys`() = runBlocking {
         val referencedProfileKey = "profile/user-1/cropp_500x500.jpg"
-        val referencedStoryKey = "stories/user-1/story.jpg"
         val referencedMailboxKey = "mailbox/images/user-1/user-2/file.jpg"
         val referencedFeedbackKey = "feedback/1/screenshot.jpg"
         val orphanedProfileKey = "profile/user-2/cropp_500x500.jpg"
-        val orphanedStoryKey = "stories/user-2/old-story.jpg"
         val orphanedFeedbackKey = "feedback/2/old-attachment.jpg"
 
         Mockito.`when`(s3MediaReferenceRepository.findAllReferencedKeys()).thenReturn(
-            setOf(referencedProfileKey, referencedStoryKey, referencedMailboxKey, referencedFeedbackKey)
+            setOf(referencedProfileKey, referencedMailboxKey, referencedFeedbackKey)
         )
         Mockito.`when`(s3Service.listObjectKeys("profile/")).thenReturn(
             listOf(referencedProfileKey, orphanedProfileKey)
-        )
-        Mockito.`when`(s3Service.listObjectKeys("stories/")).thenReturn(
-            listOf(referencedStoryKey, orphanedStoryKey)
         )
         Mockito.`when`(s3Service.listObjectKeys("mailbox/")).thenReturn(listOf(referencedMailboxKey))
         Mockito.`when`(s3Service.listObjectKeys("feedback/")).thenReturn(
@@ -40,14 +35,13 @@ class S3OrphanCleanupServiceTest {
 
         val deletedCount = cleanupService.cleanupOrphanedMedia()
 
-        assertEquals(3, deletedCount)
+        assertEquals(2, deletedCount)
         Mockito.verify(s3Service).deletePhoto(orphanedProfileKey)
-        Mockito.verify(s3Service).deletePhoto(orphanedStoryKey)
         Mockito.verify(s3Service).deletePhoto(orphanedFeedbackKey)
         Mockito.verify(s3Service, Mockito.never()).deletePhoto(referencedProfileKey)
-        Mockito.verify(s3Service, Mockito.never()).deletePhoto(referencedStoryKey)
         Mockito.verify(s3Service, Mockito.never()).deletePhoto(referencedMailboxKey)
         Mockito.verify(s3Service, Mockito.never()).deletePhoto(referencedFeedbackKey)
+        Mockito.verify(s3Service, Mockito.never()).listObjectKeys("stories/")
     }
 
     @Test
@@ -55,7 +49,6 @@ class S3OrphanCleanupServiceTest {
         val key = "profile/user-1/cropp_500x500.jpg"
         Mockito.`when`(s3MediaReferenceRepository.findAllReferencedKeys()).thenReturn(setOf(key))
         Mockito.`when`(s3Service.listObjectKeys("profile/")).thenReturn(listOf(key))
-        Mockito.`when`(s3Service.listObjectKeys("stories/")).thenReturn(emptyList())
         Mockito.`when`(s3Service.listObjectKeys("mailbox/")).thenReturn(emptyList())
         Mockito.`when`(s3Service.listObjectKeys("feedback/")).thenReturn(emptyList())
 

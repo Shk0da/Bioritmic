@@ -31,6 +31,7 @@ class MeetingsService(
     private val userService: UserService,
     private val pushNotificationService: PushNotificationService,
     private val mailboxRealtimeNotifier: MailboxRealtimeNotifier,
+    private val profanityFilterService: ProfanityFilterService,
 ) {
 
     private val log = LoggerFactory.getLogger(MeetingsService::class.java)
@@ -59,7 +60,12 @@ class MeetingsService(
         val totalCount = (currentElementsCount + meetingList.count()).toInt()
         if (checkSize(totalCount, maximumUserMeetingsSize, ErrorCode.MANY_MEETINGS)) {
             try {
-                val specs = meetingList.map { Meeting.of(userId, it) }
+                val specs = meetingList.map { meeting ->
+                    val sanitized = meeting.copy(
+                        description = profanityFilterService.sanitize(meeting.description),
+                    )
+                    Meeting.of(userId, sanitized)
+                }
                 specs.forEach { spec ->
                     val recipientId = spec.otherUserId
                         ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("userId" to "userId"))

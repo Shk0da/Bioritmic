@@ -38,6 +38,7 @@ class S3OrphanCleanupService(
     }
 
     companion object {
-        private val SCANNED_PREFIXES = listOf("profile/", "stories/", "mailbox/", "feedback/")
+        // Story media lifecycle is managed by StoryService.deleteExpiredStories (respects locked stories).
+        private val SCANNED_PREFIXES = listOf("profile/", "mailbox/", "feedback/")
     }
 }

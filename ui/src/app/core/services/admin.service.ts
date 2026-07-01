@@ -33,6 +33,7 @@ export interface FeedbackItem {
   status: FeedbackStatus;
   attachmentUrl?: string;
   attachmentFilename?: string;
+  attachmentContentType?: string;
   createdAt?: string;
 }
 
@@ -57,6 +58,26 @@ export interface PaginatedUsersResponse {
   total: number;
   page: number;
   size: number;
+}
+
+export interface BannedWordItem {
+  id: number;
+  word: string;
+  createdAt?: string;
+}
+
+export interface BannedWordsPage {
+  items: BannedWordItem[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface BannedWordImportResult {
+  added: number;
+  skipped: number;
+  total: number;
+  mode: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -135,6 +156,30 @@ export class AdminService {
 
   resetPassword(userId: string): Observable<{ success: boolean; userId: string }> {
     return this.http.post<{ success: boolean; userId: string }>(`${this.apiUrl}/users/${userId}/reset-password`, {});
+  }
+
+  getBannedWords(page = 0, size = 50, search?: string): Observable<BannedWordsPage> {
+    const searchParam = search?.trim() ? `&search=${encodeURIComponent(search.trim())}` : '';
+    return this.http.get<BannedWordsPage>(
+      `${this.apiUrl}/banned-words?page=${page}&size=${size}${searchParam}`
+    );
+  }
+
+  addBannedWord(word: string): Observable<{ item: BannedWordItem }> {
+    return this.http.post<{ item: BannedWordItem }>(`${this.apiUrl}/banned-words`, { word });
+  }
+
+  deleteBannedWord(id: number): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(`${this.apiUrl}/banned-words/${id}`);
+  }
+
+  importBannedWords(file: File, mode: 'append' | 'replace'): Observable<BannedWordImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<BannedWordImportResult>(
+      `${this.apiUrl}/banned-words/import?mode=${mode}`,
+      formData
+    );
   }
 }
 

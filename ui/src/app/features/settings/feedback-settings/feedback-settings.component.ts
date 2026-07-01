@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FeedbackService, FEEDBACK_TOPICS, FeedbackTopic } from '../../../core/services/feedback.service';
 import { ModalService } from '../../../core/services/modal.service';
@@ -46,6 +46,7 @@ import { PageBackLinkComponent } from '../../../shared/components/page-back-link
               <div class="mb-4">
                 <label class="form-label" for="feedbackFile">Вложение (необязательно)</label>
                 <input
+                  #feedbackFileInput
                   id="feedbackFile"
                   type="file"
                   class="form-control"
@@ -76,6 +77,8 @@ import { PageBackLinkComponent } from '../../../shared/components/page-back-link
   `
 })
 export class FeedbackSettingsComponent {
+  @ViewChild('feedbackFileInput') feedbackFileInput?: ElementRef<HTMLInputElement>;
+
   feedbackTopic: FeedbackTopic = 'BUG';
   feedbackMessage = '';
   feedbackFile: File | null = null;
@@ -92,8 +95,7 @@ export class FeedbackSettingsComponent {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) {
-      this.feedbackFile = null;
-      this.feedbackFileName = '';
+      this.clearFeedbackFileSelection();
       return;
     }
     const allowedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
@@ -101,20 +103,25 @@ export class FeedbackSettingsComponent {
     const isImage = file.type.startsWith('image/') || allowedExtensions.includes(extension);
     if (!isImage) {
       void this.modalService.alert('Можно прикрепить только изображение (PNG, JPG, GIF, WEBP).');
-      input.value = '';
-      this.feedbackFile = null;
-      this.feedbackFileName = '';
+      this.clearFeedbackFileSelection(input);
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       void this.modalService.alert('Файл слишком большой. Максимум 5 МБ.');
-      input.value = '';
-      this.feedbackFile = null;
-      this.feedbackFileName = '';
+      this.clearFeedbackFileSelection(input);
       return;
     }
     this.feedbackFile = file;
     this.feedbackFileName = file.name;
+  }
+
+  private clearFeedbackFileSelection(input?: HTMLInputElement): void {
+    this.feedbackFile = null;
+    this.feedbackFileName = '';
+    const fileInput = input ?? this.feedbackFileInput?.nativeElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
   }
 
   submitFeedback(): void {
@@ -127,8 +134,7 @@ export class FeedbackSettingsComponent {
       next: async () => {
         this.feedbackSending = false;
         this.feedbackMessage = '';
-        this.feedbackFile = null;
-        this.feedbackFileName = '';
+        this.clearFeedbackFileSelection();
         await this.modalService.alert('Сообщение отправлено администрации. Спасибо!');
       },
       error: async () => {

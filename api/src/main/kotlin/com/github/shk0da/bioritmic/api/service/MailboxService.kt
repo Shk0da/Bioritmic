@@ -41,6 +41,7 @@ class MailboxService(
     private val pushNotificationService: PushNotificationService,
     private val s3Service: S3Service,
     private val mailboxRealtimeNotifier: MailboxRealtimeNotifier,
+    private val profanityFilterService: ProfanityFilterService,
     selfProvider: ObjectProvider<MailboxService>,
 ) {
 
@@ -52,6 +53,7 @@ class MailboxService(
     @Transactional
     suspend fun getUserMailbox(userId: UUID, pageable: Pageable): List<UserMail> {
         return mailboxRepository.findAllMailsByUserId(userId, pageable.pageSize, pageable.offset)
+            .filter { MailSystemMessage.isVisibleTo(it, userId) }
     }
 
     suspend fun sendUserMail(userId: UUID, userMailModel: UserMailModel): ConversationPageModel {
@@ -71,7 +73,11 @@ class MailboxService(
         }
 
         userMailModel.from = userId
-        val userMailWithReply = userMailModel.copy(replyToMessageId = replyToMessageId)
+        val sanitizedMessage = profanityFilterService.sanitize(userMailModel.message)
+        val userMailWithReply = userMailModel.copy(
+            message = sanitizedMessage,
+            replyToMessageId = replyToMessageId,
+        )
         val userMail = UserMail.of(userMailWithReply)
         val saved = mailboxRepository.save(userMail)
         notifyRecipient(saved, userId)
@@ -133,7 +139,7 @@ class MailboxService(
             toUserId = toUserId,
             mediaType = mediaType.name,
             mediaS3Key = s3Key,
-            caption = caption,
+            caption = profanityFilterService.sanitize(caption),
             replyToMessageId = validatedReplyId
         )
 
@@ -201,7 +207,7 @@ class MailboxService(
 
     @Transactional(readOnly = true)
     suspend fun getConversation(currentUserId: UUID, otherUserId: UUID): List<UserMail> {
-        return mailboxRepository.findConversationBetweenUsers(currentUserId, otherUserId)
+        return mailboxRepository.findConversationBetweenUsers(currentUserId, otherUserId, currentUserId)
     }
 
     @Transactional
@@ -227,21 +233,58 @@ class MailboxService(
         size: Int,
     ): ConversationPageModel {
         val limit = size.coerceIn(1, MAX_CONVERSATION_PAGE_SIZE)
-        val rawMessages = if (beforeId == null) {
+        if (beforeId == null) {
             val unreadIds = mailboxRepository.findUnreadIncomingIds(currentUserId, otherUserId)
             mailboxRepository.markIncomingAsRead(currentUserId, otherUserId)
             if (unreadIds.isNotEmpty()) {
                 mailboxRealtimeNotifier.onMessagesRead(currentUserId, otherUserId, unreadIds)
             }
-            mailboxRepository.findLatestConversationMessages(currentUserId, otherUserId, limit)
-        } else {
-            mailboxRepository.findOlderConversationMessages(currentUserId, otherUserId, beforeId, limit)
         }
-        val messages = rawMessages.reversed()
-        val models = toModelsWithReactions(messages, currentUserId)
-        val hasMore = messages.firstOrNull()?.id?.let { oldestId ->
-            mailboxRepository.hasOlderConversationMessages(currentUserId, otherUserId, oldestId)
-        } ?: false
+
+        val visibleMessages = mutableListOf<UserMail>()
+        var nextBeforeId = beforeId
+        var hasMore = false
+        var batchIndex = 0
+        val maxSkippedBatches = 20
+
+        while (visibleMessages.size < limit && batchIndex < maxSkippedBatches) {
+            batchIndex++
+            val rawMessages = if (nextBeforeId == null) {
+                mailboxRepository.findLatestConversationMessages(currentUserId, otherUserId, currentUserId, limit)
+            } else {
+                mailboxRepository.findOlderConversationMessages(
+                    currentUserId,
+                    otherUserId,
+                    currentUserId,
+                    nextBeforeId!!,
+                    limit,
+                )
+            }
+            if (rawMessages.isEmpty()) {
+                hasMore = false
+                break
+            }
+
+            val batch = rawMessages.reversed()
+            val oldestId = batch.firstOrNull()?.id
+            hasMore = oldestId?.let { oldest ->
+                mailboxRepository.hasOlderConversationMessages(currentUserId, otherUserId, currentUserId, oldest)
+            } ?: false
+
+            visibleMessages.addAll(batch.filter { MailSystemMessage.isVisibleTo(it, currentUserId) })
+
+            if (!hasMore || visibleMessages.size >= limit) {
+                break
+            }
+            nextBeforeId = oldestId
+        }
+
+        val pageMessages = if (visibleMessages.size > limit) {
+            visibleMessages.takeLast(limit)
+        } else {
+            visibleMessages
+        }
+        val models = toModelsWithReactions(pageMessages, currentUserId)
         return ConversationPageModel(messages = models, hasMore = hasMore)
     }
 
@@ -394,7 +437,7 @@ class MailboxService(
         private const val MAX_CONVERSATION_PAGE_SIZE = 100
         private const val MAX_DELETE_BATCH_SIZE = 100
         private const val MAX_VOICE_BYTES = 50 * 1024 * 1024
-        private const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
+        private const val MAX_PHOTO_BYTES = 10 * 1024 * 1024
         private const val MAX_VIDEO_BYTES = 50 * 1024 * 1024
     }
 }

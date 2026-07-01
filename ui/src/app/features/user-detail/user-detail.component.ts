@@ -616,6 +616,8 @@ import {
       justify-content: center;
       z-index: 9999;
       padding: 1rem;
+      padding-top: calc(1rem + var(--app-safe-top));
+      padding-bottom: calc(1rem + var(--app-safe-bottom));
       backdrop-filter: blur(4px);
       animation: fadeIn 0.2s ease;
     }
@@ -630,6 +632,9 @@ import {
       border-radius: 20px;
       max-width: 480px;
       width: 100%;
+      max-height: calc(100dvh - 2rem - var(--app-safe-top) - var(--app-safe-bottom));
+      display: flex;
+      flex-direction: column;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
       animation: slideUp 0.3s ease;
       overflow: hidden;
@@ -644,6 +649,7 @@ import {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-shrink: 0;
       padding: 1.25rem 1.5rem;
       border-bottom: 1px solid var(--border-color, #e5e7eb);
 
@@ -670,6 +676,10 @@ import {
 
     .report-modal-body {
       padding: 1.25rem 1.5rem;
+      overflow-y: auto;
+      flex: 1 1 auto;
+      min-height: 0;
+      -webkit-overflow-scrolling: touch;
     }
 
     .report-modal-user {
@@ -727,8 +737,10 @@ import {
     .report-modal-footer {
       display: flex;
       gap: 0.75rem;
+      flex-shrink: 0;
       padding: 1rem 1.5rem 1.25rem;
       justify-content: flex-end;
+      border-top: 1px solid var(--border-color, #e5e7eb);
 
       .btn {
         padding: 0.6rem 1.25rem;
@@ -771,6 +783,47 @@ import {
       .hero-photo { height: 380px; }
       .hero-name { font-size: 1.5rem; }
       .actions-grid { grid-template-columns: 1fr 1fr; }
+
+      .report-modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+        padding-bottom: var(--app-safe-bottom);
+      }
+
+      .report-modal {
+        max-width: none;
+        max-height: calc(100dvh - var(--app-safe-top) - var(--app-safe-bottom));
+        border-radius: 20px 20px 0 0;
+      }
+
+      .report-modal-header {
+        padding: 1rem 1.25rem;
+      }
+
+      .report-modal-body {
+        padding: 1rem 1.25rem;
+      }
+
+      .report-reason-item {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.85rem;
+        gap: 0.625rem;
+      }
+
+      .report-description textarea {
+        min-height: 64px;
+      }
+
+      .report-modal-footer {
+        padding: 0.875rem 1.25rem;
+        gap: 0.5rem;
+
+        .btn {
+          flex: 1;
+          justify-content: center;
+          padding: 0.75rem 0.75rem;
+        }
+      }
     }
   `]
 })

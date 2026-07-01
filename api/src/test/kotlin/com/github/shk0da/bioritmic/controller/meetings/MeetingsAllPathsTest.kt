@@ -353,7 +353,7 @@ class MeetingsAllPathsTest : ApiApplicationTests() {
     }
 
     @Test
-    fun `accept meeting sends system message to initiator`() {
+    fun `accept meeting sends system message only to initiator`() {
         sendMeeting(users.userAToken, users.userBId)
 
         webTestClient.put()
@@ -374,5 +374,14 @@ class MeetingsAllPathsTest : ApiApplicationTests() {
             .jsonPath("$.messages[0].message").isEqualTo(MeetingSystemMailMessages.ACCEPTED)
             .jsonPath("$.messages[0].isSystem").isEqualTo(true)
             .jsonPath("$.messages[0].mediaType").isEqualTo("SYSTEM")
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/mailbox/conversation/${users.userAId}")
+            .header(HttpHeaders.AUTHORIZATION, users.userBToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.messages.length()").isEqualTo(0)
     }
 }

@@ -665,7 +665,7 @@ option { background: var(--card-bg); color: var(--text-primary); }
 
   // General text (skip alerts — they use their own palette)
   :is(h1, h2, h3, h4, h5, h6, p, span, label, a, td, th, li, div):not(.alert):not(.alert *) {
-    &:not([class*="text-"]):not(.gradient-text):not(.match-title):not(.match-subtitle):not(.btn-match-message):not(.match-heart-badge) {
+    &:not([class*="text-"]):not(.gradient-text):not(.match-title):not(.match-subtitle):not(.btn-match-message):not(.match-heart-badge):not(.compat-chip):not(.compat-badge) {
       color: var(--text-primary);
     }
   }

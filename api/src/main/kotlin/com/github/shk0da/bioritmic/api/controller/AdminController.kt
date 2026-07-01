@@ -13,8 +13,11 @@ import com.github.shk0da.bioritmic.api.repository.ReportRepository
 import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.service.AdminAuditService
+import com.github.shk0da.bioritmic.api.service.BannedWordService
 import com.github.shk0da.bioritmic.api.service.EmailService
 import com.github.shk0da.bioritmic.api.service.FeedbackService
+import com.github.shk0da.bioritmic.api.service.ImportMode
+import com.github.shk0da.bioritmic.api.service.ProfanityFilterService
 import com.github.shk0da.bioritmic.api.service.S3Service
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.ClientIpUtils
@@ -23,6 +26,7 @@ import com.github.shk0da.bioritmic.api.utils.SecurityUtils
 import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
+import org.springframework.http.codec.multipart.FilePart
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -31,6 +35,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
 import java.lang.management.ManagementFactory
@@ -49,7 +54,9 @@ class AdminController(
     val userService: UserService,
     val emailService: EmailService,
     val meterRegistry: MeterRegistry,
-    val adminAuditService: AdminAuditService
+    val adminAuditService: AdminAuditService,
+    val bannedWordService: BannedWordService,
+    val profanityFilterService: ProfanityFilterService,
 ) {
 
     private val log = LoggerFactory.getLogger(AdminController::class.java)
@@ -319,6 +326,7 @@ class AdminController(
                 status = feedback.status,
                 attachmentUrl = feedback.attachmentS3Key?.let { s3Service.getPhotoUrl(it) },
                 attachmentFilename = feedback.attachmentFilename,
+                attachmentContentType = feedback.attachmentContentType,
                 createdAt = feedback.createdAt?.toString()
             )
         }
@@ -425,6 +433,82 @@ class AdminController(
         return "%.2f GB".format(gb)
     }
 
+    @GetMapping("/banned-words", produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun listBannedWords(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int,
+        @RequestParam(required = false) search: String?,
+    ): Map<String, Any?> {
+        requireAdminUserId()
+        val result = bannedWordService.listWords(search, page, size)
+        return mapOf(
+            "items" to result.items,
+            "total" to result.total,
+            "page" to result.page,
+            "size" to result.size,
+        )
+    }
+
+    @PostMapping("/banned-words", produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun addBannedWord(
+        @RequestBody body: Map<String, String>,
+        exchange: ServerWebExchange,
+    ): Map<String, Any?> {
+        val adminId = requireAdminUserId()
+        val word = body["word"]?.trim().orEmpty()
+        if (word.isEmpty()) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("word" to "word"))
+        }
+        val saved = bannedWordService.addWord(word)
+        profanityFilterService.refreshCache()
+        audit(adminId, "BANNED_WORD_ADD", exchange, details = saved.word)
+        return mapOf("item" to saved)
+    }
+
+    @DeleteMapping("/banned-words/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun deleteBannedWord(
+        @PathVariable id: Long,
+        exchange: ServerWebExchange,
+    ): Map<String, Boolean> {
+        val adminId = requireAdminUserId()
+        bannedWordService.deleteWord(id)
+        profanityFilterService.refreshCache()
+        audit(adminId, "BANNED_WORD_DELETE", exchange, details = id.toString())
+        return mapOf("success" to true)
+    }
+
+    @PostMapping(
+        value = ["/banned-words/import"],
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    suspend fun importBannedWords(
+        @RequestPart("file") file: FilePart,
+        @RequestParam(defaultValue = "append") mode: String,
+        exchange: ServerWebExchange,
+    ): Map<String, Any?> {
+        val adminId = requireAdminUserId()
+        val importMode = when (mode.lowercase()) {
+            "replace" -> ImportMode.REPLACE
+            "append" -> ImportMode.APPEND
+            else -> throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("mode" to "mode"))
+        }
+        val result = bannedWordService.importFromFile(file, importMode)
+        profanityFilterService.refreshCache()
+        audit(
+            adminId,
+            "BANNED_WORDS_IMPORT",
+            exchange,
+            details = "mode=${result.mode}, added=${result.added}, skipped=${result.skipped}",
+        )
+        return mapOf(
+            "added" to result.added,
+            "skipped" to result.skipped,
+            "total" to result.total,
+            "mode" to result.mode,
+        )
+    }
+
     private fun formatDuration(ms: Long): String {
         val seconds = ms / 1000
         val minutes = seconds / 60
@@ -457,6 +541,7 @@ data class FeedbackAdminView(
     val status: String?,
     val attachmentUrl: String?,
     val attachmentFilename: String?,
+    val attachmentContentType: String?,
     val createdAt: String?
 )
 

@@ -24,7 +24,7 @@ import { ImageCropModalComponent } from '../image-crop-modal/image-crop-modal.co
               <div class="file-upload" (click)="fileInput.click()">
                 <i class="bi bi-image"></i>
                 <p>Нажмите для выбора фото</p>
-                <span class="text-muted">JPG, PNG до 5MB</span>
+                <span class="text-muted">JPG, PNG до 10MB</span>
               </div>
               <input
                 #fileInput
@@ -214,7 +214,7 @@ import { ImageCropModalComponent } from '../image-crop-modal/image-crop-modal.co
   `]
 })
 export class StoryCreatorComponent implements OnDestroy {
-  private static readonly MAX_FILE_BYTES = 5 * 1024 * 1024;
+  private static readonly MAX_FILE_BYTES = 10 * 1024 * 1024;
 
   @Input() visible = false;
   @Output() closed = new EventEmitter<void>();
@@ -247,7 +247,7 @@ export class StoryCreatorComponent implements OnDestroy {
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
       if (file.size > StoryCreatorComponent.MAX_FILE_BYTES) {
-        void this.modalService.alert('Файл слишком большой. Максимальный размер — 5 МБ.', 'Файл');
+        void this.modalService.alert('Файл слишком большой. Максимальный размер — 10 МБ.', 'Файл');
         input.value = '';
         return;
       }

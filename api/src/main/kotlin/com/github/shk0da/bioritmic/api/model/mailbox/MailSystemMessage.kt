@@ -13,6 +13,13 @@ object MailSystemMessage {
         return text.isNotEmpty() && text in MeetingSystemMailMessages.ALL
     }
 
+    fun isVisibleTo(mail: UserMail, viewerId: UUID): Boolean {
+        if (!isSystem(mail)) {
+            return true
+        }
+        return mail.toUserId == viewerId
+    }
+
     fun create(fromUserId: UUID, toUserId: UUID, message: String): UserMail {
         return UserMail().apply {
             this.fromUserId = fromUserId

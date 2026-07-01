@@ -1,6 +1,7 @@
 package com.github.shk0da.bioritmic.api.service.mailbox
 
 import com.github.shk0da.bioritmic.api.domain.UserMail
+import com.github.shk0da.bioritmic.api.model.mailbox.MailSystemMessage
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
 import com.github.shk0da.bioritmic.api.repository.MailboxReactionBatchRepository
 import com.github.shk0da.bioritmic.api.repository.MailboxRepository
@@ -21,6 +22,10 @@ class MailboxRealtimeNotifier(
         val from = mail.fromUserId ?: return
         val to = mail.toUserId ?: return
         val fresh = mailboxRepository.findById(messageId) ?: return
+        if (MailSystemMessage.isSystem(fresh)) {
+            publishMessageToParticipant(fresh, to, from)
+            return
+        }
         publishMessageToParticipant(fresh, to, from)
         publishMessageToParticipant(fresh, from, to)
     }

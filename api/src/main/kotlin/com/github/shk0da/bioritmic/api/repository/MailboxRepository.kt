@@ -18,7 +18,11 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
     @Query(
         """
         SELECT * FROM mailbox
-        WHERE from_user_id = :userId OR to_user_id = :userId
+        WHERE (from_user_id = :userId OR to_user_id = :userId)
+          AND (
+            COALESCE(media_type, '') <> 'SYSTEM'
+            OR to_user_id = :userId
+          )
         ORDER BY timestamp DESC
         LIMIT :limit OFFSET :offset
         """
@@ -28,29 +32,52 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
     @Query(
         """
         SELECT * FROM mailbox
-        WHERE (from_user_id = :userId1 AND to_user_id = :userId2)
-           OR (from_user_id = :userId2 AND to_user_id = :userId1)
+        WHERE (
+            (from_user_id = :userId1 AND to_user_id = :userId2)
+            OR (from_user_id = :userId2 AND to_user_id = :userId1)
+          )
+          AND (
+            COALESCE(media_type, '') <> 'SYSTEM'
+            OR to_user_id = :viewerUserId
+          )
         ORDER BY timestamp ASC
         """
     )
-    suspend fun findConversationBetweenUsers(userId1: UUID, userId2: UUID): List<UserMail>
+    suspend fun findConversationBetweenUsers(userId1: UUID, userId2: UUID, viewerUserId: UUID): List<UserMail>
 
     @Query(
         """
         SELECT * FROM mailbox
-        WHERE (from_user_id = :userId1 AND to_user_id = :userId2)
-           OR (from_user_id = :userId2 AND to_user_id = :userId1)
+        WHERE (
+            (from_user_id = :userId1 AND to_user_id = :userId2)
+            OR (from_user_id = :userId2 AND to_user_id = :userId1)
+          )
+          AND (
+            COALESCE(media_type, '') <> 'SYSTEM'
+            OR to_user_id = :viewerUserId
+          )
         ORDER BY id DESC
         LIMIT :limit
         """
     )
-    suspend fun findLatestConversationMessages(userId1: UUID, userId2: UUID, limit: Int): List<UserMail>
+    suspend fun findLatestConversationMessages(
+        userId1: UUID,
+        userId2: UUID,
+        viewerUserId: UUID,
+        limit: Int,
+    ): List<UserMail>
 
     @Query(
         """
         SELECT * FROM mailbox
-        WHERE ((from_user_id = :userId1 AND to_user_id = :userId2)
-           OR (from_user_id = :userId2 AND to_user_id = :userId1))
+        WHERE (
+            (from_user_id = :userId1 AND to_user_id = :userId2)
+            OR (from_user_id = :userId2 AND to_user_id = :userId1)
+          )
+          AND (
+            COALESCE(media_type, '') <> 'SYSTEM'
+            OR to_user_id = :viewerUserId
+          )
           AND id < :beforeId
         ORDER BY id DESC
         LIMIT :limit
@@ -59,6 +86,7 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
     suspend fun findOlderConversationMessages(
         userId1: UUID,
         userId2: UUID,
+        viewerUserId: UUID,
         beforeId: Long,
         limit: Int
     ): List<UserMail>
@@ -67,13 +95,24 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
         """
         SELECT EXISTS(
             SELECT 1 FROM mailbox
-            WHERE ((from_user_id = :userId1 AND to_user_id = :userId2)
-               OR (from_user_id = :userId2 AND to_user_id = :userId1))
+            WHERE (
+                (from_user_id = :userId1 AND to_user_id = :userId2)
+                OR (from_user_id = :userId2 AND to_user_id = :userId1)
+              )
+              AND (
+                COALESCE(media_type, '') <> 'SYSTEM'
+                OR to_user_id = :viewerUserId
+              )
               AND id < :beforeId
         )
         """
     )
-    suspend fun hasOlderConversationMessages(userId1: UUID, userId2: UUID, beforeId: Long): Boolean
+    suspend fun hasOlderConversationMessages(
+        userId1: UUID,
+        userId2: UUID,
+        viewerUserId: UUID,
+        beforeId: Long,
+    ): Boolean
 
     @Query(
         """

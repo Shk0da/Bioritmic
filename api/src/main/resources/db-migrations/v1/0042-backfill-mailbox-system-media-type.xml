@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0042-backfill-mailbox-system-media-type" author="bioritmic">
+        <update tableName="mailbox">
+            <column name="media_type" value="SYSTEM"/>
+            <where>media_type IS NULL AND message IN (
+                'Ваше предложение встречи принято!',
+                'К сожалению, ваше предложение встречи отклонено.',
+                'К сожалению, ранее принятая встреча отменена.',
+                'Отправитель отозвал предложение встречи.',
+                'Отправитель отозвал ранее согласованную встречу.'
+            )</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

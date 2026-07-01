@@ -40,7 +40,8 @@ class StoryService(
     private val storyReactionRepository: StoryReactionRepository,
     private val storyReactionBatchRepository: StoryReactionBatchRepository,
     private val s3Service: S3Service,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val profanityFilterService: ProfanityFilterService,
 ) {
 
     companion object {
@@ -48,7 +49,7 @@ class StoryService(
         private const val STORY_UNLOCK_EXTEND_HOURS = 12L
         private const val FEED_STORY_LIMIT = 200
         private const val MAX_CAPTION_LENGTH = 500
-        private const val MAX_STORY_IMAGE_BYTES = 5 * 1024 * 1024
+        private const val MAX_STORY_IMAGE_BYTES = 10 * 1024 * 1024
         private const val CONTENT_TYPE_JPEG = "image/jpeg"
         private val ALLOWED_EXTENSIONS = listOf("png", "jpg", "jpeg", "webp")
     }
@@ -79,7 +80,9 @@ class StoryService(
         val story = Story().apply {
             this.userId = userId
             this.mediaUrl = s3Service.getPhotoUrl(s3Key)
-            this.caption = caption?.trim()?.takeIf { it.isNotEmpty() }?.take(MAX_CAPTION_LENGTH)
+            this.caption = caption?.trim()?.takeIf { it.isNotEmpty() }
+                ?.let { profanityFilterService.sanitize(it) }
+                ?.take(MAX_CAPTION_LENGTH)
             this.expiresAt = Timestamp(System.currentTimeMillis() + TimeUnit.HOURS.toMillis(STORY_EXPIRY_HOURS))
             this.createdAt = Timestamp(System.currentTimeMillis())
             this.locked = false
@@ -211,6 +214,10 @@ class StoryService(
         val now = Timestamp(System.currentTimeMillis())
         val expiredStories = storyRepository.findExpiredBefore(now)
         expiredStories.forEach { story ->
+            if (story.locked) {
+                log.warn("Skipping expired story cleanup for locked story {}", story.id)
+                return@forEach
+            }
             S3Service.keyFromPhotoUrl(story.mediaUrl)?.let { s3Service.deletePhoto(it) }
         }
         storyRepository.deleteExpired(now)

@@ -130,7 +130,7 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
                   @if (card.user.compare) {
                     <div class="compatibility-badges">
                       @for (item of getCompatibilityBadges(card.user); track item.name) {
-                        <span class="badge" [class.heartfelt]="item.name === 'Heartfelt'" [class.physical]="item.name === 'Physical'" [class.intellectual]="item.name === 'Intellectual'">
+                        <span class="compat-chip" [class.heartfelt]="item.name === 'Heartfelt'" [class.physical]="item.name === 'Physical'" [class.intellectual]="item.name === 'Intellectual'">
                           {{ item.label }}: {{ item.value }}%
                         </span>
                       }

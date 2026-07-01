@@ -18,3 +18,19 @@ export function isSystemMailMessage(message: Pick<UserMail, 'mediaType' | 'messa
   const text = message.message?.trim();
   return !!text && MEETING_SYSTEM_MAIL_MESSAGES.includes(text as typeof MEETING_SYSTEM_MAIL_MESSAGES[number]);
 }
+
+export function isSystemMailVisibleToViewer(
+  message: Pick<UserMail, 'mediaType' | 'message' | 'isSystem' | 'to'> | null | undefined,
+  viewerId: string | null | undefined
+): boolean {
+  if (!message) {
+    return false;
+  }
+  if (!isSystemMailMessage(message)) {
+    return true;
+  }
+  if (!viewerId) {
+    return false;
+  }
+  return message.to === viewerId;
+}

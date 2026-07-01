@@ -479,14 +479,14 @@
   gap: 0.25rem;
 }
 
-/* Бейджи совместимости */
+/* Бейджи совместимости на фото (мобильные карточки) */
 .compatibility-badges {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
-.badge {
+.compat-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -494,34 +494,20 @@
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(5px);
-
-  &.bio.compatible {
-    background: #10b981;
-  }
-
-  &.horo.compatible {
-    background: #8b5cf6;
-  }
-
-  &.high-match {
-    background: #f43f5e;
-  }
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 
   &.heartfelt {
-    background: #fce7f3;
-    color: #ec4899;
+    background: rgba(190, 24, 93, 0.92);
   }
 
   &.physical {
-    background: #fee2e2;
-    color: #ef4444;
+    background: rgba(220, 38, 38, 0.92);
   }
 
   &.intellectual {
-    background: #dbeafe;
-    color: #3b82f6;
+    background: rgba(37, 99, 235, 0.92);
   }
 }
 
@@ -1046,27 +1032,25 @@
   }
 }
 
-@media (max-width: 1024px) {
-  [data-theme="dark"] {
-    .compatibility-badges .badge {
+:host-context([data-theme="dark"]) {
+  .compatibility-mini .compat-badge {
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+
+    &.heartfelt {
+      background: rgba(190, 24, 93, 0.88);
       color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    }
 
-      &.heartfelt {
-        background: rgba(190, 24, 93, 0.92);
-        color: #ffffff;
-      }
+    &.physical {
+      background: rgba(220, 38, 38, 0.88);
+      color: #ffffff;
+    }
 
-      &.physical {
-        background: rgba(220, 38, 38, 0.92);
-        color: #ffffff;
-      }
-
-      &.intellectual {
-        background: rgba(37, 99, 235, 0.92);
-        color: #ffffff;
-      }
+    &.intellectual {
+      background: rgba(37, 99, 235, 0.88);
+      color: #ffffff;
     }
   }
 }

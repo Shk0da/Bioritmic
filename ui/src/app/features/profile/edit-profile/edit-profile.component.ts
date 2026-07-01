@@ -316,6 +316,8 @@ import { HttpErrorResponse } from '@angular/common/http';
   `]
 })
 export class EditProfileComponent implements OnInit, OnDestroy {
+  private static readonly MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
   readonly maxBirthday = maxBirthdayForMinAge();
   user: Partial<UserInfo> = {};
   photoFile: File | null = null;
@@ -458,6 +460,10 @@ export class EditProfileComponent implements OnInit, OnDestroy {
     const file = input.files?.[0];
     input.value = '';
     if (!file) {
+      return;
+    }
+    if (file.size > EditProfileComponent.MAX_PHOTO_BYTES) {
+      void this.modalService.alert('Файл слишком большой. Максимальный размер — 10 МБ.', 'Фото');
       return;
     }
     this.cropSourceFile = file;

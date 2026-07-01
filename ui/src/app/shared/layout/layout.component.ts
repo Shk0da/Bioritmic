@@ -383,7 +383,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   private isPageSwipeNavigationEnabled(): boolean {
-    return isCompactAppShell();
+    return false;
   }
 
   private bindPageSwipeNavigation(): void {

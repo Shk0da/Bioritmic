@@ -25,7 +25,7 @@ import { ModalService } from '../../../core/services/modal.service';
 import { Subject, takeUntil } from 'rxjs';
 import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
 import { formatMessageDateTime, formatMessageTime } from '../../../shared/utils/timestamp.util';
-import { isSystemMailMessage } from '../../../shared/utils/mail-system-message.util';
+import { isSystemMailMessage, isSystemMailVisibleToViewer } from '../../../shared/utils/mail-system-message.util';
 import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
 import { normalizeRouteUrl } from '../../../core/routing/route-cache-refresh.util';
 import { isLayoutCachingEnabled } from '../../../core/routing/layout-cache.util';
@@ -1585,6 +1585,7 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   private realtimeBound = false;
   private readonly cdr = inject(ChangeDetectorRef);
 
+  private static readonly MAX_PHOTO_BYTES = 10 * 1024 * 1024;
   private static readonly MAX_VOICE_MS = 120_000;
   private static readonly MAX_VIDEO_MS = 30_000;
   private static readonly ONLINE_STATUS_REFRESH_MS = 30_000;
@@ -2052,6 +2053,10 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     const file = input.files?.[0];
     input.value = '';
     if (!file || this.isBlocked || this.sending) {
+      return;
+    }
+    if (file.size > ConversationPanelComponent.MAX_PHOTO_BYTES) {
+      void this.modalService.alert('Файл слишком большой. Максимальный размер — 10 МБ.', 'Фото');
       return;
     }
     this.pendingPhotoCaption = this.newMessage.trim() || undefined;
@@ -2831,10 +2836,12 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   }
 
   private mapToChatMessages(messages: UserMail[]): ChatMessage[] {
-    return messages.map(m => ({
-      ...m,
-      isCurrentUser: m.from === this.currentUserId
-    }));
+    return messages
+      .filter((m) => isSystemMailVisibleToViewer(m, this.currentUserId))
+      .map(m => ({
+        ...m,
+        isCurrentUser: m.from === this.currentUserId
+      }));
   }
 
   private applyConversationMessages(
@@ -3020,6 +3027,9 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
 
   private applyIncomingMessage(message: UserMail): void {
     if (message.id == null || this.loading || this.loadingOlder || this.isRefreshing) {
+      return;
+    }
+    if (!isSystemMailVisibleToViewer(message, this.currentUserId)) {
       return;
     }
     const wasNearBottom = this.isNearBottom();

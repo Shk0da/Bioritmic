@@ -55,10 +55,12 @@ class UserService(
     val userPhotoRepository: UserPhotoRepository,
     val authService: AuthService,
     val userRoleRepository: UserRoleRepository,
-    val reportService: ReportService
+    val reportService: ReportService,
+    val profanityFilterService: ProfanityFilterService,
 ) {
 
     companion object {
+        private const val MAX_PHOTO_BYTES = 10 * 1024 * 1024
         private const val CONTENT_TYPE_JPEG = "image/jpeg"
         private const val BIO_MAX_LENGTH = 500
         private const val STATUS_EMOJI_MAX_LENGTH = 16
@@ -190,7 +192,7 @@ class UserService(
                     mapOf(Pair(com.github.shk0da.bioritmic.api.exceptions.ErrorCode.Constants.PARAMETER_NAME, "bio"))
                 )
             }
-            user.bio = trimmed.ifEmpty { null }
+            user.bio = trimmed.ifEmpty { null }?.let { profanityFilterService.sanitize(it) }
         }
         if (request.nick != null) {
             val trimmed = request.nick.trim()
@@ -372,6 +374,7 @@ class UserService(
             log.error("Failed to read photo for userId [{}]: {}", userId, ex.message, ex)
             throw ApiException(ErrorCode.API_INTERNAL_ERROR)
         }
+        ValidateUtils.checkSize(originalBytes.size, MAX_PHOTO_BYTES, ErrorCode.BAD_PHOTO)
 
         val tagsToUpload = listOf(
             ImageTag.ORIGINAL,
