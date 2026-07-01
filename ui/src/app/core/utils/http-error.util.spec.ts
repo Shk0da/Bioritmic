@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { isNickHttpError, resolveDiamondTransferErrorMessage, resolveHttpErrorMessage } from './http-error.util';
+import { isNickHttpError, isUserBannedHttpError, resolveDiamondTransferErrorMessage, resolveHttpErrorMessage } from './http-error.util';
 
 describe('resolveHttpErrorMessage', () => {
   it('should return network message for status 0', () => {
@@ -26,6 +26,39 @@ describe('resolveHttpErrorMessage', () => {
       error: { errors: [{ errorCode: 'API-412', message: 'The user blocked you.' }] },
     });
     expect(resolveHttpErrorMessage(error)).toContain('ограничил');
+  });
+
+  it('should use Russian message for API-400.8 bookmark limit', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: { errors: [{ errorCode: 'API-400.8', message: 'User has to many bookmarks.' }] },
+    });
+    expect(resolveHttpErrorMessage(error)).toContain('100');
+  });
+
+  it('should use Russian message for API-400.12 meeting total limit', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: { errors: [{ errorCode: 'API-400.12', message: 'User has too many meetings.' }] },
+    });
+    expect(resolveHttpErrorMessage(error)).toContain('20');
+  });
+
+  it('should use Russian message for API-400.13 meeting daily limit', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: { errors: [{ errorCode: 'API-400.13', message: 'User has too many meetings for today.' }] },
+    });
+    expect(resolveHttpErrorMessage(error)).toContain('5');
+  });
+
+  it('should use Russian message for API-403.2 banned user', () => {
+    const error = new HttpErrorResponse({
+      status: 403,
+      error: { errors: [{ errorCode: 'API-403.2', message: 'You were blocked for violating the service rules.' }] },
+    });
+    expect(resolveHttpErrorMessage(error)).toContain('заблокированы');
+    expect(isUserBannedHttpError(error)).toBeTrue();
   });
 
   it('should use Russian message for API-409.1 nick conflict', () => {

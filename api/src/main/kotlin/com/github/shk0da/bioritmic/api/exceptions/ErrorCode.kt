@@ -37,7 +37,8 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
     ),
     INVALID_RECOVERY_CODE("API-400.7", "Recovery code is invalid.", HttpStatus.BAD_REQUEST),
     MANY_BOOKMARKS("API-400.8", "User has to many bookmarks.", HttpStatus.BAD_REQUEST),
-    MANY_MEETINGS("API-400.8", "User has to many meetings.", HttpStatus.BAD_REQUEST),
+    MANY_MEETINGS("API-400.12", "User has too many meetings.", HttpStatus.BAD_REQUEST),
+    DAILY_MEETINGS_LIMIT("API-400.13", "User has too many meetings for today.", HttpStatus.BAD_REQUEST),
     BAD_PHOTO("API-400.9", "Photo must be jpg or png.", HttpStatus.BAD_REQUEST),
     DIAMOND_INSUFFICIENT_BALANCE(
         "API-400.10",
@@ -69,6 +70,11 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
 
     ACCESS_DENIED("API-403", "Access denied. Admin role required.", HttpStatus.FORBIDDEN),
     USER_NOT_VERIFIED("API-403.1", "User is not verified.", HttpStatus.FORBIDDEN),
+    USER_BANNED(
+        "API-403.2",
+        "You were blocked for violating the service rules.",
+        HttpStatus.FORBIDDEN,
+    ),
 
     ACCOUNT_LOCKED(
         "API-423",

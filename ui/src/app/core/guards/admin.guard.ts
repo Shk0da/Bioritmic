@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { Router, UrlTree } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { hasAdminPanelAccess } from '../utils/admin-access.util';
 
 export const adminGuard = (): boolean | UrlTree => {
   const authService = inject(AuthService);
@@ -8,7 +9,7 @@ export const adminGuard = (): boolean | UrlTree => {
 
   if (authService.isAuthenticated()) {
     const user = authService.getCurrentUser();
-    if (user && user.role && user.role.includes('ADMIN')) {
+    if (user && hasAdminPanelAccess(user.role)) {
       return true;
     }
   }

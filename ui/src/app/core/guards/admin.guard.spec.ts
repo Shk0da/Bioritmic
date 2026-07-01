@@ -32,6 +32,16 @@ describe('adminGuard', () => {
     });
   });
 
+  it('should return true when authenticated and user has MODERATOR role', () => {
+    authService.isAuthenticated.and.returnValue(true);
+    authService.getCurrentUser.and.returnValue({ id: '2', name: 'Mod', email: 'm@t.com', role: 'MODERATOR' });
+
+    TestBed.runInInjectionContext(() => {
+      const result = adminGuard();
+      expect(result).toBeTrue();
+    });
+  });
+
   it('should redirect to /swipe when not authenticated', () => {
     authService.isAuthenticated.and.returnValue(false);
     const urlTree = {} as UrlTree;

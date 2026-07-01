@@ -2,14 +2,28 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { UserMeeting, PageableRequest } from '../models/user.model';
+import { MEETING_DAILY_LIMIT, MEETING_TOTAL_LIMIT } from '../constants/meetings.constants';
+
+export interface MeetingLimitResponse {
+  totalCount: number;
+  totalLimit: number;
+  dailyCount: number;
+  dailyLimit: number;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class MeetingsService {
   private readonly apiUrl = '/api/v1/meetings';
+  readonly meetingTotalLimit = MEETING_TOTAL_LIMIT;
+  readonly meetingDailyLimit = MEETING_DAILY_LIMIT;
 
   constructor(private http: HttpClient) {}
+
+  getMeetingLimit(): Observable<MeetingLimitResponse> {
+    return this.http.get<MeetingLimitResponse>(`${this.apiUrl}/limit`);
+  }
 
   getMeetings(pageable: PageableRequest): Observable<UserMeeting[]> {
     let params = new HttpParams()

@@ -66,6 +66,10 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
                 WHERE bm.user_id = :userId AND bm.other_user_id = usr.id
               )
               AND NOT EXISTS (
+                SELECT 1 FROM user_likes ul
+                WHERE ul.user_id = :userId AND ul.other_user_id = usr.id
+              )
+              AND NOT EXISTS (
                 SELECT 1 FROM swipe_skips ss
                 WHERE ss.user_id = :userId AND ss.other_user_id = usr.id
               )

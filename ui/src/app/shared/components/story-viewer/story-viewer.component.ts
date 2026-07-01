@@ -575,7 +575,9 @@ export class StoryViewerComponent implements OnChanges {
   @Input() userName = '';
   @Input() userPhoto: string | null = null;
   @Input() isOwnStories = false;
+  @Input() hasNextUser = false;
   @Output() closed = new EventEmitter<void>();
+  @Output() nextUser = new EventEmitter<void>();
 
   readonly reactions = STORY_REACTIONS;
 
@@ -617,13 +619,20 @@ export class StoryViewerComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['visible']?.currentValue === true && this.stories.length > 0) {
-      this.showStory(0);
-      return;
-    }
     if (changes['visible']?.currentValue === false) {
       this.unbindCenterReleaseListeners();
       this.resetViewer();
+      return;
+    }
+    if (!this.visible || this.stories.length === 0) {
+      return;
+    }
+    if (
+      changes['visible']?.currentValue === true ||
+      changes['stories'] ||
+      changes['userId']
+    ) {
+      this.showStory(0);
     }
   }
 
@@ -825,6 +834,8 @@ export class StoryViewerComponent implements OnChanges {
     this.progressInterval$.next();
     if (this.currentIndex < this.stories.length - 1) {
       this.showStory(this.currentIndex + 1);
+    } else if (this.hasNextUser) {
+      this.nextUser.emit();
     } else {
       this.close();
     }

@@ -1,6 +1,7 @@
 package com.github.shk0da.bioritmic.api.controller
 
 import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_ADMIN
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_MODERATOR
 import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_BANNED
 import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_USER
 import com.github.shk0da.bioritmic.api.domain.UserRole
@@ -13,6 +14,7 @@ import com.github.shk0da.bioritmic.api.repository.ReportRepository
 import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.service.AdminAuditService
+import com.github.shk0da.bioritmic.api.service.AuthService
 import com.github.shk0da.bioritmic.api.service.BannedWordService
 import com.github.shk0da.bioritmic.api.service.DiamondService
 import com.github.shk0da.bioritmic.api.service.EmailService
@@ -59,6 +61,7 @@ class AdminController(
     val bannedWordService: BannedWordService,
     val profanityFilterService: ProfanityFilterService,
     val diamondService: DiamondService,
+    private val authService: AuthService,
 ) {
 
     private val log = LoggerFactory.getLogger(AdminController::class.java)
@@ -79,6 +82,16 @@ class AdminController(
         )
     }
 
+    private fun requireStaffUserId(): UUID {
+        val auth = SecurityContextHolder.getContext().authentication
+            ?: throw ApiException(ErrorCode.ACCESS_DENIED)
+        val authorities = auth.authorities.map { it.authority }
+        if (authorities.none { it == ROLE_ADMIN || it == ROLE_MODERATOR }) {
+            throw ApiException(ErrorCode.ACCESS_DENIED)
+        }
+        return auth.principal as UUID
+    }
+
     private fun requireAdminUserId(): UUID {
         val auth = SecurityContextHolder.getContext().authentication
             ?: throw ApiException(ErrorCode.ACCESS_DENIED)
@@ -86,6 +99,10 @@ class AdminController(
             throw ApiException(ErrorCode.ACCESS_DENIED)
         }
         return auth.principal as UUID
+    }
+
+    private fun requireStaff() {
+        requireStaffUserId()
     }
 
     private fun requireAdmin() {
@@ -105,7 +122,7 @@ class AdminController(
 
     @GetMapping(value = ["/dashboard"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun dashboard(): AdminDashboard {
-        requireAdmin()
+        requireStaff()
         val totalUsers = userRepository.countAll()
         val verifiedUsers = userRepository.countVerified()
         val unverifiedUsers = userRepository.countUnverified()
@@ -127,7 +144,7 @@ class AdminController(
         @RequestParam(defaultValue = "50") size: Int,
         @RequestParam(required = false) search: String?
     ): PaginatedUsersResponse {
-        requireAdmin()
+        requireStaff()
         val pageSize = size.coerceIn(1, 100)
         val query = search?.trim()?.takeIf { it.isNotEmpty() }
         val pattern = query?.let { "%$it%" }
@@ -168,24 +185,33 @@ class AdminController(
 
     @PostMapping(value = ["/users/{userId}/ban"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun banUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        val adminUserId = requireAdminUserId()
+        val staffUserId = requireStaffUserId()
+        val staffIsAdmin = SecurityContextHolder.getContext().authentication
+            ?.authorities
+            ?.any { it.authority == ROLE_ADMIN }
+            ?: false
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
         if (ROLE_ADMIN in roles) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot ban an admin"))
         }
+        if (!staffIsAdmin && (ROLE_MODERATOR in roles || roles.any { it == "MODERATOR" || it == UserRole.ROLE_MODERATOR })) {
+            throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot ban a moderator"))
+        }
         userRoleRepository.removeRole(userId, ROLE_USER)
         userRoleRepository.removeRole(userId, "USER")
+        userRoleRepository.removeRole(userId, ROLE_BANNED)
         userRoleRepository.removeRole(userId, "BANNED")
         userRoleRepository.addRole(userId, ROLE_BANNED)
+        authService.deleteAuthByUserId(userId)
         log.warn("Admin banned user {}", userId)
-        audit(adminUserId, "BAN_USER", exchange, userId)
+        audit(staffUserId, "BAN_USER", exchange, userId)
         return mapOf("success" to true, "userId" to userId)
     }
 
     @PostMapping(value = ["/users/{userId}/unban"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun unbanUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        val adminUserId = requireAdminUserId()
+        val adminUserId = requireStaffUserId()
         userRoleRepository.removeRole(userId, ROLE_BANNED)
         userRoleRepository.removeRole(userId, "BANNED")
         userRoleRepository.addRole(userId, ROLE_USER)
@@ -196,7 +222,7 @@ class AdminController(
 
     @PostMapping(value = ["/users/{userId}/verify"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun verifyUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        val adminUserId = requireAdminUserId()
+        val adminUserId = requireStaffUserId()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val wasVerified = user.isVerified
         userRepository.setVerified(userId, true)
@@ -210,7 +236,7 @@ class AdminController(
 
     @PostMapping(value = ["/users/{userId}/unverify"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun unverifyUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        val adminUserId = requireAdminUserId()
+        val adminUserId = requireStaffUserId()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
         if (ROLE_ADMIN in roles) {
@@ -245,6 +271,9 @@ class AdminController(
             userRoleRepository.removeRole(userId, role)
         }
         userRoleRepository.addRole(userId, newRole)
+        if (newRole == ROLE_BANNED) {
+            authService.deleteAuthByUserId(userId)
+        }
 
         log.warn("Admin changed role of user {} from {} to {}", userId, currentRoles.joinToString(","), newRole)
         audit(adminUserId, "CHANGE_ROLE", exchange, userId, "role=$newRole")
@@ -253,7 +282,7 @@ class AdminController(
 
     @PostMapping(value = ["/users/{userId}/reset-password"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun resetPassword(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
-        val adminUserId = requireAdminUserId()
+        val adminUserId = requireStaffUserId()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
 
         val newPassword = SecurityUtils.generateRandomPassword(12)
@@ -291,7 +320,7 @@ class AdminController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "50") size: Int
     ): List<ReportAdminView> {
-        requireAdmin()
+        requireStaff()
         val pageSize = size.coerceIn(1, 100)
         val pending = reportRepository.findPendingPaginated(pageSize, page.toLong() * pageSize)
         val userIds = pending.flatMap { listOf(it.reporterId, it.reportedId) }.toSet()
@@ -316,7 +345,7 @@ class AdminController(
 
     @PostMapping(value = ["/reports/{reportId}/resolve"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun resolveReport(@PathVariable reportId: Long, exchange: ServerWebExchange): Map<String, Any> {
-        val adminUserId = requireAdminUserId()
+        val adminUserId = requireStaffUserId()
         reportRepository.updateStatus(reportId, "RESOLVED")
         log.info("Admin resolved report {}", reportId)
         audit(adminUserId, "RESOLVE_REPORT", exchange, details = "reportId=$reportId")
@@ -329,7 +358,7 @@ class AdminController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "50") size: Int
     ): PaginatedFeedbackResponse {
-        requireAdmin()
+        requireStaff()
         val result = feedbackService.listForAdmin(status, page, size)
         val userIds = result.items.map { it.userId }.toSet()
         val usersById = if (userIds.isNotEmpty()) {
@@ -370,7 +399,7 @@ class AdminController(
         @RequestBody body: Map<String, String>,
         exchange: ServerWebExchange
     ): Map<String, Any> {
-        val adminUserId = requireAdminUserId()
+        val adminUserId = requireStaffUserId()
         val status = body["status"] ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Status is required"))
         feedbackService.updateStatus(feedbackId, status)
         log.info("Admin updated feedback {} status to {}", feedbackId, status)
@@ -380,7 +409,7 @@ class AdminController(
 
     @DeleteMapping(value = ["/feedback/{feedbackId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun deleteFeedback(@PathVariable feedbackId: Long, exchange: ServerWebExchange): Map<String, Any> {
-        val adminUserId = requireAdminUserId()
+        val adminUserId = requireStaffUserId()
         feedbackService.deleteFeedback(feedbackId)
         log.info("Admin deleted feedback {}", feedbackId)
         audit(adminUserId, "DELETE_FEEDBACK", exchange, details = "feedbackId=$feedbackId")
@@ -389,7 +418,7 @@ class AdminController(
 
     @GetMapping(value = ["/metrics"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun metrics(): SystemMetrics {
-        requireAdmin()
+        requireStaff()
         val runtime = Runtime.getRuntime()
         val memoryBean = ManagementFactory.getMemoryMXBean()
         val runtimeBean = ManagementFactory.getRuntimeMXBean()
@@ -461,7 +490,7 @@ class AdminController(
         @RequestParam(defaultValue = "50") size: Int,
         @RequestParam(required = false) search: String?,
     ): Map<String, Any?> {
-        requireAdminUserId()
+        requireStaffUserId()
         val result = bannedWordService.listWords(search, page, size)
         return mapOf(
             "items" to result.items,
@@ -476,7 +505,7 @@ class AdminController(
         @RequestBody body: Map<String, String>,
         exchange: ServerWebExchange,
     ): Map<String, Any?> {
-        val adminId = requireAdminUserId()
+        val adminId = requireStaffUserId()
         val word = body["word"]?.trim().orEmpty()
         if (word.isEmpty()) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("word" to "word"))
@@ -492,7 +521,7 @@ class AdminController(
         @PathVariable id: Long,
         exchange: ServerWebExchange,
     ): Map<String, Boolean> {
-        val adminId = requireAdminUserId()
+        val adminId = requireStaffUserId()
         bannedWordService.deleteWord(id)
         profanityFilterService.refreshCache()
         audit(adminId, "BANNED_WORD_DELETE", exchange, details = id.toString())
@@ -509,7 +538,7 @@ class AdminController(
         @RequestParam(defaultValue = "append") mode: String,
         exchange: ServerWebExchange,
     ): Map<String, Any?> {
-        val adminId = requireAdminUserId()
+        val adminId = requireStaffUserId()
         val importMode = when (mode.lowercase()) {
             "replace" -> ImportMode.REPLACE
             "append" -> ImportMode.APPEND

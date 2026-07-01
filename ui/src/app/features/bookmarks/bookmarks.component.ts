@@ -33,7 +33,12 @@ interface UserWithPhoto extends UserInfo {
       <h1 class="page-title">
         <i class="bi bi-bookmark-heart me-2"></i>Избранное
       </h1>
-      <p class="text-muted page-subtitle d-none d-md-block">Сохранённые профили</p>
+      <p class="text-muted page-subtitle d-none d-md-block">
+        Сохранённые профили
+        @if (bookmarkLimit > 0) {
+          <span class="ms-1">({{ bookmarkCount }} из {{ bookmarkLimit }})</span>
+        }
+      </p>
     </div>
 
     @if (matchesLoading) {
@@ -92,6 +97,9 @@ interface UserWithPhoto extends UserInfo {
 
     <h5 class="section-title mb-3">
       <i class="bi bi-bookmark me-2"></i>Избранное
+      @if (bookmarkLimit > 0) {
+        <span class="text-muted fs-6 ms-1">({{ bookmarkCount }}/{{ bookmarkLimit }})</span>
+      }
     </h5>
 
     @if (loading) {
@@ -599,6 +607,8 @@ export class BookmarksComponent implements OnInit, OnDestroy {
   users: UserWithPhoto[] = [];
   matches: UserWithPhoto[] = [];
   matchesCount = 0;
+  bookmarkCount = 0;
+  bookmarkLimit = 0;
   matchesBlurred = false;
   matchesLoading = false;
   loading = false;
@@ -618,14 +628,17 @@ export class BookmarksComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.loadBookmarkLimit();
     this.loadMatches();
     this.loadBookmarks();
     subscribeCachedRouteRefresh(this.router, this.destroyRef, '/bookmarks', () => {
+      this.loadBookmarkLimit();
       this.loadMatches(true);
       this.loadBookmarks(true);
     });
     registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/bookmarks', () => ({
       refresh: () => {
+        this.loadBookmarkLimit();
         this.loadMatches(true);
         this.loadBookmarks(true);
       },
@@ -655,6 +668,19 @@ export class BookmarksComponent implements OnInit, OnDestroy {
       return user.isOnline === true;
     }
     return this.onlineTickMs - lastActiveMs <= 60_000;
+  }
+
+  private loadBookmarkLimit(): void {
+    this.bookmarksService.getBookmarkLimit().subscribe({
+      next: (response) => {
+        this.bookmarkCount = response.count;
+        this.bookmarkLimit = response.limit;
+      },
+      error: () => {
+        this.bookmarkCount = 0;
+        this.bookmarkLimit = this.bookmarksService.bookmarkLimit;
+      }
+    });
   }
 
   private loadMatches(silent = false): void {
@@ -754,6 +780,7 @@ export class BookmarksComponent implements OnInit, OnDestroy {
       next: () => {
         this.userService.releasePhotoUrl(removedUser?.photoDataUrl);
         this.users = this.users.filter((user) => user.id !== userId);
+        this.bookmarkCount = Math.max(0, this.bookmarkCount - 1);
       },
       error: () => {
         void this.modalService.alert('Ошибка удаления из избранного', 'Ошибка');

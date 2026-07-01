@@ -1,10 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { PushNotificationService } from '../../../core/services/push-notification.service';
 import { AuthorizationModel } from '../../../core/models/user.model';
 import { sanitizePushNavigationUrl } from '../../../shared/utils/push-navigation.util';
+import { isUserBannedHttpError, resolveHttpErrorMessage, USER_BANNED_MESSAGE } from '../../../core/utils/http-error.util';
 
 @Component({
   selector: 'app-login',
@@ -82,7 +84,7 @@ import { sanitizePushNavigationUrl } from '../../../shared/utils/push-navigation
             </a>
           </div>
 
-          <div class="register-prompt">
+          <div class="text-center mt-4 register-prompt">
             <span>Нет аккаунта?</span>
             <a routerLink="/auth/registration" class="register-link">
               Зарегистрироваться
@@ -213,6 +215,18 @@ export class LoginComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    const bannedMessage = this.authService.consumeBannedMessage();
+    if (bannedMessage) {
+      this.error = bannedMessage;
+    } else if (this.route.snapshot.queryParamMap.get('banned') === '1') {
+      this.error = USER_BANNED_MESSAGE;
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { banned: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true
+      });
+    }
     if (this.route.snapshot.queryParamMap.get('reset') === 'success') {
       this.success = 'Пароль успешно изменён. Войдите с новым паролем.';
       this.router.navigate([], {
@@ -244,6 +258,10 @@ export class LoginComponent implements OnInit {
       },
       error: (error) => {
         this.loading = false;
+        if (isUserBannedHttpError(error)) {
+          this.error = resolveHttpErrorMessage(error as HttpErrorResponse);
+          return;
+        }
         this.error = 'Неверный email или пароль';
       }
     });

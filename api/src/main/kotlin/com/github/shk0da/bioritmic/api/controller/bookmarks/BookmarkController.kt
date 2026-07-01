@@ -2,6 +2,7 @@ package com.github.shk0da.bioritmic.api.controller.bookmarks
 
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes
 import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
+import com.github.shk0da.bioritmic.api.model.user.BookmarkLimitResponse
 import com.github.shk0da.bioritmic.api.model.user.MatchesResponse
 import com.github.shk0da.bioritmic.api.model.user.UserBookmark
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
@@ -30,6 +31,15 @@ class BookmarkController(
     val bookmarksService: BookmarksService,
     val boostService: BoostService,
 ) {
+
+    @GetMapping(value = ["/limit"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun bookmarkLimit(): BookmarkLimitResponse {
+        val userId = getUserId()
+        return BookmarkLimitResponse(
+            count = bookmarksService.countBookmarks(userId),
+            limit = BookmarksService.MAX_BOOKMARKS,
+        )
+    }
 
     // GET /bookmarks/
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])

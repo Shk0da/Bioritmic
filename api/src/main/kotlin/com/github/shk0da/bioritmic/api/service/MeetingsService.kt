@@ -6,6 +6,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
 import com.github.shk0da.bioritmic.api.model.mailbox.MailSystemMessage
 import com.github.shk0da.bioritmic.api.model.mailbox.MeetingSystemMailMessages
+import com.github.shk0da.bioritmic.api.model.user.MeetingLimitResponse
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import com.github.shk0da.bioritmic.api.repository.MailboxRepository
 import com.github.shk0da.bioritmic.api.repository.MeetingStatusUpdater
@@ -20,6 +21,8 @@ import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 
 @Service
@@ -32,12 +35,12 @@ class MeetingsService(
     private val pushNotificationService: PushNotificationService,
     private val mailboxRealtimeNotifier: MailboxRealtimeNotifier,
     private val profanityFilterService: ProfanityFilterService,
+    private val userVerificationService: UserVerificationService,
 ) {
 
     private val log = LoggerFactory.getLogger(MeetingsService::class.java)
 
-    private val maximumUserMeetingsSize = 100
-    private val defaultPageable = PageableRequest(1, maximumUserMeetingsSize, Sort.by(Sort.Direction.DESC, "timestamp"))
+    private val defaultPageable = PageableRequest(1, MAX_MEETINGS, Sort.by(Sort.Direction.DESC, "timestamp"))
 
     @Transactional
     suspend fun findAllMeetingsByUserId(userId: UUID, pageable: PageableRequest): List<Meeting> {
@@ -55,10 +58,22 @@ class MeetingsService(
 
     @Transactional
     suspend fun createMeetings(userId: UUID, meetings: List<UserMeeting>): List<Meeting> {
+        userVerificationService.requireVerified(userId)
         val meetingList = meetings.filter { it.isFilledInput() && it.userId != userId }
-        val currentElementsCount = meetingsRepository.countByUserId(userId)
-        val totalCount = (currentElementsCount + meetingList.count()).toInt()
-        if (checkSize(totalCount, maximumUserMeetingsSize, ErrorCode.MANY_MEETINGS)) {
+        val newMeetings = meetingList.filter { meeting ->
+            val otherUserId = meeting.userId ?: return@filter false
+            !meetingsRepository.existsByUserIdAndOtherUserId(userId, otherUserId)
+        }
+        if (newMeetings.isNotEmpty()) {
+            val totalCount = meetingsRepository.countByUserId(userId) + newMeetings.size
+            checkSize(totalCount, MAX_MEETINGS, ErrorCode.MANY_MEETINGS)
+
+            val todayCount = meetingsRepository.countByUserIdSince(userId, startOfToday())
+            val dailyTotal = todayCount + newMeetings.size
+            checkSize(dailyTotal, MAX_DAILY_MEETINGS, ErrorCode.DAILY_MEETINGS_LIMIT)
+        }
+
+        if (meetingList.isNotEmpty()) {
             try {
                 val specs = meetingList.map { meeting ->
                     val sanitized = meeting.copy(
@@ -233,6 +248,21 @@ class MeetingsService(
         return meetingsRepository.countIncomingSince(userId, java.sql.Timestamp(sinceMs))
     }
 
+    @Transactional(readOnly = true)
+    suspend fun getMeetingLimits(userId: UUID): MeetingLimitResponse {
+        return MeetingLimitResponse(
+            totalCount = meetingsRepository.countByUserId(userId).toInt(),
+            totalLimit = MAX_MEETINGS,
+            dailyCount = meetingsRepository.countByUserIdSince(userId, startOfToday()).toInt(),
+            dailyLimit = MAX_DAILY_MEETINGS,
+        )
+    }
+
+    private fun startOfToday(): Timestamp {
+        val start = LocalDate.now(MEETING_DAY_ZONE).atStartOfDay(MEETING_DAY_ZONE).toInstant()
+        return Timestamp.from(start)
+    }
+
     private fun validateScheduledAt(scheduledAt: Timestamp?) {
         if (scheduledAt == null || scheduledAt.time < System.currentTimeMillis() - SCHEDULED_AT_TOLERANCE_MS) {
             throw ApiException(
@@ -259,6 +289,9 @@ class MeetingsService(
     }
 
     companion object {
+        const val MAX_MEETINGS = 20
+        const val MAX_DAILY_MEETINGS = 5
         private const val SCHEDULED_AT_TOLERANCE_MS = 60_000L
+        private val MEETING_DAY_ZONE: ZoneId = ZoneId.of("Europe/Moscow")
     }
 }

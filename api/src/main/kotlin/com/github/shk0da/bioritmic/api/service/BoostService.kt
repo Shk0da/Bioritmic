@@ -16,6 +16,7 @@ class BoostService(
     val profileBoostRepository: ProfileBoostRepository,
     val diamondAtomicRepository: DiamondAtomicRepository,
     private val diamondBalanceNotifier: DiamondBalanceNotifier,
+    private val userVerificationService: UserVerificationService,
 ) {
 
     private val log = LoggerFactory.getLogger(BoostService::class.java)
@@ -33,6 +34,7 @@ class BoostService(
 
     @Transactional(transactionManager = transactionManager)
     suspend fun activateBoost(userId: UUID, hours: Int = 24): BoostActivationResult {
+        userVerificationService.requireVerified(userId)
         val result = diamondAtomicRepository.purchaseBoost(userId, DiamondService.BOOST_COST, hours)
         val boost = ProfileBoost().apply {
             id = result.boostId

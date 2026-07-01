@@ -67,6 +67,19 @@ class BookmarkControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun getBookmarkLimitTest() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/bookmarks/limit")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.count").isEqualTo(0)
+            .jsonPath("$.limit").isEqualTo(100)
+    }
+
+    @Test
     fun saveBookmarksTest() {
         val currentUserId = userId ?: throw IllegalStateException("User ID is null")
         val bookmarks = listOf(
@@ -107,6 +120,87 @@ class BookmarkControllerTest : ApiApplicationTests() {
             .expectBody()
             .jsonPath("$.blurred").isEqualTo(true)
             .jsonPath("$.matches.length()").isEqualTo(0)
+    }
+
+    @Test
+    fun `matches count mutual likes not bookmarks`() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val currentUserId = userId ?: throw IllegalStateException("User ID is null")
+        verifyUserForTests(currentUserId, grantRegistrationBonus = false)
+
+        val otherEmail = "match_like_$suffix@gmail.com"
+        val otherUserModel = UserModel(
+            name = "Match Like User",
+            email = otherEmail,
+            password = "Test12345",
+            birthday = "1990-01-01",
+            acceptedUserAgreement = true,
+            acceptedPersonalDataProcessing = true,
+        )
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(otherUserModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isCreated
+
+        val otherAuthorization = AuthorizationModel(otherEmail, "Test12345")
+        var otherAccessToken = ""
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(otherAuthorization))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.accessToken")
+            .value { value: Any -> otherAccessToken = value as String }
+        val otherToken = "Bearer $otherAccessToken"
+        var otherUserId = UUID.randomUUID()
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, otherToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.id")
+            .value { value: Any -> otherUserId = UUID.fromString(value as String) }
+        verifyUserForTests(otherUserId, grantRegistrationBonus = false)
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/swipe/$otherUserId/like")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/swipe/$currentUserId/like")
+            .header(HttpHeaders.AUTHORIZATION, otherToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/boost/activate")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/bookmarks/matches")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.count").isEqualTo(1)
+            .jsonPath("$.matches.length()").isEqualTo(1)
     }
 
     @Test

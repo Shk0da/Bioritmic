@@ -83,6 +83,8 @@ import { AvatarStatusBadgeComponent } from '../avatar-status-badge/avatar-status
       [userName]="viewerUserName"
       [userPhoto]="viewerUserPhoto"
       [isOwnStories]="viewerIsOwnStories"
+      [hasNextUser]="viewerHasNextUser()"
+      (nextUser)="openNextUnviewedGroup()"
       (closed)="onViewerClosed()">
     </app-story-viewer>
   `,
@@ -264,7 +266,7 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
   openMyStory(): void {
     if (this.myStories.length > 0) {
       const user = this.authService.getCurrentUser();
-      this.viewerStories = [...this.myStories];
+      this.viewerStories = this.myStories;
       this.viewerUserId = user?.id ?? '';
       this.viewerUserName = user?.name ?? 'Вы';
       this.viewerUserPhoto = this.currentUserPhoto;
@@ -279,12 +281,57 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
     if (!group.stories.length) {
       return;
     }
-    this.viewerStories = [...group.stories];
+    this.viewerStories = group.stories;
     this.viewerUserId = group.userId;
     this.viewerUserName = group.userName;
     this.viewerUserPhoto = group.userPhoto;
     this.viewerIsOwnStories = false;
     this.viewerVisible = true;
+  }
+
+  viewerHasNextUser(): boolean {
+    if (this.viewerIsOwnStories || !this.viewerVisible || !this.viewerUserId) {
+      return false;
+    }
+    return this.findNextUnviewedGroup(this.viewerUserId) !== null;
+  }
+
+  openNextUnviewedGroup(): void {
+    this.refreshGroupViewedState(this.viewerUserId);
+    const next = this.findNextUnviewedGroup(this.viewerUserId);
+    if (!next) {
+      this.onViewerClosed();
+      return;
+    }
+    this.viewerStories = next.stories;
+    this.viewerUserId = next.userId;
+    this.viewerUserName = next.userName;
+    this.viewerUserPhoto = next.userPhoto;
+    this.viewerIsOwnStories = false;
+  }
+
+  private findNextUnviewedGroup(afterUserId: string): StoryGroup | null {
+    const currentIndex = this.storyGroups.findIndex((group) => group.userId === afterUserId);
+    const startIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
+    for (let i = startIndex; i < this.storyGroups.length; i++) {
+      const group = this.storyGroups[i];
+      if (group.stories.length === 0) {
+        continue;
+      }
+      if (group.stories.some((story) => !story.viewedByCurrentUser)) {
+        return group;
+      }
+    }
+    return null;
+  }
+
+  private refreshGroupViewedState(userId: string): void {
+    const group = this.storyGroups.find((item) => item.userId === userId);
+    if (!group) {
+      return;
+    }
+    group.viewedByCurrentUser = group.stories.length > 0
+      && group.stories.every((story) => story.viewedByCurrentUser);
   }
 
   async deleteMyStories(event: Event): Promise<void> {
@@ -320,6 +367,9 @@ export class StoriesBarComponent implements OnInit, OnDestroy {
   }
 
   onViewerClosed(): void {
+    if (this.viewerUserId) {
+      this.refreshGroupViewedState(this.viewerUserId);
+    }
     this.viewerVisible = false;
     this.viewerStories = [];
     this.viewerUserId = '';

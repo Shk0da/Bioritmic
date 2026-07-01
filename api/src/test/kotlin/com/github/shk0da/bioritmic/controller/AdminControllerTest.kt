@@ -322,4 +322,236 @@ class AdminControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isForbidden
     }
+
+    @Test
+    fun `banned user cannot login`() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val email = "banned_login_$suffix@gmail.com"
+        val userId = registerUser(email, "Banned Login User")
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$userId/ban")
+            .header(HttpHeaders.AUTHORIZATION, adminToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(email, "Test12345")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isForbidden
+            .expectBody()
+            .jsonPath("$.errors[0].errorCode").isEqualTo("API-403.2")
+    }
+
+    @Test
+    fun `banned user session is terminated immediately`() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val email = "banned_session_$suffix@gmail.com"
+        val userId = registerUser(email, "Banned Session User")
+
+        var accessToken = ""
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(email, "Test12345")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.accessToken")
+            .value { value: Any -> accessToken = value as String }
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$userId/ban")
+            .header(HttpHeaders.AUTHORIZATION, adminToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isUnauthorized
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/refresh-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("email" to email, "refreshToken" to "stale")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isForbidden
+            .expectBody()
+            .jsonPath("$.errors[0].errorCode").isEqualTo("API-403.2")
+    }
+
+    @Test
+    fun `change role to banned terminates session immediately`() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val email = "banned_role_$suffix@gmail.com"
+        val userId = registerUser(email, "Banned Role User")
+
+        var accessToken = ""
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(email, "Test12345")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.accessToken")
+            .value { value: Any -> accessToken = value as String }
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$userId/role")
+            .header(HttpHeaders.AUTHORIZATION, adminToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("role" to "BANNED")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/user/me")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isUnauthorized
+    }
+
+    private fun loginToken(email: String, password: String = "Test12345"): String {
+        var accessToken = ""
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(email, password)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.accessToken")
+            .value { value: Any -> accessToken = value as String }
+        return "Bearer $accessToken"
+    }
+
+    @Test
+    fun `moderator can access dashboard and ban user`() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val moderatorEmail = "moderator_$suffix@gmail.com"
+        val moderatorId = registerUser(moderatorEmail, "Moderator User")
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$moderatorId/role")
+            .header(HttpHeaders.AUTHORIZATION, adminToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("role" to "MODERATOR")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val moderatorToken = loginToken(moderatorEmail)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/admin/dashboard")
+            .header(HttpHeaders.AUTHORIZATION, moderatorToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val targetId = registerUser("moderator_ban_$suffix@gmail.com", "Ban Target")
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$targetId/ban")
+            .header(HttpHeaders.AUTHORIZATION, moderatorToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.success").isEqualTo(true)
+    }
+
+    @Test
+    fun `moderator cannot delete user change role or set diamonds`() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val moderatorEmail = "moderator_restricted_$suffix@gmail.com"
+        val moderatorId = registerUser(moderatorEmail, "Restricted Moderator")
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$moderatorId/role")
+            .header(HttpHeaders.AUTHORIZATION, adminToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("role" to "MODERATOR")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val moderatorToken = loginToken(moderatorEmail)
+        val targetId = registerUser("moderator_target_$suffix@gmail.com", "Moderator Target")
+
+        webTestClient.delete()
+            .uri("$API_WITH_VERSION_1/admin/users/$targetId")
+            .header(HttpHeaders.AUTHORIZATION, moderatorToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isForbidden
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$targetId/role")
+            .header(HttpHeaders.AUTHORIZATION, moderatorToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("role" to "BANNED")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isForbidden
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$targetId/diamonds")
+            .header(HttpHeaders.AUTHORIZATION, moderatorToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("balance" to 100)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isForbidden
+    }
+
+    @Test
+    fun `moderator cannot ban another moderator`() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val moderatorEmail = "moderator_peer_$suffix@gmail.com"
+        val moderatorId = registerUser(moderatorEmail, "Peer Moderator")
+        val otherModeratorEmail = "moderator_peer2_$suffix@gmail.com"
+        val otherModeratorId = registerUser(otherModeratorEmail, "Other Moderator")
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$moderatorId/role")
+            .header(HttpHeaders.AUTHORIZATION, adminToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("role" to "MODERATOR")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$otherModeratorId/role")
+            .header(HttpHeaders.AUTHORIZATION, adminToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(mapOf("role" to "MODERATOR")))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        val moderatorToken = loginToken(moderatorEmail)
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/admin/users/$otherModeratorId/ban")
+            .header(HttpHeaders.AUTHORIZATION, moderatorToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
+    }
 }

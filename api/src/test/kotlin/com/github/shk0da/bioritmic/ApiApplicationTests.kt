@@ -74,6 +74,7 @@ class ApiApplicationTests {
             "diamond_wallets",
             "diamond_transactions",
             "bookmarks",
+            "user_likes",
             "swipe_skips",
             "gis_data",
             "authorizations",
@@ -150,15 +151,17 @@ class ApiApplicationTests {
         put("acceptedPersonalDataProcessing", true)
     }
 
-    protected fun verifyUserForTests(userId: UUID) {
+    protected fun verifyUserForTests(userId: UUID, grantRegistrationBonus: Boolean = true) {
         liquibaseDataSource.connection.use { connection ->
             connection.prepareStatement("UPDATE users SET is_verified = true WHERE id = ?").use { statement ->
                 statement.setObject(1, userId)
                 statement.executeUpdate()
             }
         }
-        runBlocking {
-            diamondService.grantRegistrationBonus(userId)
+        if (grantRegistrationBonus) {
+            runBlocking {
+                diamondService.grantRegistrationBonus(userId)
+            }
         }
     }
 

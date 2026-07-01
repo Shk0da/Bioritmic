@@ -41,6 +41,18 @@ describe('MeetingsService', () => {
     req.flush([]);
   });
 
+  it('getMeetingLimit should GET /limit', () => {
+    service.getMeetingLimit().subscribe((response) => {
+      expect(response.totalCount).toBe(2);
+      expect(response.totalLimit).toBe(20);
+      expect(response.dailyCount).toBe(1);
+      expect(response.dailyLimit).toBe(5);
+    });
+    const req = httpMock.expectOne('/api/v1/meetings/limit');
+    expect(req.request.method).toBe('GET');
+    req.flush({ totalCount: 2, totalLimit: 20, dailyCount: 1, dailyLimit: 5 });
+  });
+
   it('deleteMeeting should DELETE /{userId}', () => {
     service.deleteMeeting('2').subscribe();
     const req = httpMock.expectOne('/api/v1/meetings/2');

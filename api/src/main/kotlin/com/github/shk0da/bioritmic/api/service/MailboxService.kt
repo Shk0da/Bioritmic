@@ -43,6 +43,7 @@ class MailboxService(
     private val s3Service: S3Service,
     private val mailboxRealtimeNotifier: MailboxRealtimeNotifier,
     private val profanityFilterService: ProfanityFilterService,
+    private val userVerificationService: UserVerificationService,
     selfProvider: ObjectProvider<MailboxService>,
 ) {
 
@@ -66,6 +67,7 @@ class MailboxService(
 
     @Transactional
     suspend fun persistUserMail(userId: UUID, userMailModel: UserMailModel): UserMail {
+        userVerificationService.requireVerified(userId)
         val toUserId = userMailModel.to!!
         ensureNotBlocked(userId, toUserId)
         val replyToMessageId = validateReplyTarget(userId, toUserId, userMailModel.replyToMessageId)
@@ -107,6 +109,7 @@ class MailboxService(
         caption: String?,
         replyToMessageId: Long?,
     ): UserMail {
+        userVerificationService.requireVerified(userId)
         ensureNotBlocked(userId, toUserId)
         val validatedReplyId = validateReplyTarget(userId, toUserId, replyToMessageId)
 
@@ -320,6 +323,7 @@ class MailboxService(
 
     @Transactional(transactionManager = com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager)
     suspend fun reactToMessage(messageId: Long, userId: UUID, reaction: String): Map<String, Any?> {
+        userVerificationService.requireVerified(userId)
         val message = mailboxRepository.findById(messageId)
             ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("messageId" to "messageId"))
         val from = message.fromUserId ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("messageId" to "messageId"))

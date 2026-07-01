@@ -77,6 +77,7 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
 
+        verifyUserForTests(userId)
         return userId
     }
 
@@ -491,22 +492,18 @@ class BlackBoxApiTest : ApiApplicationTests() {
     }
 
     @Test
-    fun `match detection when mutual bookmarks`() {
-        // Alice bookmarks Bob
+    fun `match detection when mutual likes`() {
+        // Alice likes Bob
         webTestClient.post()
-            .uri("$API_WITH_VERSION_1/bookmarks")
+            .uri("$API_WITH_VERSION_1/swipe/$bobId/like")
             .headers(auth(aliceToken))
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(listOf(mapOf("userId" to bobId))))
             .exchange()
             .expectStatus().isOk
 
-        // Bob bookmarks Alice
+        // Bob likes Alice
         webTestClient.post()
-            .uri("$API_WITH_VERSION_1/bookmarks")
+            .uri("$API_WITH_VERSION_1/swipe/$aliceId/like")
             .headers(auth(bobToken))
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(listOf(mapOf("userId" to aliceId))))
             .exchange()
             .expectStatus().isOk
 

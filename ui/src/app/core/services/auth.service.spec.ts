@@ -103,6 +103,28 @@ describe('AuthService', () => {
       expect(await restored).toBeFalse();
       expect(service.getCurrentUser()).toBeNull();
     });
+
+    it('should clear auth with banned flag on API-403.2', async () => {
+      localStorage.setItem('current_user', JSON.stringify({ id: '1', name: 'John', email: 'j@t.com' }));
+      const restored = firstValueFrom(service.ensureSessionRestored());
+      const req = httpMock.expectOne('/api/v1/user/me');
+      req.flush(
+        { errors: [{ errorCode: 'API-403.2', message: 'You were blocked for violating the service rules.' }] },
+        { status: 403, statusText: 'Forbidden' },
+      );
+      expect(await restored).toBeFalse();
+      expect(service.getCurrentUser()).toBeNull();
+      expect(sessionStorage.getItem('auth_banned_message')).toBeTruthy();
+    });
+  });
+
+  describe('clearAuth banned flag', () => {
+    it('should set banned session flag when requested', () => {
+      service.setAuth({ accessToken: 'at', refreshToken: 'rt', name: 'John', email: 'j@t.com', expireTime: 999 });
+      service.clearAuth({ banned: true });
+      expect(service.consumeBannedMessage()).toContain('заблокированы');
+      expect(service.getCurrentUser()).toBeNull();
+    });
   });
 
   describe('current user polling', () => {

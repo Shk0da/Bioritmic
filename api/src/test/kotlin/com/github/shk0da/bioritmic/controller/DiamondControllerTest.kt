@@ -190,6 +190,7 @@ class DiamondControllerTest : ApiApplicationTests() {
             .expectBody()
             .jsonPath("$.accessToken")
             .value { value: Any -> token = value as String }
+        verifyUserForTests(UUID.fromString(getUserId(token)), grantRegistrationBonus = false)
         return token
     }
 

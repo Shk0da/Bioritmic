@@ -55,7 +55,10 @@ describe('authGuard', () => {
 
     runGuard('/profile/me').subscribe(value => {
       expect(value).toBe(urlTree);
-      expect(router.createUrlTree).toHaveBeenCalledWith(['/auth/login']);
+      expect(router.createUrlTree).toHaveBeenCalledWith(
+        ['/auth/login'],
+        jasmine.objectContaining({ queryParams: { returnUrl: '/profile/me' } }),
+      );
       done();
     });
   });
@@ -115,21 +118,24 @@ describe('authGuard', () => {
       isVerified: false
     });
 
-    runGuard('/settings').subscribe(value => {
+    runGuard('/search').subscribe(value => {
       expect(value).toBeTrue();
-      runGuard('/settings/search').subscribe(value2 => {
+      runGuard('/settings').subscribe(value2 => {
         expect(value2).toBeTrue();
-        runGuard('/settings/location').subscribe(value3 => {
+        runGuard('/settings/search').subscribe(value3 => {
           expect(value3).toBeTrue();
-          runGuard('/settings/notifications').subscribe(value4 => {
+          runGuard('/settings/location').subscribe(value4 => {
             expect(value4).toBeTrue();
-            runGuard('/settings/feedback').subscribe(value5 => {
+            runGuard('/settings/notifications').subscribe(value5 => {
               expect(value5).toBeTrue();
-              runGuard('/settings/danger').subscribe(value6 => {
+              runGuard('/settings/feedback').subscribe(value6 => {
                 expect(value6).toBeTrue();
-                runGuard('/settings/blocked').subscribe(value7 => {
+                runGuard('/settings/danger').subscribe(value7 => {
                   expect(value7).toBeTrue();
-                  done();
+                  runGuard('/settings/blocked').subscribe(value8 => {
+                    expect(value8).toBeTrue();
+                    done();
+                  });
                 });
               });
             });
@@ -139,7 +145,7 @@ describe('authGuard', () => {
     });
   });
 
-  it('should allow unverified user to open payments page', (done) => {
+  it('should redirect unverified user away from payments and mailbox to swipe', (done) => {
     authService.isAuthenticated.and.returnValue(true);
     authService.getCurrentUser.and.returnValue({
       id: '1',
@@ -147,10 +153,16 @@ describe('authGuard', () => {
       email: 't@t.com',
       isVerified: false
     });
+    const urlTree = {} as UrlTree;
+    router.createUrlTree.and.returnValue(urlTree);
 
     runGuard('/payments').subscribe(value => {
-      expect(value).toBeTrue();
-      done();
+      expect(value).toBe(urlTree);
+      expect(router.createUrlTree).toHaveBeenCalledWith(['/swipe']);
+      runGuard('/mailbox').subscribe(value2 => {
+        expect(value2).toBe(urlTree);
+        done();
+      });
     });
   });
 

@@ -21,6 +21,9 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
     @Query("select count(*) from meetings where user_id = :userId")
     suspend fun countByUserId(userId: UUID): Long
 
+    @Query("select count(*) from meetings where user_id = :userId and timestamp >= :since")
+    suspend fun countByUserIdSince(userId: UUID, since: Timestamp): Long
+
     @Query("select * from meetings where other_user_id = :userId and user_id != other_user_id and (status is null or status != 'DECLINED') order by timestamp desc limit :limit offset :offset")
     suspend fun findIncomingByUserId(userId: UUID, limit: Int, offset: Long): List<Meeting>
 

@@ -4,6 +4,7 @@ import com.github.shk0da.bioritmic.api.controller.ApiRoutes
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest.Companion.of
+import com.github.shk0da.bioritmic.api.model.user.MeetingLimitResponse
 import com.github.shk0da.bioritmic.api.model.user.UserMeeting
 import com.github.shk0da.bioritmic.api.service.MeetingsService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
@@ -28,6 +29,12 @@ import javax.validation.Valid
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/meetings")
 class MeetingsController(val meetingsService: MeetingsService) {
+
+    @GetMapping(value = ["/limit"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun meetingLimit(): MeetingLimitResponse {
+        val userId = getUserId()
+        return meetingsService.getMeetingLimits(userId)
+    }
 
     // GET /meetings/
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])

@@ -126,4 +126,36 @@ describe('StoryViewerComponent', () => {
     expect(toastService.error).toHaveBeenCalledWith('Не удалось изменить замок истории');
     expect(component.togglingStoryLock).toBeFalse();
   });
+
+  it('should emit nextUser when last story ends and another user is available', () => {
+    component.isOwnStories = false;
+    component.hasNextUser = true;
+    spyOn(component.nextUser, 'emit');
+    spyOn(component.closed, 'emit');
+    component.ngOnChanges({
+      visible: { currentValue: true, previousValue: false, firstChange: false, isFirstChange: () => false }
+    });
+    component.showStory(1);
+
+    component.nextStory();
+
+    expect(component.nextUser.emit).toHaveBeenCalled();
+    expect(component.closed.emit).not.toHaveBeenCalled();
+  });
+
+  it('should close when last story ends and no next user is available', () => {
+    component.isOwnStories = false;
+    component.hasNextUser = false;
+    spyOn(component.nextUser, 'emit');
+    spyOn(component.closed, 'emit');
+    component.ngOnChanges({
+      visible: { currentValue: true, previousValue: false, firstChange: false, isFirstChange: () => false }
+    });
+    component.showStory(1);
+
+    component.nextStory();
+
+    expect(component.nextUser.emit).not.toHaveBeenCalled();
+    expect(component.closed.emit).toHaveBeenCalled();
+  });
 });

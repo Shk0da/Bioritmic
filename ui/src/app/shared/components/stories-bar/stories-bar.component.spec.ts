@@ -139,4 +139,68 @@ describe('StoriesBarComponent', () => {
     expect(storyService.getFeed).toHaveBeenCalled();
     expect(component.creatorVisible).toBeFalse();
   });
+
+  it('should detect next unviewed story group', () => {
+    fixture.detectChanges();
+    component.storyGroups.push({
+      userId: 'u3',
+      stories: [{
+        id: 3,
+        userId: 'u3',
+        mediaUrl: '/m3',
+        expiresAt: Date.now() + 3600000,
+        createdAt: Date.now(),
+        locked: false,
+        viewerCount: 0,
+        viewedByCurrentUser: false
+      }],
+      viewedByCurrentUser: false,
+      userName: 'Bob',
+      userPhoto: null,
+      statusEmoji: null,
+      statusPosition: null
+    });
+    component.viewerUserId = 'u2';
+    component.viewerVisible = true;
+    component.viewerIsOwnStories = false;
+
+    expect(component.viewerHasNextUser()).toBeTrue();
+  });
+
+  it('should open next unviewed story group after current user finishes', () => {
+    fixture.detectChanges();
+    component.storyGroups.push({
+      userId: 'u3',
+      stories: [{
+        id: 3,
+        userId: 'u3',
+        mediaUrl: '/m3',
+        expiresAt: Date.now() + 3600000,
+        createdAt: Date.now(),
+        locked: false,
+        viewerCount: 0,
+        viewedByCurrentUser: false
+      }],
+      viewedByCurrentUser: false,
+      userName: 'Bob',
+      userPhoto: null,
+      statusEmoji: null,
+      statusPosition: null
+    });
+    component.viewerUserId = 'u2';
+    component.viewerUserName = 'Alice';
+    component.viewerStories = component.storyGroups[0].stories;
+    component.viewerVisible = true;
+    component.viewerIsOwnStories = false;
+    component.storyGroups[0].stories.forEach((story) => {
+      story.viewedByCurrentUser = true;
+    });
+
+    component.openNextUnviewedGroup();
+
+    expect(component.viewerUserId).toBe('u3');
+    expect(component.viewerUserName).toBe('Bob');
+    expect(component.viewerVisible).toBeTrue();
+    expect(component.storyGroups[0].viewedByCurrentUser).toBeTrue();
+  });
 });

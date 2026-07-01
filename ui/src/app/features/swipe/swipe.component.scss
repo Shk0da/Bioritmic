@@ -79,13 +79,14 @@
   align-items: stretch;
   padding: 0.5rem 1rem;
   overflow: hidden;
+  touch-action: pan-y pinch-zoom;
 }
 
 /* Десктопная область профилей (Badoo-стиль) */
 .desktop-profiles-container {
   display: none;
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
   padding: 2rem;
   background: var(--bg-tertiary);
 
@@ -412,6 +413,10 @@
   &.next-card {
     transform: translateX(-50%) scale(0.96) translateY(8px);
     opacity: 0.5;
+  }
+
+  &.browse-dragging {
+    transition: none;
   }
 }
 
@@ -742,19 +747,6 @@
     }
   }
 
-  &.btn-undo {
-    background: var(--card-bg);
-    color: #f59e0b;
-    width: 42px;
-    height: 42px;
-    font-size: 1.1rem;
-
-    &:hover {
-      background: #f59e0b;
-      color: white;
-    }
-  }
-
   &.btn-dislike,
   &.btn-like {
     width: 56px;
@@ -980,12 +972,6 @@
     font-size: 1.15rem;
     box-shadow: none;
 
-    &.btn-undo {
-      width: 38px;
-      height: 38px;
-      font-size: 1rem;
-    }
-
     &.btn-dislike,
     &.btn-like {
       width: 48px;
@@ -1003,23 +989,26 @@
 @media (min-width: 1025px) {
   :host .page-layout,
   :host .page-col {
-    height: 100%;
+    height: auto;
     min-height: 0;
   }
 
   .swipe-container {
+    height: auto;
+    min-height: 0;
     border-radius: 20px;
     overflow: hidden;
     box-shadow: var(--shadow-md);
   }
 
+  .desktop-profiles-container {
+    display: block !important;
+    flex: none;
+    overflow: visible;
+  }
   .mobile-swipe-container,
   .swipe-controls {
     display: none !important;
-  }
-
-  .desktop-profiles-container {
-    display: block !important;
   }
   
   .header-right .icon-btn:first-child {

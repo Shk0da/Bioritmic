@@ -7,6 +7,11 @@ import { UserService } from '../../core/services/user.service';
 import { UserMeeting, PageableRequest, UserInfo, Timestamp } from '../../core/models/user.model';
 import { ModalService } from '../../core/services/modal.service';
 import { ToastService } from '../../core/services/toast.service';
+import {
+  resolveMeetingLimitMessage,
+} from '../../core/constants/meetings.constants';
+import { resolveHttpErrorMessage } from '../../core/utils/http-error.util';
+import { HttpErrorResponse } from '@angular/common/http';
 import { isFutureDatetimeLocalValue, parseDatetimeLocalValue, toDatetimeLocalValue } from '../../shared/utils/datetime-local.util';
 import { subscribeCachedRouteRefresh } from '../../core/routing/route-cache-refresh.util';
 import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
@@ -40,6 +45,9 @@ interface BookmarkWithPhoto extends UserInfo {
         </h1>
         <p class="text-muted page-subtitle d-none d-md-block">
           Предложения встреч и управление согласованными встречами
+          @if (meetingTotalLimit > 0) {
+            <span class="ms-1">({{ meetingTotalCount }} из {{ meetingTotalLimit }}, сегодня {{ meetingDailyCount }}/{{ meetingDailyLimit }})</span>
+          }
         </p>
       </div>
       <div class="meetings-create-action bookmark-meeting-dropdown">
@@ -47,6 +55,8 @@ interface BookmarkWithPhoto extends UserInfo {
             type="button"
             class="btn btn-primary btn-create-meeting"
             data-testid="meetings-suggest-button"
+            [disabled]="isMeetingLimitReached"
+            [title]="meetingLimitMessage ?? ''"
             (click)="toggleBookmarkDropdown($event)"
           [attr.aria-expanded]="bookmarkDropdownOpen">
           <i class="bi bi-calendar-plus me-2"></i>
@@ -854,6 +864,21 @@ export class MeetingsComponent implements OnInit, OnDestroy {
   meetingDescription = '';
   meetingScheduledAt = '';
   meetingSending = false;
+  meetingTotalCount = 0;
+  meetingDailyCount = 0;
+  meetingTotalLimit = 0;
+  meetingDailyLimit = 0;
+  get meetingLimitMessage(): string | null {
+    return resolveMeetingLimitMessage(
+      this.meetingTotalCount,
+      this.meetingDailyCount,
+      this.meetingTotalLimit,
+      this.meetingDailyLimit,
+    );
+  }
+  get isMeetingLimitReached(): boolean {
+    return this.meetingLimitMessage !== null;
+  }
   private readonly bookmarksPageable: PageableRequest = { page: 0, size: 50 };
   private blockedByUserIds = new Set<string>();
   private destroy$ = new Subject<void>();
@@ -932,14 +957,17 @@ export class MeetingsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.loadMeetingLimits();
     this.loadMeetings();
     this.loadBookmarks();
     subscribeCachedRouteRefresh(this.router, this.destroyRef, '/meetings', () => {
+      this.loadMeetingLimits();
       this.loadMeetings(true);
       this.loadBookmarks(true);
     });
     registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/meetings', () => ({
       refresh: () => {
+        this.loadMeetingLimits();
         this.loadMeetings(true);
         this.loadBookmarks(true);
       },
@@ -957,6 +985,11 @@ export class MeetingsComponent implements OnInit, OnDestroy {
 
   toggleBookmarkDropdown(event: Event): void {
     event.stopPropagation();
+    const limitMessage = this.meetingLimitMessage;
+    if (limitMessage) {
+      this.toastService.error(limitMessage);
+      return;
+    }
     this.bookmarkDropdownOpen = !this.bookmarkDropdownOpen;
     if (this.bookmarkDropdownOpen && this.bookmarks.length === 0 && !this.bookmarksLoading) {
       this.loadBookmarks();
@@ -1008,6 +1041,11 @@ export class MeetingsComponent implements OnInit, OnDestroy {
       this.toastService.error('Пользователь ограничил взаимодействие с вами');
       return;
     }
+    const limitMessage = this.meetingLimitMessage;
+    if (limitMessage) {
+      this.toastService.error(limitMessage);
+      return;
+    }
 
     const meeting: UserMeeting = {
       userId: user.id,
@@ -1024,11 +1062,31 @@ export class MeetingsComponent implements OnInit, OnDestroy {
         this.meetingSending = false;
         this.showMeetingModal = false;
         this.selectedBookmarkUser = null;
+        this.meetingTotalCount += 1;
+        this.meetingDailyCount += 1;
         this.toastService.success('Предложение встречи отправлено!');
         this.loadMeetings(true);
       },
-      error: () => {
+      error: (error) => {
         this.meetingSending = false;
+        this.toastService.error(resolveHttpErrorMessage(error as HttpErrorResponse));
+      }
+    });
+  }
+
+  private loadMeetingLimits(): void {
+    this.meetingsService.getMeetingLimit().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        this.meetingTotalCount = response.totalCount;
+        this.meetingDailyCount = response.dailyCount;
+        this.meetingTotalLimit = response.totalLimit;
+        this.meetingDailyLimit = response.dailyLimit;
+      },
+      error: () => {
+        this.meetingTotalCount = 0;
+        this.meetingDailyCount = 0;
+        this.meetingTotalLimit = this.meetingsService.meetingTotalLimit;
+        this.meetingDailyLimit = this.meetingsService.meetingDailyLimit;
       }
     });
   }
@@ -1151,6 +1209,7 @@ export class MeetingsComponent implements OnInit, OnDestroy {
   deleteMeeting(userId: string): void {
     this.meetingsService.deleteMeeting(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
+        this.loadMeetingLimits();
         this.loadMeetings();
       },
       error: () => {
@@ -1243,6 +1302,7 @@ export class MeetingsComponent implements OnInit, OnDestroy {
         this.toastService.success(
           isAccepted ? 'Встреча отозвана. Собеседник уведомлён.' : 'Предложение встречи отозвано.'
         );
+        this.loadMeetingLimits();
         this.loadMeetings(true);
       },
       error: () => {

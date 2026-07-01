@@ -82,7 +82,7 @@ class SecurityConfiguration(
             }
             .authorizeExchange {
                 it.pathMatchers(*openRoutes()).permitAll()
-                it.pathMatchers("$API_WITH_VERSION_1/admin/**").hasRole("ADMIN")
+                it.pathMatchers("$API_WITH_VERSION_1/admin/**").hasAnyRole("ADMIN", "MODERATOR")
                 it.pathMatchers("/management/**").hasRole("ADMIN")
                 it.anyExchange().authenticated()
             }

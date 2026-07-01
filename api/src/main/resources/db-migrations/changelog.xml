@@ -32,6 +32,7 @@
     <include file="v1/0044-create-diamond-wallets.xml" relativeToChangelogFile="true"/>
     <include file="v1/0045-transfer-diamonds-admin-skip-purchase.xml" relativeToChangelogFile="true"/>
     <include file="v1/0046-add-registration-consents.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0047-create-user-likes.xml" relativeToChangelogFile="true"/>
     <!-- -->
 
     <!--  Seeding  -->

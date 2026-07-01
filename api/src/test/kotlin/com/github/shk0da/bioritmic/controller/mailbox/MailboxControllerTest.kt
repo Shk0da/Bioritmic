@@ -57,6 +57,7 @@ class MailboxControllerTest : ApiApplicationTests() {
         val auth = authTokenCache.values.find { it.userId != null }
         userId = auth?.userId
         authToken = "Bearer ${auth?.accessToken}"
+        userId?.let { verifyUserForTests(it) }
     }
 
     @Test
@@ -213,7 +214,9 @@ class MailboxControllerTest : ApiApplicationTests() {
             .expectBody()
             .jsonPath("$.id")
             .value { id: Any -> userId = id as String }
-        return UUID.fromString(userId)
+        val parsedUserId = UUID.fromString(userId)
+        verifyUserForTests(parsedUserId)
+        return parsedUserId
     }
 
     private fun loginAndGetToken(email: String, userId: UUID): String {

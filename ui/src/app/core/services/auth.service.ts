@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subscription, of, tap, catchError, throwError, timeout, map, shareReplay } from 'rxjs';
 import { User, UserToken, AuthorizationModel, UserInfo } from '../models/user.model';
 import { clearLayoutRouteCache } from '../routing/mobile-route-reuse.strategy';
+import { isUserBannedHttpError, USER_BANNED_MESSAGE } from '../utils/http-error.util';
 
 const USER_KEY = 'current_user';
 const USER_POLL_MS = 30_000;
@@ -47,7 +48,7 @@ export class AuthService implements OnDestroy {
         map(() => true),
         catchError((error: HttpErrorResponse) => {
           if (error.status === 401 || error.status === 403 || error.status === 404) {
-            this.clearAuth();
+            this.clearAuth({ banned: isUserBannedHttpError(error) });
           }
           return of(false);
         }),
@@ -120,7 +121,10 @@ export class AuthService implements OnDestroy {
     this.applyCurrentUser({ ...current, diamondBalance: balance });
   }
 
-  clearAuth(): void {
+  clearAuth(options?: { banned?: boolean }): void {
+    if (options?.banned) {
+      sessionStorage.setItem('auth_banned_message', USER_BANNED_MESSAGE);
+    }
     clearLayoutRouteCache();
     void import('./mailbox-realtime.service').then(({ MailboxRealtimeService }) => {
       this.injector.get(MailboxRealtimeService).disconnect();
@@ -142,13 +146,26 @@ export class AuthService implements OnDestroy {
     this.applyCurrentUser(user);
   }
 
+  consumeBannedMessage(): string | null {
+    const fromStorage = sessionStorage.getItem('auth_banned_message');
+    if (fromStorage) {
+      sessionStorage.removeItem('auth_banned_message');
+      return fromStorage;
+    }
+    return null;
+  }
+
+  private handleAuthHttpError(error: HttpErrorResponse): void {
+    if (error.status === 404 || error.status === 401 || error.status === 403) {
+      this.clearAuth({ banned: isUserBannedHttpError(error) });
+    }
+  }
+
   loadCurrentUser(): Observable<UserInfo> {
     return this.http.get<UserInfo>(`${this.apiUrl}/user/me`).pipe(
       tap(user => this.applyCurrentUser(user)),
       catchError((error: HttpErrorResponse) => {
-        if (error.status === 404 || error.status === 401 || error.status === 403) {
-          this.clearAuth();
-        }
+        this.handleAuthHttpError(error);
         return throwError(() => error);
       })
     );
@@ -179,7 +196,7 @@ export class AuthService implements OnDestroy {
       next: (user) => this.applyCurrentUser(user),
       error: (error: HttpErrorResponse) => {
         if (error.status === 404 || error.status === 401 || error.status === 403) {
-          this.clearAuth();
+          this.handleAuthHttpError(error);
         }
       }
     });

@@ -8,6 +8,8 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.api.repository.AuthRepository
 import com.github.shk0da.bioritmic.api.repository.UserRepository
+import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_BANNED
 import com.github.shk0da.bioritmic.api.utils.CryptoUtils.passwordEncoder
 import org.infinispan.Cache
 import org.springframework.stereotype.Service
@@ -21,6 +23,8 @@ class AuthService(
     val emailService: EmailService,
     val authTokenCache: Cache<String, Auth>,
     val diamondService: DiamondService,
+    private val userRoleRepository: UserRoleRepository,
+    private val reportService: ReportService,
 ) {
 
     @Transactional
@@ -61,7 +65,15 @@ class AuthService(
                     authRepository.findByUserIdAndRefreshToken(user.id!!, refreshTokenValue)
                 }
             }
-            ?: throw ApiException(ErrorCode.AUTH_NOT_FOUND)
+        if (auth == null) {
+            if (userToken.email.isNotBlank()) {
+                val user = userRepository.findByEmail(userToken.email)
+                if (user?.id != null) {
+                    ensureNotBanned(user.id!!)
+                }
+            }
+            throw ApiException(ErrorCode.AUTH_NOT_FOUND)
+        }
 
         if (auth.isExpired()) {
             auth.accessToken?.let { authTokenCache.remove(it) }
@@ -71,6 +83,8 @@ class AuthService(
 
         val user = userRepository.findById(auth.userId!!)
             ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+
+        ensureNotBanned(user.id!!)
 
         val oldAccessToken = auth.accessToken
         auth.refresh()
@@ -173,5 +187,12 @@ class AuthService(
         user.password = passwordEncoder.encode(newPassword)
         userRepository.save(user)
         deleteAuthByUserId(user.id!!)
+    }
+
+    private suspend fun ensureNotBanned(userId: UUID) {
+        val roles = userRoleRepository.findAllByUserId(userId).map { it.role }
+        if (roles.any { it == ROLE_BANNED || it == "BANNED" } || reportService.isUserBanned(userId)) {
+            throw ApiException(ErrorCode.USER_BANNED)
+        }
     }
 }

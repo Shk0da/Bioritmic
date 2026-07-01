@@ -42,6 +42,16 @@ describe('BookmarksService', () => {
     req.flush([]);
   });
 
+  it('getBookmarkLimit should GET /limit', () => {
+    service.getBookmarkLimit().subscribe((response) => {
+      expect(response.count).toBe(3);
+      expect(response.limit).toBe(100);
+    });
+    const req = httpMock.expectOne('/api/v1/bookmarks/limit');
+    expect(req.request.method).toBe('GET');
+    req.flush({ count: 3, limit: 100 });
+  });
+
   it('deleteBookmark should DELETE /{userId}', () => {
     service.deleteBookmark('5').subscribe();
     const req = httpMock.expectOne('/api/v1/bookmarks/5');

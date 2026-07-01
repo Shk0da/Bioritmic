@@ -9,6 +9,7 @@ import com.github.shk0da.bioritmic.api.repository.ReportRepository
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Timestamp
@@ -19,7 +20,8 @@ import java.util.concurrent.TimeUnit
 class ReportService(
     private val reportRepository: ReportRepository,
     private val banRepository: BanRepository,
-    private val userRoleRepository: UserRoleRepository
+    private val userRoleRepository: UserRoleRepository,
+    @Lazy private val authService: AuthService,
 ) {
 
     companion object {
@@ -67,6 +69,7 @@ class ReportService(
         banRepository.save(ban)
         userRoleRepository.removeRole(userId, ROLE_USER)
         userRoleRepository.addRole(userId, ROLE_BANNED)
+        authService.deleteAuthByUserId(userId)
         log.warn("User {} banned: {}", userId, reason)
     }
 

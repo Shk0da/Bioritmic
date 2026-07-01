@@ -104,6 +104,12 @@ class UserService(
         return reportService.isUserBanned(userId)
     }
 
+    suspend fun ensureNotBanned(userId: UUID) {
+        if (isUserBanned(userId)) {
+            throw ApiException(ErrorCode.USER_BANNED)
+        }
+    }
+
     @Transactional(transactionManager = transactionManager)
     suspend fun getPhoto(userId: UUID, displaySize: PhotoDisplaySize = PhotoDisplaySize.THUMB): ByteArray {
         if (!userRepository.existsById(userId)) {

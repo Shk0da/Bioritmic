@@ -6,6 +6,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
 import com.github.shk0da.bioritmic.api.model.user.UserBookmark
 import com.github.shk0da.bioritmic.api.repository.BookmarkRepository
+import com.github.shk0da.bioritmic.api.repository.UserLikeRepository
 import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
 import kotlinx.coroutines.flow.toList
@@ -22,12 +23,13 @@ class BookmarksService(
     val userRepository: UserRepository,
     val bookmarkRepository: BookmarkRepository,
     val swipeActionService: SwipeActionService,
+    private val userLikeRepository: UserLikeRepository,
+    private val userVerificationService: UserVerificationService,
 ) {
 
     private val log = LoggerFactory.getLogger(BookmarksService::class.java)
 
-    private val maximumUserBookmarkSize = 100
-    private val defaultPageable = PageableRequest(1, maximumUserBookmarkSize, Sort.by(Sort.Direction.DESC, "timestamp"))
+    private val defaultPageable = PageableRequest(1, MAX_BOOKMARKS, Sort.by(Sort.Direction.DESC, "timestamp"))
 
     @Transactional
     suspend fun findBookmarksByUserId(userId: UUID, pageable: Pageable): List<User> {
@@ -38,13 +40,18 @@ class BookmarksService(
 
     @Transactional
     suspend fun saveBookmarks(userId: UUID, bookmarks: List<UserBookmark>): List<User> {
+        userVerificationService.requireVerified(userId)
         val bookmarkList = bookmarks.filter { it.isFilledInput() }
-        val currentElementsCount = bookmarkRepository.countByUserId(userId)
-        val totalCount = (currentElementsCount + bookmarkList.count()).toInt()
-        if (checkSize(totalCount, maximumUserBookmarkSize, ErrorCode.MANY_BOOKMARKS)) {
+        val newBookmarks = bookmarkList.filter { bookmark ->
+            val otherUserId = bookmark.userId ?: return@filter false
+            !bookmarkRepository.existsByUserIdAndOtherUserId(userId, otherUserId)
+        }
+        if (newBookmarks.isNotEmpty()) {
+            val totalCount = bookmarkRepository.countByUserId(userId) + newBookmarks.size
+            checkSize(totalCount, MAX_BOOKMARKS, ErrorCode.MANY_BOOKMARKS)
             try {
-                val bookmarks = bookmarkList.map { Bookmark.of(userId, it) }
-                bookmarks.forEach { bookmark ->
+                val bookmarksToSave = newBookmarks.map { Bookmark.of(userId, it) }
+                bookmarksToSave.forEach { bookmark ->
                     bookmarkRepository.insert(bookmark.userId!!, bookmark.otherUserId!!, bookmark.timestamp)
                     swipeActionService.clearSkip(userId, bookmark.otherUserId!!)
                 }
@@ -75,14 +82,19 @@ class BookmarksService(
 
     @Transactional
     suspend fun findMatches(userId: UUID): List<User> {
-        val mutualIds = bookmarkRepository.findMutualBookmarkUserIds(userId)
+        val mutualIds = userLikeRepository.findMutualLikeUserIds(userId)
         if (mutualIds.isEmpty()) return emptyList()
         return userRepository.findAllById(mutualIds.toSet()).toList()
     }
 
     @Transactional(readOnly = true)
     suspend fun countMatches(userId: UUID): Int {
-        return bookmarkRepository.countMutualBookmarks(userId).toInt()
+        return userLikeRepository.countMutualLikes(userId).toInt()
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun countBookmarks(userId: UUID): Int {
+        return bookmarkRepository.countByUserId(userId).toInt()
     }
 
     @Transactional(readOnly = true)
@@ -92,7 +104,11 @@ class BookmarksService(
 
     @Transactional
     suspend fun isMatch(userId: UUID, otherUserId: UUID): Boolean {
-        return bookmarkRepository.existsByUserIdAndOtherUserId(userId, otherUserId) &&
-            bookmarkRepository.existsByUserIdAndOtherUserId(otherUserId, userId)
+        return userLikeRepository.existsByUserIdAndOtherUserId(userId, otherUserId) &&
+            userLikeRepository.existsByUserIdAndOtherUserId(otherUserId, userId)
+    }
+
+    companion object {
+        const val MAX_BOOKMARKS = 100
     }
 }

@@ -3,6 +3,8 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { AdminService, AdminDashboard, Report, AdminUser, SystemMetrics, PaginatedUsersResponse, FeedbackItem, FeedbackStatus, BannedWordItem } from '../../core/services/admin.service';
+import { AuthService } from '../../core/services/auth.service';
+import { isFullAdmin } from '../../core/utils/admin-access.util';
 import { ModalService } from '../../core/services/modal.service';
 import { ToastService } from '../../core/services/toast.service';
 import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
@@ -23,7 +25,7 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
 
     @if (accessDenied) {
       <div class="alert alert-danger">
-        <i class="bi bi-exclamation-triangle me-2"></i>Доступ запрещён. У вас нет прав администратора.
+        <i class="bi bi-exclamation-triangle me-2"></i>Доступ запрещён. У вас нет прав для этой панели.
       </div>
     } @else {
       <!-- Dashboard Stats -->
@@ -204,9 +206,11 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
                     <td>
                       <div class="d-flex align-items-center gap-1">
                         <span>{{ user.diamondBalance ?? 0 }}</span>
-                        <button class="btn btn-outline-secondary btn-sm py-0 px-1" title="Изменить баланс" (click)="editDiamondBalance(user)">
-                          <i class="bi bi-pencil"></i>
-                        </button>
+                        @if (isFullAdmin) {
+                          <button class="btn btn-outline-secondary btn-sm py-0 px-1" title="Изменить баланс" (click)="editDiamondBalance(user)">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                        }
                       </div>
                     </td>
                     <td>
@@ -256,9 +260,11 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
                 <div class="admin-list-card-row">
                   <span class="admin-list-card-label">💎</span>
                   <span>{{ user.diamondBalance ?? 0 }}</span>
-                  <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-auto" title="Изменить баланс" (click)="editDiamondBalance(user)">
-                    <i class="bi bi-pencil"></i>
-                  </button>
+                  @if (isFullAdmin) {
+                    <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-auto" title="Изменить баланс" (click)="editDiamondBalance(user)">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                  }
                 </div>
                 <div class="admin-list-card-actions">
                   <ng-container *ngTemplateOutlet="userActionsTpl; context: { user: user }" />
@@ -302,16 +308,18 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
                 <button class="btn btn-outline-primary btn-sm" (click)="resetPassword(user)" title="Сбросить пароль">
                   <i class="bi bi-key"></i>
                 </button>
-                <select class="form-select form-select-sm admin-role-select"
-                  (change)="onRoleChange(user, $event)" title="Изменить роль">
-                  <option value="" disabled selected>Роль</option>
-                  <option value="USER">USER</option>
-                  <option value="MODERATOR">MODERATOR</option>
-                  <option value="BANNED">BANNED</option>
-                </select>
-                <button class="btn btn-danger btn-sm" (click)="deleteUser(user)" title="Удалить">
-                  <i class="bi bi-trash"></i>
-                </button>
+                @if (isFullAdmin) {
+                  <select class="form-select form-select-sm admin-role-select"
+                    (change)="onRoleChange(user, $event)" title="Изменить роль">
+                    <option value="" disabled selected>Роль</option>
+                    <option value="USER">USER</option>
+                    <option value="MODERATOR">MODERATOR</option>
+                    <option value="BANNED">BANNED</option>
+                  </select>
+                  <button class="btn btn-danger btn-sm" (click)="deleteUser(user)" title="Удалить">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                }
               }
             </div>
           </ng-template>
@@ -1056,6 +1064,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   loadingFeedback = false;
   loadingMetrics = false;
   accessDenied = false;
+  isFullAdmin = false;
   dashboard: AdminDashboard | null = null;
   users: AdminUser[] = [];
   reports: Report[] = [];
@@ -1087,6 +1096,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   constructor(
     private adminService: AdminService,
+    private authService: AuthService,
     private modalService: ModalService,
     private toastService: ToastService
   ) {
@@ -1094,6 +1104,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.isFullAdmin = isFullAdmin(this.authService.getCurrentUser()?.role);
     this.searchChange$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe(() => {
       if (this.activeTab === 'users') {
         this.loadUsers(0);
@@ -1341,6 +1352,10 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   async deleteUser(user: AdminUser): Promise<void> {
+    if (!this.isFullAdmin) {
+      this.toastService.error('Недостаточно прав для удаления пользователя');
+      return;
+    }
     const confirmed = await this.modalService.confirm(
       `Удалить пользователя ${user.name || user.email}? Это действие необратимо!`,
       'Удаление пользователя'
@@ -1359,6 +1374,10 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   async changeRole(user: AdminUser, newRole: string): Promise<void> {
+    if (!this.isFullAdmin) {
+      this.toastService.error('Недостаточно прав для смены роли');
+      return;
+    }
     const currentRole = user.role || 'USER';
     if (currentRole === newRole) return;
 
@@ -1379,6 +1398,10 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   async editDiamondBalance(user: AdminUser): Promise<void> {
+    if (!this.isFullAdmin) {
+      this.toastService.error('Недостаточно прав для изменения баланса алмазов');
+      return;
+    }
     const current = user.diamondBalance ?? 0;
     const input = window.prompt(`Новый баланс алмазов для ${user.name || user.email}:`, String(current));
     if (input === null) {

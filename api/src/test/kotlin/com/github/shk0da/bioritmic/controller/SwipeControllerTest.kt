@@ -78,6 +78,65 @@ class SwipeControllerTest : ApiApplicationTests() {
             .jsonPath("$[?(@.id == '$targetUserId')]").doesNotExist()
     }
 
+    @Test
+    fun `like endpoint stores relation and excludes user from search`() {
+        val suffix = UUID.randomUUID().toString().substring(0, 8)
+        val targetEmail = "like_target_$suffix@gmail.com"
+        registerUser(targetEmail)
+        val targetToken = authorizeUser(targetEmail)
+        val targetUserId = resolveCurrentUserId(targetToken)
+        verifyUserForTests(targetUserId)
+        setGis(targetToken, 55.7560, 37.6175)
+        insertPhoto(targetUserId)
+        configureSearchSettings()
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/search")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[?(@.id == '$targetUserId')]").exists()
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/swipe/$targetUserId/like")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.success").isEqualTo(true)
+
+        assertLikeExists(currentUserId, targetUserId)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/search")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[?(@.id == '$targetUserId')]").doesNotExist()
+    }
+
+    private fun assertLikeExists(userId: UUID, otherUserId: UUID) {
+        liquibaseDataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "SELECT COUNT(*) FROM user_likes WHERE user_id = ? AND other_user_id = ?"
+            ).use { statement ->
+                statement.setObject(1, userId)
+                statement.setObject(2, otherUserId)
+                statement.executeQuery().use { rs: ResultSet ->
+                    check(rs.next())
+                    check(rs.getLong(1) == 1L) {
+                        "Expected user_likes row for userId=$userId otherUserId=$otherUserId"
+                    }
+                }
+            }
+        }
+    }
+
     private fun registerUser(email: String) {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")

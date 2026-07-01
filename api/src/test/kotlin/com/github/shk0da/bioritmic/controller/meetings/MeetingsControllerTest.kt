@@ -67,6 +67,21 @@ class MeetingsControllerTest : ApiApplicationTests() {
     }
 
     @Test
+    fun getMeetingLimitTest() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/meetings/limit")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.totalCount").isEqualTo(0)
+            .jsonPath("$.totalLimit").isEqualTo(20)
+            .jsonPath("$.dailyCount").isEqualTo(0)
+            .jsonPath("$.dailyLimit").isEqualTo(5)
+    }
+
+    @Test
     fun createMeetingsTest() {
         val currentUserId = userId ?: throw IllegalStateException("User ID is null")
         val meetings = listOf(

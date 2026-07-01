@@ -10,10 +10,14 @@ const ERROR_CODE_MESSAGES_RU: Record<string, string> = {
   'API-409': 'Пользователь с таким email уже зарегистрирован.',
   'API-409.1': 'Этот ник уже занят.',
   'API-400.7': 'Неверный код восстановления.',
+  'API-400.8': 'В избранном может быть не более 100 человек. Удалите кого-то из списка, чтобы добавить нового.',
+  'API-400.12': 'Можно назначить не более 20 встреч. Отзовите одну из существующих, чтобы предложить новую.',
+  'API-400.13': 'Сегодня можно назначить не более 5 встреч. Попробуйте завтра или измените существующее предложение.',
   'API-400.9': 'Фото должно быть в формате JPG или PNG.',
   'API-400.10': 'Недостаточно алмазов на балансе',
   'API-400.11': 'Перевод алмазов доступен только после первого пополнения. Нажмите «Пополнить».',
   'API-403.1': 'Подтвердите аккаунт для этой операции.',
+  'API-403.2': 'Вы были заблокированы за нарушение правил сервиса',
   'API-429': 'Слишком много запросов. Подождите немного.',
   'API-503': 'Сервис временно недоступен. Попробуйте позже.',
   'API-500': 'Ошибка сервера. Попробуйте позже.',
@@ -25,6 +29,10 @@ const BUSINESS_ERROR_MESSAGES_RU: Record<string, string> = {
   'Insufficient diamond balance': 'Недостаточно алмазов',
   'Cannot transfer to yourself': 'Нельзя перевести алмазы самому себе',
   'Recipient must be in bookmarks': 'Получатель должен быть в избранном',
+  'User has to many bookmarks.': 'В избранном может быть не более 100 человек. Удалите кого-то из списка, чтобы добавить нового.',
+  'User has too many meetings.': 'Можно назначить не более 20 встреч. Отзовите одну из существующих, чтобы предложить новую.',
+  'User has too many meetings for today.': 'Сегодня можно назначить не более 5 встреч. Попробуйте завтра или измените существующее предложение.',
+  'You were blocked for violating the service rules.': 'Вы были заблокированы за нарушение правил сервиса',
   'Amount must be positive': 'Укажите положительную сумму',
   'Amount must be between 1 and 1000000': 'Сумма должна быть от 1 до 1 000 000',
   'Сумма должна быть от 1 до 1 000 000': 'Сумма должна быть от 1 до 1 000 000',
@@ -92,6 +100,23 @@ export function isNickHttpError(error: HttpErrorResponse): boolean {
     });
   }
   return /ник/i.test(resolveHttpErrorMessage(error));
+}
+
+export const USER_BANNED_MESSAGE = 'Вы были заблокированы за нарушение правил сервиса';
+
+export function isUserBannedHttpError(error: unknown): boolean {
+  const httpError = asHttpErrorResponse(error);
+  if (!httpError) {
+    return false;
+  }
+  const body = httpError.error as ApiErrorBody | null;
+  const item = body?.errors?.[0];
+  const code = item?.errorCode?.trim();
+  if (code === 'API-403.2') {
+    return true;
+  }
+  const message = item?.message?.toLowerCase() ?? '';
+  return message.includes('blocked for violating') || message.includes('заблокирован');
 }
 
 export function resolveHttpErrorMessage(error: HttpErrorResponse): string {

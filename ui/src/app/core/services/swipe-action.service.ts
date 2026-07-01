@@ -13,4 +13,8 @@ export class SwipeActionService {
   skipUser(userId: string): Observable<{ success: boolean }> {
     return this.http.post<{ success: boolean }>(`${this.apiUrl}/${userId}/skip`, {});
   }
+
+  likeUser(userId: string): Observable<{ success: boolean }> {
+    return this.http.post<{ success: boolean }>(`${this.apiUrl}/${userId}/like`, {});
+  }
 }

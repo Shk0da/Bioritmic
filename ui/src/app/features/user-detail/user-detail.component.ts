@@ -9,6 +9,12 @@ import { MailboxService } from '../../core/services/mailbox.service';
 import { MeetingsService } from '../../core/services/meetings.service';
 import { AdminService } from '../../core/services/admin.service';
 import { ToastService } from '../../core/services/toast.service';
+import { BOOKMARK_LIMIT_MESSAGE, isBookmarkLimitReached } from '../../core/constants/bookmarks.constants';
+import {
+  resolveMeetingLimitMessage,
+} from '../../core/constants/meetings.constants';
+import { resolveHttpErrorMessage } from '../../core/utils/http-error.util';
+import { HttpErrorResponse } from '@angular/common/http';
 import { UserInfo, Gender, UserMeeting } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
 import { BiorhythmDetailComponent } from '../../shared/components/biorhythm-detail/biorhythm-detail.component';
@@ -146,13 +152,24 @@ import {
                 <i class="bi bi-calendar-x"></i>
                 <span>Встреча недоступна</span>
               </button>
+            } @else if (isMeetingLimitReached) {
+              <button class="action-btn action-meeting-disabled" disabled [title]="meetingLimitMessage ?? ''">
+                <i class="bi bi-calendar-x"></i>
+                <span>Лимит встреч</span>
+              </button>
             } @else {
               <button class="action-btn action-meeting" (click)="openMeetingModal()">
                 <i class="bi bi-calendar-heart"></i>
                 <span>Встреча</span>
               </button>
             }
-            <button class="action-btn" [class.action-bookmark-active]="isBookmarked" [class.action-bookmark]="!isBookmarked" (click)="toggleBookmark()">
+            <button
+              class="action-btn"
+              [class.action-bookmark-active]="isBookmarked"
+              [class.action-bookmark]="!isBookmarked"
+              [disabled]="!isBookmarked && isBookmarkLimitReached"
+              [title]="!isBookmarked && isBookmarkLimitReached ? bookmarkLimitMessage : ''"
+              (click)="toggleBookmark()">
               <i class="bi" [ngClass]="isBookmarked ? 'bi-bookmark-fill' : 'bi-bookmark'"></i>
               <span>{{ isBookmarked ? 'В избранном' : 'В избранное' }}</span>
             </button>
@@ -834,9 +851,30 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   loading = true;
   error: string | null = null;
   isBookmarked = false;
+  bookmarkCount = 0;
+  bookmarkLimit = 100;
+  readonly bookmarkLimitMessage = BOOKMARK_LIMIT_MESSAGE;
+  get isBookmarkLimitReached(): boolean {
+    return isBookmarkLimitReached(this.bookmarkCount, this.bookmarkLimit);
+  }
   isBlocked = false;
   isBlockedByUser = false;
   meetingSent = false;
+  meetingTotalCount = 0;
+  meetingDailyCount = 0;
+  meetingTotalLimit = 20;
+  meetingDailyLimit = 5;
+  get meetingLimitMessage(): string | null {
+    return resolveMeetingLimitMessage(
+      this.meetingTotalCount,
+      this.meetingDailyCount,
+      this.meetingTotalLimit,
+      this.meetingDailyLimit,
+    );
+  }
+  get isMeetingLimitReached(): boolean {
+    return !this.meetingSent && this.meetingLimitMessage !== null;
+  }
   isReported = false;
   showReportModal = false;
   selectedReason = '';
@@ -996,6 +1034,16 @@ export class UserDetailComponent implements OnInit, OnDestroy {
       next: (res) => { this.isBookmarked = res.bookmarked; },
       error: () => { this.isBookmarked = false; }
     });
+    this.bookmarksService.getBookmarkLimit().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res) => {
+        this.bookmarkCount = res.count;
+        this.bookmarkLimit = res.limit;
+      },
+      error: () => {
+        this.bookmarkCount = 0;
+        this.bookmarkLimit = this.bookmarksService.bookmarkLimit;
+      }
+    });
   }
 
   private loadBlockStatus(userId: string): void {
@@ -1016,6 +1064,20 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     this.meetingsService.hasSentMeeting(userId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (res) => { this.meetingSent = res.sent; },
       error: () => { this.meetingSent = false; }
+    });
+    this.meetingsService.getMeetingLimit().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res) => {
+        this.meetingTotalCount = res.totalCount;
+        this.meetingDailyCount = res.dailyCount;
+        this.meetingTotalLimit = res.totalLimit;
+        this.meetingDailyLimit = res.dailyLimit;
+      },
+      error: () => {
+        this.meetingTotalCount = 0;
+        this.meetingDailyCount = 0;
+        this.meetingTotalLimit = this.meetingsService.meetingTotalLimit;
+        this.meetingDailyLimit = this.meetingsService.meetingDailyLimit;
+      }
     });
   }
 
@@ -1129,11 +1191,24 @@ export class UserDetailComponent implements OnInit, OnDestroy {
 
     if (this.isBookmarked) {
       this.bookmarksService.deleteBookmark(this.user.id).pipe(takeUntil(this.destroy$)).subscribe({
-        next: () => { this.isBookmarked = false; }
+        next: () => {
+          this.isBookmarked = false;
+          this.bookmarkCount = Math.max(0, this.bookmarkCount - 1);
+        }
       });
     } else {
+      if (this.isBookmarkLimitReached) {
+        this.toastService.error(this.bookmarkLimitMessage);
+        return;
+      }
       this.bookmarksService.addBookmark({ userId: this.user.id }).pipe(takeUntil(this.destroy$)).subscribe({
-        next: () => { this.isBookmarked = true; }
+        next: () => {
+          this.isBookmarked = true;
+          this.bookmarkCount += 1;
+        },
+        error: (error) => {
+          this.toastService.error(resolveHttpErrorMessage(error as HttpErrorResponse));
+        }
       });
     }
   }
@@ -1143,6 +1218,13 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     if (this.isBlockedByUser) {
       this.toastService.error('Пользователь ограничил взаимодействие с вами');
       return;
+    }
+    if (!this.meetingSent) {
+      const limitMessage = this.meetingLimitMessage;
+      if (limitMessage) {
+        this.toastService.error(limitMessage);
+        return;
+      }
     }
 
     const meeting: UserMeeting = {
@@ -1158,12 +1240,17 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     this.meetingsService.createMeeting(meeting).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.meetingSending = false;
+        if (!this.meetingSent) {
+          this.meetingTotalCount += 1;
+          this.meetingDailyCount += 1;
+        }
         this.meetingSent = true;
         this.showMeetingModal = false;
         this.modalService.alert('Предложение встречи отправлено!');
       },
-      error: () => {
+      error: (error) => {
         this.meetingSending = false;
+        this.toastService.error(resolveHttpErrorMessage(error as HttpErrorResponse));
       }
     });
   }
@@ -1171,6 +1258,11 @@ export class UserDetailComponent implements OnInit, OnDestroy {
   openMeetingModal(): void {
     if (this.isBlockedByUser) {
       this.toastService.error('Пользователь ограничил взаимодействие с вами');
+      return;
+    }
+    const limitMessage = this.meetingLimitMessage;
+    if (limitMessage) {
+      this.toastService.error(limitMessage);
       return;
     }
     this.meetingDescription = '';
@@ -1226,6 +1318,8 @@ export class UserDetailComponent implements OnInit, OnDestroy {
     this.meetingsService.deleteMeeting(this.user.id).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.meetingSent = false;
+        this.meetingTotalCount = Math.max(0, this.meetingTotalCount - 1);
+        this.meetingDailyCount = Math.max(0, this.meetingDailyCount - 1);
         this.toastService.success('Предложение встречи отозвано');
       },
       error: () => { /* shown by HTTP interceptor */ }

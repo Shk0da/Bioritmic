@@ -265,7 +265,9 @@ class StoryControllerTest : ApiApplicationTests() {
         val authorToken = loginToken(authorEmail)
         val viewerToken = loginToken(viewerEmail)
         val authorId = userIdFromToken(authorToken)
+        val viewerId = userIdFromToken(viewerToken)
         verifyUserForTests(authorId)
+        verifyUserForTests(viewerId)
 
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/stories")

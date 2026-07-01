@@ -23,4 +23,11 @@ class SwipeController(
         swipeActionService.skipUser(currentUserId, userId)
         return mapOf("success" to true)
     }
+
+    @PostMapping(value = ["/{userId}/like"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun like(@PathVariable userId: UUID): Map<String, Boolean> {
+        val currentUserId = getUserId()
+        swipeActionService.likeUser(currentUserId, userId)
+        return mapOf("success" to true)
+    }
 }

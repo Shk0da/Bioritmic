@@ -3,7 +3,7 @@ import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { map } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 
-const UNVERIFIED_ALLOWED_ROUTES = ['/swipe', '/auth', '/profile', '/settings', '/mailbox', '/payments'];
+const UNVERIFIED_ALLOWED_ROUTES = ['/swipe', '/search', '/auth', '/profile', '/settings'];
 
 export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);

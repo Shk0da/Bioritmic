@@ -170,6 +170,7 @@ class AuthController(
             loginLockoutService.recordFailedLogin(user.id!!)
             throw ApiException(INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "password")))
         }
+        userService.ensureNotBanned(user.id!!)
         loginLockoutService.resetFailedLogins(user.id!!)
         val newAuth = authService.createNewAuth(user)
         log.debug("Created new {}", newAuth)

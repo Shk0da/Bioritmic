@@ -19,9 +19,11 @@ import {
 } from '../../shared/utils/biorhythm-labels.util';
 import { StoriesBarComponent } from '../../shared/components/stories-bar/stories-bar.component';
 import { MatchModalComponent } from '../../shared/components/match-modal/match-modal.component';
-import { AvatarStatusBadgeComponent } from '../../shared/components/avatar-status-badge/avatar-status-badge.component';
 import { ShareService } from '../../core/services/share.service';
 import { ModalService } from '../../core/services/modal.service';
+import { ToastService } from '../../core/services/toast.service';
+import { resolveHttpErrorMessage } from '../../core/utils/http-error.util';
+import { HttpErrorResponse } from '@angular/common/http';
 import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
 import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
@@ -29,7 +31,7 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
 @Component({
   selector: 'app-swipe',
   standalone: true,
-  imports: [RouterLink, FormsModule, NgClass, StoriesBarComponent, MatchModalComponent, AvatarStatusBadgeComponent],
+  imports: [RouterLink, FormsModule, NgClass, StoriesBarComponent, MatchModalComponent],
   template: `
     <div class="row page-layout">
       <div class="col-12 col-md-8 mx-auto page-col">
@@ -37,14 +39,23 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
       <div class="stories-row">
         <app-stories-bar></app-stories-bar>
         <div class="mobile-filters-btn">
-          <button type="button" class="btn-filter" (click)="openFilters()" title="Параметры поиска">
+          <button
+            type="button"
+            class="btn-filter"
+            (click)="openFilters()"
+            title="Параметры поиска">
             <i class="bi bi-funnel"></i>
           </button>
         </div>
       </div>
 
       <!-- Мобильная версия: Tinder-карточки -->
-      <div class="mobile-swipe-container">
+      <div
+        class="mobile-swipe-container"
+        (pointerdown)="onBrowsePointerDown($event)"
+        (pointermove)="onBrowsePointerMove($event)"
+        (pointerup)="onBrowsePointerEnd()"
+        (pointercancel)="onBrowsePointerEnd()">
         @if (showNoCards) {
           <div class="no-cards">
             <div class="no-cards-icon">
@@ -95,21 +106,18 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
             }
           </div>
         } @else {
-          @for (card of displayCards.slice(0, 2); track card.user.id; let i = $index) {
+          @for (card of mobileBrowseStack; track card.user.id; let i = $index) {
             <div
               class="swipe-card"
               [class.top-card]="i === 0"
               [class.next-card]="i === 1"
+              [class.browse-dragging]="i === 0 && mobileBrowseDragging"
               [style.opacity]="i === 0 ? 1 : 0.95"
               [style.z-index]="10 - i"
+              [style.transform]="i === 0 ? mobileTopCardTransform : null"
             >
               <!-- Фото пользователя -->
               <div class="card-photo" [style.backgroundImage]="'url(' + card.photoDataUrl + ')'">
-                <app-avatar-status-badge
-                  [emoji]="card.user.statusEmoji"
-                  [position]="card.user.statusPosition"
-                  size="md">
-                </app-avatar-status-badge>
                 <div class="photo-overlay"></div>
 
                 <!-- Информация на карточке -->
@@ -215,11 +223,6 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
             @for (card of displayCards; track card.user.id) {
               <div class="profile-card">
                 <div class="profile-card-photo" [style.backgroundImage]="'url(' + card.photoDataUrl + ')'">
-                  <app-avatar-status-badge
-                    [emoji]="card.user.statusEmoji"
-                    [position]="card.user.statusPosition"
-                    size="md">
-                  </app-avatar-status-badge>
                   @if (isUserOnline(card.user)) {
                     <div class="online-badge"></div>
                   }
@@ -248,10 +251,10 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
                   }
 
                   <div class="profile-card-actions">
-                    <button class="btn btn-outline-danger" (click)="removeCard(card)" title="Пропустить">
+                    <button class="btn btn-outline-danger" (click)="removeCard(card)" [disabled]="!isUserVerified" title="Пропустить">
                       <i class="bi bi-x-lg"></i>
                     </button>
-                    <button class="btn btn-outline-warning" (click)="superLikeProfile(card)" title="Супер-лайк">
+                    <button class="btn btn-outline-warning" (click)="superLikeProfile(card)" [disabled]="!isUserVerified" title="Супер-лайк">
                       <i class="bi bi-star-fill"></i>
                     </button>
                     <button
@@ -262,7 +265,7 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
                       (click)="openProfile(card)">
                       <i class="bi bi-person"></i>
                     </button>
-                    <button class="btn btn-outline-success" (click)="likeProfile(card)" title="Нравится">
+                    <button class="btn btn-outline-success" (click)="likeProfile(card)" [disabled]="!isUserVerified" title="Нравится">
                       <i class="bi bi-heart"></i>
                     </button>
                   </div>
@@ -273,12 +276,9 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
         }
       </div>
 
-      <!-- Кнопки управления (только мобильные) -->
-      @if (showMobileSwipeControls) {
+      <!-- Кнопки управления (только мобильные, только для подтверждённых) -->
+      @if (showMobileSwipeControls && isUserVerified) {
       <div class="swipe-controls">
-        <button class="control-btn btn-undo" (click)="undoSwipe()" [disabled]="displayCards.length === 0 && !canUndo()" title="Отменить">
-          <i class="bi bi-arrow-counterclockwise"></i>
-        </button>
         <button class="control-btn btn-dislike" data-testid="swipe-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="displayCards.length === 0">
           <i class="bi bi-x-lg"></i>
         </button>
@@ -392,6 +392,16 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   currentUserName = '';
   sharing = false;
 
+  mobileBrowseIndex = 0;
+  mobileBrowseDragging = false;
+  private browsePointerId: number | null = null;
+  private browseStartX = 0;
+  private browseStartY = 0;
+  private browseDeltaX = 0;
+  private browseAxisLocked: 'x' | 'y' | null = null;
+  private browseContainer: HTMLElement | null = null;
+  private static readonly BROWSE_SWIPE_THRESHOLD = 72;
+
   constructor(
     private searchService: SearchService,
     private userService: UserService,
@@ -403,6 +413,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     private swipeActionService: SwipeActionService,
     private shareService: ShareService,
     private modalService: ModalService,
+    private toastService: ToastService,
     private router: Router
   ) {}
 
@@ -536,6 +547,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
       next: (users) => {
         this.swipeService.setCards(users);
         this.cards = this.swipeService.getCards();
+        this.mobileBrowseIndex = 0;
         if (users.length === 0) {
           this.loading = false;
         } else {
@@ -732,16 +744,25 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Методы для десктопной версии
   removeCard(card: SwipeCard): void {
+    if (!this.isUserVerified) {
+      return;
+    }
     this.trackSwipeDecision(card, SwipeDirection.LEFT);
     this.removeCardFromLists(card);
   }
 
   likeProfile(card: SwipeCard): void {
+    if (!this.isUserVerified) {
+      return;
+    }
     this.trackSwipeDecision(card, SwipeDirection.RIGHT);
     this.removeCardFromLists(card);
   }
 
   superLikeProfile(card: SwipeCard): void {
+    if (!this.isUserVerified) {
+      return;
+    }
     this.swipeService.swipe(SwipeDirection.UP);
   }
 
@@ -753,19 +774,23 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   undoSwipe(): void {
+    if (!this.isUserVerified) {
+      return;
+    }
     this.swipeService.undo();
   }
 
-  canUndo(): boolean {
-    return this.swipeService.canUndo();
-  }
-
   manualSwipe(direction: SwipeDirection): void {
-    if (this.displayCards.length === 0) return;
+    if (!this.isUserVerified || this.displayCards.length === 0) {
+      return;
+    }
     this.swipeService.swipe(direction);
   }
 
   private handleSwipeResult(result: SwipeResult): void {
+    if (!this.isUserVerified) {
+      return;
+    }
     this.trackSwipeDecision(result.card, result.direction);
 
     // Обновляем список карточек
@@ -776,13 +801,16 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private trackSwipeDecision(card: SwipeCard, direction: SwipeDirection): void {
+    if (!this.isUserVerified) {
+      return;
+    }
     const targetUserId = card.user.id;
     if (!targetUserId) {
       return;
     }
 
-    if (direction === SwipeDirection.RIGHT || direction === SwipeDirection.UP) {
-      this.bookmarksService.addBookmark({ userId: targetUserId }).pipe(
+    if (direction === SwipeDirection.RIGHT) {
+      this.swipeActionService.likeUser(targetUserId).pipe(
         switchMap(() => this.matchService.checkMatch(targetUserId)),
         takeUntil(this.destroy$)
       ).subscribe({
@@ -791,7 +819,25 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
             this.openMatchModal(card);
           }
         },
-        error: () => { /* bookmark or match check failed — non-critical */ }
+        error: () => { /* like or match check failed — non-critical */ }
+      });
+      return;
+    }
+
+    if (direction === SwipeDirection.UP) {
+      this.swipeActionService.likeUser(targetUserId).pipe(
+        switchMap(() => this.bookmarksService.addBookmark({ userId: targetUserId })),
+        switchMap(() => this.matchService.checkMatch(targetUserId)),
+        takeUntil(this.destroy$)
+      ).subscribe({
+        next: ({ isMatch }) => {
+          if (isMatch) {
+            this.openMatchModal(card);
+          }
+        },
+        error: (error) => {
+          this.toastService.error(resolveHttpErrorMessage(error as HttpErrorResponse));
+        }
       });
       return;
     }
@@ -824,6 +870,144 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   get displayCards(): SwipeCard[] {
     return this.cards.filter((card) => !!card.photoDataUrl);
+  }
+
+  get mobileBrowseStack(): SwipeCard[] {
+    const cards = this.displayCards;
+    const stack: SwipeCard[] = [];
+    const current = cards[this.mobileBrowseIndex];
+    const next = cards[this.mobileBrowseIndex + 1];
+    if (current) {
+      stack.push(current);
+    }
+    if (next) {
+      stack.push(next);
+    }
+    return stack;
+  }
+
+  get mobileTopCardTransform(): string {
+    const center = 'translateX(-50%)';
+    if (!this.mobileBrowseDragging || this.browseDeltaX === 0) {
+      return center;
+    }
+    const rotate = Math.max(-12, Math.min(12, this.browseDeltaX * 0.04));
+    return `${center} translateX(${this.browseDeltaX}px) rotate(${rotate}deg)`;
+  }
+
+  onBrowsePointerDown(event: PointerEvent): void {
+    if (!this.isMobileBrowseEnabled || event.button !== 0) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('button, a, input, textarea, select')) {
+      return;
+    }
+    this.browsePointerId = event.pointerId;
+    this.browseStartX = event.clientX;
+    this.browseStartY = event.clientY;
+    this.browseDeltaX = 0;
+    this.browseAxisLocked = null;
+    this.mobileBrowseDragging = true;
+    this.browseContainer = event.currentTarget as HTMLElement;
+    this.browseContainer.setPointerCapture(event.pointerId);
+  }
+
+  onBrowsePointerMove(event: PointerEvent): void {
+    if (!this.mobileBrowseDragging || event.pointerId !== this.browsePointerId) {
+      return;
+    }
+    const deltaX = event.clientX - this.browseStartX;
+    const deltaY = event.clientY - this.browseStartY;
+    if (!this.browseAxisLocked) {
+      if (Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8) {
+        return;
+      }
+      this.browseAxisLocked = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y';
+    }
+    if (this.browseAxisLocked !== 'x') {
+      return;
+    }
+    event.preventDefault();
+    const atStart = this.mobileBrowseIndex <= 0;
+    const atEnd = this.mobileBrowseIndex >= this.displayCards.length - 1;
+    let adjusted = deltaX;
+    if (atStart && adjusted > 0) {
+      adjusted *= 0.35;
+    }
+    if (atEnd && adjusted < 0) {
+      adjusted *= 0.35;
+    }
+    this.browseDeltaX = adjusted;
+  }
+
+  onBrowsePointerEnd(): void {
+    if (!this.mobileBrowseDragging) {
+      return;
+    }
+    const threshold = SwipeComponent.BROWSE_SWIPE_THRESHOLD;
+    if (this.browseDeltaX <= -threshold && this.mobileBrowseIndex < this.displayCards.length - 1) {
+      this.mobileBrowseIndex++;
+      this.ensureBrowsePhotosAhead();
+    } else if (this.browseDeltaX >= threshold && this.mobileBrowseIndex > 0) {
+      this.mobileBrowseIndex--;
+      this.ensureBrowsePhotosAhead();
+    }
+    this.resetBrowseGesture();
+  }
+
+  private resetBrowseGesture(): void {
+    if (this.browsePointerId !== null && this.browseContainer?.hasPointerCapture(this.browsePointerId)) {
+      this.browseContainer.releasePointerCapture(this.browsePointerId);
+    }
+    this.browseContainer = null;
+    this.browsePointerId = null;
+    this.browseDeltaX = 0;
+    this.browseAxisLocked = null;
+    this.mobileBrowseDragging = false;
+  }
+
+  private get isMobileBrowseEnabled(): boolean {
+    return window.matchMedia('(max-width: 1024px)').matches
+      && this.displayCards.length > 1
+      && !this.loading
+      && !this.showFilters;
+  }
+
+  private ensureBrowsePhotosAhead(): void {
+    this.clampMobileBrowseIndex();
+    const preloadIndex = this.mobileBrowseIndex + 2;
+    if (preloadIndex >= this.cards.length) {
+      return;
+    }
+    const card = this.cards[preloadIndex];
+    if (!card?.user.id || card.photoDataUrl) {
+      return;
+    }
+    const photoSize = photoSizeForLargeDisplay();
+    this.userService.getPhoto(card.user.id, photoSize).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (bytes: Uint8Array) => {
+        if (UserService.isDefaultProfilePhoto(bytes)) {
+          this.removeCardWithoutPhoto(card);
+          this.clampMobileBrowseIndex();
+        } else {
+          this.userService.releasePhotoUrl(card.photoDataUrl);
+          card.photoDataUrl = UserService.createPhotoUrl(bytes);
+          this.cards = [...this.cards];
+        }
+      },
+      error: () => {
+        this.removeCardWithoutPhoto(card);
+        this.clampMobileBrowseIndex();
+      },
+    });
+  }
+
+  private clampMobileBrowseIndex(): void {
+    const maxIndex = Math.max(0, this.displayCards.length - 1);
+    if (this.mobileBrowseIndex > maxIndex) {
+      this.mobileBrowseIndex = maxIndex;
+    }
   }
 
   get showNoCards(): boolean {
@@ -913,7 +1097,9 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
-    if (this.showFilters || this.loading) return;
+    if (!this.isUserVerified || this.showFilters || this.loading) {
+      return;
+    }
     if (this.displayCards.length === 0) return;
 
     switch (event.key) {

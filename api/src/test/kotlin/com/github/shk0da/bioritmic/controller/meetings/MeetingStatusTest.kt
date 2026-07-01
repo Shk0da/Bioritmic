@@ -69,6 +69,8 @@ class MeetingStatusTest : ApiApplicationTests() {
         val authB = authTokenCache.values.last { it.userId != null && it.userId != userAId }
         userBId = authB.userId!!
         userBToken = "Bearer ${authB.accessToken}"
+        verifyUserForTests(userAId)
+        verifyUserForTests(userBId)
     }
 
     @Test

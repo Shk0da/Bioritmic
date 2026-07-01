@@ -10,7 +10,6 @@ import com.github.shk0da.bioritmic.api.repository.StoryReactionRepository
 import com.github.shk0da.bioritmic.api.repository.StoryRepository
 import com.github.shk0da.bioritmic.api.repository.StoryViewBatchRepository
 import com.github.shk0da.bioritmic.api.repository.StoryViewRepository
-import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.model.story.StoryReactionType
 import com.github.shk0da.bioritmic.api.utils.ImageUtils
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
@@ -40,8 +39,8 @@ class StoryService(
     private val storyReactionRepository: StoryReactionRepository,
     private val storyReactionBatchRepository: StoryReactionBatchRepository,
     private val s3Service: S3Service,
-    private val userRepository: UserRepository,
     private val profanityFilterService: ProfanityFilterService,
+    private val userVerificationService: UserVerificationService,
 ) {
 
     companion object {
@@ -58,7 +57,7 @@ class StoryService(
 
     @Transactional(transactionManager = transactionManager)
     suspend fun createStory(userId: UUID, file: FilePart, caption: String?): Story {
-        requireVerifiedUser(userId)
+        userVerificationService.requireVerified(userId)
 
         checkNotEmpty(file.filename(), ErrorCode.INVALID_PARAMETER, mapOf("file" to "file"))
         checkFileExtension(
@@ -244,14 +243,6 @@ class StoryService(
         } catch (ex: IOException) {
             log.warn("Invalid story image: {}", ex.message)
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("file" to "file"))
-        }
-    }
-
-    private suspend fun requireVerifiedUser(userId: UUID) {
-        val user = userRepository.findById(userId)
-            ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
-        if (!user.isVerified) {
-            throw ApiException(ErrorCode.USER_NOT_VERIFIED)
         }
     }
 }

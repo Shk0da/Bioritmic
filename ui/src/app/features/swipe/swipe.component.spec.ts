@@ -14,6 +14,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { SwipeActionService } from '../../core/services/swipe-action.service';
 import { ShareService } from '../../core/services/share.service';
 import { ModalService } from '../../core/services/modal.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Router } from '@angular/router';
 import { StoryService } from '../../core/services/story.service';
 
@@ -62,16 +63,16 @@ describe('SwipeComponent', () => {
       'swipe',
       'setCards',
       'getCurrentIndex',
-      'canUndo',
       'undo',
     ]);
     matchService = jasmine.createSpyObj('MatchService', ['checkMatch']);
     const authService = jasmine.createSpyObj('AuthService', ['getCurrentUser'], {
       currentUser$: of(null),
     });
-    swipeActionService = jasmine.createSpyObj('SwipeActionService', ['skipUser']);
+    swipeActionService = jasmine.createSpyObj('SwipeActionService', ['skipUser', 'likeUser']);
     const shareService = jasmine.createSpyObj('ShareService', ['shareProfile']);
     const modalService = jasmine.createSpyObj('ModalService', ['alert']);
+    const toastService = jasmine.createSpyObj('ToastService', ['error', 'success']);
     const router = jasmine.createSpyObj('Router', ['navigate']);
 
     userService.getUserSettings.and.returnValue(of({}));
@@ -80,6 +81,7 @@ describe('SwipeComponent', () => {
     bookmarksService.addBookmark.and.returnValue(of([]));
     matchService.checkMatch.and.returnValue(of({ isMatch: false }));
     swipeActionService.skipUser.and.returnValue(of({ success: true }));
+    swipeActionService.likeUser.and.returnValue(of({ success: true }));
     swipeService.getCurrentIndex.and.returnValue(0);
     authService.getCurrentUser.and.returnValue({ id: 'me', name: 'Me', isVerified: true });
 
@@ -101,6 +103,7 @@ describe('SwipeComponent', () => {
         { provide: SwipeActionService, useValue: swipeActionService },
         { provide: ShareService, useValue: shareService },
         { provide: ModalService, useValue: modalService },
+        { provide: ToastService, useValue: toastService },
         { provide: Router, useValue: router },
         { provide: StoryService, useValue: storyService },
       ],
@@ -119,14 +122,15 @@ describe('SwipeComponent', () => {
     expect(swipeActionService.skipUser).toHaveBeenCalledWith('a');
   });
 
-  it('likeProfile should remove card and call bookmark + match check', () => {
+  it('likeProfile should remove card and call like + match check', () => {
     const cards = setCards([createCard('a'), createCard('b')]);
 
     component.likeProfile(cards[0]);
 
     expect(component.cards.map((c) => c.user.id)).toEqual(['b']);
     expect(cards.map((c) => c.user.id)).toEqual(['b']);
-    expect(bookmarksService.addBookmark).toHaveBeenCalledWith({ userId: 'a' });
+    expect(swipeActionService.likeUser).toHaveBeenCalledWith('a');
+    expect(bookmarksService.addBookmark).not.toHaveBeenCalled();
     expect(matchService.checkMatch).toHaveBeenCalledWith('a');
   });
 
@@ -219,6 +223,45 @@ describe('SwipeComponent', () => {
 
     component.manualSwipe(SwipeDirection.RIGHT);
 
+    expect(swipeService.swipe).not.toHaveBeenCalled();
+  });
+
+  it('manualSwipe should not swipe for unverified user', () => {
+    const withPhoto = createCard('a');
+    withPhoto.photoDataUrl = 'blob:test';
+    setCards([withPhoto]);
+    component.isUserVerified = false;
+
+    component.manualSwipe(SwipeDirection.RIGHT);
+
+    expect(swipeService.swipe).not.toHaveBeenCalled();
+  });
+
+  it('browse swipe should move to next card without calling swipe service', () => {
+    spyOn(window, 'matchMedia').and.returnValue({
+      matches: true,
+      media: '(max-width: 1024px)',
+    } as MediaQueryList);
+
+    const first = createCard('a');
+    first.photoDataUrl = 'blob:a';
+    const second = createCard('b');
+    second.photoDataUrl = 'blob:b';
+    setCards([first, second]);
+    component.mobileBrowseIndex = 0;
+
+    component.onBrowsePointerDown({
+      pointerId: 1,
+      button: 0,
+      clientX: 200,
+      clientY: 100,
+      target: document.createElement('div'),
+      currentTarget: document.createElement('div'),
+    } as unknown as PointerEvent);
+    (component as unknown as { browseDeltaX: number }).browseDeltaX = -100;
+    component.onBrowsePointerEnd();
+
+    expect(component.mobileBrowseIndex).toBe(1);
     expect(swipeService.swipe).not.toHaveBeenCalled();
   });
 });

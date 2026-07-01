@@ -486,7 +486,9 @@ class UserControllerTest : ApiApplicationTests() {
                 "name" to "Banned User",
                 "email" to email,
                 "password" to "Test12345",
-                "birthday" to "1990-01-01"
+                "birthday" to "1990-01-01",
+                "acceptedUserAgreement" to true,
+                "acceptedPersonalDataProcessing" to true,
             )))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
@@ -527,7 +529,9 @@ class UserControllerTest : ApiApplicationTests() {
                         "name" to "Online Status User",
                         "email" to email,
                         "password" to "Test12345",
-                        "birthday" to "1991-01-01"
+                        "birthday" to "1991-01-01",
+                        "acceptedUserAgreement" to true,
+                        "acceptedPersonalDataProcessing" to true,
                     )
                 )
             )
@@ -578,7 +582,9 @@ class UserControllerTest : ApiApplicationTests() {
                 "name" to "Unverified GIS User",
                 "email" to unverifiedEmail,
                 "password" to "Test12345",
-                "birthday" to "1992-01-01"
+                "birthday" to "1992-01-01",
+                "acceptedUserAgreement" to true,
+                "acceptedPersonalDataProcessing" to true,
             )))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()

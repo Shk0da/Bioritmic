@@ -34,6 +34,7 @@ class DiamondService(
     private val mailboxRealtimeNotifier: MailboxRealtimeNotifier,
     private val diamondBalanceNotifier: DiamondBalanceNotifier,
     private val pushNotificationService: PushNotificationService,
+    private val userVerificationService: UserVerificationService,
 ) {
     private val log = LoggerFactory.getLogger(DiamondService::class.java)
 
@@ -82,6 +83,7 @@ class DiamondService(
         amount: Long,
         requireBookmark: Boolean,
     ): DiamondTransferResult {
+        userVerificationService.requireVerified(fromUserId)
         validateAmount(amount)
         if (fromUserId == toUserId) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot transfer to yourself"))

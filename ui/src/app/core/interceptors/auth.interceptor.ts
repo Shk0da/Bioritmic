@@ -1,4 +1,5 @@
 import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   HttpInterceptorFn,
   HttpRequest,
@@ -11,6 +12,7 @@ import { catchError, filter, take, switchMap } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 import { PushNotificationService } from '../services/push-notification.service';
 import { UserToken } from '../models/user.model';
+import { isUserBannedHttpError } from '../utils/http-error.util';
 
 let isRefreshing = false;
 const refreshTokenSubject: BehaviorSubject<UserToken | null> = new BehaviorSubject<UserToken | null>(null);
@@ -18,6 +20,7 @@ const refreshTokenSubject: BehaviorSubject<UserToken | null> = new BehaviorSubje
 export const authInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEvent<unknown>> => {
   const authService = inject(AuthService);
   const pushService = inject(PushNotificationService);
+  const router = inject(Router);
   const token = authService.getToken();
 
   let authReq = req.clone({ withCredentials: true });
@@ -29,13 +32,22 @@ export const authInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEv
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 || error.status === 403) {
+      if (isUserBannedHttpError(error)) {
+        authService.clearAuth({ banned: true });
+        pushService.clearLocalPushState();
+        if (!router.url.startsWith('/auth/login')) {
+          void router.navigate(['/auth/login'], { queryParams: { banned: '1' } });
+        }
+        return throwError(() => error);
+      }
+      // Only 401 means expired/missing session. Business 403 (not verified, access denied, banned) must not trigger refresh.
+      if (error.status === 401) {
         if (authReq.url.includes('/logout')) {
           authService.clearAuth();
           pushService.clearLocalPushState();
           return throwError(() => error);
         }
-        return handle401Error(authReq, next, authService, pushService);
+        return handle401Error(authReq, next, authService, pushService, router);
       }
       return throwError(() => error);
     })
@@ -47,6 +59,7 @@ function handle401Error(
   next: HttpHandlerFn,
   authService: AuthService,
   pushService: PushNotificationService,
+  router: Router,
 ): Observable<HttpEvent<unknown>> {
   if (!isRefreshing) {
     isRefreshing = true;
@@ -76,8 +89,16 @@ function handle401Error(
       }),
       catchError((error) => {
         isRefreshing = false;
-        authService.clearAuth();
-        pushService.clearLocalPushState();
+        if (isUserBannedHttpError(error)) {
+          authService.clearAuth({ banned: true });
+          pushService.clearLocalPushState();
+          if (!router.url.startsWith('/auth/login')) {
+            void router.navigate(['/auth/login'], { queryParams: { banned: '1' } });
+          }
+        } else {
+          authService.clearAuth();
+          pushService.clearLocalPushState();
+        }
         return throwError(() => error);
       })
     );

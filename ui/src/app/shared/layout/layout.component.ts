@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@
 import { RouterLink, RouterOutlet, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
+import { hasAdminPanelAccess } from '../../core/utils/admin-access.util';
 import { UserInfo } from '../../core/models/user.model';
 import { UserService } from '../../core/services/user.service';
 import { MailboxService } from '../../core/services/mailbox.service';
@@ -70,10 +71,12 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
             [title]="themeService.isDark() ? 'Светлая тема' : 'Тёмная тема'">
             <i class="bi" [ngClass]="themeService.isDark() ? 'bi-sun-fill' : 'bi-moon-stars-fill'"></i>
           </button>
-          <a routerLink="/payments" routerLinkActive="active" class="nav-btn nav-btn-diamonds" title="Алмазы">
-            <img src="assets/img/diamond.png" alt="" class="diamond-nav-icon">
-            <span class="diamond-balance-badge">{{ formatDiamondBalance(diamondBalance) }}</span>
-          </a>
+          @if (isUserVerified) {
+            <a routerLink="/payments" routerLinkActive="active" class="nav-btn nav-btn-diamonds" title="Алмазы">
+              <img src="assets/img/diamond.png" alt="" class="diamond-nav-icon">
+              <span class="diamond-balance-badge">{{ formatDiamondBalance(diamondBalance) }}</span>
+            </a>
+          }
           <a routerLink="/profile" class="nav-btn" title="Профиль">
             <i class="bi bi-person-circle"></i>
           </a>
@@ -93,7 +96,7 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
         <div class="alert alert-warning verification-alert d-flex align-items-center mb-3" role="alert">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
           <div class="flex-grow-1">
-            <strong>Подтвердите email.</strong>
+            <strong>Подтвердите email, чтобы получить полный доступ.</strong>
             Мы отправили письмо с кодом — перейдите по ссылке или введите код на странице подтверждения.
             <a routerLink="/auth/verify-email" class="alert-link ms-1">Подтвердить email</a>
             ·
@@ -366,7 +369,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
       this.diamondBalance = user?.diamondBalance ?? 0;
-      this.isUserAdmin = !!(user?.role && user.role.includes('ADMIN'));
+      this.isUserAdmin = hasAdminPanelAccess(user?.role);
       this.isUserVerified = user?.isVerified !== false;
       if (user?.id) {
         this.loadUserPhoto(user.id);

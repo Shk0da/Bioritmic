@@ -25,6 +25,8 @@ class MissingEndpointsCoverageTest : ApiApplicationTests() {
         val uid = UUID.randomUUID().toString().substring(0, 8)
         aliceId = register("alice_extra_$uid@gmail.com", "Alice Extra")
         bobId = register("bob_extra_$uid@gmail.com", "Bob Extra")
+        verifyUserForTests(aliceId)
+        verifyUserForTests(bobId)
         aliceToken = token("alice_extra_$uid@gmail.com")
         bobToken = token("bob_extra_$uid@gmail.com")
     }

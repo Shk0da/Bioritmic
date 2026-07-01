@@ -116,14 +116,44 @@ Bioritmic/
 - **Token storage**: Cookies (NOT localStorage). Token is `access_token`, refresh is `refresh_token`, user object is `current_user`.
 - **HTTP Interceptor**: `core/interceptors/` adds `Authorization: Bearer <token>` to all API requests.
 - **Auth guard**: `core/guards/auth.guard.ts` protects all routes except `/auth/*`.
-- **Admin guard**: `core/guards/admin.guard.ts` protects `/admin/*` routes.
+- **Admin guard**: `core/guards/admin.guard.ts` protects `/admin/*` routes (admin **or** moderator via `admin-access.util.ts`).
 - **Backend auth**: `AuthController` issues tokens. `UserController.me()` returns current user with roles.
 
 ### Role System
 - Database table: `user_roles` (migration `0016-create-user-roles.xml`)
-- Roles: `ROLE_ADMIN`, `USER`, `BANNED`
+- Roles: `ROLE_ADMIN`, `ROLE_MODERATOR`, `ROLE_USER`, `ROLE_BANNED`
 - **First registered user automatically gets `ROLE_ADMIN`** (checked in `AuthController.registration()` by user count)
-- Admin status is included in `/api/v1/user/me` response via `role` field
+- Admin/moderator status is included in `/api/v1/user/me` response via `role` field (comma-separated if multiple)
+- **`ROLE_MODERATOR`**: access to `/api/v1/admin/**` and admin UI; can ban/unban regular users, verify users, resolve reports, manage banned words; **cannot** delete users, change roles, or set diamond balances; **cannot** ban admins or other moderators
+- **`ROLE_BANNED`**: login blocked (`API-403.2`); all sessions invalidated on ban (admin ban, role change to `BANNED`, or auto-ban via reports); refresh with known email also returns `API-403.2`
+
+### Email verification
+- New users have `isVerified: false` until they confirm email (`/api/v1/verify-email` or admin verify)
+- **Verified-only actions** (backend `UserVerificationService.requireVerified`): swipe like/skip, bookmarks, meetings, mailbox send, stories create, diamond transfer, boost
+- **Unverified users can**: browse `/swipe`, open `/search` filters, edit profile/settings, share invite link from swipe empty state
+- Frontend `authGuard` allows unverified routes: `/swipe`, `/search`, `/auth`, `/profile`, `/settings` (redirects others to `/swipe`)
+- Verification banner in layout: «Подтвердите email, чтобы получить полный доступ.»
+
+### Swipe, likes, and bookmarks
+- **Like** (`POST /api/v1/swipe/{userId}/like`): records mutual-match candidate in `user_likes` table (migration `0047-create-user-likes.xml`); does **not** add to bookmarks
+- **Super-like** (swipe up): like + add bookmark (same as before for favorites)
+- **Match** (`GET /api/v1/bookmarks/matches`): mutual **likes**, not mutual bookmarks; full profiles visible only with active boost
+
+### Usage limits
+| Resource | Limit | Error code | Limit endpoint |
+|----------|-------|------------|----------------|
+| Bookmarks (outgoing) | 100 | `API-400.8` | `GET /api/v1/bookmarks/limit` |
+| Meetings (outgoing total) | 20 | `API-400.12` | `GET /api/v1/meetings/limit` |
+| Meetings (outgoing per day) | 5 (calendar day `Europe/Moscow`) | `API-400.13` | same |
+- Re-adding the same bookmark/meeting to an existing user does not count toward limits
+- Updating an existing meeting proposal does not count toward daily limit
+
+### Banned users
+- Ban sources: admin/moderator `POST /admin/users/{id}/ban`, admin `POST /admin/users/{id}/role` with `BANNED`, auto-ban via `ReportService` (threshold in `report.auto-ban-threshold`)
+- On ban: `authService.deleteAuthByUserId` — immediate server-side logout
+- `BannedUserWebFilter`: secondary check on requests with valid token (returns `API-403.2`, clears cookies)
+- Frontend: `auth.interceptor` handles `API-403.2` → `clearAuth({ banned: true })` → login with message; refresh only on `401` (not business `403`)
+- Login error message: «Вы были заблокированы за нарушение правил сервиса»
 
 ### API Conventions
 - Base path: `/api/v1/` (defined in `ApiRoutes.kt`)
@@ -548,6 +578,11 @@ describe('Feature', function () {
 | Auth controller | `api/src/main/kotlin/.../controller/AuthController.kt` |
 | User controller | `api/src/main/kotlin/.../controller/users/UserController.kt` |
 | Admin controller | `api/src/main/kotlin/.../controller/AdminController.kt` |
+| Banned user filter | `api/src/main/kotlin/.../configuration/BannedUserWebFilter.kt` |
+| User verification | `api/src/main/kotlin/.../service/UserVerificationService.kt` |
+| Swipe actions | `api/src/main/kotlin/.../controller/SwipeController.kt` |
+| Bookmarks service (limits) | `api/src/main/kotlin/.../service/BookmarksService.kt` |
+| Meetings service (limits) | `api/src/main/kotlin/.../service/MeetingsService.kt` |
 | Database config | `api/src/main/resources/application.yml` |
 | Migrations | `api/src/main/resources/db-migrations/v1/` |
 | Test base class | `api/src/test/kotlin/.../ApiApplicationTests.kt` |
@@ -555,6 +590,8 @@ describe('Feature', function () {
 | Frontend routes | `ui/src/app/app.routes.ts` |
 | Auth service | `ui/src/app/core/services/auth.service.ts` |
 | Auth guard | `ui/src/app/core/guards/auth.guard.ts` |
+| Admin access util | `ui/src/app/core/utils/admin-access.util.ts` |
+| HTTP error messages | `ui/src/app/core/utils/http-error.util.ts` |
 | HTTP interceptor | `ui/src/app/core/interceptors/` |
 | E2E helpers | `ui/e2e/helpers.js` |
 | E2E tests | `ui/e2e/*.test.js` |
