@@ -73,6 +73,16 @@ html.pwa-standalone {
 [data-theme="dark"] {
   color-scheme: dark;
 
+  --bs-body-color: #e5e7eb;
+  --bs-body-bg: #111827;
+  --bs-emphasis-color: #f3f4f6;
+  --bs-secondary-color: #9ca3af;
+  --bs-secondary-bg: #1f2937;
+  --bs-tertiary-color: #6b7280;
+  --bs-tertiary-bg: #1e293b;
+  --bs-border-color: #374151;
+  --bs-heading-color: #e5e7eb;
+
   --bg-primary: #111827;
   --bg-secondary: #1f2937;
   --bg-tertiary: #0f172a;
@@ -250,6 +260,13 @@ app-layout {
   transition: all 0.3s ease;
   background: var(--bg-input);
   color: var(--text-primary);
+  -webkit-text-fill-color: currentColor;
+  caret-color: currentColor;
+
+  &::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+  }
 
   &:focus { outline: none; border-color: #fd297b; box-shadow: 0 0 0 3px rgba(253, 41, 123, 0.1); }
 
@@ -260,6 +277,19 @@ app-layout {
     opacity: 1;
     cursor: not-allowed;
     -webkit-text-fill-color: var(--text-secondary);
+  }
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+textarea,
+select {
+  color: var(--text-primary);
+  -webkit-text-fill-color: currentColor;
+  caret-color: currentColor;
+
+  &::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
   }
 }
 
@@ -750,6 +780,33 @@ option { background: var(--card-bg); color: var(--text-primary); }
     background: var(--card-bg);
     .form-control, .form-select { background: var(--bg-input); color: var(--text-primary); border-color: var(--border-color); }
     .form-label { color: var(--text-secondary); }
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+  textarea,
+  select,
+  .form-control,
+  .form-select,
+  .message-input {
+    color: var(--text-primary);
+    -webkit-text-fill-color: var(--text-primary);
+    caret-color: var(--text-primary);
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text-primary) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset !important;
+    box-shadow: 0 0 0 1000px var(--bg-input) inset !important;
+    caret-color: var(--text-primary);
+    transition: background-color 5000s ease-in-out 0s;
   }
 
   // Tables inside cards

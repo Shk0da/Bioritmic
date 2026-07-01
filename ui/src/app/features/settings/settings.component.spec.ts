@@ -44,4 +44,19 @@ describe('SettingsComponent', () => {
     component.save();
     expect(settingsService.updateSettings).toHaveBeenCalledWith(component.settings);
   });
+
+  it('onAgeRangeChange should keep ageMax above ageMin', () => {
+    component.settings.ageMin = 50;
+    component.settings.ageMax = 50;
+    component.onAgeRangeChange();
+    expect(component.settings.ageMax).toBe(51);
+  });
+
+  it('onAgeRangeChange should pull min back when both sliders reach max', () => {
+    component.settings.ageMin = 100;
+    component.settings.ageMax = 100;
+    component.onAgeRangeChange();
+    expect(component.settings.ageMin).toBe(99);
+    expect(component.settings.ageMax).toBe(100);
+  });
 });

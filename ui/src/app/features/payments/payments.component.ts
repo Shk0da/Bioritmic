@@ -134,27 +134,29 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
                 }
               </div>
             </div>
-            <div class="col-8 col-md-4">
-              <label class="form-label form-label-sm">Количество</label>
-              <input
-                type="number"
-                class="form-control form-control-sm"
-                min="1"
-                [(ngModel)]="transferAmount"
-                placeholder="Сколько алмазов">
-            </div>
-            <div class="col-4 col-md-3">
-              <button
-                type="button"
-                class="btn btn-primary btn-sm w-100"
-                [disabled]="!canTransfer || transferring"
-                (click)="transferToBookmark()">
-                @if (transferring) {
-                  <span class="spinner-border spinner-border-sm"></span>
-                } @else {
-                  Отправить
-                }
-              </button>
+            <div class="col-12 col-md-7">
+              <label class="form-label form-label-sm" for="transferAmount">Количество</label>
+              <div class="transfer-amount-row">
+                <input
+                  id="transferAmount"
+                  type="number"
+                  class="form-control form-control-sm transfer-control"
+                  min="1"
+                  [(ngModel)]="transferAmount"
+                  placeholder="Сколько алмазов"
+                  inputmode="numeric">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm transfer-control transfer-submit-btn"
+                  [disabled]="!canTransfer || transferring"
+                  (click)="transferToBookmark()">
+                  @if (transferring) {
+                    <span class="spinner-border spinner-border-sm"></span>
+                  } @else {
+                    Отправить
+                  }
+                </button>
+              </div>
             </div>
           </div>
           @if (transferError) {
@@ -296,6 +298,40 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
       color: #b91c1c;
       font-size: 0.92rem;
       line-height: 1.4;
+    }
+
+    .transfer-amount-row {
+      --transfer-control-height: 3.125rem;
+      display: flex;
+      align-items: stretch;
+      gap: 0.5rem;
+      min-width: 0;
+    }
+
+    .transfer-amount-row .transfer-control {
+      flex: 1 1 0;
+      min-width: 0;
+      height: var(--transfer-control-height);
+      min-height: var(--transfer-control-height);
+      max-height: var(--transfer-control-height);
+      box-sizing: border-box;
+      font-size: 0.875rem;
+      line-height: 1.25;
+      padding: 0 0.75rem;
+    }
+
+    .transfer-submit-btn.transfer-control {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      padding: 0 0.75rem;
+      transform: none;
+    }
+
+    .transfer-submit-btn.transfer-control:hover,
+    .transfer-submit-btn.transfer-control:active {
+      transform: none;
     }
 
     .withdraw-modal-overlay {

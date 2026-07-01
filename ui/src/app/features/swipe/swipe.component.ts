@@ -27,6 +27,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
 import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
+import { normalizeAgeRange } from '../../shared/utils/age-range.util';
 
 @Component({
   selector: 'app-swipe',
@@ -288,9 +289,9 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
         <button
           type="button"
           class="control-btn btn-profile"
-          [disabled]="displayCards.length === 0 || !isUserVerified"
+          [disabled]="!activeDisplayCard || !isUserVerified"
           [title]="isUserVerified ? 'Профиль' : 'Доступно после верификации email'"
-          (click)="openProfile(displayCards[0])">
+          (click)="openProfile(activeDisplayCard ?? undefined)">
           <i class="bi bi-person"></i>
         </button>
         <button class="control-btn btn-like" (click)="manualSwipe(SwipeDirection.RIGHT)" [disabled]="displayCards.length === 0">
@@ -323,8 +324,8 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
             <label class="filter-label">
               Возраст: {{ searchCriteria.ageMin }} - {{ searchCriteria.ageMax }}
             </label>
-            <input type="range" class="form-range" [(ngModel)]="searchCriteria.ageMin" min="14" max="100" (ngModelChange)="onAgeMinChange()">
-            <input type="range" class="form-range" [(ngModel)]="searchCriteria.ageMax" min="14" max="100">
+            <input type="range" class="form-range" [(ngModel)]="searchCriteria.ageMin" min="14" max="100" (ngModelChange)="onAgeRangeChange()">
+            <input type="range" class="form-range" [(ngModel)]="searchCriteria.ageMax" min="14" max="100" (ngModelChange)="onAgeRangeChange()">
           </div>
 
           <div class="filter-group">
@@ -872,6 +873,15 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.cards.filter((card) => !!card.photoDataUrl);
   }
 
+  get activeDisplayCard(): SwipeCard | null {
+    const cards = this.displayCards;
+    if (cards.length === 0) {
+      return null;
+    }
+    const index = Math.max(0, Math.min(this.mobileBrowseIndex, cards.length - 1));
+    return cards[index] ?? null;
+  }
+
   get mobileBrowseStack(): SwipeCard[] {
     const cards = this.displayCards;
     const stack: SwipeCard[] = [];
@@ -1069,6 +1079,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   applyFilters(): void {
+    this.onAgeRangeChange();
     const settings: UserSettings = {
       gender: this.searchCriteria.gender,
       ageMin: this.searchCriteria.ageMin,
@@ -1088,12 +1099,13 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  onAgeMinChange(): void {
-    if (this.searchCriteria.ageMin !== undefined &&
-        this.searchCriteria.ageMax !== undefined &&
-        this.searchCriteria.ageMin >= this.searchCriteria.ageMax) {
-      this.searchCriteria.ageMax = this.searchCriteria.ageMin + 1;
+  onAgeRangeChange(): void {
+    if (this.searchCriteria.ageMin === undefined || this.searchCriteria.ageMax === undefined) {
+      return;
     }
+    const normalized = normalizeAgeRange(this.searchCriteria.ageMin, this.searchCriteria.ageMax);
+    this.searchCriteria.ageMin = normalized.ageMin;
+    this.searchCriteria.ageMax = normalized.ageMax;
   }
 
   private onKeyDown(event: KeyboardEvent): void {

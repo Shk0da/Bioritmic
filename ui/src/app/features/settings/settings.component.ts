@@ -7,6 +7,7 @@ import { UserSettings, Gender } from '../../core/models/user.model';
 import { PageBackLinkComponent } from '../../shared/components/page-back-link/page-back-link.component';
 import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
 import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
+import { normalizeAgeRange } from '../../shared/utils/age-range.util';
 
 @Component({
   selector: 'app-settings',
@@ -46,34 +47,33 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
                   </select>
                 </div>
 
-                <div class="row mb-4">
-                  <div class="col-6">
-                    <label for="ageMin" class="form-label">Возраст от</label>
-                    <input
-                      type="number"
-                      class="form-control"
-                      id="ageMin"
-                      [(ngModel)]="settings.ageMin"
-                      name="ageMin"
-                      min="14"
-                      max="100">
-                  </div>
-                  <div class="col-6">
-                    <label for="ageMax" class="form-label">Возраст до</label>
-                    <input
-                      type="number"
-                      class="form-control"
-                      id="ageMax"
-                      [(ngModel)]="settings.ageMax"
-                      name="ageMax"
-                      min="14"
-                      max="100">
-                  </div>
+                <div class="mb-4">
+                  <label class="form-label">
+                    Возраст: {{ settings.ageMin }} - {{ settings.ageMax }}
+                  </label>
+                  <input
+                    type="range"
+                    class="form-range"
+                    id="ageMin"
+                    [(ngModel)]="settings.ageMin"
+                    name="ageMin"
+                    min="14"
+                    max="100"
+                    (ngModelChange)="onAgeRangeChange()">
+                  <input
+                    type="range"
+                    class="form-range"
+                    id="ageMax"
+                    [(ngModel)]="settings.ageMax"
+                    name="ageMax"
+                    min="14"
+                    max="100"
+                    (ngModelChange)="onAgeRangeChange()">
                 </div>
 
                 <div class="mb-4">
                   <label for="distance" class="form-label">
-                    Расстояние: <strong class="text-primary">{{ settings.distance }} км</strong>
+                    Расстояние: {{ settings.distance }} км
                   </label>
                   <input
                     type="range"
@@ -84,10 +84,6 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
                     min="0.05"
                     max="100"
                     step="0.05">
-                  <div class="d-flex justify-content-between small text-muted mt-1">
-                    <span>0.05 км</span>
-                    <span>100 км</span>
-                  </div>
                 </div>
 
                 <div class="d-grid">
@@ -157,6 +153,7 @@ export class SettingsComponent implements OnInit {
         if (settings.distance !== undefined && settings.distance !== null) {
           this.settings.distance = settings.distance;
         }
+        this.applyAgeRangeConstraints();
         this.loading = false;
       },
       error: () => {
@@ -166,6 +163,7 @@ export class SettingsComponent implements OnInit {
   }
 
   save(): void {
+    this.applyAgeRangeConstraints();
     this.saving = true;
     this.settingsService.updateSettings(this.settings).subscribe({
       next: () => {
@@ -177,5 +175,18 @@ export class SettingsComponent implements OnInit {
         void this.modalService.alert('Ошибка сохранения настроек', 'Ошибка');
       }
     });
+  }
+
+  onAgeRangeChange(): void {
+    this.applyAgeRangeConstraints();
+  }
+
+  private applyAgeRangeConstraints(): void {
+    if (this.settings.ageMin === undefined || this.settings.ageMax === undefined) {
+      return;
+    }
+    const normalized = normalizeAgeRange(this.settings.ageMin, this.settings.ageMax);
+    this.settings.ageMin = normalized.ageMin;
+    this.settings.ageMax = normalized.ageMax;
   }
 }

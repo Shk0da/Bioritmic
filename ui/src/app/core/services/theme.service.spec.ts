@@ -7,6 +7,7 @@ describe('ThemeService', () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
+    document.documentElement.removeAttribute('data-bs-theme');
     TestBed.configureTestingModule({});
     service = TestBed.inject(ThemeService);
   });
@@ -14,6 +15,7 @@ describe('ThemeService', () => {
   afterEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
+    document.documentElement.removeAttribute('data-bs-theme');
   });
 
   it('should be created', () => {
@@ -34,6 +36,7 @@ describe('ThemeService', () => {
 
   it('constructor should apply initial theme to document', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.getAttribute('data-bs-theme')).toBe('light');
   });
 
   it('should toggle from light to dark', () => {
@@ -60,9 +63,13 @@ describe('ThemeService', () => {
 
   it('setTheme should apply selected theme', () => {
     service.setTheme('dark');
+    TestBed.flushEffects();
     expect(service.theme()).toBe('dark');
+    expect(document.documentElement.getAttribute('data-bs-theme')).toBe('dark');
     service.setTheme('light');
+    TestBed.flushEffects();
     expect(service.theme()).toBe('light');
+    expect(document.documentElement.getAttribute('data-bs-theme')).toBe('light');
   });
 
   it('constructor should persist initial theme to localStorage', () => {

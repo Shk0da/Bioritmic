@@ -10,11 +10,13 @@ import {
   meetsMinimumAge,
   MIN_AGE_REGISTRATION_MESSAGE
 } from '../../../shared/utils/age-validation.util';
+import { LegalFullscreenModalComponent } from '../../legal/legal-fullscreen-modal.component';
+import { LegalDocumentType } from '../../legal/legal-document-type';
 
 @Component({
   selector: 'app-registration',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, LegalFullscreenModalComponent],
   template: `
     <div class="auth-container">
       <div class="auth-card card">
@@ -123,7 +125,7 @@ import {
                   [(ngModel)]="acceptedUserAgreement">
                 <label class="form-check-label" for="acceptedUserAgreement">
                   Я прочитал(а) и принимаю
-                  <a routerLink="/auth/legal/user-agreement" target="_blank" rel="noopener">Пользовательское соглашение</a>
+                  <button type="button" class="legal-link-btn" (click)="openLegalDocument('user-agreement', $event)">Пользовательское соглашение</button>
                 </label>
               </div>
               <div class="form-check">
@@ -134,9 +136,7 @@ import {
                   name="acceptedPersonalDataProcessing"
                   [(ngModel)]="acceptedPersonalDataProcessing">
                 <label class="form-check-label" for="acceptedPersonalDataProcessing">
-                  Я даю
-                  <a routerLink="/auth/legal/privacy-policy" target="_blank" rel="noopener">согласие на обработку персональных данных</a>
-                  в соответствии с Федеральным законом № 152-ФЗ
+                  Я даю&nbsp;<button type="button" class="legal-link-btn" (click)="openLegalDocument('privacy-policy', $event)">согласие на обработку персональных данных</button> в соответствии с Федеральным законом № 152-ФЗ
                 </label>
               </div>
             </div>
@@ -164,8 +164,23 @@ import {
         </div>
       </div>
     </div>
+
+    <app-legal-fullscreen-modal
+      [visible]="legalModalOpen"
+      [document]="legalModalDocument"
+      (closed)="closeLegalDocument()"
+      (documentChange)="legalModalDocument = $event" />
   `,
   styles: [`
+    :host {
+      display: block;
+      max-width: 100%;
+    }
+
+    .card-body {
+      min-width: 0;
+    }
+
     .logo-large {
       .logo-couple {
         display: flex;
@@ -231,21 +246,52 @@ import {
       border-radius: 12px;
       background: var(--bg-secondary, #f8fafc);
       border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .legal-consents .form-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding-left: 0;
+      min-width: 0;
+    }
+
+    .legal-consents .form-check-input {
+      flex-shrink: 0;
+      margin-top: 0.2rem;
+      margin-left: 0;
+      float: none;
     }
 
     .legal-consents .form-check-label {
       font-size: 0.85rem;
       line-height: 1.45;
       color: var(--text-primary, #1f2937);
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
-    .legal-consents a {
+    .legal-link-btn {
+      display: inline;
       color: #fd297b;
       font-weight: 600;
       text-decoration: none;
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      cursor: pointer;
+      vertical-align: baseline;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      text-align: left;
+      max-width: 100%;
     }
 
-    .legal-consents a:hover {
+    .legal-link-btn:hover {
       text-decoration: underline;
     }
   `]
@@ -265,6 +311,8 @@ export class RegistrationComponent {
   registered = false;
   acceptedUserAgreement = false;
   acceptedPersonalDataProcessing = false;
+  legalModalOpen = false;
+  legalModalDocument: LegalDocumentType | null = null;
 
   constructor(
     private authService: AuthService,
@@ -284,6 +332,18 @@ export class RegistrationComponent {
     } else if (this.error === MIN_AGE_REGISTRATION_MESSAGE) {
       this.error = '';
     }
+  }
+
+  openLegalDocument(document: LegalDocumentType, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.legalModalDocument = document;
+    this.legalModalOpen = true;
+  }
+
+  closeLegalDocument(): void {
+    this.legalModalOpen = false;
+    this.legalModalDocument = null;
   }
 
   isFormValid(): boolean {

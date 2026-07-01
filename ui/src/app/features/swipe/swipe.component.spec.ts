@@ -28,6 +28,7 @@ describe('SwipeComponent', () => {
   let swipeService: jasmine.SpyObj<SwipeService>;
   let matchService: jasmine.SpyObj<MatchService>;
   let swipeActionService: jasmine.SpyObj<SwipeActionService>;
+  let router: jasmine.SpyObj<Router>;
 
   function createCard(id?: string): SwipeCard {
     return {
@@ -73,7 +74,8 @@ describe('SwipeComponent', () => {
     const shareService = jasmine.createSpyObj('ShareService', ['shareProfile']);
     const modalService = jasmine.createSpyObj('ModalService', ['alert']);
     const toastService = jasmine.createSpyObj('ToastService', ['error', 'success']);
-    const router = jasmine.createSpyObj('Router', ['navigate']);
+    const routerSpy = jasmine.createSpyObj('Router', ['navigate']);
+    router = routerSpy;
 
     userService.getUserSettings.and.returnValue(of({}));
     userService.getGisData.and.returnValue(of({ userId: 'me', lat: 55.7558, lon: 37.6173 }));
@@ -104,7 +106,7 @@ describe('SwipeComponent', () => {
         { provide: ShareService, useValue: shareService },
         { provide: ModalService, useValue: modalService },
         { provide: ToastService, useValue: toastService },
-        { provide: Router, useValue: router },
+        { provide: Router, useValue: routerSpy },
         { provide: StoryService, useValue: storyService },
       ],
     }).compileComponents();
@@ -263,5 +265,19 @@ describe('SwipeComponent', () => {
 
     expect(component.mobileBrowseIndex).toBe(1);
     expect(swipeService.swipe).not.toHaveBeenCalled();
+  });
+
+  it('openProfile should open currently browsed card, not always the first one', () => {
+    const first = createCard('a');
+    first.photoDataUrl = 'blob:a';
+    const second = createCard('b');
+    second.photoDataUrl = 'blob:b';
+    setCards([first, second]);
+    component.mobileBrowseIndex = 1;
+    component.isUserVerified = true;
+
+    component.openProfile(component.activeDisplayCard ?? undefined);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/user', 'b']);
   });
 });

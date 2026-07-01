@@ -27,6 +27,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Subject, takeUntil } from 'rxjs';
 import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
+import { LinkifiedTextComponent } from '../../../shared/components/linkified-text/linkified-text.component';
 import { formatMessageDateTime, formatMessageTime } from '../../../shared/utils/timestamp.util';
 import { isSystemMailMessage, isSystemMailVisibleToViewer } from '../../../shared/utils/mail-system-message.util';
 import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
@@ -41,7 +42,7 @@ interface ChatMessage extends UserMail {
 @Component({
   selector: 'app-conversation-panel',
   standalone: true,
-  imports: [RouterLink, FormsModule, ImageCropModalComponent],
+  imports: [RouterLink, FormsModule, ImageCropModalComponent, LinkifiedTextComponent],
   template: `
     <div class="conversation-panel">
       <div class="chat-subheader" data-pull-refresh-zone>
@@ -116,7 +117,7 @@ interface ChatMessage extends UserMail {
                 class="message-wrapper system"
                 [attr.data-message-id]="message.id ?? null">
                 <div class="system-message">
-                  <span class="system-message-text">{{ message.message }}</span>
+                  <app-linkified-text class="system-message-text" [text]="message.message ?? ''"></app-linkified-text>
                   @if (message.timestamp) {
                     <span
                       class="system-message-time"
@@ -162,7 +163,7 @@ interface ChatMessage extends UserMail {
                     (keydown.enter)="scrollToReplyMessage(message, $event)"
                     (keydown.space)="scrollToReplyMessage(message, $event)">
                     <span class="reply-reference-label">Ответ на сообщение</span>
-                    <span class="reply-reference-text">{{ getReplyReferenceText(message) }}</span>
+                    <app-linkified-text class="reply-reference-text" [text]="getReplyReferenceText(message)" [singleLine]="true"></app-linkified-text>
                   </div>
                 }
                 @if (message.mediaType === 'PHOTO' && message.mediaUrl) {
@@ -225,7 +226,9 @@ interface ChatMessage extends UserMail {
                   </div>
                 }
                 @if (showMessageText(message)) {
-                  <div class="message-text">{{ message.message }}</div>
+                  <div class="message-text">
+                    <app-linkified-text [text]="message.message ?? ''"></app-linkified-text>
+                  </div>
                 }
                 <div class="message-meta">
                   <span
@@ -320,7 +323,7 @@ interface ChatMessage extends UserMail {
             <div class="reply-preview">
               <div class="reply-preview-content">
                 <span class="reply-preview-label">Ответ на: {{ replyingToMessage.isCurrentUser ? 'ваше сообщение' : (otherUserName || 'сообщение') }}</span>
-                <span class="reply-preview-text">{{ getReplyPreviewText(replyingToMessage) }}</span>
+                <app-linkified-text class="reply-preview-text" [text]="getReplyPreviewText(replyingToMessage)" [singleLine]="true"></app-linkified-text>
               </div>
               <button type="button" class="reply-preview-close" (click)="cancelReply()" title="Отменить ответ">
                 <i class="bi bi-x-lg"></i>
@@ -703,6 +706,7 @@ interface ChatMessage extends UserMail {
     }
 
     .system-message-text {
+      display: block;
       font-style: italic;
       color: var(--text-muted, #6c757d);
       font-size: 0.875rem;
@@ -1235,10 +1239,6 @@ interface ChatMessage extends UserMail {
       font-size: 0.82rem;
       color: var(--text-primary);
       font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
     }
 
     .reply-preview-close {
@@ -1295,10 +1295,6 @@ interface ChatMessage extends UserMail {
       font-size: 0.84rem;
       color: var(--text-primary);
       font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 220px;
     }
 
     .message-bubble.outgoing .reply-reference-text {

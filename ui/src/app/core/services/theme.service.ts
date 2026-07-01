@@ -24,6 +24,7 @@ export class ThemeService {
 
   private applyTheme(theme: Theme): void {
     document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-bs-theme', theme);
     localStorage.setItem(this.STORAGE_KEY, theme);
   }
 
