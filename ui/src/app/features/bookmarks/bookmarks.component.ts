@@ -35,9 +35,6 @@ interface UserWithPhoto extends UserInfo {
       </h1>
       <p class="text-muted page-subtitle d-none d-md-block">
         Сохранённые профили
-        @if (bookmarkLimit > 0) {
-          <span class="ms-1">({{ bookmarkCount }} из {{ bookmarkLimit }})</span>
-        }
       </p>
     </div>
 
