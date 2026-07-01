@@ -93,7 +93,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.5rem;
-    max-width: 1400px;
+    width: 100%;
     margin: 0 auto;
   }
 
@@ -1001,6 +1001,18 @@
 
 /* Десктопная версия: показываем профили, скрываем карточки */
 @media (min-width: 1025px) {
+  :host .page-layout,
+  :host .page-col {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .swipe-container {
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+  }
+
   .mobile-swipe-container,
   .swipe-controls {
     display: none !important;
@@ -1017,6 +1029,25 @@
 
 /* Мобильная версия: скрываем десктопные элементы */
 @media (max-width: 1024px) {
+  :host .page-layout {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  :host .page-col {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  :host .page-layout,
+  :host .page-col {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
+
   .desktop-profiles-container {
     display: none !important;
   }

@@ -6,7 +6,7 @@ import com.github.shk0da.bioritmic.api.model.user.MatchesResponse
 import com.github.shk0da.bioritmic.api.model.user.UserBookmark
 import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.service.BookmarksService
-import com.github.shk0da.bioritmic.api.service.SubscriptionService
+import com.github.shk0da.bioritmic.api.service.BoostService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import org.springdoc.core.annotations.ParameterObject
 import org.springframework.data.domain.Pageable
@@ -28,7 +28,7 @@ import javax.validation.Valid
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/bookmarks")
 class BookmarkController(
     val bookmarksService: BookmarksService,
-    val subscriptionService: SubscriptionService
+    val boostService: BoostService,
 ) {
 
     // GET /bookmarks/
@@ -54,8 +54,8 @@ class BookmarkController(
     @GetMapping(value = ["/matches"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun getMatches(): MatchesResponse {
         val userId = getUserId()
-        val isPro = subscriptionService.isProUser(userId)
-        if (!isPro) {
+        val hasActiveBoost = boostService.isBoosted(userId)
+        if (!hasActiveBoost) {
             val count = bookmarksService.countMatches(userId)
             return MatchesResponse(count = count, blurred = true)
         }

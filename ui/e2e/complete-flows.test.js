@@ -371,9 +371,9 @@ describe('Настройки пользователя', function () {
   });
 });
 
-// ==================== ПОДПИСКА (ПРЕМИУМ) ====================
+// ==================== АЛМАЗЫ ====================
 
-describe('Страница подписки', function () {
+describe('Страница алмазов', function () {
   this.timeout(90000);
 
   before(async function () {
@@ -386,28 +386,19 @@ describe('Страница подписки', function () {
     await quitDriver(driverA);
   });
 
-  it('Страница подписки загружается', async function () {
-    await navigateTo(driverA, '/subscription');
+  it('Страница алмазов загружается', async function () {
+    await navigateTo(driverA, '/payments');
     await driverA.sleep(3000);
     const url = await driverA.getCurrentUrl();
-    assert.ok(url.includes('/subscription'), 'Должен быть переход на /subscription');
+    assert.ok(url.includes('/payments'), 'Должен быть переход на /payments');
   });
 
-  it('Отображаются тарифные планы (бесплатный и Pro)', async function () {
+  it('Отображается баланс алмазов', async function () {
     const bodyText = await driverA.findElement(By.css('body')).getText();
     assert.ok(
-      bodyText.includes('Pro') || bodyText.includes('PREMIUM'),
-      'Должен отображаться Pro тариф'
+      bodyText.includes('Алмаз') || bodyText.includes('💎'),
+      'Должен отображаться баланс алмазов'
     );
-    assert.ok(
-      bodyText.includes('Бесплатный') || bodyText.includes('Free'),
-      'Должен отображаться бесплатный тариф'
-    );
-  });
-
-  it('Pro тариф содержит кнопку "Подписаться"', async function () {
-    const subscribeBtn = await isElementPresent(driverA, By.css('button.btn-warning'));
-    assert.ok(subscribeBtn, 'Кнопка "Подписаться" должна отображаться');
   });
 });
 

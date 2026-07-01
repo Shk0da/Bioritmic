@@ -9,5 +9,7 @@ data class UserModel(
     val email: String,
     val birthday: String,
     val gender: String? = null,
-    val password: String? = null
+    val password: String? = null,
+    val acceptedUserAgreement: Boolean? = true,
+    val acceptedPersonalDataProcessing: Boolean? = true,
 ) : BasicPresentation

@@ -148,6 +148,37 @@ describe('AuthService', () => {
     });
   });
 
+  describe('updateDiamondBalance', () => {
+    it('should update diamond balance in current user and localStorage', () => {
+      service.loadCurrentUser().subscribe();
+      httpMock.expectOne('/api/v1/user/me').flush({
+        id: '1',
+        name: 'John',
+        email: 'j@t.com',
+        diamondBalance: 100,
+      });
+
+      service.updateDiamondBalance(75);
+
+      expect(service.getCurrentUser()?.diamondBalance).toBe(75);
+      expect(JSON.parse(localStorage.getItem('current_user')!).diamondBalance).toBe(75);
+    });
+
+    it('should ignore duplicate balance updates', () => {
+      service.loadCurrentUser().subscribe();
+      httpMock.expectOne('/api/v1/user/me').flush({
+        id: '1',
+        name: 'John',
+        email: 'j@t.com',
+        diamondBalance: 50,
+      });
+
+      service.updateDiamondBalance(50);
+
+      expect(service.getCurrentUser()?.diamondBalance).toBe(50);
+    });
+  });
+
   describe('loadCurrentUser', () => {
     it('should GET /api/v1/user/me and update user', () => {
       const user: UserInfo = { id: '1', name: 'Loaded', email: 'l@t.com' };

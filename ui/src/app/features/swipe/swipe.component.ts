@@ -7,7 +7,6 @@ import { GeoService } from '../../core/services/geo.service';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { SwipeService, SwipeResult } from '../../core/services/swipe.service';
 import { MatchService } from '../../core/services/match.service';
-import { SubscriptionService } from '../../core/services/subscription.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SwipeActionService } from '../../core/services/swipe-action.service';
 import { UserInfo, Gender, UserSearch, UserSettings, SwipeDirection, SwipeCard } from '../../core/models/user.model';
@@ -32,6 +31,8 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
   standalone: true,
   imports: [RouterLink, FormsModule, NgClass, StoriesBarComponent, MatchModalComponent, AvatarStatusBadgeComponent],
   template: `
+    <div class="row page-layout">
+      <div class="col-12 col-md-8 mx-auto page-col">
     <div class="swipe-container">
       <div class="stories-row">
         <app-stories-bar></app-stories-bar>
@@ -278,10 +279,10 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
         <button class="control-btn btn-undo" (click)="undoSwipe()" [disabled]="displayCards.length === 0 && !canUndo()" title="Отменить">
           <i class="bi bi-arrow-counterclockwise"></i>
         </button>
-        <button class="control-btn btn-dislike" data-testid="swipe-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="displayCards.length === 0 || (!isPro && swipeRemaining <= 0)">
+        <button class="control-btn btn-dislike" data-testid="swipe-dislike" (click)="manualSwipe(SwipeDirection.LEFT)" [disabled]="displayCards.length === 0">
           <i class="bi bi-x-lg"></i>
         </button>
-        <button class="control-btn btn-superlike" (click)="manualSwipe(SwipeDirection.UP)" [disabled]="displayCards.length === 0 || (!isPro && swipeRemaining <= 0)" title="Супер-лайк">
+        <button class="control-btn btn-superlike" (click)="manualSwipe(SwipeDirection.UP)" [disabled]="displayCards.length === 0" title="Супер-лайк">
           <i class="bi bi-star-fill"></i>
         </button>
         <button
@@ -292,31 +293,13 @@ import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
           (click)="openProfile(displayCards[0])">
           <i class="bi bi-person"></i>
         </button>
-        <button class="control-btn btn-like" (click)="manualSwipe(SwipeDirection.RIGHT)" [disabled]="displayCards.length === 0 || (!isPro && swipeRemaining <= 0)">
+        <button class="control-btn btn-like" (click)="manualSwipe(SwipeDirection.RIGHT)" [disabled]="displayCards.length === 0">
           <i class="bi bi-heart-fill"></i>
         </button>
       </div>
       }
-
-      <!-- Счётчик свайпов и CTA -->
-      @if (!isPro && swipeLimit > 0) {
-        <div class="swipe-limit-bar">
-          @if (swipeRemaining > 0) {
-            <span class="swipe-limit-text">{{ swipeRemaining }}/{{ swipeLimit }} свайпов</span>
-          } @else {
-            <div class="swipe-limit-cta">
-              <p class="cta-text">Обновите до Pro для неограниченных свайпов</p>
-              @if (isUserVerified) {
-                <a routerLink="/subscription" class="btn btn-pro">
-                  <i class="bi bi-star-fill me-1"></i> Bioritmic Pro
-                </a>
-              } @else {
-                <span class="cta-hint">Подтвердите email для доступа к подписке</span>
-              }
-            </div>
-          }
-        </div>
-      }
+    </div>
+      </div>
     </div>
 
     <!-- Модальное окно фильтров -->
@@ -398,10 +381,6 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   private onlineTickInterval: ReturnType<typeof setInterval> | null = null;
   private onlineTickMs = Date.now();
 
-  // Swipe limit state
-  swipeLimit = -1;
-  swipeRemaining = -1;
-  isPro = false;
   isUserVerified = true;
   swipeHistory: Array<{ direction: SwipeDirection; card: SwipeCard }> = [];
   showMatchModal = false;
@@ -420,7 +399,6 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     private bookmarksService: BookmarksService,
     private swipeService: SwipeService,
     private matchService: MatchService,
-    private subscriptionService: SubscriptionService,
     private authService: AuthService,
     private swipeActionService: SwipeActionService,
     private shareService: ShareService,
@@ -441,10 +419,8 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
     });
     this.isUserVerified = user?.isVerified !== false;
     this.loadUserSettings();
-    this.loadSwipeLimit();
     registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/swipe', () => ({
       refresh: () => {
-        this.loadSwipeLimit();
         this.loadUserSettings();
       },
       isEnabled: () => !this.loading,
@@ -454,13 +430,6 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.currentUserId = user?.id ?? null;
       this.currentUserName = user?.name ?? 'Профиль';
       this.isUserVerified = user?.isVerified !== false;
-      if (user?.isPro !== undefined) {
-        this.isPro = user.isPro;
-        if (this.isPro) {
-          this.swipeLimit = -1;
-          this.swipeRemaining = -1;
-        }
-      }
     });
 
     this.swipeService.onSwipe
@@ -540,15 +509,6 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.search();
       }
     });
-  }
-
-  private loadSwipeLimit(): void {
-    const user = this.authService.getCurrentUser();
-    this.isPro = user?.isPro === true;
-    if (this.isPro) {
-      this.swipeLimit = -1;
-      this.swipeRemaining = -1;
-    }
   }
 
   private search(): void {
@@ -772,22 +732,17 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Методы для десктопной версии
   removeCard(card: SwipeCard): void {
-    this.decrementSwipeLimit();
     this.trackSwipeDecision(card, SwipeDirection.LEFT);
     this.removeCardFromLists(card);
   }
 
   likeProfile(card: SwipeCard): void {
-    this.decrementSwipeLimit();
     this.trackSwipeDecision(card, SwipeDirection.RIGHT);
     this.removeCardFromLists(card);
   }
 
   superLikeProfile(card: SwipeCard): void {
-    const swiped = this.swipeService.swipe(SwipeDirection.UP);
-    if (swiped) {
-      this.decrementSwipeLimit();
-    }
+    this.swipeService.swipe(SwipeDirection.UP);
   }
 
   openProfile(card?: SwipeCard): void {
@@ -798,12 +753,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   undoSwipe(): void {
-    const card = this.swipeService.undo();
-    if (card) {
-      if (!this.isPro && this.swipeRemaining < this.swipeLimit) {
-        this.swipeRemaining++;
-      }
-    }
+    this.swipeService.undo();
   }
 
   canUndo(): boolean {
@@ -812,17 +762,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   manualSwipe(direction: SwipeDirection): void {
     if (this.displayCards.length === 0) return;
-
-    const card = this.swipeService.swipe(direction);
-    if (card) {
-      this.decrementSwipeLimit();
-    }
-  }
-
-  private decrementSwipeLimit(): void {
-    if (!this.isPro && this.swipeRemaining > 0) {
-      this.swipeRemaining--;
-    }
+    this.swipeService.swipe(direction);
   }
 
   private handleSwipeResult(result: SwipeResult): void {

@@ -37,7 +37,9 @@ class StoryControllerTest : ApiApplicationTests() {
                 "name" to "Story Test User",
                 "email" to email,
                 "password" to "Test12345",
-                "birthday" to "1990-01-01"
+                "birthday" to "1990-01-01",
+            "acceptedUserAgreement" to true,
+            "acceptedPersonalDataProcessing" to true
             )))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
@@ -56,7 +58,7 @@ class StoryControllerTest : ApiApplicationTests() {
         val auth = authTokenCache.entries.find { it.value.userId != null }?.value
         userId = auth?.userId
         authToken = "Bearer ${auth?.accessToken}"
-        userId?.let { verifyUser(it) }
+        userId?.let { verifyUserForTests(it) }
     }
 
     @Test
@@ -263,7 +265,7 @@ class StoryControllerTest : ApiApplicationTests() {
         val authorToken = loginToken(authorEmail)
         val viewerToken = loginToken(viewerEmail)
         val authorId = userIdFromToken(authorToken)
-        verifyUser(authorId)
+        verifyUserForTests(authorId)
 
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/stories")
@@ -311,7 +313,7 @@ class StoryControllerTest : ApiApplicationTests() {
         registerUser(authorEmail, "Story Self")
         val authorToken = loginToken(authorEmail)
         val authorId = userIdFromToken(authorToken)
-        verifyUser(authorId)
+        verifyUserForTests(authorId)
 
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/stories")
@@ -418,7 +420,7 @@ class StoryControllerTest : ApiApplicationTests() {
 
         val authorToken = loginToken(authorEmail)
         val viewerToken = loginToken(viewerEmail)
-        verifyUser(userIdFromToken(authorToken))
+        verifyUserForTests(userIdFromToken(authorToken))
 
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/stories")
@@ -614,7 +616,9 @@ class StoryControllerTest : ApiApplicationTests() {
                 "name" to name,
                 "email" to email,
                 "password" to "Test12345",
-                "birthday" to "1990-01-01"
+                "birthday" to "1990-01-01",
+            "acceptedUserAgreement" to true,
+            "acceptedPersonalDataProcessing" to true
             )))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
@@ -641,14 +645,5 @@ class StoryControllerTest : ApiApplicationTests() {
         return authTokenCache.entries
             .first { it.value.accessToken == accessToken }
             .value.userId!!
-    }
-
-    private fun verifyUser(targetUserId: UUID) {
-        liquibaseDataSource.connection.use { connection ->
-            connection.prepareStatement("UPDATE users SET is_verified = true WHERE id = ?").use { statement ->
-                statement.setObject(1, targetUserId)
-                statement.executeUpdate()
-            }
-        }
     }
 }

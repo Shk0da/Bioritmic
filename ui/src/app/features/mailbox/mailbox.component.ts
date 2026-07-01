@@ -27,6 +27,8 @@ interface UserConversation {
   standalone: true,
   imports: [RouterLink, ConversationPanelComponent],
   template: `
+    <div class="row page-layout">
+      <div class="col-12 col-md-8 mx-auto page-col">
     <div class="page-header mb-3">
       <h1 class="page-title">
         <i class="bi bi-chat-heart me-2"></i>Сообщения
@@ -136,11 +138,15 @@ interface UserConversation {
         </section>
       </div>
     }
+      </div>
+    </div>
   `,
   styles: [`
     :host {
       display: block;
       min-height: 0;
+      width: 100%;
+      max-width: 100%;
     }
 
     .empty-state {
@@ -362,6 +368,21 @@ interface UserConversation {
     }
 
     .min-w-0 { min-width: 0; }
+
+    @media (max-width: 991.98px) {
+      .page-layout,
+      .page-col {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        height: 100%;
+        margin-left: 0;
+        margin-right: 0;
+        padding-left: 0;
+        padding-right: 0;
+      }
+    }
 
     @media (min-width: 992px) {
       .mailbox-card {

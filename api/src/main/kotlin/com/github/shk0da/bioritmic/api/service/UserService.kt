@@ -163,7 +163,15 @@ class UserService(
     }
 
     suspend fun createNewUser(userModel: UserModel): User {
-        return userRepository.save(User.of(userModel))
+        val user = User.of(userModel)
+        val now = Timestamp(System.currentTimeMillis())
+        if (userModel.acceptedUserAgreement == true) {
+            user.termsAcceptedAt = now
+        }
+        if (userModel.acceptedPersonalDataProcessing == true) {
+            user.personalDataConsentAt = now
+        }
+        return userRepository.save(user)
     }
 
     @Transactional

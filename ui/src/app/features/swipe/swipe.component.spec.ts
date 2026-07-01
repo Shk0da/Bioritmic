@@ -10,7 +10,6 @@ import { GeoService } from '../../core/services/geo.service';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { SwipeService } from '../../core/services/swipe.service';
 import { MatchService } from '../../core/services/match.service';
-import { SubscriptionService } from '../../core/services/subscription.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SwipeActionService } from '../../core/services/swipe-action.service';
 import { ShareService } from '../../core/services/share.service';
@@ -67,7 +66,6 @@ describe('SwipeComponent', () => {
       'undo',
     ]);
     matchService = jasmine.createSpyObj('MatchService', ['checkMatch']);
-    const subscriptionService = jasmine.createSpyObj('SubscriptionService', ['getSwipeLimit']);
     const authService = jasmine.createSpyObj('AuthService', ['getCurrentUser'], {
       currentUser$: of(null),
     });
@@ -99,7 +97,6 @@ describe('SwipeComponent', () => {
         { provide: BookmarksService, useValue: bookmarksService },
         { provide: SwipeService, useValue: swipeService },
         { provide: MatchService, useValue: matchService },
-        { provide: SubscriptionService, useValue: subscriptionService },
         { provide: AuthService, useValue: authService },
         { provide: SwipeActionService, useValue: swipeActionService },
         { provide: ShareService, useValue: shareService },

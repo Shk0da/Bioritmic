@@ -97,8 +97,8 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
         <li class="nav-item">
           <button class="nav-link" [class.active]="activeTab === 'reports'" (click)="setActiveTab('reports')">
             <i class="bi bi-flag me-1"></i>Жалобы
-            @if (reports.length > 0) {
-              <span class="badge bg-danger ms-1">{{ reports.length }}</span>
+            @if ((dashboard?.pendingReports ?? 0) > 0) {
+              <span class="badge bg-danger ms-1">{{ dashboard!.pendingReports }}</span>
             }
           </button>
         </li>
@@ -174,6 +174,7 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
                   <th>Возраст</th>
                   <th>Роль</th>
                   <th>Верификация</th>
+                  <th>Алмазы</th>
                   <th>Действия</th>
                 </tr>
               </thead>
@@ -201,12 +202,20 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
                       }
                     </td>
                     <td>
+                      <div class="d-flex align-items-center gap-1">
+                        <span>{{ user.diamondBalance ?? 0 }}</span>
+                        <button class="btn btn-outline-secondary btn-sm py-0 px-1" title="Изменить баланс" (click)="editDiamondBalance(user)">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                      </div>
+                    </td>
+                    <td>
                       <ng-container *ngTemplateOutlet="userActionsTpl; context: { user: user }" />
                     </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="7" class="text-center text-muted py-3">
+                    <td colspan="8" class="text-center text-muted py-3">
                       @if (filterSearch || filterRole || filterVerified) {
                         <i class="bi bi-search fs-4 d-block mb-1"></i>Нет пользователей по фильтру
                       } @else {
@@ -244,6 +253,13 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
                   }
                 </div>
                 <div class="admin-list-card-id">{{ user.id }}</div>
+                <div class="admin-list-card-row">
+                  <span class="admin-list-card-label">💎</span>
+                  <span>{{ user.diamondBalance ?? 0 }}</span>
+                  <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-auto" title="Изменить баланс" (click)="editDiamondBalance(user)">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                </div>
                 <div class="admin-list-card-actions">
                   <ng-container *ngTemplateOutlet="userActionsTpl; context: { user: user }" />
                 </div>
@@ -1025,9 +1041,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   private searchChange$ = new Subject<void>();
   private destroyRef = inject(DestroyRef);
   private readonly pullToRefreshService = inject(PullToRefreshService);
+  private usersLoaded = false;
   private reportsLoaded = false;
   private feedbackLoaded = false;
   private bannedWordsLoaded = false;
+  private metricsLoaded = false;
   private bannedWordsSearch$ = new Subject<void>();
 
   @ViewChild('bannedWordsFileInput') bannedWordsFileInput?: ElementRef<HTMLInputElement>;
@@ -1076,13 +1094,22 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.searchChange$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe(() => this.loadUsers(0));
-    this.bannedWordsSearch$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe(() => this.loadBannedWords(0));
+    this.searchChange$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe(() => {
+      if (this.activeTab === 'users') {
+        this.loadUsers(0);
+      }
+    });
+    this.bannedWordsSearch$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe(() => {
+      if (this.activeTab === 'banned-words') {
+        this.loadBannedWords(0);
+      }
+    });
     this.loadDashboard();
-    this.loadUsers();
+    this.setActiveTab('users');
     registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/admin', () => ({
       refresh: () => this.refreshAdminPage(),
-      isEnabled: () => !this.loadingUsers && !this.loadingReports && !this.loadingFeedback && !this.loadingMetrics,
+      isEnabled: () => !this.loadingUsers && !this.loadingReports && !this.loadingFeedback
+        && !this.loadingMetrics && !this.loadingBannedWords,
     }));
   }
 
@@ -1104,11 +1131,14 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.loadBannedWords(this.bannedWordsPage);
       return;
     }
-    this.loadMetrics();
+    this.loadMetrics(true);
   }
 
   setActiveTab(tab: 'users' | 'reports' | 'feedback' | 'banned-words' | 'metrics'): void {
     this.activeTab = tab;
+    if (tab === 'users' && !this.usersLoaded) {
+      this.loadUsers(0);
+    }
     if (tab === 'reports' && !this.reportsLoaded) {
       this.loadReports();
     }
@@ -1118,7 +1148,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (tab === 'banned-words' && !this.bannedWordsLoaded) {
       this.loadBannedWords(0);
     }
-    if (tab === 'metrics') {
+    if (tab === 'metrics' && !this.metricsLoaded) {
       this.loadMetrics();
     }
   }
@@ -1174,6 +1204,7 @@ export class AdminComponent implements OnInit, OnDestroy {
         this.users = response.users;
         this.totalUsers = response.total;
         this.currentPage = response.page;
+        this.usersLoaded = true;
         this.loadingUsers = false;
         this.applyFilters();
       },
@@ -1205,11 +1236,17 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadMetrics(): void {
-    if (this.metrics) return;
+  loadMetrics(force = false): void {
+    if (!force && this.metricsLoaded) {
+      return;
+    }
     this.loadingMetrics = true;
     this.adminService.getMetrics().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (m) => { this.metrics = m; this.loadingMetrics = false; },
+      next: (m) => {
+        this.metrics = m;
+        this.metricsLoaded = true;
+        this.loadingMetrics = false;
+      },
       error: (err) => {
         this.loadingMetrics = false;
         if (err.status === 403) this.accessDenied = true;
@@ -1338,6 +1375,30 @@ export class AdminComponent implements OnInit, OnDestroy {
         if (idx >= 0) { this.users[idx].role = response.role; this.applyFilters(); }
       },
       error: (err) => this.toastService.error(err.error?.error || 'Ошибка смены роли')
+    });
+  }
+
+  async editDiamondBalance(user: AdminUser): Promise<void> {
+    const current = user.diamondBalance ?? 0;
+    const input = window.prompt(`Новый баланс алмазов для ${user.name || user.email}:`, String(current));
+    if (input === null) {
+      return;
+    }
+    const balance = Number(input.trim());
+    if (!Number.isFinite(balance) || balance < 0 || !Number.isInteger(balance)) {
+      this.toastService.error('Введите целое неотрицательное число');
+      return;
+    }
+    this.adminService.setUserDiamondBalance(user.id!, balance).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        this.toastService.success('Баланс обновлён');
+        const idx = this.users.findIndex(u => u.id === user.id);
+        if (idx >= 0) {
+          this.users[idx].diamondBalance = response.balance;
+          this.applyFilters();
+        }
+      },
+      error: () => this.toastService.error('Ошибка обновления баланса'),
     });
   }
 

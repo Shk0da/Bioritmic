@@ -51,6 +51,7 @@ export interface AdminUser {
   role?: string;
   age?: number;
   isVerified?: boolean;
+  diamondBalance?: number;
 }
 
 export interface PaginatedUsersResponse {
@@ -156,6 +157,13 @@ export class AdminService {
 
   resetPassword(userId: string): Observable<{ success: boolean; userId: string }> {
     return this.http.post<{ success: boolean; userId: string }>(`${this.apiUrl}/users/${userId}/reset-password`, {});
+  }
+
+  setUserDiamondBalance(userId: string, balance: number): Observable<{ success: boolean; userId: string; balance: number }> {
+    return this.http.post<{ success: boolean; userId: string; balance: number }>(
+      `${this.apiUrl}/users/${userId}/diamonds`,
+      { balance }
+    );
   }
 
   getBannedWords(page = 0, size = 50, search?: string): Observable<BannedWordsPage> {

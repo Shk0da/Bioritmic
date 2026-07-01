@@ -105,6 +105,14 @@ class MailboxRealtimeService(
         }
     }
 
+    fun sendDiamondBalanceEvent(userId: UUID, balance: Long) {
+        val connections = connectionsByUser[userId] ?: return
+        val event = MailboxWsOutbound(type = TYPE_DIAMOND_BALANCE, balance = balance)
+        connections.forEach { connection ->
+            send(connection, event)
+        }
+    }
+
     private inline fun dispatch(
         viewerUserId: UUID,
         otherUserId: UUID,
@@ -141,5 +149,6 @@ class MailboxRealtimeService(
         const val TYPE_DELETED = "deleted"
         const val TYPE_REACTION = "reaction"
         const val TYPE_READ = "read"
+        const val TYPE_DIAMOND_BALANCE = "diamond_balance"
     }
 }

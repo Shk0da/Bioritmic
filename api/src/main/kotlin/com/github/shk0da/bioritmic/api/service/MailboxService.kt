@@ -6,6 +6,7 @@ import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
 import com.github.shk0da.bioritmic.api.model.PageableRequest
 import com.github.shk0da.bioritmic.api.model.mailbox.MailReactionType
 import com.github.shk0da.bioritmic.api.model.mailbox.MailMediaType
+import com.github.shk0da.bioritmic.api.model.mailbox.DiamondMailMessage
 import com.github.shk0da.bioritmic.api.model.mailbox.MailSystemMessage
 import com.github.shk0da.bioritmic.api.model.mailbox.ConversationPageModel
 import com.github.shk0da.bioritmic.api.model.user.UserMailModel
@@ -176,7 +177,7 @@ class MailboxService(
         if (messages.any { it.fromUserId != currentUserId }) {
             throw ApiException(ErrorCode.ACCESS_DENIED)
         }
-        if (messages.any { MailSystemMessage.isSystem(it) }) {
+        if (messages.any { MailSystemMessage.isSystem(it) || DiamondMailMessage.isDiamond(it) }) {
             throw ApiException(ErrorCode.ACCESS_DENIED)
         }
 
@@ -356,7 +357,7 @@ class MailboxService(
         if (!sameConversation) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("replyToMessageId" to "replyToMessageId"))
         }
-        if (MailSystemMessage.isSystem(targetMessage)) {
+        if (MailSystemMessage.isSystem(targetMessage) || DiamondMailMessage.isDiamond(targetMessage)) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("replyToMessageId" to "replyToMessageId"))
         }
         return replyToMessageId
@@ -377,6 +378,8 @@ class MailboxService(
             MailMediaType.VOICE.name -> "Голосовое сообщение"
             MailMediaType.PHOTO.name -> "Фото"
             MailMediaType.VIDEO_NOTE.name -> "Видео-кружок"
+            MailMediaType.VIDEO_NOTE.name -> "Видео-кружок"
+            MailMediaType.DIAMOND.name -> "Перевод алмазов"
             else -> "Новое сообщение"
         }
     }
@@ -392,14 +395,14 @@ class MailboxService(
         MailMediaType.VOICE -> listOf("webm", "ogg", "mp4", "m4a")
         MailMediaType.PHOTO -> listOf("png", "jpg", "jpeg", "webp")
         MailMediaType.VIDEO_NOTE -> listOf("webm", "mp4")
-        MailMediaType.SYSTEM -> emptyList()
+        MailMediaType.SYSTEM, MailMediaType.DIAMOND -> emptyList()
     }
 
     private fun maxBytes(mediaType: MailMediaType): Int = when (mediaType) {
         MailMediaType.VOICE -> MAX_VOICE_BYTES
         MailMediaType.PHOTO -> MAX_PHOTO_BYTES
         MailMediaType.VIDEO_NOTE -> MAX_VIDEO_BYTES
-        MailMediaType.SYSTEM -> 0
+        MailMediaType.SYSTEM, MailMediaType.DIAMOND -> 0
     }
 
     private fun resolveExtension(filename: String, mediaType: MailMediaType): String {
@@ -411,7 +414,7 @@ class MailboxService(
             MailMediaType.VOICE -> "webm"
             MailMediaType.PHOTO -> "jpg"
             MailMediaType.VIDEO_NOTE -> "webm"
-            MailMediaType.SYSTEM -> "txt"
+            MailMediaType.SYSTEM, MailMediaType.DIAMOND -> "txt"
         }
     }
 
@@ -419,7 +422,7 @@ class MailboxService(
         MailMediaType.VOICE -> "voice"
         MailMediaType.PHOTO -> "photo"
         MailMediaType.VIDEO_NOTE -> "video"
-        MailMediaType.SYSTEM -> "system"
+        MailMediaType.SYSTEM, MailMediaType.DIAMOND -> "system"
     }
 
     private fun contentTypeFor(extension: String, mediaType: MailMediaType): String = when (extension) {

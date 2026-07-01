@@ -15,13 +15,18 @@ class ApiError(val errorCode: String, val message: String, val parameterName: St
         }
 
         fun of(errorCode: ErrorCode, parameters: Map<String, String?>): ApiError {
+            parameters["error"]?.takeIf { it.isNotBlank() }?.let { customMessage ->
+                return ApiError(errorCode.code, customMessage, null)
+            }
             var parameterName: String? = null
             var message: String = errorCode.message
             for ((key, value) in parameters) {
                 if (PARAMETER_NAME == key) {
                     parameterName = value
                 }
-                message = message.replace("\${$key}", value!!)
+                if (value != null) {
+                    message = message.replace("\${$key}", value)
+                }
             }
             return ApiError(errorCode.code, message, parameterName)
         }

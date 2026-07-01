@@ -28,7 +28,9 @@ class BoostControllerTest : ApiApplicationTests() {
                 "name" to "Boost Test User",
                 "email" to email,
                 "password" to "Test12345",
-                "birthday" to "1990-01-01"
+                "birthday" to "1990-01-01",
+            "acceptedUserAgreement" to true,
+            "acceptedPersonalDataProcessing" to true
             )))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
@@ -71,7 +73,7 @@ class BoostControllerTest : ApiApplicationTests() {
     }
 
     @Test
-    fun `should activate boost for any user when free-for-all is enabled`() {
+    fun `should activate boost for verified user with enough diamonds`() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/boost/activate")
             .header(HttpHeaders.AUTHORIZATION, authToken)
@@ -82,5 +84,34 @@ class BoostControllerTest : ApiApplicationTests() {
             .expectBody()
             .jsonPath("$.success").isEqualTo(true)
             .jsonPath("$.expiresAt").isNumber()
+            .jsonPath("$.balance").isEqualTo(50)
+            .jsonPath("$.cost").isEqualTo(50)
+    }
+
+    @Test
+    fun `should reject boost when insufficient diamonds`() {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/boost/activate")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/boost/activate")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/boost/activate")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
     }
 }

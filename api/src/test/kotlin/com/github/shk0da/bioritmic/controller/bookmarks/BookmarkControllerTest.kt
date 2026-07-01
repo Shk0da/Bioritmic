@@ -95,4 +95,37 @@ class BookmarkControllerTest : ApiApplicationTests() {
             .exchange()
             .expectStatus().isOk
     }
+
+    @Test
+    fun `matches are blurred without active boost`() {
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/bookmarks/matches")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.blurred").isEqualTo(true)
+            .jsonPath("$.matches.length()").isEqualTo(0)
+    }
+
+    @Test
+    fun `matches are visible with active boost`() {
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/boost/activate")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/bookmarks/matches")
+            .header(HttpHeaders.AUTHORIZATION, authToken)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.blurred").isEqualTo(false)
+    }
 }

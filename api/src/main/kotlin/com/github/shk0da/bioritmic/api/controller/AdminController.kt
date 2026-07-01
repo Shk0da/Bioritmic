@@ -14,6 +14,7 @@ import com.github.shk0da.bioritmic.api.repository.UserRepository
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.service.AdminAuditService
 import com.github.shk0da.bioritmic.api.service.BannedWordService
+import com.github.shk0da.bioritmic.api.service.DiamondService
 import com.github.shk0da.bioritmic.api.service.EmailService
 import com.github.shk0da.bioritmic.api.service.FeedbackService
 import com.github.shk0da.bioritmic.api.service.ImportMode
@@ -57,6 +58,7 @@ class AdminController(
     val adminAuditService: AdminAuditService,
     val bannedWordService: BannedWordService,
     val profanityFilterService: ProfanityFilterService,
+    val diamondService: DiamondService,
 ) {
 
     private val log = LoggerFactory.getLogger(AdminController::class.java)
@@ -145,7 +147,23 @@ class AdminController(
             val roles = rolesByUser[user.id]?.joinToString(",") ?: ROLE_USER
             UserInfo.adminSummary(user).copy(role = roles)
         }
-        return PaginatedUsersResponse(users = userInfos, total = total, page = page, size = pageSize)
+        val balancesByUser = diamondService.getBalancesByUserIds(userIds)
+        val userInfosWithBalances = userInfos.map { info ->
+            info.copy(diamondBalance = balancesByUser[info.id] ?: 0L)
+        }
+        return PaginatedUsersResponse(users = userInfosWithBalances, total = total, page = page, size = pageSize)
+    }
+
+    @PostMapping(value = ["/users/{userId}/diamonds"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    suspend fun setUserDiamondBalance(
+        @PathVariable userId: UUID,
+        @RequestBody request: AdminDiamondBalanceRequest,
+        exchange: ServerWebExchange,
+    ): Map<String, Any> {
+        val adminUserId = requireAdminUserId()
+        val balance = diamondService.setBalanceByAdmin(userId, request.balance, adminUserId)
+        audit(adminUserId, "SET_DIAMOND_BALANCE", exchange, userId, details = "balance=$balance")
+        return mapOf("success" to true, "userId" to userId, "balance" to balance)
     }
 
     @PostMapping(value = ["/users/{userId}/ban"], produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -180,7 +198,11 @@ class AdminController(
     suspend fun verifyUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
         val adminUserId = requireAdminUserId()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
+        val wasVerified = user.isVerified
         userRepository.setVerified(userId, true)
+        if (!wasVerified) {
+            diamondService.grantRegistrationBonus(userId)
+        }
         log.info("Admin verified user {} ({})", userId, user.name)
         audit(adminUserId, "VERIFY_USER", exchange, userId)
         return mapOf("success" to true, "userId" to userId)
@@ -600,4 +622,8 @@ data class PaginatedUsersResponse(
     val total: Long,
     val page: Int,
     val size: Int
+)
+
+data class AdminDiamondBalanceRequest(
+    val balance: Long,
 )

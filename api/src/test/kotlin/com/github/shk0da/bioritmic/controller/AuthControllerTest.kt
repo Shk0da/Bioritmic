@@ -42,6 +42,26 @@ class AuthControllerTest : ApiApplicationTests() {
             .jsonPath("$.email").isEqualTo(userModel.email)
             .jsonPath("$.birthday").isEqualTo(userModel.birthday)
 
+        var accessToken: String? = null
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/authorization")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(AuthorizationModel(userModel.email, userModel.password!!)))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.accessToken")
+            .value<Any> { accessToken = it as String }
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/diamonds/balance")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.balance").isEqualTo(100)
+
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
@@ -74,6 +94,26 @@ class AuthControllerTest : ApiApplicationTests() {
             .expectBody()
             .jsonPath("$.errors.length()").isEqualTo(1)
             .jsonPath("$.errors[0].errorCode").isEqualTo(ErrorCode.INVALID_PARAMETER_RANGE.code)
+    }
+
+    @Test
+    fun registrationShouldRejectWithoutLegalConsents() {
+        val userModel = defaultUserModel.copy(
+            email = "no_consent_${UUID.randomUUID()}@gmail.com",
+            acceptedUserAgreement = false,
+            acceptedPersonalDataProcessing = false,
+        )
+
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/registration")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(userModel))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
+            .expectBody()
+            .jsonPath("$.errors[0].message")
+            .isEqualTo("Необходимо принять пользовательское соглашение и дать согласие на обработку персональных данных")
     }
 
     @Test
@@ -361,6 +401,14 @@ class AuthControllerTest : ApiApplicationTests() {
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.isVerified").isEqualTo(true)
+
+        webTestClient.get()
+            .uri("$API_WITH_VERSION_1/diamonds/balance")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.balance").isEqualTo(100)
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.github.shk0da.bioritmic.api.service
 
 import com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager
 import com.github.shk0da.bioritmic.api.domain.ProfileBoost
+import com.github.shk0da.bioritmic.api.repository.DiamondAtomicRepository
 import com.github.shk0da.bioritmic.api.repository.ProfileBoostRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -13,7 +14,8 @@ import java.util.UUID
 @Service
 class BoostService(
     val profileBoostRepository: ProfileBoostRepository,
-    val subscriptionService: SubscriptionService
+    val diamondAtomicRepository: DiamondAtomicRepository,
+    private val diamondBalanceNotifier: DiamondBalanceNotifier,
 ) {
 
     private val log = LoggerFactory.getLogger(BoostService::class.java)
@@ -29,35 +31,23 @@ class BoostService(
         return profileBoostRepository.findActiveByUserIds(userIds).map { it.userId }.toSet()
     }
 
-    @Transactional
-    suspend fun activateBoost(userId: UUID, hours: Int = 24): ProfileBoost {
-        val isPro = subscriptionService.isProUser(userId)
-        if (!isPro) {
-            throw IllegalArgumentException("Only Pro users can activate boost")
-        }
-
-        val existing = profileBoostRepository.findActiveByUserId(userId)
-        if (existing != null) {
-            val now = Timestamp.from(Instant.now())
-            if (existing.expiresAt != null && existing.expiresAt!!.after(now)) {
-                val newExpiresAt = Timestamp(existing.expiresAt!!.time + hours * 3600L * 1000)
-                existing.expiresAt = newExpiresAt
-                val saved = profileBoostRepository.save(existing)
-                log.info("Extended profile boost for userId={}, new expiresAt={}", userId, newExpiresAt)
-                return saved
-            }
-        }
-
-        val now = Timestamp.from(Instant.now())
-        val expiresAt = Timestamp(now.time + hours * 3600L * 1000)
+    @Transactional(transactionManager = transactionManager)
+    suspend fun activateBoost(userId: UUID, hours: Int = 24): BoostActivationResult {
+        val result = diamondAtomicRepository.purchaseBoost(userId, DiamondService.BOOST_COST, hours)
         val boost = ProfileBoost().apply {
+            id = result.boostId
             this.userId = userId
-            this.startedAt = now
-            this.expiresAt = expiresAt
+            startedAt = Timestamp.from(Instant.now())
+            expiresAt = result.expiresAt
         }
-        val saved = profileBoostRepository.save(boost)
-        log.info("Activated profile boost for userId={}, expiresAt={}", userId, expiresAt)
-        return saved
+        log.info(
+            "Activated profile boost for userId={}, expiresAt={}, balance={}",
+            userId,
+            result.expiresAt,
+            result.newBalance,
+        )
+        diamondBalanceNotifier.notify(userId, result.newBalance)
+        return BoostActivationResult(boost, result.newBalance)
     }
 
     @Transactional(readOnly = true, transactionManager = transactionManager)
@@ -65,10 +55,15 @@ class BoostService(
         return profileBoostRepository.findActiveByUserId(userId)
     }
 
-    @Transactional
+    @Transactional(transactionManager = transactionManager)
     suspend fun cleanupExpiredBoosts() {
         val now = Timestamp.from(Instant.now())
         profileBoostRepository.deleteExpired(now)
         log.info("Cleaned up expired profile boosts")
     }
 }
+
+data class BoostActivationResult(
+    val boost: ProfileBoost,
+    val balance: Long,
+)

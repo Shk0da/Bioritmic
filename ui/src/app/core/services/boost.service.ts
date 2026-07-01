@@ -5,12 +5,17 @@ import { Observable } from 'rxjs';
 export interface BoostActivateResponse {
   success: boolean;
   expiresAt: number;
+  balance?: number;
+  cost?: number;
 }
 
 export interface BoostInfo {
   startedAt: number;
   expiresAt: number;
+  cost?: number;
 }
+
+export const BOOST_DIAMOND_COST = 50;
 
 @Injectable({
   providedIn: 'root'

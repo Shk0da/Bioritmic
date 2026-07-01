@@ -4,7 +4,8 @@ enum class MailMediaType {
     VOICE,
     PHOTO,
     VIDEO_NOTE,
-    SYSTEM;
+    SYSTEM,
+    DIAMOND;
 
     companion object {
         fun parse(value: String): MailMediaType? =

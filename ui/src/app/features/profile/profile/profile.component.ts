@@ -4,7 +4,7 @@ import { Subject, takeUntil, switchMap, EMPTY, catchError, filter } from 'rxjs';
 import { UserService, photoSizeForLargeDisplay } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserInfo, Gender } from '../../../core/models/user.model';
-import { BoostService, BoostInfo } from '../../../core/services/boost.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { ShareService } from '../../../core/services/share.service';
 import { ModalService } from '../../../core/services/modal.service';
 import { AvatarStatusBadgeComponent } from '../../../shared/components/avatar-status-badge/avatar-status-badge.component';
@@ -13,7 +13,6 @@ import {
   normalizeUserStatusPosition,
   PROFILE_STATUS_EMOJIS,
 } from '../../../shared/utils/user-status.util';
-import { ToastService } from '../../../core/services/toast.service';
 import { registerPullToRefresh } from '../../../core/routing/register-pull-to-refresh.util';
 import { normalizeRouteUrl } from '../../../core/routing/route-cache-refresh.util';
 import { PullToRefreshService } from '../../../core/routing/pull-to-refresh.service';
@@ -168,35 +167,6 @@ import { resolveProfileLinkId } from '../../../shared/utils/profile-link.util';
                 <label class="text-muted small d-block mb-2">Обо мне</label>
                 <p class="mb-0 bio-text">{{ user?.bio }}</p>
               </div>
-            }
-          </div>
-        </div>
-
-        <div class="card mt-3">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Профиль Boost</h6>
-          </div>
-          <div class="card-body">
-            @if (activeBoost) {
-              <div class="boost-active">
-                <div class="boost-timer">
-                  <i class="bi bi-lightning-charge-fill text-warning"></i>
-                  <span class="boost-countdown">{{ getBoostCountdown() }}</span>
-                </div>
-                <p class="text-muted small mb-2">Ваш профиль выделен и показывается выше в поиске</p>
-              </div>
-            } @else if (user?.isPro) {
-              <p class="mb-3">Активируйте Boost, чтобы ваш профиль показывался выше в поиске на 24 часа.</p>
-              <button class="btn btn-warning" (click)="activateBoost()" [disabled]="boostActivating">
-                @if (boostActivating) {
-                  <span class="spinner-border spinner-border-sm me-2"></span>
-                } @else {
-                  <i class="bi bi-lightning-charge me-2"></i>
-                }
-                Boost на 24 часа
-              </button>
-            } @else {
-              <p class="text-muted mb-0">Обновите до Pro чтобы использовать Boost</p>
             }
           </div>
         </div>
@@ -400,26 +370,6 @@ import { resolveProfileLinkId } from '../../../shared/utils/profile-link.util';
       }
     }
 
-    .boost-active {
-      text-align: center;
-      padding: 0.5rem 0;
-    }
-
-    .boost-timer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #f59e0b;
-      margin-bottom: 0.5rem;
-
-      i {
-        font-size: 1.75rem;
-      }
-    }
-
     .profile-logout-item {
       width: 100%;
       text-align: left;
@@ -473,20 +423,16 @@ export class ProfileComponent implements OnInit, OnDestroy {
   user: UserInfo | null = null;
   photoDataUrl: string | null = null;
   blockedCount = 0;
-  activeBoost: BoostInfo | null = null;
-  boostActivating = false;
   sharing = false;
   statusPanelOpen = false;
   statusSaving = false;
 
   private statusSaveTrigger$ = new Subject<void>();
-  private boostCountdownInterval: ReturnType<typeof setInterval> | null = null;
   private statusDragPointerId: number | null = null;
 
   constructor(
     private userService: UserService,
     private authService: AuthService,
-    private boostService: BoostService,
     private shareService: ShareService,
     private modalService: ModalService,
     private toastService: ToastService,
@@ -495,9 +441,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   ) {
     this.destroyRef.onDestroy(() => {
       this.destroy$.next();
-      if (this.boostCountdownInterval) {
-        clearInterval(this.boostCountdownInterval);
-      }
     });
   }
 
@@ -505,12 +448,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.setupStatusAutoSave();
     this.loadProfile();
     this.loadBlockedCount();
-    this.loadActiveBoost();
     registerPullToRefresh(this.pullToRefreshService, this.destroyRef, (url) => normalizeRouteUrl(url) === '/profile/me', () => ({
       refresh: () => {
         this.loadProfile();
         this.loadBlockedCount();
-        this.loadActiveBoost();
       },
     }));
     this.router.events.pipe(
@@ -519,7 +460,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
       takeUntil(this.destroy$)
     ).subscribe(() => {
       this.loadProfile();
-      this.loadActiveBoost();
     });
   }
 
@@ -713,35 +653,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
     return this.user?.gender === Gender.MAN ? 'Мужской' : 'Женский';
   }
 
-  private loadActiveBoost(): void {
-    this.boostService.getCurrentBoost().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (boost) => {
-        this.activeBoost = boost;
-        if (boost) {
-          this.startBoostCountdown();
-        }
-      },
-      error: () => {
-        this.activeBoost = null;
-      }
-    });
-  }
-
-  activateBoost(): void {
-    this.boostActivating = true;
-    this.boostService.activateBoost().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (response) => {
-        this.boostActivating = false;
-        if (response.success) {
-          this.loadActiveBoost();
-        }
-      },
-      error: () => {
-        this.boostActivating = false;
-      }
-    });
-  }
-
   async shareProfile(): Promise<void> {
     if (!this.user?.id || this.sharing) {
       return;
@@ -758,32 +669,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
     } finally {
       this.sharing = false;
     }
-  }
-
-  getBoostCountdown(): string {
-    if (!this.activeBoost) return '';
-    const now = Date.now();
-    const remaining = this.activeBoost.expiresAt - now;
-    if (remaining <= 0) return 'Закончился';
-    const hours = Math.floor(remaining / 3600000);
-    const minutes = Math.floor((remaining % 3600000) / 60000);
-    const seconds = Math.floor((remaining % 60000) / 1000);
-    return `${hours}ч ${minutes}м ${seconds}с`;
-  }
-
-  private startBoostCountdown(): void {
-    if (this.boostCountdownInterval) {
-      clearInterval(this.boostCountdownInterval);
-    }
-    this.boostCountdownInterval = setInterval(() => {
-      if (this.activeBoost && Date.now() >= this.activeBoost.expiresAt) {
-        this.activeBoost = null;
-        if (this.boostCountdownInterval) {
-          clearInterval(this.boostCountdownInterval);
-        }
-        this.boostCountdownInterval = null;
-      }
-    }, 1000);
   }
 
   logout(): void {

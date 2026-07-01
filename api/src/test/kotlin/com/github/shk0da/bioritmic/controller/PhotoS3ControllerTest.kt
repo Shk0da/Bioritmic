@@ -28,7 +28,9 @@ class PhotoS3ControllerTest : ApiApplicationTests() {
                 "name" to "Photo Test User",
                 "email" to email,
                 "password" to "Test12345",
-                "birthday" to "1990-01-01"
+                "birthday" to "1990-01-01",
+            "acceptedUserAgreement" to true,
+            "acceptedPersonalDataProcessing" to true
             )))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()

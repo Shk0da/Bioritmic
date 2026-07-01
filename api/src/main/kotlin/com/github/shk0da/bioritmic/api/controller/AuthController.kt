@@ -15,6 +15,7 @@ import com.github.shk0da.bioritmic.api.model.VerifyEmailRequest
 import com.github.shk0da.bioritmic.api.model.user.UserModel
 import com.github.shk0da.bioritmic.api.model.user.UserToken
 import com.github.shk0da.bioritmic.api.service.AuthService
+import com.github.shk0da.bioritmic.api.service.DiamondService
 import com.github.shk0da.bioritmic.api.service.LoginLockoutService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_ADMIN
@@ -53,16 +54,28 @@ class AuthController(
     val userRoleRepository: UserRoleRepository,
     val userRepository: UserRepository,
     val loginLockoutService: LoginLockoutService,
-    val appSecurityProperties: AppSecurityProperties
+    val appSecurityProperties: AppSecurityProperties,
+    val diamondService: DiamondService,
 ) {
 
     private val log = LoggerFactory.getLogger(AuthController::class.java)
+
+    companion object {
+        private const val REGISTRATION_CONSENTS_REQUIRED_MESSAGE =
+            "Необходимо принять пользовательское соглашение и дать согласие на обработку персональных данных"
+    }
 
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping(value = ["/registration"], produces = [APPLICATION_JSON_VALUE])
     suspend fun registration(@RequestBody @Valid userModel: UserModel): ResponseEntity<UserModel> {
         with(userModel) {
             if (!isFilledInput()) throw ApiException(INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "user")))
+            if (acceptedUserAgreement != true || acceptedPersonalDataProcessing != true) {
+                throw ApiException(
+                    INVALID_PARAMETER,
+                    mapOf("error" to REGISTRATION_CONSENTS_REQUIRED_MESSAGE),
+                )
+            }
             PasswordValidator.validate(password)
             ValidateUtils.validateMinimumAge(birthday)
             if (userService.isUserExists(userModel.email)) throw ApiException(USER_EXISTS)
@@ -98,6 +111,8 @@ class AuthController(
             } catch (ex: Exception) {
                 log.error("Failed to send verification email for user {}", userId, ex)
             }
+        } else {
+            diamondService.grantRegistrationBonus(userId)
         }
 
         log.debug("Created new {}", newUser)

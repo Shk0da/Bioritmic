@@ -31,7 +31,9 @@ class FeedbackControllerTest : ApiApplicationTests() {
                 "name" to "Admin User",
                 "email" to adminEmail,
                 "password" to "Test12345",
-                "birthday" to "1990-01-01"
+                "birthday" to "1990-01-01",
+            "acceptedUserAgreement" to true,
+            "acceptedPersonalDataProcessing" to true
             )))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
@@ -44,7 +46,9 @@ class FeedbackControllerTest : ApiApplicationTests() {
                 "name" to "Feedback User",
                 "email" to userEmail,
                 "password" to "Test12345",
-                "birthday" to "1995-05-05"
+                "birthday" to "1995-05-05",
+            "acceptedUserAgreement" to true,
+            "acceptedPersonalDataProcessing" to true
             )))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()

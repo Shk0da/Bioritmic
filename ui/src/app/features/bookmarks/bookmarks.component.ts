@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BookmarksService } from '../../core/services/bookmarks.service';
 import { UserService } from '../../core/services/user.service';
 import { MatchService, MatchesResponse } from '../../core/services/match.service';
+import { BOOST_DIAMOND_COST } from '../../core/services/boost.service';
 import { ModalService } from '../../core/services/modal.service';
 import { UserInfo, PageableRequest } from '../../core/models/user.model';
 import { subscribeCachedRouteRefresh } from '../../core/routing/route-cache-refresh.util';
@@ -26,6 +27,8 @@ interface UserWithPhoto extends UserInfo {
   standalone: true,
   imports: [RouterLink, AvatarStatusBadgeComponent],
   template: `
+    <div class="row page-layout">
+      <div class="col-12 col-md-8 mx-auto page-col">
     <div class="page-header mb-4">
       <h1 class="page-title">
         <i class="bi bi-bookmark-heart me-2"></i>Избранное
@@ -48,28 +51,13 @@ interface UserWithPhoto extends UserInfo {
           <span class="badge bg-danger ms-2">{{ matchesCount }}</span>
         </h5>
         @if (matchesBlurred) {
-          <div class="matches-blurred">
-            <div class="blurred-cards">
-              @for (i of getPlaceholderArray(matchesCount); track i) {
-                <div class="blurred-card">
-                  <div class="blurred-card-inner">
-                    <div class="blurred-avatar">
-                      <i class="bi bi-person-fill"></i>
-                    </div>
-                    <div class="blurred-lock">
-                      <i class="bi bi-lock-fill"></i>
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-            <div class="blurred-overlay">
-              <i class="bi bi-lock-fill"></i>
-              <p>Обновите до Pro чтобы увидеть кто вас лайкнул</p>
-              <a routerLink="/subscription" class="btn btn-pro-sm">
-                <i class="bi bi-star-fill me-1"></i> Bioritmic Pro
-              </a>
-            </div>
+          <div class="boost-promo">
+            <i class="bi bi-lightning-fill boost-lightning-icon boost-promo-icon" aria-hidden="true"></i>
+            <p class="boost-promo-text">Активируйте Boost, чтобы увидеть, кто вас лайкнул</p>
+            <a routerLink="/payments" class="btn btn-boost-sm">
+              <i class="bi bi-lightning-fill boost-lightning-icon--on-accent" aria-hidden="true"></i>
+              <span>Boost за {{ boostCost }} алмазов</span>
+            </a>
           </div>
         } @else {
           <div class="matches-grid">
@@ -132,7 +120,7 @@ interface UserWithPhoto extends UserInfo {
             <div class="card user-card h-100">
               <div class="user-card-image-wrapper">
                 <img
-                  [src]="user.photoDataUrl || ''"
+                  [src]="getBookmarkPhotoUrl(user)"
                   class="card-img-top user-card-img"
                   [alt]="user.name">
                 <div class="user-card-overlay">
@@ -177,8 +165,17 @@ interface UserWithPhoto extends UserInfo {
         }
       </div>
     }
+      </div>
+    </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
     .page-header {
       padding: 1rem 0;
     }
@@ -232,10 +229,13 @@ interface UserWithPhoto extends UserInfo {
     }
 
     .user-card-img {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
-      object-fit: contain;
-      object-position: center;
+      display: block;
+      object-fit: cover;
+      object-position: center top;
     }
 
     .user-card-overlay {
@@ -364,93 +364,57 @@ interface UserWithPhoto extends UserInfo {
       color: var(--text-primary);
     }
 
-    .matches-blurred {
-      position: relative;
-    }
-
-    .blurred-cards {
-      display: flex;
-      gap: 0.75rem;
-      filter: blur(10px);
-      pointer-events: none;
-      opacity: 0.5;
-    }
-
-    .blurred-card {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      overflow: hidden;
-      flex-shrink: 0;
-      background: var(--border-color);
-    }
-
-    .blurred-card-inner {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--border-color) 100%);
-    }
-
-    .blurred-avatar {
-      font-size: 2rem;
-      color: var(--text-muted);
-    }
-
-    .blurred-lock {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.2);
-      color: var(--text-secondary);
-      font-size: 1.25rem;
-    }
-
-    .blurred-overlay {
-      position: absolute;
-      inset: 0;
+    .boost-promo {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      background: color-mix(in srgb, var(--card-bg) 88%, transparent);
-      border-radius: 8px;
-
-      i {
-        font-size: 1.5rem;
-        color: var(--text-secondary);
-      }
-
-      p {
-        margin: 0;
-        font-size: 0.85rem;
-        color: var(--text-primary);
-        font-weight: 500;
-        text-align: center;
-        max-width: 250px;
-      }
+      text-align: center;
+      gap: 0.625rem;
+      padding: 1rem;
+      border-radius: 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
     }
 
-    .btn-pro-sm {
-      background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+    .boost-promo-icon {
+      font-size: 1.35rem;
+      line-height: 1;
+    }
+
+    .boost-promo-text {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--text-primary);
+      font-weight: 500;
+      line-height: 1.45;
+      max-width: 22rem;
+    }
+
+    .btn-boost-sm {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      background: linear-gradient(135deg, #fd297b 0%, #ff655b 100%);
       color: white;
       border: none;
-      padding: 0.35rem 1rem;
-      border-radius: 16px;
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
       font-weight: 600;
-      font-size: 0.8rem;
+      font-size: 0.8125rem;
+      line-height: 1.25;
       text-decoration: none;
       transition: all 0.3s ease;
+      max-width: 100%;
+      text-align: center;
+
+      span {
+        min-width: 0;
+      }
 
       &:hover {
         transform: translateY(-1px);
-        box-shadow: 0 3px 10px rgba(245, 158, 11, 0.4);
+        box-shadow: 0 3px 10px rgba(253, 41, 123, 0.4);
         color: white;
       }
     }
@@ -589,6 +553,32 @@ interface UserWithPhoto extends UserInfo {
     }
 
     @media (max-width: 767.98px), (hover: none) and (pointer: coarse) {
+      .matches-section {
+        padding: 1rem;
+      }
+
+      .matches-title {
+        font-size: 1rem;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+
+      .boost-promo {
+        padding: 0.75rem;
+        gap: 0.5rem;
+      }
+
+      .boost-promo-text {
+        font-size: 0.8125rem;
+        padding: 0 0.25rem;
+      }
+
+      .btn-boost-sm {
+        width: 100%;
+        max-width: 18rem;
+        padding: 0.55rem 0.85rem;
+      }
+
       .bookmarks-grid {
         margin-left: 0;
         margin-right: 0;
@@ -612,6 +602,7 @@ export class BookmarksComponent implements OnInit, OnDestroy {
   matchesBlurred = false;
   matchesLoading = false;
   loading = false;
+  readonly boostCost = BOOST_DIAMOND_COST;
   pageable: PageableRequest = { page: 0, size: 20 };
   private readonly destroyRef = inject(DestroyRef);
   private readonly pullToRefreshService = inject(PullToRefreshService);
@@ -703,11 +694,11 @@ export class BookmarksComponent implements OnInit, OnDestroy {
       }
       return this.userService.getProfilePhotoUrl(user.id, UserService.photoCacheVersion(), 'card');
     }
-    return '';
+    return 'assets/img/default-avatar.svg';
   }
 
-  getPlaceholderArray(count: number): number[] {
-    return Array.from({ length: Math.min(count, 6) }, (_, i) => i);
+  getBookmarkPhotoUrl(user: UserWithPhoto): string {
+    return this.getMatchPhotoUrl(user);
   }
 
   private loadBookmarks(silent = false): void {

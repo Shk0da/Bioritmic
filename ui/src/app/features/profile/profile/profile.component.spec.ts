@@ -6,7 +6,6 @@ import { of } from 'rxjs';
 import { ProfileComponent } from './profile.component';
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { BoostService } from '../../../core/services/boost.service';
 import { ShareService } from '../../../core/services/share.service';
 import { ModalService } from '../../../core/services/modal.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -17,7 +16,6 @@ describe('ProfileComponent', () => {
   let fixture: ComponentFixture<ProfileComponent>;
   let authService: jasmine.SpyObj<AuthService>;
   let userService: jasmine.SpyObj<UserService>;
-  let boostService: jasmine.SpyObj<BoostService>;
 
   const mockUser: UserInfo = {
     id: '1',
@@ -25,8 +23,7 @@ describe('ProfileComponent', () => {
     email: 'test@test.com',
     gender: Gender.MAN,
     birthday: '1990-01-01',
-    role: 'USER',
-    isPro: true
+    role: 'USER'
   };
 
   beforeEach(async () => {
@@ -40,15 +37,11 @@ describe('ProfileComponent', () => {
     userService.resolveProfilePhotoUrl.and.returnValue(of(null));
     userService.updateUser.and.returnValue(of(mockUser));
 
-    boostService = jasmine.createSpyObj('BoostService', ['activateBoost', 'getCurrentBoost']);
-    boostService.getCurrentBoost.and.returnValue(of(null));
-
     const shareService = jasmine.createSpyObj('ShareService', ['shareProfile']);
     shareService.shareProfile.and.returnValue(Promise.resolve('copied'));
 
     const modalService = jasmine.createSpyObj('ModalService', ['alert']);
     modalService.alert.and.returnValue(Promise.resolve());
-
     const toastService = jasmine.createSpyObj('ToastService', ['error', 'success']);
 
     await TestBed.configureTestingModule({
@@ -58,10 +51,9 @@ describe('ProfileComponent', () => {
         provideHttpClientTesting(),
         { provide: AuthService, useValue: authService },
         { provide: UserService, useValue: userService },
-        { provide: BoostService, useValue: boostService },
         { provide: ShareService, useValue: shareService },
         { provide: ModalService, useValue: modalService },
-        { provide: ToastService, useValue: toastService }
+        { provide: ToastService, useValue: toastService },
       ]
     }).compileComponents();
 

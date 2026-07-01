@@ -19,7 +19,8 @@ class AuthService(
     val authRepository: AuthRepository,
     val userRepository: UserRepository,
     val emailService: EmailService,
-    val authTokenCache: Cache<String, Auth>
+    val authTokenCache: Cache<String, Auth>,
+    val diamondService: DiamondService,
 ) {
 
     @Transactional
@@ -141,10 +142,14 @@ class AuthService(
             throw ApiException(ErrorCode.USER_NOT_FOUND)
         }
         user.resetRecoveryCode()
+        val wasVerified = user.isVerified
         if (!user.isVerified) {
             user.isVerified = true
         }
         userRepository.save(user)
+        if (!wasVerified) {
+            diamondService.grantRegistrationBonus(user.id!!)
+        }
     }
 
     @Transactional(readOnly = true, transactionManager = transactionManager)

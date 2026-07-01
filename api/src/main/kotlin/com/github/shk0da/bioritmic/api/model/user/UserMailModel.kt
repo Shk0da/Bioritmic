@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.shk0da.bioritmic.api.domain.UserMail
 import com.github.shk0da.bioritmic.api.model.mailbox.MailReactionType
 import com.github.shk0da.bioritmic.api.model.mailbox.MailMediaType
+import com.github.shk0da.bioritmic.api.model.mailbox.DiamondMailMessage
 import com.github.shk0da.bioritmic.api.model.mailbox.MailSystemMessage
 import java.sql.Timestamp
 import java.util.UUID
@@ -57,7 +58,7 @@ data class UserMailModel(
                 currentUserReaction = currentUserReaction,
                 reactionCounts = validCounts,
                 messageRead = userMail.isRead,
-                systemMessage = MailSystemMessage.isSystem(userMail)
+                systemMessage = MailSystemMessage.isSystem(userMail) || DiamondMailMessage.isDiamond(userMail)
             )
         }
 
@@ -65,6 +66,7 @@ data class UserMailModel(
             MailMediaType.VOICE.name -> "Голосовое сообщение"
             MailMediaType.PHOTO.name -> "Фото"
             MailMediaType.VIDEO_NOTE.name -> "Видео-кружок"
+            MailMediaType.DIAMOND.name -> "Алмазы"
             else -> ""
         }
     }

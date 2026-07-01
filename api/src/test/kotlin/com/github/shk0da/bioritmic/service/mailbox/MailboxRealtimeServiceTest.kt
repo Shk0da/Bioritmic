@@ -58,4 +58,22 @@ class MailboxRealtimeServiceTest {
 
         assertEquals(otherUserId, connection.subscribedOtherUserId)
     }
+
+    @Test
+    fun `diamond balance event is sent to all user connections`() {
+        val userId = UUID.randomUUID()
+        val connection = service.register(userId, session)
+        val captured = mutableListOf<String>()
+        Mockito.`when`(session.textMessage(Mockito.anyString())).thenAnswer { invocation ->
+            captured.add(invocation.getArgument(0))
+            Mockito.mock(WebSocketMessage::class.java)
+        }
+
+        service.sendDiamondBalanceEvent(userId, 42)
+
+        assertEquals(1, captured.size)
+        assertEquals(true, captured[0].contains("\"type\":\"diamond_balance\""))
+        assertEquals(true, captured[0].contains("\"balance\":42"))
+        service.unregister(connection)
+    }
 }

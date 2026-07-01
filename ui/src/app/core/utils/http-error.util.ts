@@ -11,11 +11,32 @@ const ERROR_CODE_MESSAGES_RU: Record<string, string> = {
   'API-409.1': 'Этот ник уже занят.',
   'API-400.7': 'Неверный код восстановления.',
   'API-400.9': 'Фото должно быть в формате JPG или PNG.',
+  'API-400.10': 'Недостаточно алмазов на балансе',
+  'API-400.11': 'Перевод алмазов доступен только после первого пополнения. Нажмите «Пополнить».',
   'API-403.1': 'Подтвердите аккаунт для этой операции.',
   'API-429': 'Слишком много запросов. Подождите немного.',
   'API-503': 'Сервис временно недоступен. Попробуйте позже.',
   'API-500': 'Ошибка сервера. Попробуйте позже.',
 };
+
+const BUSINESS_ERROR_MESSAGES_RU: Record<string, string> = {
+  'Top up your balance before transferring diamonds': 'Перевод алмазов доступен только после первого пополнения. Нажмите «Пополнить».',
+  'Diamond transfers are available after your first balance top-up': 'Перевод алмазов доступен только после первого пополнения. Нажмите «Пополнить».',
+  'Insufficient diamond balance': 'Недостаточно алмазов',
+  'Cannot transfer to yourself': 'Нельзя перевести алмазы самому себе',
+  'Recipient must be in bookmarks': 'Получатель должен быть в избранном',
+  'Amount must be positive': 'Укажите положительную сумму',
+  'Amount must be between 1 and 1000000': 'Сумма должна быть от 1 до 1 000 000',
+  'Сумма должна быть от 1 до 1 000 000': 'Сумма должна быть от 1 до 1 000 000',
+  'Balance cannot be negative': 'Баланс не может быть отрицательным',
+  'Необходимо принять пользовательское соглашение и дать согласие на обработку персональных данных':
+    'Необходимо принять пользовательское соглашение и дать согласие на обработку персональных данных',
+};
+
+function isBrokenApiTemplateMessage(message: string): boolean {
+  return /\$\{[^}]+\}/.test(message) ||
+    /parameter \[(parametername|\$\{parametername\})\] value is invalid/i.test(message);
+}
 
 function isCoordinatesNotFoundMessage(message: string): boolean {
   const lower = message.toLowerCase();
@@ -28,6 +49,24 @@ function resolveApiErrorItem(item: { message?: string; errorCode?: string }): st
     return ERROR_CODE_MESSAGES_RU[code];
   }
   const message = item.message?.trim();
+  if (message && BUSINESS_ERROR_MESSAGES_RU[message]) {
+    return BUSINESS_ERROR_MESSAGES_RU[message];
+  }
+  if (message) {
+    const lower = message.toLowerCase();
+    if (lower.includes('top up your balance') || lower.includes('first balance top-up') || lower.includes('first top-up')) {
+      return 'Перевод алмазов доступен только после первого пополнения. Нажмите «Пополнить».';
+    }
+    if (lower.includes('insufficient diamond balance')) {
+      return 'Недостаточно алмазов на балансе';
+    }
+    if (lower.includes('amount must be between') || lower.includes('сумма должна быть от')) {
+      return 'Сумма должна быть от 1 до 1 000 000';
+    }
+  }
+  if (message && isBrokenApiTemplateMessage(message)) {
+    return null;
+  }
   if (message && /parameter \[birthday\]/i.test(message)) {
     return 'Вам должно быть не менее 14 лет';
   }
@@ -101,6 +140,44 @@ export function resolveHttpErrorMessage(error: HttpErrorResponse): string {
     default:
       return `Ошибка запроса (${error.status}). Попробуйте позже.`;
   }
+}
+
+export function resolveDiamondTransferErrorMessage(error: unknown): string {
+  const httpError = asHttpErrorResponse(error);
+  const body = httpError?.error as ApiErrorBody | null;
+  const item = body?.errors?.[0];
+  const code = item?.errorCode?.trim();
+  const message = item?.message?.trim().toLowerCase() ?? '';
+
+  if (code === 'API-400.10' || message.includes('insufficient diamond balance')) {
+    return ERROR_CODE_MESSAGES_RU['API-400.10'];
+  }
+  if (code === 'API-400.11' || message.includes('top up your balance') || message.includes('first balance top-up')) {
+    return ERROR_CODE_MESSAGES_RU['API-400.11'];
+  }
+  if (message.includes('amount must be between') || message.includes('сумма должна быть от')) {
+    return 'Сумма должна быть от 1 до 1 000 000';
+  }
+
+  if (httpError) {
+    const resolved = resolveHttpErrorMessage(httpError);
+    if (resolved === 'Некорректный запрос. Проверьте введённые данные.') {
+      return 'Не удалось отправить алмазы';
+    }
+    return resolved;
+  }
+
+  return 'Не удалось отправить алмазы';
+}
+
+function asHttpErrorResponse(error: unknown): HttpErrorResponse | null {
+  if (error instanceof HttpErrorResponse) {
+    return error;
+  }
+  if (error && typeof error === 'object' && 'status' in error) {
+    return error as HttpErrorResponse;
+  }
+  return null;
 }
 
 export function isMutationMethod(method: string): boolean {

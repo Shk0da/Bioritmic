@@ -20,6 +20,8 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.web.reactive.function.BodyInserters
 import com.github.shk0da.bioritmic.api.controller.ApiRoutes.Companion.API_WITH_VERSION_1
+import com.github.shk0da.bioritmic.api.service.DiamondService
+import kotlinx.coroutines.runBlocking
 import java.util.UUID
 
 @ExtendWith(SpringExtension::class)
@@ -46,6 +48,9 @@ class ApiApplicationTests {
     @Autowired
     lateinit var authTokenCache: org.infinispan.Cache<String, com.github.shk0da.bioritmic.api.domain.Auth>
 
+    @Autowired
+    lateinit var diamondService: DiamondService
+
     @BeforeEach
     fun clearDatabase() {
         val tables = listOf(
@@ -65,7 +70,11 @@ class ApiApplicationTests {
             "meetings",
             "mailbox_reactions",
             "mailbox",
+            "banned_words",
+            "diamond_wallets",
+            "diamond_transactions",
             "bookmarks",
+            "swipe_skips",
             "gis_data",
             "authorizations",
             "user_settings",
@@ -110,17 +119,47 @@ class ApiApplicationTests {
             .contentType(MediaType.APPLICATION_JSON)
             .body(
                 BodyInserters.fromValue(
-                    mapOf(
-                        "name" to name,
-                        "email" to email,
-                        "password" to password,
-                        "birthday" to birthday,
+                    registrationPayload(
+                        name = name,
+                        email = email,
+                        password = password,
+                        birthday = birthday,
                     )
                 )
             )
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isCreated
+    }
+
+    protected fun registrationPayload(
+        name: String,
+        email: String,
+        password: String = "Test12345",
+        birthday: String = "1990-01-01",
+        gender: String? = null,
+    ): Map<String, Any?> = buildMap {
+        put("name", name)
+        put("email", email)
+        put("password", password)
+        put("birthday", birthday)
+        if (gender != null) {
+            put("gender", gender)
+        }
+        put("acceptedUserAgreement", true)
+        put("acceptedPersonalDataProcessing", true)
+    }
+
+    protected fun verifyUserForTests(userId: UUID) {
+        liquibaseDataSource.connection.use { connection ->
+            connection.prepareStatement("UPDATE users SET is_verified = true WHERE id = ?").use { statement ->
+                statement.setObject(1, userId)
+                statement.executeUpdate()
+            }
+        }
+        runBlocking {
+            diamondService.grantRegistrationBonus(userId)
+        }
     }
 
     @AfterEach

@@ -164,6 +164,8 @@ async function registerUser(driver, user) {
   const genderSelect = await driver.findElement(By.name('gender'));
   await genderSelect.sendKeys(user.gender === 'MAN' ? 'Мужской' : 'Женский');
 
+  await acceptRegistrationConsents(driver);
+
   await waitAndClick(driver, By.css('button[type="submit"]'));
   await waitForUrlContains(driver, '/swipe', 15000);
 }
@@ -529,6 +531,17 @@ async function clearSession(driver) {
   await driver.executeScript('try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}');
 }
 
+async function acceptRegistrationConsents(driver) {
+  const agreement = await driver.findElement(By.name('acceptedUserAgreement'));
+  const consent = await driver.findElement(By.name('acceptedPersonalDataProcessing'));
+  if (!(await agreement.isSelected())) {
+    await agreement.click();
+  }
+  if (!(await consent.isSelected())) {
+    await consent.click();
+  }
+}
+
 async function registerUserViaApi(user) {
   const resp = await fetch(`${API_URL}/api/v1/registration`, {
     method: 'POST',
@@ -539,6 +552,8 @@ async function registerUserViaApi(user) {
       password: user.password,
       birthday: user.birthday,
       gender: user.gender,
+      acceptedUserAgreement: true,
+      acceptedPersonalDataProcessing: true,
     }),
   });
   if (!resp.ok) {

@@ -14,7 +14,7 @@ import com.github.shk0da.bioritmic.api.model.user.UserInfo
 import com.github.shk0da.bioritmic.api.model.user.UserInfo.Companion.ofWithCompare
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import com.github.shk0da.bioritmic.api.service.GeoIpService
-import com.github.shk0da.bioritmic.api.service.SubscriptionService
+import com.github.shk0da.bioritmic.api.service.DiamondService
 import com.github.shk0da.bioritmic.api.service.UserService
 import com.github.shk0da.bioritmic.api.utils.SecurityUtils.getUserId
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
@@ -52,7 +52,7 @@ import javax.validation.constraints.NotNull
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/user")
 class UserController(
     val userService: UserService,
-    val subscriptionService: SubscriptionService,
+    val diamondService: DiamondService,
     val userRoleRepository: UserRoleRepository,
     val geoIpService: GeoIpService
 ) {
@@ -66,7 +66,10 @@ class UserController(
         val user = userService.findUserById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
         val roles = userRoleRepository.findAllByUserId(userId).map { it.role }.joinToString(",")
         val userInfo = UserInfo.of(user)
-        return userInfo.copy(role = roles, isPro = subscriptionService.isProUser(userId))
+        return userInfo.copy(
+            role = roles,
+            diamondBalance = diamondService.getBalance(userId),
+        )
     }
 
     // PUT/PATH /me -> UserInfo

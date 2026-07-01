@@ -143,6 +143,3 @@ rate-limit:
     - /swagger-ui
     - /v3/api-docs
     - /error
-
-premium:
-  free-for-all: true

@@ -47,7 +47,7 @@ Bioritmic/
 │       │   │   ├── AdminController.kt
 │       │   │   ├── BoostController.kt
 │       │   │   ├── ReportController.kt
-│       │   │   ├── SubscriptionController.kt
+│       │   │   ├── DiamondController.kt
 │       │   │   ├── bookmarks/
 │       │   │   ├── mailbox/
 │       │   │   ├── meetings/
@@ -95,7 +95,7 @@ Bioritmic/
 │       │   ├── meetings/         # Meeting requests (accept/decline)
 │       │   ├── admin/            # Admin dashboard (stats, users, reports, metrics)
 │       │   ├── settings/         # User settings
-│       │   └── subscription/     # Premium subscription
+│       │   └── payments/         # Diamonds balance, transfer, history
 │       └── shared/
 │           ├── components/       # Reusable UI components
 │           └── layout/           # Layout component (sidebar, logout)
@@ -533,7 +533,7 @@ describe('Feature', function () {
 - **Detekt runs with auto-correct** — it will fix some style issues automatically.
 - **E2E tests use MicrosoftEdge** — not Chrome. The `createDriver()` helper is configured for Edge headless.
 - **Frontend unit tests use EdgeHeadless by default via `npm run test:edge`**. If Edge binary is not detected automatically, set `EDGE_BIN`.
-- **`premium.free-for-all: true`** in `application.yml` means all users currently get Pro features without payment.
+- **Paid features use diamonds** — Boost and other enhancements are purchased with the in-app diamond currency.
 - **First user is admin** — this is checked at registration time by counting existing users.
 - **Badge system** polls every 30s and uses localStorage timestamps to determine unread counts.
 

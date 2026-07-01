@@ -1,4 +1,4 @@
-import { Injectable, Component, Output, EventEmitter, HostBinding, OnDestroy } from '@angular/core';
+import { Injectable, Component, Output, EventEmitter, HostBinding, OnDestroy, NgZone, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export interface ModalConfig {
@@ -247,7 +247,11 @@ export class ModalComponent implements OnDestroy {
   private originalOnConfirm: (() => void) | null = null;
   private originalOnCancel: (() => void) | null = null;
 
-  constructor(private modalService: ModalService) {
+  constructor(
+    private modalService: ModalService,
+    private ngZone: NgZone,
+    private cdr: ChangeDetectorRef,
+  ) {
     window.addEventListener('modal:show', this.onModalShow);
     window.addEventListener('modal:close', this.onModalClose);
   }
@@ -259,18 +263,24 @@ export class ModalComponent implements OnDestroy {
   }
 
   private readonly onModalShow = (event: Event): void => {
-    const detail = (event as CustomEvent).detail;
-    this.config = detail.config;
-    this.originalOnConfirm = detail.onConfirm;
-    this.originalOnCancel = detail.onCancel;
-    this.isVisible = true;
-    document.body.classList.add('modal-open');
+    this.ngZone.run(() => {
+      const detail = (event as CustomEvent).detail;
+      this.config = detail.config;
+      this.originalOnConfirm = detail.onConfirm;
+      this.originalOnCancel = detail.onCancel;
+      this.isVisible = true;
+      document.body.classList.add('modal-open');
+      this.cdr.markForCheck();
+    });
   };
 
   private readonly onModalClose = (): void => {
-    this.isVisible = false;
-    this.config = null;
-    document.body.classList.remove('modal-open');
+    this.ngZone.run(() => {
+      this.isVisible = false;
+      this.config = null;
+      document.body.classList.remove('modal-open');
+      this.cdr.markForCheck();
+    });
   };
 
   onConfirm(): void {

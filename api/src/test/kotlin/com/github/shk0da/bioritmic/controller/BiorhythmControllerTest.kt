@@ -31,7 +31,9 @@ class BiorhythmControllerTest : ApiApplicationTests() {
                 "name" to "Bio Test User 1",
                 "email" to email1,
                 "password" to "Test12345",
-                "birthday" to "1990-01-01"
+                "birthday" to "1990-01-01",
+            "acceptedUserAgreement" to true,
+            "acceptedPersonalDataProcessing" to true
             )))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
@@ -45,7 +47,9 @@ class BiorhythmControllerTest : ApiApplicationTests() {
                 "name" to "Bio Test User 2",
                 "email" to email2,
                 "password" to "Test12345",
-                "birthday" to "1995-06-15"
+                "birthday" to "1995-06-15",
+            "acceptedUserAgreement" to true,
+            "acceptedPersonalDataProcessing" to true
             )))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()

@@ -29,6 +29,9 @@
     <include file="v1/0041-add-user-nick.xml" relativeToChangelogFile="true"/>
     <include file="v1/0042-backfill-mailbox-system-media-type.xml" relativeToChangelogFile="true"/>
     <include file="v1/0043-create-banned-words.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0044-create-diamond-wallets.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0045-transfer-diamonds-admin-skip-purchase.xml" relativeToChangelogFile="true"/>
+    <include file="v1/0046-add-registration-consents.xml" relativeToChangelogFile="true"/>
     <!-- -->
 
     <!--  Seeding  -->

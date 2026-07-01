@@ -119,9 +119,9 @@ describe('Кнопка "Админ-панель" для обычного пол�
   });
 });
 
-// ==================== КНОПКА БУСТА В ПРОФИЛЕ ====================
+// ==================== КНОПКА БУСТА НА СТРАНИЦЕ АЛМАЗОВ ====================
 
-describe('Кнопка буста в профиле', function () {
+describe('Кнопка буста на странице алмазов', function () {
   this.timeout(60000);
 
   before(setup);
@@ -131,39 +131,36 @@ describe('Кнопка буста в профиле', function () {
     await registerUser(driver, USER_A);
   });
 
-  it('Секция "Профиль Boost" отображается в профиле', async function () {
-    await navigateTo(driver, '/profile');
+  it('Секция "Профиль Boost" отображается на странице алмазов', async function () {
+    await navigateTo(driver, '/payments');
     await driver.sleep(2000);
 
-    const boostSection = await isElementPresent(
-      driver,
-      By.css('.card-header h6')
-    );
-    assert.ok(boostSection, 'Секция "Профиль Boost" должна отображаться');
+    const bodyText = await driver.findElement(By.css('body')).getText();
+    assert.ok(bodyText.includes('Профиль Boost'), 'Секция "Профиль Boost" должна отображаться');
   });
 
-  it('Кнопка "Boost на 24 часа" отображается для Pro пользователей', async function () {
-    await navigateTo(driver, '/profile');
+  it('Кнопка Boost отображается на странице алмазов', async function () {
+    await navigateTo(driver, '/payments');
     await driver.sleep(2000);
 
     const boostBtn = await isElementPresent(
       driver,
       By.css('button.btn-warning')
     );
-    assert.ok(boostBtn, 'Кнопка "Boost на 24 часа" должна отображаться для Pro пользователей');
+    assert.ok(boostBtn, 'Кнопка Boost должна отображаться на странице алмазов');
   });
 
-  it('Кнопка содержит текст "Boost на 24 часа"', async function () {
-    await navigateTo(driver, '/profile');
+  it('Кнопка содержит текст "Boost за"', async function () {
+    await navigateTo(driver, '/payments');
     await driver.sleep(2000);
 
     const boostBtn = await driver.findElement(By.css('button.btn-warning'));
     const text = await boostBtn.getText();
-    assert.ok(text.includes('Boost на 24 часа'), `Текст кнопки: ${text}`);
+    assert.ok(text.includes('Boost за'), `Текст кнопки: ${text}`);
   });
 
   it('Кнопка содержит иконку молнии', async function () {
-    await navigateTo(driver, '/profile');
+    await navigateTo(driver, '/payments');
     await driver.sleep(2000);
 
     const boostBtn = await driver.findElement(By.css('button.btn-warning'));
@@ -172,7 +169,7 @@ describe('Кнопка буста в профиле', function () {
   });
 
   it('Клик по кнопке буста активирует буст', async function () {
-    await navigateTo(driver, '/profile');
+    await navigateTo(driver, '/payments');
     await driver.sleep(2000);
 
     const boostBtn = await driver.wait(
@@ -190,7 +187,7 @@ describe('Кнопка буста в профиле', function () {
   });
 
   it('Таймер содержит формат "ч м с"', async function () {
-    await navigateTo(driver, '/profile');
+    await navigateTo(driver, '/payments');
     await driver.sleep(2000);
 
     const countdown = await driver.findElement(By.css('.boost-countdown'));
@@ -202,7 +199,7 @@ describe('Кнопка буста в профиле', function () {
   });
 
   it('Иконка молнии отображается рядом с таймером', async function () {
-    await navigateTo(driver, '/profile');
+    await navigateTo(driver, '/payments');
     await driver.sleep(2000);
 
     const lightningIcon = await isElementPresent(
@@ -212,15 +209,14 @@ describe('Кнопка буста в профиле', function () {
     assert.ok(lightningIcon, 'Иконка молнии должна отображаться рядом с таймером');
   });
 
-  it('После активации кнопка "Boost на 24 часа" скрывается', async function () {
-    await navigateTo(driver, '/profile');
+  it('После активации кнопка Boost скрывается', async function () {
+    await navigateTo(driver, '/payments');
     await driver.sleep(2000);
 
     const boostBtn = await isElementPresent(
       driver,
       By.css('button.btn-warning')
     );
-    // Если буст уже активен, кнопка не должна отображаться
     if (!boostBtn) {
       const countdown = await isElementPresent(
         driver,
@@ -244,7 +240,7 @@ describe('Таймер буста', function () {
   });
 
   it('Таймер обновляется каждую секунду', async function () {
-    await navigateTo(driver, '/profile');
+    await navigateTo(driver, '/payments');
     await driver.sleep(2000);
 
     // Активируем буст если ещё не активен
@@ -269,7 +265,7 @@ describe('Таймер буста', function () {
   });
 
   it('Текст "Ваш профиль выделен" отображается при активном бусте', async function () {
-    await navigateTo(driver, '/profile');
+    await navigateTo(driver, '/payments');
     await driver.sleep(2000);
 
     const boostDescription = await isElementPresent(

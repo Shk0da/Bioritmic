@@ -66,6 +66,12 @@ class User {
     @Column("locked_until")
     var lockedUntil: java.sql.Timestamp? = null
 
+    @Column("terms_accepted_at")
+    var termsAcceptedAt: Timestamp? = null
+
+    @Column("personal_data_consent_at")
+    var personalDataConsentAt: Timestamp? = null
+
     @Transient
     var userSettings: UserSettings? = null
 

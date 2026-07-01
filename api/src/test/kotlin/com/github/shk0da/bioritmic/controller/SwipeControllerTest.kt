@@ -23,7 +23,7 @@ class SwipeControllerTest : ApiApplicationTests() {
         registerUser(email)
         authToken = authorizeUser(email)
         currentUserId = resolveCurrentUserId(authToken)
-        verifyUser(currentUserId)
+        verifyUserForTests(currentUserId)
         setGis(authToken, 55.7558, 37.6173)
     }
 
@@ -43,7 +43,7 @@ class SwipeControllerTest : ApiApplicationTests() {
         registerUser(targetEmail)
         val targetToken = authorizeUser(targetEmail)
         val targetUserId = resolveCurrentUserId(targetToken)
-        verifyUser(targetUserId)
+        verifyUserForTests(targetUserId)
         setGis(targetToken, 55.7560, 37.6175)
         insertPhoto(targetUserId)
         configureSearchSettings()
@@ -89,7 +89,9 @@ class SwipeControllerTest : ApiApplicationTests() {
                         "email" to email,
                         "password" to "Test12345",
                         "birthday" to "1990-01-01",
-                        "gender" to "MAN"
+                        "gender" to "MAN",
+                    "acceptedUserAgreement" to true,
+                    "acceptedPersonalDataProcessing" to true
                     )
                 )
             )
@@ -125,15 +127,6 @@ class SwipeControllerTest : ApiApplicationTests() {
             .jsonPath("$.id")
             .value<Any> { idValue = it as String }
         return UUID.fromString(idValue)
-    }
-
-    private fun verifyUser(userId: UUID) {
-        liquibaseDataSource.connection.use { connection ->
-            connection.prepareStatement("UPDATE users SET is_verified = true WHERE id = ?").use { statement ->
-                statement.setObject(1, userId)
-                statement.executeUpdate()
-            }
-        }
     }
 
     private fun setGis(token: String, lat: Double, lon: Double) {

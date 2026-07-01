@@ -43,8 +43,6 @@ data class UserInfo(
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val distance: Double? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    val isPro: Boolean? = null,
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val role: String? = null,
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     val isVerified: Boolean? = null,
@@ -57,6 +55,8 @@ data class UserInfo(
     val bio: String? = null,
     val statusEmoji: String? = null,
     val statusPosition: String? = null,
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    val diamondBalance: Long? = null,
 ) : BasicPresentation {
 
     companion object {

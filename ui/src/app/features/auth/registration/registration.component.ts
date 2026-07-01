@@ -113,6 +113,34 @@ import {
               </div>
             </div>
 
+            <div class="legal-consents mb-3">
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="acceptedUserAgreement"
+                  name="acceptedUserAgreement"
+                  [(ngModel)]="acceptedUserAgreement">
+                <label class="form-check-label" for="acceptedUserAgreement">
+                  Я прочитал(а) и принимаю
+                  <a routerLink="/auth/legal/user-agreement" target="_blank" rel="noopener">Пользовательское соглашение</a>
+                </label>
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="acceptedPersonalDataProcessing"
+                  name="acceptedPersonalDataProcessing"
+                  [(ngModel)]="acceptedPersonalDataProcessing">
+                <label class="form-check-label" for="acceptedPersonalDataProcessing">
+                  Я даю
+                  <a routerLink="/auth/legal/privacy-policy" target="_blank" rel="noopener">согласие на обработку персональных данных</a>
+                  в соответствии с Федеральным законом № 152-ФЗ
+                </label>
+              </div>
+            </div>
+
             @if (error) {
               <div class="error-toast">
                 <i class="bi bi-exclamation-circle me-2"></i>{{ error }}
@@ -197,6 +225,29 @@ import {
       color: #fd297b;
       margin-left: 0.5rem;
     }
+
+    .legal-consents {
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      background: var(--bg-secondary, #f8fafc);
+      border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+    }
+
+    .legal-consents .form-check-label {
+      font-size: 0.85rem;
+      line-height: 1.45;
+      color: var(--text-primary, #1f2937);
+    }
+
+    .legal-consents a {
+      color: #fd297b;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .legal-consents a:hover {
+      text-decoration: underline;
+    }
   `]
 })
 export class RegistrationComponent {
@@ -212,6 +263,8 @@ export class RegistrationComponent {
   error = '';
   loading = false;
   registered = false;
+  acceptedUserAgreement = false;
+  acceptedPersonalDataProcessing = false;
 
   constructor(
     private authService: AuthService,
@@ -240,11 +293,18 @@ export class RegistrationComponent {
       this.user.password &&
       this.user.birthday &&
       this.user.gender &&
-      meetsMinimumAge(this.user.birthday)
+      meetsMinimumAge(this.user.birthday) &&
+      this.acceptedUserAgreement &&
+      this.acceptedPersonalDataProcessing
     );
   }
 
   onSubmit(): void {
+    if (!this.acceptedUserAgreement || !this.acceptedPersonalDataProcessing) {
+      this.error = 'Необходимо принять пользовательское соглашение и дать согласие на обработку персональных данных';
+      return;
+    }
+
     if (!meetsMinimumAge(this.user.birthday)) {
       this.error = MIN_AGE_REGISTRATION_MESSAGE;
       return;
@@ -252,7 +312,11 @@ export class RegistrationComponent {
 
     this.error = '';
     this.loading = true;
-    this.authService.register(this.user).subscribe({
+    this.authService.register({
+      ...this.user,
+      acceptedUserAgreement: true,
+      acceptedPersonalDataProcessing: true,
+    }).subscribe({
       next: () => {
         this.registered = true;
         this.authService.login({ email: this.user.email!, password: this.user.password! }).subscribe({

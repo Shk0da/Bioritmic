@@ -1,6 +1,8 @@
 package com.github.shk0da.bioritmic.api.configuration.mailbox
 
 import com.github.shk0da.bioritmic.api.service.AuthService
+import com.github.shk0da.bioritmic.api.service.DiamondBalanceNotifier
+import com.github.shk0da.bioritmic.api.service.DiamondService
 import com.github.shk0da.bioritmic.api.service.mailbox.MailboxRealtimeService
 import com.github.shk0da.bioritmic.api.utils.AuthCookieHelper
 import kotlinx.coroutines.reactor.mono
@@ -19,6 +21,8 @@ import java.util.UUID
 class MailboxWebSocketHandler(
     private val authService: AuthService,
     private val realtimeService: MailboxRealtimeService,
+    private val diamondService: DiamondService,
+    private val diamondBalanceNotifier: DiamondBalanceNotifier,
 ) : WebSocketHandler {
 
     override fun handle(session: WebSocketSession): Mono<Void> {
@@ -38,7 +42,11 @@ class MailboxWebSocketHandler(
                 .doFinally { realtimeService.unregister(connection) }
                 .then()
             val outbound = session.send(connection.outbound())
-            Mono.`when`(inbound, outbound).then()
+            mono {
+                diamondBalanceNotifier.notify(userId, diamondService.getBalance(userId))
+            }
+                .then(Mono.`when`(inbound, outbound))
+                .then()
         }
     }
 

@@ -60,8 +60,8 @@ export const routes: Routes = [
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
       },
       {
-        path: 'subscription',
-        loadChildren: () => import('./features/subscription/subscription.routes').then(m => m.SUBSCRIPTION_ROUTES)
+        path: 'payments',
+        loadChildren: () => import('./features/payments/payments.routes').then(m => m.PAYMENTS_ROUTES)
       }
     ]
   },

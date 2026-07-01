@@ -68,7 +68,7 @@ export interface GisData {
   timestamp?: Date;
 }
 
-export type MailMediaType = 'VOICE' | 'PHOTO' | 'VIDEO_NOTE' | 'SYSTEM';
+export type MailMediaType = 'VOICE' | 'PHOTO' | 'VIDEO_NOTE' | 'SYSTEM' | 'DIAMOND';
 export type MailReactionType = 'LIKE' | 'HEART' | 'FIRE' | 'POOP' | 'CLOWN' | 'LOL' | 'CRY';
 export type MailReactionCounts = Partial<Record<MailReactionType, number>>;
 
@@ -129,9 +129,9 @@ export interface UserInfo {
   isOnline?: boolean;
   lastActiveAt?: string;
   isVerified?: boolean;
-  isPro?: boolean;
   role?: string;
   isBanned?: boolean;
+  diamondBalance?: number;
 }
 
 export interface PageableRequest {

@@ -41,6 +41,9 @@
   --accent-purple: #8b5cf6;
   --accent-gray: #6c757d;
 
+  --boost-lightning: #c9a227;
+  --boost-lightning-on-accent: #fff1b8;
+
   --alert-warning-bg: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(251, 191, 36, 0.1) 100%);
   --alert-warning-text: #92400e;
   --alert-warning-border: rgba(217, 119, 6, 0.35);
@@ -95,6 +98,9 @@ html.pwa-standalone {
   --shadow-md: 0 5px 20px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
 
+  --boost-lightning: #ffd54f;
+  --boost-lightning-on-accent: #fff8dc;
+
   --alert-warning-bg: linear-gradient(135deg, rgba(245, 158, 11, 0.28) 0%, rgba(180, 83, 9, 0.2) 100%);
   --alert-warning-text: #fde68a;
   --alert-warning-border: rgba(251, 191, 36, 0.55);
@@ -131,6 +137,14 @@ body {
   &.modal-open {
     overflow: hidden;
   }
+}
+
+.boost-lightning-icon {
+  color: var(--boost-lightning);
+}
+
+.boost-lightning-icon--on-accent {
+  color: var(--boost-lightning-on-accent);
 }
 
 app-root {
@@ -606,6 +620,29 @@ option { background: var(--card-bg); color: var(--text-primary); }
   background-clip: text;
 }
 
+// Centered narrow page content (desktop), same pattern as profile edit
+.page-layout {
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.page-col {
+  min-width: 0;
+}
+
+@media (max-width: 767.98px), (hover: none) and (pointer: coarse) {
+  .page-layout {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .page-col {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
 .page-back-link {
   display: inline-flex;
   align-items: center;
@@ -778,8 +815,8 @@ option { background: var(--card-bg); color: var(--text-primary); }
     color: var(--text-primary);
   }
 
-  .blurred-overlay {
-    background: color-mix(in srgb, var(--card-bg) 88%, transparent);
+  .boost-promo {
+    background: color-mix(in srgb, var(--card-bg) 94%, transparent);
   }
 
   // Settings

@@ -12,7 +12,7 @@ export function isSystemMailMessage(message: Pick<UserMail, 'mediaType' | 'messa
   if (!message) {
     return false;
   }
-  if (message.isSystem === true || message.mediaType === 'SYSTEM') {
+  if (message.isSystem === true || message.mediaType === 'SYSTEM' || message.mediaType === 'DIAMOND') {
     return true;
   }
   const text = message.message?.trim();
@@ -20,7 +20,7 @@ export function isSystemMailMessage(message: Pick<UserMail, 'mediaType' | 'messa
 }
 
 export function isSystemMailVisibleToViewer(
-  message: Pick<UserMail, 'mediaType' | 'message' | 'isSystem' | 'to'> | null | undefined,
+  message: Pick<UserMail, 'mediaType' | 'message' | 'isSystem' | 'to' | 'from'> | null | undefined,
   viewerId: string | null | undefined
 ): boolean {
   if (!message) {
@@ -31,6 +31,9 @@ export function isSystemMailVisibleToViewer(
   }
   if (!viewerId) {
     return false;
+  }
+  if (message.mediaType === 'DIAMOND') {
+    return message.to === viewerId || message.from === viewerId;
   }
   return message.to === viewerId;
 }

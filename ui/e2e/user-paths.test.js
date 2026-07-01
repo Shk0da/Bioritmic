@@ -93,7 +93,7 @@ describe('Защищённые маршруты — редирект на лог
     '/settings/feedback',
     '/settings/danger',
     '/settings/blocked',
-    '/subscription',
+    '/payments',
     '/admin',
     '/user/00000000-0000-0000-0000-000000000099',
   ];
@@ -139,7 +139,7 @@ describe('Маршруты верифицированного пользоват
     { path: '/settings/feedback', url: '/settings/feedback', text: 'Обратная связь' },
     { path: '/settings/danger', url: '/settings/danger', text: 'Опасная зона' },
     { path: '/settings/blocked', url: '/settings/blocked', text: 'Заблокированные пользователи' },
-    { path: '/subscription', url: '/subscription', text: 'Подписка' },
+    { path: '/payments', url: '/payments', text: 'Алмазы' },
   ];
 
   for (const route of verifiedRoutes) {
@@ -279,7 +279,6 @@ describe('Маршруты неверифицированного пользов
     '/bookmarks',
     '/mailbox',
     '/meetings',
-    '/subscription',
   ];
 
   for (const path of restrictedRoutes) {

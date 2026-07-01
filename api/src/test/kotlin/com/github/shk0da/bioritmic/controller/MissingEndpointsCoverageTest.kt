@@ -113,15 +113,7 @@ class MissingEndpointsCoverageTest : ApiApplicationTests() {
     }
 
     @Test
-    fun `boost subscription and report endpoints are covered`() {
-        webTestClient.post()
-            .uri("$API_WITH_VERSION_1/subscription/verify")
-            .header(HttpHeaders.AUTHORIZATION, aliceToken)
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(mapOf("receiptToken" to "receipt-1", "plan" to "PRO")))
-            .exchange()
-            .expectStatus().isOk
-
+    fun `boost and report endpoints are covered`() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/boost/activate")
             .header(HttpHeaders.AUTHORIZATION, aliceToken)
@@ -130,12 +122,6 @@ class MissingEndpointsCoverageTest : ApiApplicationTests() {
 
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/boost/current")
-            .header(HttpHeaders.AUTHORIZATION, aliceToken)
-            .exchange()
-            .expectStatus().isOk
-
-        webTestClient.post()
-            .uri("$API_WITH_VERSION_1/subscription/cancel")
             .header(HttpHeaders.AUTHORIZATION, aliceToken)
             .exchange()
             .expectStatus().isOk

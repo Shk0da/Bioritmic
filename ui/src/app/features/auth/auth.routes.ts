@@ -30,5 +30,9 @@ export const AUTH_ROUTES: Routes = [
   {
     path: 'verify-email',
     component: VerifyEmailComponent
+  },
+  {
+    path: 'legal',
+    loadChildren: () => import('../legal/legal.routes').then(m => m.LEGAL_ROUTES)
   }
 ];

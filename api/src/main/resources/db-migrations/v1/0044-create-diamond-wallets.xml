@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="0044-create-diamond-wallets" author="bioritmic">
+        <createTable tableName="diamond_wallets">
+            <column name="user_id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="balance" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>ALTER TABLE diamond_wallets ADD CONSTRAINT chk_diamond_wallets_balance_non_negative CHECK (balance >= 0);</sql>
+
+        <createTable tableName="diamond_transactions">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="from_user_id" type="UUID"/>
+            <column name="to_user_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(500)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>ALTER TABLE diamond_transactions ADD CONSTRAINT chk_diamond_transactions_amount_positive CHECK (amount > 0);</sql>
+
+        <createIndex tableName="diamond_transactions" indexName="idx_diamond_transactions_from_user_id">
+            <column name="from_user_id"/>
+        </createIndex>
+        <createIndex tableName="diamond_transactions" indexName="idx_diamond_transactions_to_user_id">
+            <column name="to_user_id"/>
+        </createIndex>
+        <createIndex tableName="diamond_transactions" indexName="idx_diamond_transactions_created_at">
+            <column name="created_at"/>
+        </createIndex>
+        <sql>CREATE INDEX idx_diamond_transactions_purchase_recipient ON diamond_transactions (to_user_id) WHERE type = 'PURCHASE';</sql>
+    </changeSet>
+
+    <changeSet id="0044-diamond-atomic-operations" author="bioritmic">
+        <sql splitStatements="false" stripComments="false"><![CDATA[
+CREATE OR REPLACE FUNCTION ensure_diamond_wallet(p_user_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO diamond_wallets (user_id, balance, updated_at)
+    VALUES (p_user_id, 0, NOW())
+    ON CONFLICT (user_id) DO NOTHING;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION transfer_diamonds_atomic(
+    p_from_user_id UUID,
+    p_to_user_id UUID,
+    p_amount BIGINT,
+    p_type VARCHAR(32) DEFAULT 'TRANSFER'
+)
+RETURNS TABLE(new_from_balance BIGINT, transaction_id BIGINT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_from_balance BIGINT;
+    v_tx_id BIGINT;
+    v_first UUID;
+    v_second UUID;
+BEGIN
+    IF p_amount <= 0 THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_AMOUNT';
+    END IF;
+    IF p_from_user_id = p_to_user_id THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'SAME_USER_TRANSFER';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM diamond_transactions
+        WHERE to_user_id = p_from_user_id AND type = 'PURCHASE'
+    ) THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'PURCHASE_REQUIRED';
+    END IF;
+
+    PERFORM ensure_diamond_wallet(p_from_user_id);
+    PERFORM ensure_diamond_wallet(p_to_user_id);
+
+    IF p_from_user_id < p_to_user_id THEN
+        v_first := p_from_user_id;
+        v_second := p_to_user_id;
+    ELSE
+        v_first := p_to_user_id;
+        v_second := p_from_user_id;
+    END IF;
+
+    PERFORM 1 FROM diamond_wallets WHERE user_id = v_first FOR UPDATE;
+    PERFORM 1 FROM diamond_wallets WHERE user_id = v_second FOR UPDATE;
+
+    UPDATE diamond_wallets
+    SET balance = balance - p_amount, updated_at = NOW()
+    WHERE user_id = p_from_user_id AND balance >= p_amount
+    RETURNING balance INTO v_from_balance;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INSUFFICIENT_BALANCE';
+    END IF;
+
+    UPDATE diamond_wallets
+    SET balance = balance + p_amount, updated_at = NOW()
+    WHERE user_id = p_to_user_id;
+
+    INSERT INTO diamond_transactions (from_user_id, to_user_id, amount, type, created_at)
+    VALUES (p_from_user_id, p_to_user_id, p_amount, p_type, NOW())
+    RETURNING id INTO v_tx_id;
+
+    RETURN QUERY SELECT v_from_balance, v_tx_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION purchase_boost_atomic(
+    p_user_id UUID,
+    p_cost BIGINT,
+    p_hours INT
+)
+RETURNS TABLE(new_balance BIGINT, transaction_id BIGINT, boost_id BIGINT, boost_expires_at TIMESTAMP)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_balance BIGINT;
+    v_tx_id BIGINT;
+    v_boost_id BIGINT;
+    v_expires TIMESTAMP;
+    v_existing RECORD;
+BEGIN
+    IF p_cost <= 0 OR p_hours <= 0 THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_BOOST_PARAMS';
+    END IF;
+
+    PERFORM ensure_diamond_wallet(p_user_id);
+    PERFORM 1 FROM diamond_wallets WHERE user_id = p_user_id FOR UPDATE;
+
+    UPDATE diamond_wallets
+    SET balance = balance - p_cost, updated_at = NOW()
+    WHERE user_id = p_user_id AND balance >= p_cost
+    RETURNING balance INTO v_balance;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INSUFFICIENT_BALANCE';
+    END IF;
+
+    INSERT INTO diamond_transactions (from_user_id, to_user_id, amount, type, description, created_at)
+    VALUES (p_user_id, p_user_id, p_cost, 'BOOST_PURCHASE', 'Profile boost purchase', NOW())
+    RETURNING id INTO v_tx_id;
+
+    SELECT id, expires_at INTO v_existing
+    FROM profile_boosts
+    WHERE user_id = p_user_id
+    FOR UPDATE;
+
+    IF FOUND AND v_existing.expires_at > NOW() THEN
+        v_expires := v_existing.expires_at + make_interval(hours => p_hours);
+        UPDATE profile_boosts
+        SET expires_at = v_expires
+        WHERE id = v_existing.id
+        RETURNING id INTO v_boost_id;
+    ELSIF FOUND THEN
+        v_expires := NOW() + make_interval(hours => p_hours);
+        UPDATE profile_boosts
+        SET started_at = NOW(), expires_at = v_expires
+        WHERE id = v_existing.id
+        RETURNING id INTO v_boost_id;
+    ELSE
+        v_expires := NOW() + make_interval(hours => p_hours);
+        INSERT INTO profile_boosts (user_id, started_at, expires_at)
+        VALUES (p_user_id, NOW(), v_expires)
+        RETURNING id INTO v_boost_id;
+    END IF;
+
+    RETURN QUERY SELECT v_balance, v_tx_id, v_boost_id, v_expires;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION grant_registration_bonus_atomic(p_user_id UUID)
+RETURNS TABLE(new_balance BIGINT, transaction_id BIGINT, granted BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_balance BIGINT;
+    v_tx_id BIGINT;
+BEGIN
+    PERFORM ensure_diamond_wallet(p_user_id);
+    PERFORM 1 FROM diamond_wallets WHERE user_id = p_user_id FOR UPDATE;
+
+    IF EXISTS (
+        SELECT 1 FROM diamond_transactions
+        WHERE to_user_id = p_user_id AND type = 'REGISTRATION_BONUS'
+    ) THEN
+        SELECT balance INTO v_balance FROM diamond_wallets WHERE user_id = p_user_id;
+        RETURN QUERY SELECT COALESCE(v_balance, 0::BIGINT), NULL::BIGINT, false;
+        RETURN;
+    END IF;
+
+    UPDATE diamond_wallets
+    SET balance = balance + 100, updated_at = NOW()
+    WHERE user_id = p_user_id
+    RETURNING balance INTO v_balance;
+
+    INSERT INTO diamond_transactions (to_user_id, amount, type, description, created_at)
+    VALUES (p_user_id, 100, 'REGISTRATION_BONUS', 'Welcome bonus', NOW())
+    RETURNING id INTO v_tx_id;
+
+    RETURN QUERY SELECT v_balance, v_tx_id, true;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION set_diamond_balance_atomic(
+    p_admin_user_id UUID,
+    p_user_id UUID,
+    p_balance BIGINT
+)
+RETURNS TABLE(new_balance BIGINT, transaction_id BIGINT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_previous BIGINT;
+    v_delta BIGINT;
+    v_tx_id BIGINT;
+BEGIN
+    IF p_balance < 0 THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_BALANCE';
+    END IF;
+
+    PERFORM ensure_diamond_wallet(p_user_id);
+    PERFORM 1 FROM diamond_wallets WHERE user_id = p_user_id FOR UPDATE;
+
+    SELECT balance INTO v_previous FROM diamond_wallets WHERE user_id = p_user_id;
+    v_previous := COALESCE(v_previous, 0);
+
+    UPDATE diamond_wallets
+    SET balance = p_balance, updated_at = NOW()
+    WHERE user_id = p_user_id;
+
+    v_delta := p_balance - v_previous;
+    IF v_delta != 0 THEN
+        INSERT INTO diamond_transactions (from_user_id, to_user_id, amount, type, description, created_at)
+        VALUES (
+            CASE WHEN v_delta < 0 THEN p_user_id ELSE p_admin_user_id END,
+            p_user_id,
+            ABS(v_delta),
+            'ADMIN_ADJUSTMENT',
+            'Admin adjustment by ' || p_admin_user_id::TEXT,
+            NOW()
+        )
+        RETURNING id INTO v_tx_id;
+    ELSE
+        v_tx_id := NULL;
+    END IF;
+
+    RETURN QUERY SELECT p_balance, v_tx_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION record_purchase_atomic(p_user_id UUID, p_amount BIGINT)
+RETURNS TABLE(new_balance BIGINT, transaction_id BIGINT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_balance BIGINT;
+    v_tx_id BIGINT;
+BEGIN
+    IF p_amount <= 0 THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'INVALID_AMOUNT';
+    END IF;
+
+    PERFORM ensure_diamond_wallet(p_user_id);
+    PERFORM 1 FROM diamond_wallets WHERE user_id = p_user_id FOR UPDATE;
+
+    UPDATE diamond_wallets
+    SET balance = balance + p_amount, updated_at = NOW()
+    WHERE user_id = p_user_id
+    RETURNING balance INTO v_balance;
+
+    INSERT INTO diamond_transactions (to_user_id, amount, type, description, created_at)
+    VALUES (p_user_id, p_amount, 'PURCHASE', 'Diamond top-up', NOW())
+    RETURNING id INTO v_tx_id;
+
+    RETURN QUERY SELECT v_balance, v_tx_id;
+END;
+$$;
+        ]]></sql>
+    </changeSet>
+
+</databaseChangeLog>

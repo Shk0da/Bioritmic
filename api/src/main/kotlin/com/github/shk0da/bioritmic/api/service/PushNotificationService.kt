@@ -3,6 +3,7 @@ package com.github.shk0da.bioritmic.api.service
 import com.github.shk0da.bioritmic.api.domain.UserPushToken
 import com.github.shk0da.bioritmic.api.exceptions.ApiException
 import com.github.shk0da.bioritmic.api.exceptions.ErrorCode
+import com.github.shk0da.bioritmic.api.model.mailbox.DiamondMailMessage
 import com.github.shk0da.bioritmic.api.repository.UserPushTokenRepository
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
@@ -131,6 +132,15 @@ class PushNotificationService(
             "Новая встреча",
             "$senderName предлагает встретиться",
             pushNavigationData("meeting", senderId),
+        )
+    }
+
+    suspend fun notifyDiamondTransfer(recipientId: UUID, senderId: UUID, senderName: String, amount: Long) {
+        sendPushNotification(
+            recipientId,
+            "Перевод алмазов",
+            DiamondMailMessage.formatTransferMessage(senderName, amount),
+            pushNavigationData("mailbox", senderId),
         )
     }
 

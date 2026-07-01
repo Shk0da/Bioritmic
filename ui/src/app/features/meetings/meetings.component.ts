@@ -31,6 +31,8 @@ interface BookmarkWithPhoto extends UserInfo {
   standalone: true,
   imports: [RouterLink, FormsModule],
   template: `
+    <div class="row page-layout">
+      <div class="col-12 col-md-8 mx-auto page-col">
     <div class="meetings-page-top mb-4">
       <div class="page-header meetings-page-title">
         <h1 class="page-title">
@@ -356,6 +358,8 @@ interface BookmarkWithPhoto extends UserInfo {
         }
       </div>
     }
+      </div>
+    </div>
 
     @if (showMeetingModal && selectedBookmarkUser) {
       <div class="meeting-modal-overlay" (click)="closeMeetingModal()">
@@ -408,6 +412,13 @@ interface BookmarkWithPhoto extends UserInfo {
     }
   `,
   styles: [`
+    :host {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
     .meetings-page-top {
       display: flex;
       flex-direction: column;

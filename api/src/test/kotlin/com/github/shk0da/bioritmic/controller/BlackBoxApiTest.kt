@@ -519,7 +519,14 @@ class BlackBoxApiTest : ApiApplicationTests() {
             .expectBody()
             .jsonPath("$.isMatch").isEqualTo(true)
 
-        // Matches list must contain the other user, not self
+        // Matches list requires active Boost to reveal profiles
+        webTestClient.post()
+            .uri("$API_WITH_VERSION_1/boost/activate")
+            .headers(auth(aliceToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk
+
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/bookmarks/matches")
             .headers(auth(aliceToken))
@@ -600,17 +607,6 @@ class BlackBoxApiTest : ApiApplicationTests() {
 
         webTestClient.get()
             .uri("$API_WITH_VERSION_1/user/me/gis")
-            .headers(auth(aliceToken))
-            .exchange()
-            .expectStatus().isOk
-    }
-
-    // ===== SUBSCRIPTION =====
-
-    @Test
-    fun `get current subscription`() {
-        webTestClient.get()
-            .uri("$API_WITH_VERSION_1/subscription/current")
             .headers(auth(aliceToken))
             .exchange()
             .expectStatus().isOk

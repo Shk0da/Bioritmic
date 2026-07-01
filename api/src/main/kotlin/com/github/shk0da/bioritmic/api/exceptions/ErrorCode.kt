@@ -39,6 +39,16 @@ enum class ErrorCode(val code: String, val message: String, val httpCode: HttpSt
     MANY_BOOKMARKS("API-400.8", "User has to many bookmarks.", HttpStatus.BAD_REQUEST),
     MANY_MEETINGS("API-400.8", "User has to many meetings.", HttpStatus.BAD_REQUEST),
     BAD_PHOTO("API-400.9", "Photo must be jpg or png.", HttpStatus.BAD_REQUEST),
+    DIAMOND_INSUFFICIENT_BALANCE(
+        "API-400.10",
+        "Insufficient diamond balance",
+        HttpStatus.BAD_REQUEST,
+    ),
+    DIAMOND_PURCHASE_REQUIRED(
+        "API-400.11",
+        "Diamond transfers are available after your first balance top-up",
+        HttpStatus.BAD_REQUEST,
+    ),
 
     USER_EXISTS("API-409", "The user with this email is already registered.", HttpStatus.CONFLICT),
     NICK_EXISTS("API-409.1", "This nick is already taken.", HttpStatus.CONFLICT),

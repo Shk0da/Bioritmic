@@ -139,6 +139,21 @@ describe('authGuard', () => {
     });
   });
 
+  it('should allow unverified user to open payments page', (done) => {
+    authService.isAuthenticated.and.returnValue(true);
+    authService.getCurrentUser.and.returnValue({
+      id: '1',
+      name: 'Test',
+      email: 't@t.com',
+      isVerified: false
+    });
+
+    runGuard('/payments').subscribe(value => {
+      expect(value).toBeTrue();
+      done();
+    });
+  });
+
   it('should redirect unverified user away from restricted routes to swipe', (done) => {
     authService.isAuthenticated.and.returnValue(true);
     authService.getCurrentUser.and.returnValue({

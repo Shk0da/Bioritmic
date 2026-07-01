@@ -64,7 +64,11 @@ export class AuthService implements OnDestroy {
     return this.http.post<UserToken>(`${this.apiUrl}/authorization`, credentials);
   }
 
-  register(user: Partial<User> & { password: string }): Observable<User> {
+  register(user: Partial<User> & {
+    password: string;
+    acceptedUserAgreement?: boolean;
+    acceptedPersonalDataProcessing?: boolean;
+  }): Observable<User> {
     return this.http.post<User>(`${this.apiUrl}/registration`, user);
   }
 
@@ -102,6 +106,18 @@ export class AuthService implements OnDestroy {
 
   getCurrentUser(): UserInfo | null {
     return this.currentUserSubject.value;
+  }
+
+  reloadCurrentUser(): void {
+    this.refreshCurrentUser();
+  }
+
+  updateDiamondBalance(balance: number): void {
+    const current = this.currentUserSubject.value;
+    if (!current || current.diamondBalance === balance) {
+      return;
+    }
+    this.applyCurrentUser({ ...current, diamondBalance: balance });
   }
 
   clearAuth(): void {

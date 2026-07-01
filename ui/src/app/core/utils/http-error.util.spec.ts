@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { isNickHttpError, resolveHttpErrorMessage } from './http-error.util';
+import { isNickHttpError, resolveDiamondTransferErrorMessage, resolveHttpErrorMessage } from './http-error.util';
 
 describe('resolveHttpErrorMessage', () => {
   it('should return network message for status 0', () => {
@@ -67,6 +67,86 @@ describe('resolveHttpErrorMessage', () => {
       },
     });
     expect(resolveHttpErrorMessage(error)).toBe('Вам должно быть не менее 14 лет');
+  });
+
+  it('should map diamond purchase-required message to Russian', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: {
+        errors: [{
+          errorCode: 'API-400.11',
+          message: 'Top up your balance before transferring diamonds',
+        }],
+      },
+    });
+    expect(resolveDiamondTransferErrorMessage(error)).toBe('Перевод алмазов доступен только после первого пополнения. Нажмите «Пополнить».');
+  });
+
+  it('should map diamond transfer amount range message to Russian', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: {
+        errors: [{
+          errorCode: 'API-400.3',
+          message: 'Amount must be between 1 and 1000000',
+        }],
+      },
+    });
+    expect(resolveDiamondTransferErrorMessage(error)).toBe('Сумма должна быть от 1 до 1 000 000');
+    expect(resolveHttpErrorMessage(error)).toBe('Сумма должна быть от 1 до 1 000 000');
+  });
+
+  it('should map diamond insufficient balance message to Russian', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: {
+        errors: [{
+          errorCode: 'API-400.10',
+          message: 'Insufficient diamond balance',
+        }],
+      },
+    });
+    expect(resolveDiamondTransferErrorMessage(error)).toBe('Недостаточно алмазов на балансе');
+  });
+
+  it('should map diamond purchase-required message to Russian via API-400.3', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: {
+        errors: [{
+          errorCode: 'API-400.3',
+          message: 'Top up your balance before transferring diamonds',
+        }],
+      },
+    });
+    expect(resolveDiamondTransferErrorMessage(error)).toBe('Перевод алмазов доступен только после первого пополнения. Нажмите «Пополнить».');
+    expect(resolveHttpErrorMessage(error)).toBe('Перевод алмазов доступен только после первого пополнения. Нажмите «Пополнить».');
+  });
+
+  it('should map diamond purchase-required message to Russian via legacy text', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: {
+        errors: [{
+          errorCode: 'API-400.3',
+          message: 'Top up your balance before transferring diamonds',
+        }],
+      },
+    });
+    expect(resolveHttpErrorMessage(error)).toBe('Перевод алмазов доступен только после первого пополнения. Нажмите «Пополнить».');
+  });
+
+  it('should ignore unreplaced API template placeholders', () => {
+    const error = new HttpErrorResponse({
+      status: 400,
+      error: {
+        errors: [{
+          errorCode: 'API-400.3',
+          message: 'Parameter [${parameterName}] value is invalid.',
+        }],
+      },
+    });
+    expect(resolveHttpErrorMessage(error)).toBe('Некорректный запрос. Проверьте введённые данные.');
   });
 
   it('should fall back to generic server error', () => {

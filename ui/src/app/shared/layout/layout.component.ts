@@ -9,6 +9,7 @@ import { MeetingsService } from '../../core/services/meetings.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { PushNotificationService } from '../../core/services/push-notification.service';
 import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
+import { MailboxRealtimeService } from '../../core/services/mailbox-realtime.service';
 import { isCompactAppShell } from '../utils/pwa.util';
 import { logoutFromApp } from '../utils/logout.util';
 import { normalizeRouteUrl } from '../../core/routing/route-cache-refresh.util';
@@ -69,6 +70,10 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
             [title]="themeService.isDark() ? 'Светлая тема' : 'Тёмная тема'">
             <i class="bi" [ngClass]="themeService.isDark() ? 'bi-sun-fill' : 'bi-moon-stars-fill'"></i>
           </button>
+          <a routerLink="/payments" routerLinkActive="active" class="nav-btn nav-btn-diamonds" title="Алмазы">
+            <img src="assets/img/diamond.png" alt="" class="diamond-nav-icon">
+            <span class="diamond-balance-badge">{{ formatDiamondBalance(diamondBalance) }}</span>
+          </a>
           <a routerLink="/profile" class="nav-btn" title="Профиль">
             <i class="bi bi-person-circle"></i>
           </a>
@@ -196,6 +201,41 @@ import { Subject, Subscription, filter, takeUntil } from 'rxjs';
       border-color: white;
     }
 
+    .nav-btn-diamonds {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .diamond-nav-icon {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .diamond-balance-badge {
+      position: absolute;
+      top: 0;
+      right: -2px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      color: white;
+      border-radius: 8px;
+      font-size: 0.58rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      border: 1.5px solid white;
+      z-index: 10;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      pointer-events: none;
+    }
+
     @keyframes badgePulse {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.15); }
@@ -267,6 +307,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   pullRefreshOffset = 0;
   pullRefreshing = false;
   readonly pullRefreshThreshold = 64;
+  diamondBalance = 0;
   private readonly headerScrollFadeDistance = 96;
   private resendCooldownInterval: ReturnType<typeof setInterval> | null = null;
   private pollingIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -313,6 +354,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     public themeService: ThemeService,
     private pushService: PushNotificationService,
     private pullToRefreshService: PullToRefreshService,
+    private mailboxRealtime: MailboxRealtimeService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -323,14 +365,17 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.bindPageSwipeNavigation();
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
+      this.diamondBalance = user?.diamondBalance ?? 0;
       this.isUserAdmin = !!(user?.role && user.role.includes('ADMIN'));
       this.isUserVerified = user?.isVerified !== false;
       if (user?.id) {
         this.loadUserPhoto(user.id);
         this.startPolling();
+        this.mailboxRealtime.connect();
         void this.initPushNotifications();
       } else {
         this.stopPolling();
+        this.mailboxRealtime.disconnect();
         this.pushInitDone = false;
       }
     });
@@ -783,6 +828,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
         this.resendLoading = false;
       }
     });
+  }
+
+  formatDiamondBalance(balance: number): string {
+    if (balance > 9999) {
+      return '9999+';
+    }
+    return String(balance);
   }
 
   logout(event?: Event): void {

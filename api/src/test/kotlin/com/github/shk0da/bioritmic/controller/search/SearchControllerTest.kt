@@ -56,7 +56,7 @@ class SearchControllerTest : ApiApplicationTests() {
         val auth = authTokenCache.values.find { it.userId != null }
         userId = auth?.userId
         authToken = "Bearer ${auth?.accessToken}"
-        userId?.let { verifyUser(it) }
+        userId?.let { verifyUserForTests(it) }
 
         val gis = mapOf("lat" to 55.7558, "lon" to 37.6173)
         webTestClient.post()
@@ -110,11 +110,11 @@ class SearchControllerTest : ApiApplicationTests() {
 
         val noPhotoEmail = "no_photo_$suffix@gmail.com"
         val (noPhotoId, _) = registerNearbyUser(noPhotoEmail, lat, lon)
-        verifyUser(noPhotoId)
+        verifyUserForTests(noPhotoId)
 
         val withPhotoEmail = "with_photo_$suffix@gmail.com"
         val (withPhotoId, _) = registerNearbyUser(withPhotoEmail, lat, lon)
-        verifyUser(withPhotoId)
+        verifyUserForTests(withPhotoId)
         insertPhoto(withPhotoId)
 
         webTestClient.post()
@@ -156,12 +156,12 @@ class SearchControllerTest : ApiApplicationTests() {
 
         val secondaryOnlyEmail = "secondary_photo_$suffix@gmail.com"
         val (secondaryOnlyId, _) = registerNearbyUser(secondaryOnlyEmail, lat, lon)
-        verifyUser(secondaryOnlyId)
+        verifyUserForTests(secondaryOnlyId)
         insertPhoto(secondaryOnlyId, photoOrder = 1)
 
         val withProfilePhotoEmail = "profile_photo_$suffix@gmail.com"
         val (withProfilePhotoId, _) = registerNearbyUser(withProfilePhotoEmail, lat, lon)
-        verifyUser(withProfilePhotoId)
+        verifyUserForTests(withProfilePhotoId)
         insertPhoto(withProfilePhotoId, photoOrder = 0)
 
         configureSearchSettings()
@@ -186,12 +186,12 @@ class SearchControllerTest : ApiApplicationTests() {
 
         val emptyKeyEmail = "empty_s3_key_$suffix@gmail.com"
         val (emptyKeyId, _) = registerNearbyUser(emptyKeyEmail, lat, lon)
-        verifyUser(emptyKeyId)
+        verifyUserForTests(emptyKeyId)
         insertPhoto(emptyKeyId, photoOrder = 0, s3Key = "")
 
         val withPhotoEmail = "valid_photo_$suffix@gmail.com"
         val (withPhotoId, _) = registerNearbyUser(withPhotoEmail, lat, lon)
-        verifyUser(withPhotoId)
+        verifyUserForTests(withPhotoId)
         insertPhoto(withPhotoId)
 
         configureSearchSettings()
@@ -219,7 +219,7 @@ class SearchControllerTest : ApiApplicationTests() {
             lat = baseLat + 0.001,
             lon = baseLon
         )
-        verifyUser(closerId)
+        verifyUserForTests(closerId)
         insertPhoto(closerId)
 
         val (fartherId, fartherToken) = registerNearbyUser(
@@ -227,7 +227,7 @@ class SearchControllerTest : ApiApplicationTests() {
             lat = baseLat + 0.02,
             lon = baseLon
         )
-        verifyUser(fartherId)
+        verifyUserForTests(fartherId)
         insertPhoto(fartherId)
 
         webTestClient.post()
@@ -286,7 +286,7 @@ class SearchControllerTest : ApiApplicationTests() {
 
         val bannedEmail = "banned_$suffix@gmail.com"
         val (bannedId, _) = registerNearbyUser(bannedEmail, lat, lon)
-        verifyUser(bannedId)
+        verifyUserForTests(bannedId)
         insertPhoto(bannedId)
 
         webTestClient.post()
@@ -332,7 +332,7 @@ class SearchControllerTest : ApiApplicationTests() {
 
         val skippedEmail = "skipped_$suffix@gmail.com"
         val (skippedId, _) = registerNearbyUser(skippedEmail, lat, lon)
-        verifyUser(skippedId)
+        verifyUserForTests(skippedId)
         insertPhoto(skippedId)
 
         configureSearchSettings()
@@ -371,7 +371,7 @@ class SearchControllerTest : ApiApplicationTests() {
 
         val likedEmail = "liked_$suffix@gmail.com"
         val (likedId, _) = registerNearbyUser(likedEmail, lat, lon)
-        verifyUser(likedId)
+        verifyUserForTests(likedId)
         insertPhoto(likedId)
 
         configureSearchSettings()
@@ -416,7 +416,9 @@ class SearchControllerTest : ApiApplicationTests() {
                         "email" to email,
                         "password" to "Test12345",
                         "birthday" to "1990-01-01",
-                        "gender" to "MAN"
+                        "gender" to "MAN",
+                    "acceptedUserAgreement" to true,
+                    "acceptedPersonalDataProcessing" to true
                     )
                 )
             )
@@ -473,15 +475,6 @@ class SearchControllerTest : ApiApplicationTests() {
             .jsonPath("$.accessToken")
             .value<Any> { accessToken = it as String }
         return "Bearer ${accessToken!!}"
-    }
-
-    private fun verifyUser(targetUserId: UUID) {
-        liquibaseDataSource.connection.use { connection ->
-            connection.prepareStatement("UPDATE users SET is_verified = true WHERE id = ?").use { statement ->
-                statement.setObject(1, targetUserId)
-                statement.executeUpdate()
-            }
-        }
     }
 
     private fun insertPhoto(targetUserId: UUID, photoOrder: Int = 0, s3Key: String? = null) {

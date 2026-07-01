@@ -22,6 +22,9 @@ import { MailboxRealtimeService, MailboxWsEvent } from '../../../core/services/m
 import { UserService } from '../../../core/services/user.service';
 import { UserMail, UserInfo, MailMediaType, MailReactionType } from '../../../core/models/user.model';
 import { ModalService } from '../../../core/services/modal.service';
+import { DiamondsService } from '../../../core/services/diamonds.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Subject, takeUntil } from 'rxjs';
 import { ImageCropModalComponent } from '../../../shared/components/image-crop-modal/image-crop-modal.component';
 import { formatMessageDateTime, formatMessageTime } from '../../../shared/utils/timestamp.util';
@@ -358,6 +361,33 @@ interface ChatMessage extends UserMail {
                   <button type="button" (click)="startVoiceRecording()">
                     <i class="bi bi-mic-fill"></i> Голос
                   </button>
+                  <button type="button" data-testid="attach-diamonds" (click)="openDiamondPanel()">
+                    <img src="assets/img/diamond.png" alt="" class="attach-diamond-icon"> Алмазы
+                  </button>
+                </div>
+              }
+              @if (showDiamondPanel) {
+                <div class="diamond-send-panel">
+                  <div class="diamond-send-title">Отправить алмазы</div>
+                  <input
+                    type="number"
+                    class="form-control form-control-sm"
+                    min="1"
+                    placeholder="Количество"
+                    [(ngModel)]="diamondAmount"
+                    [disabled]="sendingDiamonds">
+                  <div class="diamond-send-actions">
+                    <button type="button" class="btn btn-sm btn-primary" [disabled]="sendingDiamonds || !diamondAmount || diamondAmount < 1" (click)="sendDiamonds()">
+                      @if (sendingDiamonds) {
+                        <span class="spinner-border spinner-border-sm"></span>
+                      } @else {
+                        Отправить
+                      }
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="sendingDiamonds" (click)="closeDiamondPanel()">
+                      Отмена
+                    </button>
+                  </div>
                 </div>
               }
               <input
@@ -910,6 +940,39 @@ interface ChatMessage extends UserMail {
           background: var(--bg-hover);
         }
       }
+    }
+
+    .attach-diamond-icon {
+      width: 18px;
+      height: 18px;
+      object-fit: contain;
+    }
+
+    .diamond-send-panel {
+      position: absolute;
+      bottom: calc(100% + 0.5rem);
+      left: 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      padding: 0.75rem;
+      z-index: 21;
+      min-width: 180px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .diamond-send-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .diamond-send-actions {
+      display: flex;
+      gap: 0.5rem;
     }
 
     .attach-backdrop {
@@ -1532,6 +1595,9 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
   isBlocked = false;
   showEmojiPicker = false;
   showAttachMenu = false;
+  showDiamondPanel = false;
+  diamondAmount: number | null = null;
+  sendingDiamonds = false;
   photoPreviewUrl: string | null = null;
   photoCropVisible = false;
   photoCropSourceFile: File | null = null;
@@ -1600,7 +1666,10 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     private mailboxService: MailboxService,
     private mailboxRealtime: MailboxRealtimeService,
     private userService: UserService,
-    private modalService: ModalService
+    private modalService: ModalService,
+    private diamondsService: DiamondsService,
+    private authService: AuthService,
+    private toastService: ToastService,
   ) {
     this.destroyRef.onDestroy(() => this.teardown());
     this.bindRealtimeEvents();
@@ -2040,6 +2109,46 @@ export class ConversationPanelComponent implements OnChanges, OnDestroy, AfterVi
     this.showAttachMenu = !this.showAttachMenu;
     this.showEmojiPicker = false;
     this.showReactionPickerFor = null;
+    if (this.showAttachMenu) {
+      this.showDiamondPanel = false;
+    }
+  }
+
+  openDiamondPanel(): void {
+    if (this.isBlocked || this.sending) {
+      return;
+    }
+    this.showAttachMenu = false;
+    this.showEmojiPicker = false;
+    this.showReactionPickerFor = null;
+    this.showDiamondPanel = true;
+    this.diamondAmount = null;
+  }
+
+  closeDiamondPanel(): void {
+    this.showDiamondPanel = false;
+    this.diamondAmount = null;
+  }
+
+  sendDiamonds(): void {
+    if (!this.userId || !this.diamondAmount || this.diamondAmount < 1 || this.sendingDiamonds || this.isBlocked) {
+      return;
+    }
+    this.sendingDiamonds = true;
+    this.diamondsService.transfer(this.userId, this.diamondAmount, false)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.sendingDiamonds = false;
+          this.closeDiamondPanel();
+          this.toastService.success('Алмазы отправлены');
+          this.authService.updateDiamondBalance(result.balance);
+          this.messageSent.emit();
+        },
+        error: () => {
+          this.sendingDiamonds = false;
+        },
+      });
   }
 
   pickPhoto(): void {

@@ -18,4 +18,5 @@ data class MailboxWsOutbound(
     val messageId: Long? = null,
     val reaction: String? = null,
     val reactionCounts: Map<String, Int>? = null,
+    val balance: Long? = null,
 )

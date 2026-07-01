@@ -3,7 +3,16 @@ import { Observable, Subject } from 'rxjs';
 import { AuthService } from './auth.service';
 import { UserMail } from '../models/user.model';
 
-export type MailboxWsEventType = 'message' | 'deleted' | 'reaction' | 'read' | 'subscribed' | 'unsubscribed' | 'pong' | 'error';
+export type MailboxWsEventType =
+  | 'message'
+  | 'deleted'
+  | 'reaction'
+  | 'read'
+  | 'subscribed'
+  | 'unsubscribed'
+  | 'pong'
+  | 'error'
+  | 'diamond_balance';
 
 export interface MailboxWsEvent {
   type: MailboxWsEventType;
@@ -13,6 +22,7 @@ export interface MailboxWsEvent {
   messageId?: number;
   reaction?: string | null;
   reactionCounts?: Record<string, number>;
+  balance?: number;
 }
 
 interface MailboxWsInbound {
@@ -125,6 +135,9 @@ export class MailboxRealtimeService implements OnDestroy {
       const payload = JSON.parse(raw) as MailboxWsEvent;
       if (!payload?.type) {
         return;
+      }
+      if (payload.type === 'diamond_balance' && payload.balance != null) {
+        this.authService.updateDiamondBalance(payload.balance);
       }
       this.eventsSubject.next(payload);
     } catch {
