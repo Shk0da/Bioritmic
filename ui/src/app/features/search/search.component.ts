@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { SearchService } from '../../core/services/search.service';
 import { UserService } from '../../core/services/user.service';
+import { AuthService } from '../../core/services/auth.service';
 import { UserInfo, Gender, UserSearch, UserSettings } from '../../core/models/user.model';
 import { FormsModule } from '@angular/forms';
 import {
@@ -11,6 +12,10 @@ import {
 } from '../../shared/utils/biorhythm-labels.util';
 import { registerPullToRefresh } from '../../core/routing/register-pull-to-refresh.util';
 import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
+import {
+  shouldShowUnpredictableCompatibility,
+  UNPREDICTABLE_COMPATIBILITY_MESSAGE,
+} from '../../shared/utils/biorhythm-compatibility.util';
 
 interface UserWithPhoto extends UserInfo {
   photoDataUrl?: string | null;
@@ -86,7 +91,9 @@ interface UserWithPhoto extends UserInfo {
                       <hr class="my-3">
                       <div class="compatibility-section">
                         <h6 class="small text-muted mb-2">Совместимость</h6>
-                        @if (user.compare) {
+                        @if (shouldShowUnpredictableCompatibility(user)) {
+                          <p class="small mb-0 compat-unpredictable-text">{{ unpredictableCompatibilityMessage }}</p>
+                        } @else if (user.compare) {
                           <div class="compatibility-details-compact">
                             @for (item of getAllCompatibility(user); track item.name) {
                               <div class="compatibility-item-compact">
@@ -119,6 +126,7 @@ export class SearchComponent implements OnInit {
   users: UserWithPhoto[] = [];
   loading = false;
   Gender = Gender;
+  currentUserBirthday: string | null = null;
 
   searchCriteria: UserSearch = {
     gender: Gender.WOMAN,
@@ -133,10 +141,12 @@ export class SearchComponent implements OnInit {
   constructor(
     private searchService: SearchService,
     private userService: UserService,
+    private authService: AuthService,
     private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
+    this.currentUserBirthday = this.authService.getCurrentUser()?.birthday ?? null;
     this.loadUserSettings();
     registerPullToRefresh(this.pullToRefreshService, this.destroyRef, '/search', () => ({
       refresh: () => this.loadUserSettings(),
@@ -234,5 +244,13 @@ export class SearchComponent implements OnInit {
 
   getAllCompatibility(user: UserWithPhoto): Array<{ name: string; label: string; value: number }> {
     return getSummaryCompatibility(user.compare);
+  }
+
+  shouldShowUnpredictableCompatibility(user: UserWithPhoto): boolean {
+    return shouldShowUnpredictableCompatibility(this.currentUserBirthday, user.birthday);
+  }
+
+  get unpredictableCompatibilityMessage(): string {
+    return UNPREDICTABLE_COMPATIBILITY_MESSAGE;
   }
 }

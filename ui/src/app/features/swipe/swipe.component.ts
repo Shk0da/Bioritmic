@@ -28,6 +28,10 @@ import { registerPullToRefresh } from '../../core/routing/register-pull-to-refre
 import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service';
 import { resolveProfileLinkId } from '../../shared/utils/profile-link.util';
 import { normalizeAgeRange } from '../../shared/utils/age-range.util';
+import {
+  shouldShowUnpredictableCompatibility,
+  UNPREDICTABLE_COMPATIBILITY_MESSAGE,
+} from '../../shared/utils/biorhythm-compatibility.util';
 
 @Component({
   selector: 'app-swipe',
@@ -137,7 +141,9 @@ import { normalizeAgeRange } from '../../shared/utils/age-range.util';
                   </div>
 
                   <!-- Совместимость -->
-                  @if (card.user.compare) {
+                  @if (shouldShowUnpredictableCompatibility(card.user)) {
+                    <div class="compat-unpredictable-text">{{ unpredictableCompatibilityMessage }}</div>
+                  } @else if (card.user.compare) {
                     <div class="compatibility-badges">
                       @for (item of getCompatibilityBadges(card.user); track item.name) {
                         <span class="compat-chip" [class.heartfelt]="item.name === 'Heartfelt'" [class.physical]="item.name === 'Physical'" [class.intellectual]="item.name === 'Intellectual'">
@@ -241,7 +247,9 @@ import { normalizeAgeRange } from '../../shared/utils/age-range.util';
                     }
                   </div>
 
-                  @if (card.user.compare) {
+                  @if (shouldShowUnpredictableCompatibility(card.user)) {
+                    <div class="compat-unpredictable-text">{{ unpredictableCompatibilityMessage }}</div>
+                  } @else if (card.user.compare) {
                     <div class="compatibility-mini">
                       @for (item of getCompatibilityBadges(card.user); track item.name) {
                         <span class="compat-badge" [class.heartfelt]="item.name === 'Heartfelt'" [class.physical]="item.name === 'Physical'" [class.intellectual]="item.name === 'Intellectual'">
@@ -389,6 +397,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   matchedUserPhoto: string | null = null;
   currentUserPhoto: string | null = null;
   currentUserId: string | null = null;
+  currentUserBirthday: string | null = null;
   currentProfileLinkId = '';
   currentUserName = '';
   sharing = false;
@@ -421,6 +430,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnInit(): void {
     const user = this.authService.getCurrentUser();
     this.currentUserId = user?.id ?? null;
+    this.currentUserBirthday = user?.birthday ?? null;
     this.currentProfileLinkId = user ? resolveProfileLinkId(user) : '';
     this.currentUserName = user?.name ?? 'Профиль';
     this.userService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe({
@@ -440,6 +450,7 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
       this.currentUserId = user?.id ?? null;
+      this.currentUserBirthday = user?.birthday ?? null;
       this.currentUserName = user?.name ?? 'Профиль';
       this.isUserVerified = user?.isVerified !== false;
     });
@@ -741,6 +752,14 @@ export class SwipeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   getCompatibilityBadges(user: UserInfo): Array<{ name: string; label: string; value: number }> {
     return this.getCompatibilityDetails(user);
+  }
+
+  shouldShowUnpredictableCompatibility(user: UserInfo): boolean {
+    return shouldShowUnpredictableCompatibility(this.currentUserBirthday, user.birthday);
+  }
+
+  get unpredictableCompatibilityMessage(): string {
+    return UNPREDICTABLE_COMPATIBILITY_MESSAGE;
   }
 
   // Методы для десктопной версии

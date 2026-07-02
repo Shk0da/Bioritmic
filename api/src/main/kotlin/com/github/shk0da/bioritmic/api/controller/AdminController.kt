@@ -337,6 +337,7 @@ class AdminController(
                 targetId = report.reportedId,
                 targetName = usersByName[report.reportedId]?.name,
                 reason = report.reason,
+                description = report.description,
                 status = report.status,
                 createdAt = report.createdAt?.toString()
             )
@@ -610,6 +611,7 @@ data class ReportAdminView(
     val targetId: UUID?,
     val targetName: String?,
     val reason: String?,
+    val description: String?,
     val status: String?,
     val createdAt: String?
 )

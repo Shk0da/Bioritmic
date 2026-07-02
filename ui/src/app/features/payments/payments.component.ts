@@ -38,7 +38,7 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
         <button type="button" class="btn btn-primary btn-sm" (click)="showTopUpStub()">
           <i class="bi bi-plus-circle me-1"></i>Пополнить
         </button>
-        <button type="button" class="btn btn-outline-primary btn-sm" (click)="openWithdrawModal()">
+        <button type="button" class="btn btn-outline-primary btn-sm" (click)="showWithdrawStub()">
           <i class="bi bi-box-arrow-up-right me-1"></i>Вывод
         </button>
       </div>
@@ -210,29 +210,6 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
     </div>
       </div>
     </div>
-
-    @if (showWithdrawModal) {
-      <div class="withdraw-modal-overlay" (click)="closeWithdrawModal()">
-        <div class="withdraw-modal" (click)="$event.stopPropagation()">
-          <div class="withdraw-modal-header">
-            <h5 class="mb-0">Вывод алмазов</h5>
-            <button type="button" class="btn-close-modal" (click)="closeWithdrawModal()" aria-label="Закрыть">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-          <div class="withdraw-modal-body">
-            <p class="withdraw-stub-note mb-0">
-              Вывод алмазов скоро будет доступен. Следите за обновлениями!
-            </p>
-          </div>
-          <div class="withdraw-modal-footer">
-            <button type="button" class="btn btn-primary btn-sm" (click)="closeWithdrawModal()">
-              OK
-            </button>
-          </div>
-        </div>
-      </div>
-    }
   `,
   styles: [`
     :host {
@@ -332,91 +309,6 @@ import { PullToRefreshService } from '../../core/routing/pull-to-refresh.service
     .transfer-submit-btn.transfer-control:hover,
     .transfer-submit-btn.transfer-control:active {
       transform: none;
-    }
-
-    .withdraw-modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 12000;
-      padding: 1rem;
-      padding-top: calc(1rem + var(--app-safe-top));
-      padding-bottom: calc(1rem + var(--app-safe-bottom));
-      animation: fadeIn 0.2s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    .withdraw-modal {
-      background: var(--card-bg, #fff);
-      border-radius: 16px;
-      width: 100%;
-      max-width: 420px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      animation: slideIn 0.25s ease;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-12px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .withdraw-modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      padding: 1rem 1rem 0.5rem;
-    }
-
-    .withdraw-modal-header h5 {
-      font-weight: 700;
-      color: var(--text-primary, #1f2937);
-    }
-
-    .btn-close-modal {
-      border: none;
-      background: transparent;
-      color: var(--text-secondary, #6b7280);
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-
-    .btn-close-modal:hover {
-      background: var(--bg-secondary, #f3f4f6);
-      color: var(--text-primary, #1f2937);
-    }
-
-    .withdraw-modal-body {
-      padding: 0.5rem 1rem 1rem;
-    }
-
-    .withdraw-stub-note {
-      color: var(--text-primary, #1f2937);
-      line-height: 1.5;
-    }
-
-    .withdraw-modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      padding: 0 1rem 1rem;
     }
 
     .transaction-list {
@@ -571,7 +463,6 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   currentPage = 0;
   pageSize = 20;
   totalTransactions = 0;
-  showWithdrawModal = false;
   activeBoost: BoostInfo | null = null;
   boostActivating = false;
   recipientDropdownOpen = false;
@@ -686,19 +577,18 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     return `${hours}ч ${minutes}м ${seconds}с`;
   }
 
+  showWithdrawStub(): void {
+    void this.modalService.alert(
+      'Вывод алмазов скоро будет доступен. Следите за обновлениями!',
+      'Вывод алмазов'
+    );
+  }
+
   showTopUpStub(): void {
     void this.modalService.alert(
       'Пополнение алмазов скоро будет доступно. Следите за обновлениями!',
       'Пополнение'
     );
-  }
-
-  openWithdrawModal(): void {
-    this.showWithdrawModal = true;
-  }
-
-  closeWithdrawModal(): void {
-    this.showWithdrawModal = false;
   }
 
   transferToBookmark(): void {

@@ -176,11 +176,16 @@ class DiamondService(
         viewerId: UUID,
         namesById: Map<UUID, String?>,
     ): DiamondTransactionView {
-        val incoming = tx.toUserId == viewerId
+        val signedAmount = when {
+            tx.type == DiamondTransactionType.BOOST_PURCHASE && tx.fromUserId == viewerId -> -tx.amount
+            tx.toUserId == viewerId -> tx.amount
+            else -> -tx.amount
+        }
+        val incoming = signedAmount > 0
         val counterpartyId = if (incoming) tx.fromUserId else tx.toUserId
         return DiamondTransactionView(
             id = tx.id,
-            amount = if (incoming) tx.amount else -tx.amount,
+            amount = signedAmount,
             counterpartyId = counterpartyId,
             counterpartyName = counterpartyId?.let { namesById[it] },
             type = tx.type,

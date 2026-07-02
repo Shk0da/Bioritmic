@@ -17,6 +17,7 @@ export interface Report {
   targetId: string;
   targetName?: string;
   reason: string;
+  description?: string;
   status: string;
   createdAt?: string;
 }

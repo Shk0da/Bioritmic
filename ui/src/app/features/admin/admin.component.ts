@@ -355,36 +355,42 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
           </div>
         } @else {
           <div class="table-responsive d-none d-md-block">
-            <table class="table table-hover">
+            <table class="table table-hover align-middle">
               <thead>
                 <tr>
                   <th>ID</th>
                   <th>Жалобщик</th>
                   <th>Цель</th>
                   <th>Причина</th>
+                  <th>Текст жалобы</th>
                   <th>Статус</th>
+                  <th>Дата</th>
                   <th>Действия</th>
                 </tr>
               </thead>
               <tbody>
                 @for (report of reports; track report.id) {
-                  <tr>
+                  <tr class="admin-desktop-row" (click)="openReportDetail(report)">
                     <td>{{ report.id }}</td>
                     <td>
-                      <a [routerLink]="['/user', report.reporterId]" class="text-decoration-none fw-semibold">
+                      <a [routerLink]="['/user', report.reporterId]" class="text-decoration-none fw-semibold" (click)="$event.stopPropagation()">
                         {{ report.reporterName || ('User #' + report.reporterId) }}
                       </a>
                     </td>
                     <td>
-                      <a [routerLink]="['/user', report.targetId]" class="text-decoration-none fw-semibold">
+                      <a [routerLink]="['/user', report.targetId]" class="text-decoration-none fw-semibold" (click)="$event.stopPropagation()">
                         {{ report.targetName || ('User #' + report.targetId) }}
                       </a>
                     </td>
-                    <td class="text-truncate" style="max-width: 200px;">{{ report.reason }}</td>
-                    <td>
-                      <span class="badge" [ngClass]="getStatusClass(report.status)">{{ report.status }}</span>
+                    <td>{{ getReportReasonLabel(report.reason) }}</td>
+                    <td class="text-truncate admin-detail-preview" style="max-width: 220px;" [title]="report.description || '—'">
+                      {{ report.description || '—' }}
                     </td>
                     <td>
+                      <span class="badge" [ngClass]="getStatusClass(report.status)">{{ getReportStatusLabel(report.status) }}</span>
+                    </td>
+                    <td class="small text-muted">{{ report.createdAt | date:'dd.MM.yyyy HH:mm' }}</td>
+                    <td (click)="$event.stopPropagation()">
                       <button class="btn btn-sm btn-success" (click)="resolveReport(report.id)">
                         <i class="bi bi-check-lg"></i> Решить
                       </button>
@@ -400,7 +406,10 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
               <div class="admin-list-card">
                 <div class="admin-list-card-header">
                   <span class="admin-list-card-title">Жалоба #{{ report.id }}</span>
-                  <span class="badge" [ngClass]="getStatusClass(report.status)">{{ report.status }}</span>
+                  <span class="badge" [ngClass]="getStatusClass(report.status)">{{ getReportStatusLabel(report.status) }}</span>
+                </div>
+                <div class="admin-list-card-meta">
+                  <span class="admin-list-card-date">{{ report.createdAt | date:'dd.MM.yy HH:mm' }}</span>
                 </div>
                 <div class="admin-list-card-row">
                   <span class="admin-list-card-label">От</span>
@@ -414,7 +423,8 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
                     {{ report.targetName || ('User #' + report.targetId) }}
                   </a>
                 </div>
-                <div class="admin-list-card-reason">{{ report.reason }}</div>
+                <div class="admin-list-card-topic">{{ getReportReasonLabel(report.reason) }}</div>
+                <div class="admin-list-card-reason admin-detail-text">{{ report.description || 'Без дополнительного описания' }}</div>
                 <div class="admin-list-card-actions">
                   <button class="btn btn-sm btn-success w-100" (click)="resolveReport(report.id)">
                     <i class="bi bi-check-lg"></i> Решить
@@ -463,11 +473,11 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
               </thead>
               <tbody>
                 @for (item of feedbackItems; track item.id) {
-                  <tr>
+                  <tr class="admin-desktop-row" (click)="openFeedbackDetail(item)">
                     <td>{{ item.id }}</td>
                     <td>
                       @if (item.userId) {
-                        <a [routerLink]="['/user', item.userId]" class="text-decoration-none fw-semibold">
+                        <a [routerLink]="['/user', item.userId]" class="text-decoration-none fw-semibold" (click)="$event.stopPropagation()">
                           {{ item.userName || ('User #' + item.userId) }}
                         </a>
                       } @else {
@@ -476,8 +486,8 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
                       <div class="small text-muted">{{ item.userEmail }}</div>
                     </td>
                     <td>{{ getFeedbackTopicLabel(item.topic) }}</td>
-                    <td class="text-truncate" style="max-width: 220px;" [title]="item.message">{{ item.message }}</td>
-                    <td>
+                    <td class="text-truncate admin-detail-preview" style="max-width: 220px;" [title]="item.message">{{ item.message }}</td>
+                    <td (click)="$event.stopPropagation()">
                       @if (item.attachmentUrl) {
                         <button
                           type="button"
@@ -496,7 +506,7 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
                       </span>
                     </td>
                     <td class="small text-muted">{{ item.createdAt | date:'dd.MM.yyyy HH:mm' }}</td>
-                    <td>
+                    <td (click)="$event.stopPropagation()">
                       <ng-container *ngTemplateOutlet="feedbackActionsTpl; context: { item: item }" />
                     </td>
                   </tr>
@@ -771,6 +781,100 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
           (click)="$event.stopPropagation()">
       </div>
     }
+
+    @if (selectedReportDetail) {
+      <div class="admin-detail-backdrop" (click)="closeReportDetail()">
+        <div class="admin-detail-panel" (click)="$event.stopPropagation()">
+          <div class="admin-detail-header">
+            <h5 class="mb-0">Жалоба #{{ selectedReportDetail.id }}</h5>
+            <button type="button" class="admin-detail-close" aria-label="Закрыть" (click)="closeReportDetail()">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+          <div class="admin-detail-body">
+            <p class="mb-2"><strong>Причина:</strong> {{ getReportReasonLabel(selectedReportDetail.reason) }}</p>
+            <p class="mb-2"><strong>Жалобщик:</strong>
+              <a [routerLink]="['/user', selectedReportDetail.reporterId]" class="admin-list-card-link" (click)="closeReportDetail()">
+                {{ selectedReportDetail.reporterName || ('User #' + selectedReportDetail.reporterId) }}
+              </a>
+            </p>
+            <p class="mb-2"><strong>Цель:</strong>
+              <a [routerLink]="['/user', selectedReportDetail.targetId]" class="admin-list-card-link" (click)="closeReportDetail()">
+                {{ selectedReportDetail.targetName || ('User #' + selectedReportDetail.targetId) }}
+              </a>
+            </p>
+            <p class="mb-2"><strong>Статус:</strong> {{ getReportStatusLabel(selectedReportDetail.status) }}</p>
+            <p class="mb-3 text-muted small">{{ selectedReportDetail.createdAt | date:'dd.MM.yyyy HH:mm' }}</p>
+            <h6 class="admin-detail-label">Текст жалобы</h6>
+            <p class="admin-detail-text mb-0">{{ selectedReportDetail.description || 'Без дополнительного описания' }}</p>
+          </div>
+          <div class="admin-detail-footer">
+            <button type="button" class="btn btn-success btn-sm" (click)="resolveReport(selectedReportDetail.id)">
+              <i class="bi bi-check-lg"></i> Решить
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (selectedFeedbackDetail) {
+      <div class="admin-detail-backdrop" (click)="closeFeedbackDetail()">
+        <div class="admin-detail-panel" (click)="$event.stopPropagation()">
+          <div class="admin-detail-header">
+            <h5 class="mb-0">{{ getFeedbackTopicLabel(selectedFeedbackDetail.topic) }}</h5>
+            <button type="button" class="admin-detail-close" aria-label="Закрыть" (click)="closeFeedbackDetail()">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+          <div class="admin-detail-body">
+            <p class="mb-2"><strong>Пользователь:</strong>
+              @if (selectedFeedbackDetail.userId) {
+                <a [routerLink]="['/user', selectedFeedbackDetail.userId]" class="admin-list-card-link" (click)="closeFeedbackDetail()">
+                  {{ selectedFeedbackDetail.userName || ('User #' + selectedFeedbackDetail.userId) }}
+                </a>
+              } @else {
+                {{ selectedFeedbackDetail.userName || '—' }}
+              }
+            </p>
+            @if (selectedFeedbackDetail.userEmail) {
+              <p class="mb-2 text-muted small">{{ selectedFeedbackDetail.userEmail }}</p>
+            }
+            <p class="mb-2"><strong>Статус:</strong> {{ getFeedbackStatusLabel(selectedFeedbackDetail.status) }}</p>
+            <p class="mb-3 text-muted small">{{ selectedFeedbackDetail.createdAt | date:'dd.MM.yyyy HH:mm' }}</p>
+            <h6 class="admin-detail-label">Сообщение</h6>
+            <p class="admin-detail-text mb-3">{{ selectedFeedbackDetail.message }}</p>
+            @if (selectedFeedbackDetail.attachmentUrl) {
+              <button type="button" class="admin-attachment-link" (click)="openFeedbackAttachment(selectedFeedbackDetail)">
+                <i class="bi me-1" [ngClass]="isFeedbackImageAttachment(selectedFeedbackDetail) ? 'bi-image' : 'bi-paperclip'"></i>
+                {{ selectedFeedbackDetail.attachmentFilename || 'Вложение' }}
+              </button>
+            }
+          </div>
+          <div class="admin-detail-footer">
+            <div class="admin-user-actions">
+              @if (selectedFeedbackDetail.status !== 'PROCESSED') {
+                <button class="btn btn-sm btn-success" (click)="updateFeedbackStatus(selectedFeedbackDetail.id, 'PROCESSED')">
+                  <i class="bi bi-check-lg"></i>
+                </button>
+              }
+              @if (selectedFeedbackDetail.status !== 'TRASH') {
+                <button class="btn btn-sm btn-outline-secondary" (click)="updateFeedbackStatus(selectedFeedbackDetail.id, 'TRASH')">
+                  <i class="bi bi-trash"></i>
+                </button>
+              }
+              @if (selectedFeedbackDetail.status !== 'NEW') {
+                <button class="btn btn-sm btn-outline-primary" (click)="updateFeedbackStatus(selectedFeedbackDetail.id, 'NEW')">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+              }
+              <button class="btn btn-sm btn-outline-danger" (click)="deleteFeedbackItem(selectedFeedbackDetail.id)">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .page-header { padding: 0.75rem 0; }
@@ -908,6 +1012,100 @@ import { NgClass, DecimalPipe, DatePipe, NgTemplateOutlet } from '@angular/commo
       margin: 0.35rem 0;
       word-break: break-word;
       line-height: 1.4;
+    }
+
+    .admin-list-card-topic {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--accent-pink, #fd297b);
+      margin-bottom: 0.25rem;
+    }
+
+    .admin-desktop-row {
+      cursor: pointer;
+    }
+
+    .admin-detail-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 12000;
+      background: rgba(15, 23, 42, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      padding-top: calc(1rem + var(--app-safe-top, 0px));
+      padding-bottom: calc(1rem + var(--app-safe-bottom, 0px));
+    }
+
+    .admin-detail-panel {
+      width: 100%;
+      max-width: 560px;
+      max-height: min(80dvh, 720px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: var(--card-bg, #fff);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .admin-detail-header,
+    .admin-detail-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1rem 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .admin-detail-header {
+      border-bottom: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+    }
+
+    .admin-detail-footer {
+      border-top: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+      justify-content: flex-end;
+    }
+
+    .admin-detail-body {
+      padding: 1rem 1.1rem;
+      overflow-y: auto;
+    }
+
+    .admin-detail-close {
+      border: none;
+      background: var(--bg-secondary, #f1f5f9);
+      color: var(--text-primary, #1f2937);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .admin-detail-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-secondary, #6b7280);
+      margin-bottom: 0.35rem;
+    }
+
+    .admin-detail-text {
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5;
+      color: var(--text-primary, #1f2937);
+    }
+
+    .admin-detail-preview {
+      color: var(--text-secondary, #6b7280);
     }
 
     .admin-list-card-attachment {
@@ -1085,6 +1283,16 @@ export class AdminComponent implements OnInit, OnDestroy {
   importingBannedWords = false;
   feedbackImagePreviewUrl: string | null = null;
   feedbackImagePreviewTitle: string | null = null;
+  selectedReportDetail: Report | null = null;
+  selectedFeedbackDetail: FeedbackItem | null = null;
+  private readonly reportReasonLabels: Record<string, string> = {
+    SPAM: 'Спам или фейковый профиль',
+    INAPPROPRIATE: 'Неприемлемый контент',
+    HARASSMENT: 'Преследование или оскорбления',
+    FAKE: 'Фото не принадлежит пользователю',
+    UNDERAGE: 'Пользователь несовершеннолетний',
+    OTHER: 'Другое',
+  };
 
   filterSearch = '';
   filterRole = '';
@@ -1166,6 +1374,8 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.closeFeedbackImagePreview();
+    this.closeReportDetail();
+    this.closeFeedbackDetail();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -1453,11 +1663,42 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.adminService.resolveReport(reportId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.reports = this.reports.filter(r => r.id !== reportId);
+        if (this.selectedReportDetail?.id === reportId) {
+          this.closeReportDetail();
+        }
         this.toastService.success('Жалоба решена');
         this.loadDashboard();
       },
       error: () => this.toastService.error('Ошибка')
     });
+  }
+
+  openReportDetail(report: Report): void {
+    this.selectedReportDetail = report;
+  }
+
+  closeReportDetail(): void {
+    this.selectedReportDetail = null;
+  }
+
+  openFeedbackDetail(item: FeedbackItem): void {
+    this.selectedFeedbackDetail = item;
+  }
+
+  closeFeedbackDetail(): void {
+    this.selectedFeedbackDetail = null;
+  }
+
+  getReportReasonLabel(reason: string): string {
+    return this.reportReasonLabels[reason] || reason;
+  }
+
+  getReportStatusLabel(status: string): string {
+    switch (status) {
+      case 'PENDING': return 'Ожидает';
+      case 'RESOLVED': return 'Решена';
+      default: return status;
+    }
   }
 
   loadFeedback(): void {
@@ -1483,8 +1724,14 @@ export class AdminComponent implements OnInit, OnDestroy {
         if (item) {
           item.status = status;
         }
+        if (this.selectedFeedbackDetail?.id === feedbackId) {
+          this.selectedFeedbackDetail = { ...this.selectedFeedbackDetail, status };
+        }
         if (this.feedbackStatusFilter && this.feedbackStatusFilter !== status) {
           this.feedbackItems = this.feedbackItems.filter(f => f.id !== feedbackId);
+          if (this.selectedFeedbackDetail?.id === feedbackId) {
+            this.closeFeedbackDetail();
+          }
         }
         this.toastService.success('Статус обновлён');
         this.loadDashboard();
@@ -1504,6 +1751,9 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.adminService.deleteFeedback(feedbackId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.feedbackItems = this.feedbackItems.filter(f => f.id !== feedbackId);
+        if (this.selectedFeedbackDetail?.id === feedbackId) {
+          this.closeFeedbackDetail();
+        }
         this.toastService.success('Обращение удалено');
         this.loadDashboard();
       },

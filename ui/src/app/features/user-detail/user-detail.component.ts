@@ -30,6 +30,10 @@ import {
   getBiorhythmDescription,
   getCompatibilityLevelLabel,
 } from '../../shared/utils/biorhythm-labels.util';
+import {
+  shouldShowUnpredictableCompatibility,
+  UNPREDICTABLE_COMPATIBILITY_MESSAGE,
+} from '../../shared/utils/biorhythm-compatibility.util';
 
 @Component({
   selector: 'app-user-detail',
@@ -81,6 +85,13 @@ import {
               <h6 class="section-label">Совместимость</h6>
               <p class="compatibility-hint-text mb-0">
                 Для того чтобы увидеть совместимость, выберите профиль другого человека.
+              </p>
+            </div>
+          } @else if (shouldShowUnpredictableCompatibility()) {
+            <div class="compatibility-hint-section">
+              <h6 class="section-label">Совместимость</h6>
+              <p class="compatibility-hint-text compat-unpredictable-text mb-0">
+                {{ unpredictableCompatibilityMessage }}
               </p>
             </div>
           } @else if (user.compare) {
@@ -286,7 +297,11 @@ import {
           @if (!isOwnProfile && user.id) {
             <div class="biorhythm-section">
               <h6 class="section-label">Биоритмическая совместимость</h6>
-              <app-biorhythm-detail [userId]="user.id"></app-biorhythm-detail>
+              @if (shouldShowUnpredictableCompatibility()) {
+                <p class="compatibility-hint-text compat-unpredictable-text mb-0">{{ unpredictableCompatibilityMessage }}</p>
+              } @else {
+                <app-biorhythm-detail [userId]="user.id"></app-biorhythm-detail>
+              }
             </div>
           }
         </div>
@@ -1184,6 +1199,15 @@ export class UserDetailComponent implements OnInit, OnDestroy {
 
   getLevelLabel(percent: number): string {
     return getCompatibilityLevelLabel(percent);
+  }
+
+  shouldShowUnpredictableCompatibility(): boolean {
+    const currentUserBirthday = this.authService.getCurrentUser()?.birthday;
+    return shouldShowUnpredictableCompatibility(currentUserBirthday, this.user?.birthday);
+  }
+
+  get unpredictableCompatibilityMessage(): string {
+    return UNPREDICTABLE_COMPATIBILITY_MESSAGE;
   }
 
   toggleBookmark(): void {
