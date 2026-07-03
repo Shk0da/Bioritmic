@@ -388,7 +388,6 @@ class MailboxService(
             MailMediaType.VOICE.name -> "Голосовое сообщение"
             MailMediaType.PHOTO.name -> "Фото"
             MailMediaType.VIDEO_NOTE.name -> "Видео-кружок"
-            MailMediaType.VIDEO_NOTE.name -> "Видео-кружок"
             MailMediaType.DIAMOND.name -> "Перевод алмазов"
             else -> "Новое сообщение"
         }

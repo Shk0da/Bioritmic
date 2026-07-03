@@ -586,7 +586,7 @@ export class MailboxComponent implements OnInit, OnDestroy {
       if (!this.loading) {
         this.loadMessages();
       }
-    }, 30_000);
+    }, 15_000);
   }
 
   ngOnDestroy(): void {
