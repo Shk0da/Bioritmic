@@ -26,6 +26,7 @@ class RateLimitService(
     private val limiter: RateLimitBackend
 ) {
 
+    @Suppress("ReturnCount")
     fun check(request: RateLimitRequest): RateLimitResult {
         if (!properties.enabled) {
             return RateLimitResult.allowed()

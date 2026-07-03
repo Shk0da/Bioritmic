@@ -13,6 +13,7 @@ import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
+@Suppress("TooManyFunctions")
 interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
 
     @Query(

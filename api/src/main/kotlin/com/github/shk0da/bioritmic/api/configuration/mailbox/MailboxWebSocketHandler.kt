@@ -50,6 +50,7 @@ class MailboxWebSocketHandler(
         }
     }
 
+    @Suppress("ReturnCount")
     private suspend fun authenticate(handshake: HandshakeInfo): UUID? {
         val token = extractAccessToken(handshake) ?: return null
         val auth = authService.getAuthByAccessToken(token) ?: return null
@@ -59,6 +60,7 @@ class MailboxWebSocketHandler(
         return auth.userId
     }
 
+    @Suppress("ReturnCount")
     private fun extractAccessToken(handshake: HandshakeInfo): String? {
         handshake.cookies.getFirst(AuthCookieHelper.ACCESS_TOKEN)?.value?.let { return it }
         handshake.uri.query?.split("&")?.forEach { part ->

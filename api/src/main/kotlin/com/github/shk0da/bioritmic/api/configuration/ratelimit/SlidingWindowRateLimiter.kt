@@ -23,12 +23,13 @@ class SlidingWindowRateLimiter(
         }
     }
 
+    @Suppress("ReturnCount")
     fun retryAfterSeconds(key: String, windowMs: Long, nowMs: Long = System.currentTimeMillis()): Long {
         val state = windows[key] ?: return windowMs / 1000
         synchronized(state) {
             val oldest = state.timestamps.minOrNull() ?: return windowMs / 1000
             val waitMs = windowMs - (nowMs - oldest)
-            return maxOf(1L, (waitMs + 999) / 1000)
+            return maxOf(1L, (waitMs + CEILING_OFFSET) / MILLIS_PER_SECOND)
         }
     }
 
@@ -52,5 +53,10 @@ class SlidingWindowRateLimiter(
 
     private class WindowState {
         val timestamps = mutableListOf<Long>()
+    }
+
+    private companion object {
+        const val MILLIS_PER_SECOND = 1000L
+        const val CEILING_OFFSET = 999L
     }
 }

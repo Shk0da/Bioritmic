@@ -39,7 +39,11 @@ echo   Profile:         docker,production,monolith (Swagger off)
 if "%PROD_LOWMEM%"=="1" echo   Memory:          lowmem overlay enabled
 echo.
 
-echo [1/2] Building and starting production stack...
+echo [1/3] Cleaning up orphan containers...
+docker rm -f bioritmic-redis >nul 2>&1
+docker container prune -f >nul 2>&1
+
+echo [2/3] Building and starting production stack...
 docker compose up --build -d
 if errorlevel 1 (
     echo Failed to start stack. Check: docker compose logs
@@ -47,7 +51,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [2/2] Waiting for services...
+echo [3/3] Waiting for services...
 set READY=0
 for /l %%i in (1,1,120) do (
     docker compose ps --format "{{.Name}} {{.Health}}" 2>nul | findstr /i "unhealthy starting" >nul 2>&1

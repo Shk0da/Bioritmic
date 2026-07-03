@@ -18,6 +18,7 @@ class PhotoS3Controller(
     private val s3MediaAccessService: S3MediaAccessService,
 ) {
 
+    @Suppress("ReturnCount")
     @GetMapping("/s3/**")
     suspend fun getPhotoFromS3(exchange: ServerWebExchange): ResponseEntity<ByteArray> {
         val userId = getUserId()

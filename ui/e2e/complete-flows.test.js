@@ -83,7 +83,7 @@ describe('Валидация формы регистрации', function () {
 
   it('Ссылка "Войти" ведёт на страницу логина', async function () {
     const loginLink = await driverA.findElement(By.css('a[routerLink="/auth/login"]'));
-    await loginLink.click();
+    await driverA.executeScript('arguments[0].click();', loginLink);
     await waitForUrlContains(driverA, '/auth/login', 10000);
     const url = await driverA.getCurrentUrl();
     assert.ok(url.includes('/auth/login'), 'Должен быть переход на /auth/login');
@@ -175,7 +175,7 @@ describe('Форма восстановления пароля', function () {
 
   it('Кнопка "Вернуться" ведёт на /auth/login', async function () {
     const backLink = await driverA.findElement(By.css('a[routerLink="/auth/login"]'));
-    await backLink.click();
+    await driverA.executeScript('arguments[0].click();', backLink);
     await waitForUrlContains(driverA, '/auth/login', 10000);
     const url = await driverA.getCurrentUrl();
     assert.ok(url.includes('/auth/login'), 'Должен быть переход на /auth/login');

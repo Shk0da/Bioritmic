@@ -11,8 +11,9 @@ import java.util.concurrent.TimeUnit
 class RateLimitConfiguration {
 
     @Bean
+    @Suppress("UnusedParameter", "FunctionParameterNaming")
     fun rateLimitBackend(
-        properties: RateLimitProperties,
+        _properties: RateLimitProperties,
         rateLimitCache: Cache<String, Long>
     ): RateLimitBackend {
         return InfinispanRateLimitBackend(

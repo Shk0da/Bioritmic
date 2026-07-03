@@ -20,8 +20,14 @@ class InfinispanSlidingWindowRateLimiter(
         return true
     }
 
-    fun retryAfterSeconds(key: String, windowMs: Long, nowMs: Long = System.currentTimeMillis()): Long {
+    @Suppress("UnusedParameter", "FunctionParameterNaming")
+    fun retryAfterSeconds(_key: String, windowMs: Long, nowMs: Long = System.currentTimeMillis()): Long {
         val windowEnd = ((nowMs / windowMs) + 1) * windowMs
-        return maxOf(1L, (windowEnd - nowMs + 999) / 1000)
+        return maxOf(1L, (windowEnd - nowMs + CEILING_OFFSET) / MILLIS_PER_SECOND)
+    }
+
+    private companion object {
+        const val MILLIS_PER_SECOND = 1000L
+        const val CEILING_OFFSET = 999L
     }
 }

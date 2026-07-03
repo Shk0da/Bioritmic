@@ -50,9 +50,13 @@ object AuthCookieHelper {
             .build()
     }
 
-    fun cookieMaxAgeSeconds(): Long = Auth.SESSION_LIFETIME_DAYS * 24 * 60 * 60
+    fun cookieMaxAgeSeconds(): Long = Auth.SESSION_LIFETIME_DAYS * HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE
 
     fun isSecureCookies(appSecurityProperties: AppSecurityProperties): Boolean {
         return appSecurityProperties.security.cookies.secure
     }
+
+    private const val HOURS_PER_DAY = 24
+    private const val MINUTES_PER_HOUR = 60
+    private const val SECONDS_PER_MINUTE = 60
 }

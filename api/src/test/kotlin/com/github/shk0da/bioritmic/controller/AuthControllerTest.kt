@@ -113,7 +113,9 @@ class AuthControllerTest : ApiApplicationTests() {
             .expectStatus().isBadRequest
             .expectBody()
             .jsonPath("$.errors[0].message")
-            .isEqualTo("Необходимо принять пользовательское соглашение и дать согласие на обработку персональных данных")
+            .isEqualTo(
+                "Необходимо принять пользовательское соглашение и дать согласие на обработку персональных данных"
+            )
     }
 
     @Test

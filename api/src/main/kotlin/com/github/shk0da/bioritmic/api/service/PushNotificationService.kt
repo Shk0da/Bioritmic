@@ -18,6 +18,7 @@ import java.sql.Timestamp
 import java.util.UUID
 
 @Service
+@Suppress("TooManyFunctions")
 class PushNotificationService(
     private val userPushTokenRepository: UserPushTokenRepository,
 ) {

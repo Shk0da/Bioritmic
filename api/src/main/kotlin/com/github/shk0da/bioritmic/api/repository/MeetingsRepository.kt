@@ -16,6 +16,7 @@ import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
+@Suppress("TooManyFunctions")
 interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryKey> {
 
     @Query("select count(*) from meetings where user_id = :userId")
@@ -24,7 +25,10 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
     @Query("select count(*) from meetings where user_id = :userId and timestamp >= :since")
     suspend fun countByUserIdSince(userId: UUID, since: Timestamp): Long
 
-    @Query("select * from meetings where other_user_id = :userId and user_id != other_user_id and (status is null or status != 'DECLINED') order by timestamp desc limit :limit offset :offset")
+    @Query(
+        "select * from meetings where other_user_id = :userId and user_id != other_user_id " +
+            "and (status is null or status != 'DECLINED') order by timestamp desc limit :limit offset :offset"
+    )
     suspend fun findIncomingByUserId(userId: UUID, limit: Int, offset: Long): List<Meeting>
 
     @Query(
@@ -45,7 +49,10 @@ interface MeetingsRepository : CoroutineCrudRepository<Meeting, Meeting.PrimaryK
     @Query("delete from meetings where user_id = :userId and other_user_id = :otherUserId")
     suspend fun deleteByUserIdAndOtherUserId(userId: UUID, otherUserId: UUID)
 
-    @Query("select * from meetings where (user_id = :userId1 and other_user_id = :userId2) or (user_id = :userId2 and other_user_id = :userId1) limit 1")
+    @Query(
+        "select * from meetings where (user_id = :userId1 and other_user_id = :userId2) " +
+            "or (user_id = :userId2 and other_user_id = :userId1) limit 1"
+    )
     suspend fun findByUserPair(userId1: UUID, userId2: UUID): Meeting?
 
     @Query("select * from meetings where user_id = :senderId and other_user_id = :recipientId limit 1")
@@ -83,7 +90,9 @@ class MeetingStatusUpdater(
 ) {
     suspend fun updateStatus(userId1: UUID, userId2: UUID, status: String): Int {
         return databaseClient.sql(
-            "UPDATE meetings SET status = :status WHERE (user_id = :userId1 AND other_user_id = :userId2) OR (user_id = :userId2 AND other_user_id = :userId1)"
+            "UPDATE meetings SET status = :status " +
+                "WHERE (user_id = :userId1 AND other_user_id = :userId2) " +
+                "OR (user_id = :userId2 AND other_user_id = :userId1)"
         )
             .bind("status", status)
             .bind("userId1", userId1)

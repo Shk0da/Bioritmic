@@ -203,7 +203,8 @@ class SwipeControllerTest : ApiApplicationTests() {
         val s3Key = "test/photos/$targetUserId/profile.jpg"
         liquibaseDataSource.connection.use { connection ->
             connection.prepareStatement(
-                "INSERT INTO user_photos (user_id, photo_order, s3_key, content_type, created_at) VALUES (?, 0, ?, 'image/jpeg', NOW())"
+                "INSERT INTO user_photos (user_id, photo_order, s3_key, content_type, created_at) " +
+                    "VALUES (?, 0, ?, 'image/jpeg', NOW())"
             ).use { statement ->
                 statement.setObject(1, targetUserId)
                 statement.setString(2, s3Key)

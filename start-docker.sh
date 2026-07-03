@@ -28,11 +28,15 @@ echo "Ports:  http://localhost:${UI_PORT}  https://localhost:${UI_HTTPS_PORT}"
 echo "Memory: lowmem overlay (~1.5 GB limit)"
 echo
 
-echo "[1/2] Building and starting..."
+echo "[1/3] Cleaning up orphan containers..."
+docker rm -f bioritmic-redis >/dev/null 2>&1 || true
+docker container prune -f >/dev/null 2>&1 || true
+
+echo "[2/3] Building and starting..."
 docker compose up --build -d
 
 echo
-echo "[2/2] Waiting for health check..."
+echo "[3/3] Waiting for health check..."
 READY=0
 for i in $(seq 1 120); do
   hc="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' bioritmic 2>/dev/null || echo missing)"

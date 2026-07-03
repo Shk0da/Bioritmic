@@ -22,7 +22,14 @@ fun ApiApplicationTests.registerMeetingTestUsers(): MeetingTestUsers {
     webTestClient.post()
         .uri("$API_WITH_VERSION_1/registration")
         .contentType(MediaType.APPLICATION_JSON)
-        .body(BodyInserters.fromValue(UserModel(name = "Meetings User A", email = userAEmail, password = "Test12345", birthday = "1990-01-14")))
+        .body(
+                BodyInserters.fromValue(
+                    UserModel(
+                        name = "Meetings User A", email = userAEmail,
+                        password = "Test12345", birthday = "1990-01-14"
+                    )
+                )
+            )
         .accept(MediaType.APPLICATION_JSON)
         .exchange()
         .expectStatus().isCreated
@@ -42,7 +49,11 @@ fun ApiApplicationTests.registerMeetingTestUsers(): MeetingTestUsers {
     webTestClient.post()
         .uri("$API_WITH_VERSION_1/registration")
         .contentType(MediaType.APPLICATION_JSON)
-        .body(BodyInserters.fromValue(UserModel(name = "Meetings User B", email = userBEmail, password = "Test12345", birthday = "1992-05-20")))
+        .body(
+            BodyInserters.fromValue(
+                UserModel(name = "Meetings User B", email = userBEmail, password = "Test12345", birthday = "1992-05-20")
+            )
+        )
         .accept(MediaType.APPLICATION_JSON)
         .exchange()
         .expectStatus().isCreated

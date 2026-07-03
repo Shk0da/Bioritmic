@@ -9,6 +9,10 @@ import java.util.UUID
 
 @Table("diamond_wallets")
 class DiamondWallet : Serializable {
+    companion object {
+        private const val serialVersionUID = 1L
+    }
+
     @Id
     @Column("user_id")
     var userId: UUID? = null

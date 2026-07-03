@@ -62,7 +62,11 @@ class BlackBoxApiTest : ApiApplicationTests() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(UserModel(name = name, email = email, password = "Test12345", birthday = birthday, gender = gender)))
+            .body(
+                BodyInserters.fromValue(
+                    UserModel(name = name, email = email, password = "Test12345", birthday = birthday, gender = gender)
+                )
+            )
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isCreated
@@ -109,7 +113,11 @@ class BlackBoxApiTest : ApiApplicationTests() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(UserModel(name = "New", email = email, password = "Test12345", birthday = "1995-01-01")))
+            .body(
+                BodyInserters.fromValue(
+                    UserModel(name = "New", email = email, password = "Test12345", birthday = "1995-01-01")
+                )
+            )
             .exchange()
             .expectStatus().isCreated
     }
@@ -119,14 +127,28 @@ class BlackBoxApiTest : ApiApplicationTests() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(UserModel(name = "Dup", email = "alice_dup@gmail.com", password = "Test12345", birthday = "1990-01-01")))
+            .body(
+                BodyInserters.fromValue(
+                    UserModel(
+                        name = "Dup", email = "alice_dup@gmail.com",
+                        password = "Test12345", birthday = "1990-01-01"
+                    )
+                )
+            )
             .exchange()
             .expectStatus().isCreated
 
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/registration")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(UserModel(name = "Dup2", email = "alice_dup@gmail.com", password = "Test12345", birthday = "1990-01-01")))
+            .body(
+                BodyInserters.fromValue(
+                    UserModel(
+                        name = "Dup2", email = "alice_dup@gmail.com",
+                        password = "Test12345", birthday = "1990-01-01"
+                    )
+                )
+            )
             .exchange()
             .expectStatus().is4xxClientError
     }
@@ -136,7 +158,13 @@ class BlackBoxApiTest : ApiApplicationTests() {
         webTestClient.post()
             .uri("$API_WITH_VERSION_1/authorization")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(AuthorizationModel(email = "bob_${UUID.randomUUID().toString().substring(0, 8)}@gmail.com", password = "wrong")))
+            .body(
+                BodyInserters.fromValue(
+                    AuthorizationModel(
+                        email = "bob_${UUID.randomUUID().toString().substring(0, 8)}@gmail.com", password = "wrong"
+                    )
+                )
+            )
             .exchange()
             .expectStatus().is4xxClientError
     }

@@ -18,6 +18,7 @@ import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
 
 @Service
 class GeoPlaceService(
@@ -59,6 +60,12 @@ class GeoPlaceService(
             "suburb" to 5,
             "locality" to 6
         )
+        private const val UNKNOWN_TYPE_PRIORITY = 99
+        private const val STATUS_OK = 200
+        private const val MATCH_EXACT = 0
+        private const val MATCH_PREFIX = 1
+        private const val MATCH_CONTAINS = 2
+        private const val MATCH_NONE = 3
     }
 
     suspend fun searchPlaces(countryCode: String, query: String): List<GeoPlaceModel> = withContext(Dispatchers.IO) {
@@ -79,7 +86,10 @@ class GeoPlaceService(
             fetchNominatimPlaces(normalizedCountry, normalizedQuery)
         } catch (exception: Exception) {
             nominatimError = exception
-            log.warn("Nominatim place lookup failed for country={} query={}", normalizedCountry, normalizedQuery, exception)
+            log.warn(
+                "Nominatim place lookup failed for country={} query={}",
+                normalizedCountry, normalizedQuery, exception
+            )
             emptyList()
         }
         val photonPlaces = fetchPhotonPlaces(normalizedCountry.uppercase(), normalizedQuery)
@@ -158,7 +168,7 @@ class GeoPlaceService(
             .sortedWith(
                 compareBy<GeoPlaceModel>(
                     { place -> nameMatchRank(place.name, normalizedQuery) },
-                    { place -> TYPE_PRIORITY[place.type] ?: 99 },
+                    { place -> TYPE_PRIORITY[place.type] ?: UNKNOWN_TYPE_PRIORITY },
                     { place -> place.name.lowercase() }
                 )
             )
@@ -255,6 +265,7 @@ class GeoPlaceService(
         }
     }
 
+    @Suppress("ReturnCount")
     private fun toPlaceModel(node: JsonNode, fallbackCountryCode: String): GeoPlaceModel? {
         if (!isAcceptableNominatimResult(node)) {
             return null
@@ -284,6 +295,7 @@ class GeoPlaceService(
         )
     }
 
+    @Suppress("ReturnCount")
     private fun toPhotonPlaceModel(feature: JsonNode, countryCode: String): GeoPlaceModel? {
         val properties = feature.path("properties")
         val resultCountryCode = properties.path("countrycode").asText(null)?.uppercase() ?: return null
@@ -342,10 +354,53 @@ class GeoPlaceService(
     private fun nameMatchRank(name: String, query: String): Int {
         val normalizedName = name.lowercase()
         return when {
-            normalizedName == query -> 0
-            normalizedName.startsWith(query) -> 1
-            normalizedName.contains(query) -> 2
-            else -> 3
+            normalizedName == query -> MATCH_EXACT
+            normalizedName.startsWith(query) -> MATCH_PREFIX
+            normalizedName.contains(query) -> MATCH_CONTAINS
+            else -> MATCH_NONE
         }
+    }
+}
+
+/**
+ * Simple bounded FIFO cache with TTL to prevent memory leaks.
+ * Evicts oldest entries when maxSize is exceeded (insertion order, not LRU).
+ * Thread-safe via ConcurrentHashMap.
+ */
+class BoundedCache<K, V>(
+    private val maxSize: Int,
+    private val ttlSeconds: Long,
+) {
+    private val delegate = ConcurrentHashMap<K, CacheEntry<V>>()
+    private val insertionOrder = ConcurrentLinkedQueue<K>()
+
+    private data class CacheEntry<V>(val value: V, val expiresAt: Long)
+
+    @Suppress("ReturnCount")
+    operator fun get(key: K): V? {
+        val entry = delegate[key] ?: return null
+        if (System.currentTimeMillis() > entry.expiresAt) {
+            delegate.remove(key)
+            return null
+        }
+        return entry.value
+    }
+
+    operator fun set(key: K, value: V) {
+        evictExpired()
+        while (delegate.size >= maxSize) {
+            val oldest = insertionOrder.poll() ?: break
+            delegate.remove(oldest)
+        }
+        val expiresAt = System.currentTimeMillis() + ttlSeconds * 1000
+        if (delegate.put(key, CacheEntry(value, expiresAt)) == null) {
+            insertionOrder.add(key)
+        }
+    }
+
+    private fun evictExpired() {
+        val now = System.currentTimeMillis()
+        delegate.entries.removeAll { it.value.expiresAt <= now }
+        insertionOrder.removeIf { !delegate.containsKey(it) }
     }
 }

@@ -102,14 +102,14 @@ class ApiApplicationTests {
         authTokenCache.clear()
     }
 
-    protected fun registerSeedAdminUser() {
+    internal fun registerSeedAdminUser() {
         registerUserViaApi(
             email = "seed_admin_${UUID.randomUUID()}@gmail.com",
             name = "Seed Admin",
         )
     }
 
-    protected fun registerUserViaApi(
+    internal fun registerUserViaApi(
         email: String,
         name: String = "Test User",
         password: String = "Test12345",
@@ -133,7 +133,7 @@ class ApiApplicationTests {
             .expectStatus().isCreated
     }
 
-    protected fun registrationPayload(
+    private fun registrationPayload(
         name: String,
         email: String,
         password: String = "Test12345",
@@ -151,7 +151,7 @@ class ApiApplicationTests {
         put("acceptedPersonalDataProcessing", true)
     }
 
-    protected fun verifyUserForTests(userId: UUID, grantRegistrationBonus: Boolean = true) {
+    internal fun verifyUserForTests(userId: UUID, grantRegistrationBonus: Boolean = true) {
         liquibaseDataSource.connection.use { connection ->
             connection.prepareStatement("UPDATE users SET is_verified = true WHERE id = ?").use { statement ->
                 statement.setObject(1, userId)

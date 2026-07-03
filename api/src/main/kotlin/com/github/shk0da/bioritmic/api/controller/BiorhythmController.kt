@@ -20,6 +20,7 @@ class BiorhythmController(
     val userService: UserService
 ) {
 
+    @Suppress("ThrowsCount")
     @GetMapping(value = ["/{userId}/detail"], produces = [APPLICATION_JSON_VALUE])
     suspend fun getBiorhythmDetail(@PathVariable userId: UUID): BiorhythmDetail {
         val currentUserId = getUserId()

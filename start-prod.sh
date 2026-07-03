@@ -122,11 +122,15 @@ else
 fi
 echo
 
-echo "[1/2] Building and starting production stack..."
+echo "[1/3] Cleaning up orphan containers..."
+docker rm -f bioritmic-redis >/dev/null 2>&1 || true
+docker container prune -f >/dev/null 2>&1 || true
+
+echo "[2/3] Building and starting production stack..."
 docker compose up --build -d
 
 echo
-echo "[2/2] Waiting for services..."
+echo "[3/3] Waiting for services..."
 READY=0
 for i in $(seq 1 120); do
   hc="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' bioritmic 2>/dev/null || echo missing)"
@@ -167,7 +171,7 @@ if [[ -n "${CERTBOT_EMAIL:-}" && -n "${SSL_DOMAIN:-}" ]]; then
     | openssl x509 -noout -issuer 2>/dev/null || true)"
   if ! echo "$LIVE_ISSUER" | grep -qi "Let's Encrypt"; then
     echo
-    echo "[3/3] Installing trusted TLS certificate (Let's Encrypt)..."
+    echo "Installing trusted TLS certificate (Let's Encrypt)..."
     if [[ -x "${ROOT}/scripts/issue-letsencrypt.sh" ]]; then
       "${ROOT}/scripts/issue-letsencrypt.sh" || echo "  Certbot failed — run ./scripts/issue-letsencrypt.sh manually"
     else

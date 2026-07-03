@@ -9,6 +9,10 @@ import java.util.UUID
 
 @Table("diamond_transactions")
 class DiamondTransaction : Serializable {
+    companion object {
+        private const val serialVersionUID = 1L
+    }
+
     @Id
     var id: Long? = null
 

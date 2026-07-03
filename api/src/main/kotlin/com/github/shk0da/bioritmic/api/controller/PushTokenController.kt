@@ -20,6 +20,10 @@ class PushTokenController(
 
     private val log = LoggerFactory.getLogger(PushTokenController::class.java)
 
+    private companion object {
+        private const val TOKEN_PREFIX_LENGTH = 8
+    }
+
     @PostMapping(value = ["/me/push-token"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun registerPushToken(@RequestBody request: PushTokenRequest): Map<String, Any> {
         val userId = getUserId()
@@ -36,7 +40,7 @@ class PushTokenController(
             log.debug("Removed all push tokens for userId: {}", userId)
         } else {
             pushNotificationService.removeToken(userId, token)
-            log.debug("Removed push token: {}", token.take(8))
+            log.debug("Removed push token: {}", token.take(TOKEN_PREFIX_LENGTH))
         }
         return mapOf("success" to true)
     }

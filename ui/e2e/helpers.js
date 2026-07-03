@@ -2,8 +2,8 @@ const assert = require('assert');
 const { execFileSync } = require('child_process');
 const { Builder, By, until, Key } = require('selenium-webdriver');
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:2399';
-const API_URL = process.env.API_URL || 'http://localhost:6045';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:2399';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:6045';
 
 async function createDriver() {
   const driver = await new Builder()
@@ -13,6 +13,14 @@ async function createDriver() {
     })
     .build();
   await driver.manage().setTimeouts({ implicit: 10000, page: 30000 });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await driver.get(BASE_URL);
+      break;
+    } catch (_) {
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
   return driver;
 }
 
@@ -24,6 +32,14 @@ async function createMobileDriver() {
     })
     .build();
   await driver.manage().setTimeouts({ implicit: 10000, page: 30000 });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await driver.get(BASE_URL);
+      break;
+    } catch (_) {
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
   return driver;
 }
 

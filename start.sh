@@ -101,6 +101,8 @@ cd "$ROOT_DIR"
 docker rm -f bioritmic-api bioritmic-ui >/dev/null 2>&1 || true
 docker rm -f bioritmic-postgres >/dev/null 2>&1 || true
 docker rm -f bioritmic-mail >/dev/null 2>&1 || true
+docker rm -f bioritmic-redis >/dev/null 2>&1 || true
+docker container prune -f >/dev/null 2>&1 || true
 docker compose up -d postgres mail
 echo "  Waiting for PostgreSQL to be ready..."
 for i in $(seq 1 30); do

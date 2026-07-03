@@ -15,7 +15,10 @@ import java.util.UUID
 interface StoryRepository : CoroutineCrudRepository<Story, Long> {
 
     @Transactional(readOnly = true)
-    @Query("SELECT * FROM stories WHERE user_id = :userId AND (expires_at > NOW() OR locked = TRUE) ORDER BY created_at DESC")
+    @Query(
+        "SELECT * FROM stories WHERE user_id = :userId " +
+            "AND (expires_at > NOW() OR locked = TRUE) ORDER BY created_at DESC"
+    )
     suspend fun findActiveByUserId(userId: UUID): List<Story>
 
     @Transactional(readOnly = true)

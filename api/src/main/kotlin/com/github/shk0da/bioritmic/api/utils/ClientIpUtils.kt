@@ -16,6 +16,7 @@ object ClientIpUtils {
             ?: "unknown"
     }
 
+    @Suppress("ReturnCount")
     fun bearerToken(request: ServerHttpRequest): String? {
         com.github.shk0da.bioritmic.api.utils.AuthCookieHelper.let { cookies ->
             request.cookies.getFirst(cookies.ACCESS_TOKEN)?.value?.let { return it }

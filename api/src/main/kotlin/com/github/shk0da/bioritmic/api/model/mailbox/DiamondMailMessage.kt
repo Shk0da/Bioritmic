@@ -22,13 +22,21 @@ object DiamondMailMessage {
     }
 
     private fun diamondWord(amount: Long): String {
-        val mod100 = (amount % 100).toInt()
-        val mod10 = (amount % 10).toInt()
+        val mod100 = (amount % HUNDRED).toInt()
+        val mod10 = (amount % TEN).toInt()
         return when {
-            mod100 in 11..14 -> "алмазов"
-            mod10 == 1 -> "алмаз"
-            mod10 in 2..4 -> "алмаза"
+            mod100 in ELEVEN..FOURTEEN -> "алмазов"
+            mod10 == ONE -> "алмаз"
+            mod10 in TWO..FOUR -> "алмаза"
             else -> "алмазов"
         }
     }
+
+    private const val HUNDRED = 100
+    private const val TEN = 10
+    private const val ELEVEN = 11
+    private const val FOURTEEN = 14
+    private const val ONE = 1
+    private const val TWO = 2
+    private const val FOUR = 4
 }

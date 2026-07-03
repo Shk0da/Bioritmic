@@ -23,8 +23,9 @@ class GisUserRepository(private val slaveConnectionFactory: ConnectionFactory) {
     private val log = LoggerFactory.getLogger(GisUserRepository::class.java)
     private val databaseClient: DatabaseClient by lazy { DatabaseClient.create(slaveConnectionFactory) }
 
-    private val maxLimit = 500
+    private val maxLimit = 100
 
+    @Suppress("LongMethod")
     suspend fun findNearest(
         userId: UUID,
         lat: Double, lon: Double,

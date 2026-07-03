@@ -53,7 +53,8 @@ class StoryViewBatchRepository(private val slaveConnectionFactory: ConnectionFac
         if (storyIds.isEmpty()) return emptyMap()
 
         val placeholders = storyIds.mapIndexed { i, _ -> ":id$i" }.joinToString(",")
-        val sql = "SELECT story_id, COUNT(*) as cnt FROM story_views WHERE story_id IN ($placeholders) GROUP BY story_id"
+        val sql = "SELECT story_id, COUNT(*) as cnt FROM story_views " +
+            "WHERE story_id IN ($placeholders) GROUP BY story_id"
 
         val result = databaseClient.sql(sql)
             .let { initialQuery ->
@@ -80,7 +81,8 @@ class StoryViewBatchRepository(private val slaveConnectionFactory: ConnectionFac
         if (storyIds.isEmpty()) return emptySet()
 
         val placeholders = storyIds.mapIndexed { i, _ -> ":id$i" }.joinToString(",")
-        val sql = "SELECT DISTINCT story_id FROM story_views WHERE story_id IN ($placeholders) AND viewer_id = :viewerId"
+        val sql = "SELECT DISTINCT story_id FROM story_views " +
+            "WHERE story_id IN ($placeholders) AND viewer_id = :viewerId"
 
         val result = databaseClient.sql(sql)
             .let { initialQuery ->

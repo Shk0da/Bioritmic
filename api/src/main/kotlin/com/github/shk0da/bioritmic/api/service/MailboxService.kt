@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 @Service
+@Suppress("TooManyFunctions")
 class MailboxService(
     val userService: UserService,
     val mailboxRepository: MailboxRepository,
@@ -103,6 +104,7 @@ class MailboxService(
     }
 
     @Transactional
+    @Suppress("ThrowsCount")
     suspend fun persistMediaMail(
         userId: UUID,
         toUserId: UUID,
@@ -135,7 +137,7 @@ class MailboxService(
 
         try {
             s3Service.uploadPhoto(s3Key, bytes, contentType)
-        } catch (ex: Exception) {
+        } catch (@Suppress("TooGenericExceptionCaught") ex: Exception) {
             log.error("Failed to upload mailbox media to S3", ex)
             throw ApiException(ErrorCode.API_SERVICE_UNAVAILABLE)
         }
@@ -153,7 +155,7 @@ class MailboxService(
             val saved = mailboxRepository.save(userMail)
             notifyRecipient(saved, userId)
             saved
-        } catch (ex: Exception) {
+        } catch (@Suppress("TooGenericExceptionCaught") ex: Exception) {
             s3Service.deletePhoto(s3Key)
             throw ex
         }
@@ -165,10 +167,13 @@ class MailboxService(
         messages.mapNotNull { it.mediaS3Key }.forEach { key ->
             s3Service.deletePhoto(key)
         }
-        mailboxRepository.deleteAllMailByBetweenTwoUserId(currentUserId, userId)
+        mailboxRepository.deleteAllMailByBetweenTwoUserId(
+            currentUserId, userId
+        )
     }
 
     @Transactional
+    @Suppress("ThrowsCount")
     suspend fun deleteOwnMessages(currentUserId: UUID, messageIds: List<Long>): Int {
         val ids = messageIds.distinct()
         if (ids.isEmpty() || ids.size > MAX_DELETE_BATCH_SIZE) {
@@ -323,13 +328,19 @@ class MailboxService(
         }
     }
 
-    @Transactional(transactionManager = com.github.shk0da.bioritmic.api.configuration.DataSourceConfiguration.Companion.transactionManager)
+    @Transactional(
+        transactionManager = com.github.shk0da.bioritmic.api.configuration
+            .DataSourceConfiguration.Companion.transactionManager
+    )
+    @Suppress("ThrowsCount")
     suspend fun reactToMessage(messageId: Long, userId: UUID, reaction: String): Map<String, Any?> {
         userVerificationService.requireVerified(userId)
         val message = mailboxRepository.findById(messageId)
             ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("messageId" to "messageId"))
-        val from = message.fromUserId ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("messageId" to "messageId"))
-        val to = message.toUserId ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("messageId" to "messageId"))
+        val from = message.fromUserId
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("messageId" to "messageId"))
+        val to = message.toUserId
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("messageId" to "messageId"))
         if (userId != from && userId != to) {
             throw ApiException(ErrorCode.ACCESS_DENIED)
         }
@@ -353,6 +364,7 @@ class MailboxService(
         return mapOf("reaction" to reactionType.name, "reactionCounts" to counts)
     }
 
+    @Suppress("ThrowsCount")
     private suspend fun validateReplyTarget(userId: UUID, otherUserId: UUID, replyToMessageId: Long?): Long? {
         if (replyToMessageId == null) return null
         val targetMessage = mailboxRepository.findById(replyToMessageId)

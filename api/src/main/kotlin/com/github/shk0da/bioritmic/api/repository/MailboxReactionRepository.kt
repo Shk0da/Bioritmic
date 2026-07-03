@@ -46,7 +46,8 @@ class MailboxReactionBatchRepository(
     suspend fun findReactionsByMailIdsAndUserId(mailIds: List<Long>, userId: UUID): Map<Long, String> {
         if (mailIds.isEmpty()) return emptyMap()
         val placeholders = mailIds.mapIndexed { i, _ -> ":id$i" }.joinToString(",")
-        val sql = "SELECT mail_id, reaction FROM mailbox_reactions WHERE mail_id IN ($placeholders) AND user_id = :userId"
+        val sql = "SELECT mail_id, reaction FROM mailbox_reactions " +
+            "WHERE mail_id IN ($placeholders) AND user_id = :userId"
         return slaveClient.sql(sql)
             .let { q ->
                 var query = q

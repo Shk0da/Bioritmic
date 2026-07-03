@@ -44,6 +44,7 @@ import org.springframework.web.server.ServerWebExchange
 import java.lang.management.ManagementFactory
 import java.util.UUID
 
+@Suppress("TooManyFunctions")
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1 + "/admin")
 class AdminController(
@@ -65,6 +66,13 @@ class AdminController(
 ) {
 
     private val log = LoggerFactory.getLogger(AdminController::class.java)
+
+    private companion object {
+        private const val BYTES_PER_KILOBYTE = 1024
+        private const val HOURS_PER_DAY = 24
+        private const val MINUTES_PER_HOUR = 60
+        private const val SECONDS_PER_MINUTE = 60
+    }
 
     private suspend fun audit(
         adminUserId: UUID,
@@ -183,6 +191,7 @@ class AdminController(
         return mapOf("success" to true, "userId" to userId, "balance" to balance)
     }
 
+    @Suppress("ComplexCondition", "ThrowsCount")
     @PostMapping(value = ["/users/{userId}/ban"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun banUser(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
         val staffUserId = requireStaffUserId()
@@ -195,7 +204,10 @@ class AdminController(
         if (ROLE_ADMIN in roles) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot ban an admin"))
         }
-        if (!staffIsAdmin && (ROLE_MODERATOR in roles || roles.any { it == "MODERATOR" || it == UserRole.ROLE_MODERATOR })) {
+        val targetIsModerator = ROLE_MODERATOR in roles || roles.any {
+            it == "MODERATOR" || it == UserRole.ROLE_MODERATOR
+        }
+        if (!staffIsAdmin && targetIsModerator) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot ban a moderator"))
         }
         userRoleRepository.removeRole(userId, ROLE_USER)
@@ -248,6 +260,7 @@ class AdminController(
         return mapOf("success" to true, "userId" to userId)
     }
 
+    @Suppress("ThrowsCount")
     @PostMapping(value = ["/users/{userId}/role"], produces = [MediaType.APPLICATION_JSON_VALUE])
     suspend fun changeRole(
         @PathVariable userId: UUID,
@@ -255,7 +268,9 @@ class AdminController(
         exchange: ServerWebExchange
     ): Map<String, Any> {
         val adminUserId = requireAdminUserId()
-        val newRole = normalizeRole(body["role"] ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Role is required")))
+        val newRole = normalizeRole(
+            body["role"] ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Role is required"))
+        )
 
         if (userId == adminUserId) {
             throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Cannot change your own role"))
@@ -281,6 +296,7 @@ class AdminController(
     }
 
     @PostMapping(value = ["/users/{userId}/reset-password"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @Suppress("TooGenericExceptionCaught")
     suspend fun resetPassword(@PathVariable userId: UUID, exchange: ServerWebExchange): Map<String, Any> {
         val adminUserId = requireStaffUserId()
         val user = userRepository.findById(userId) ?: throw ApiException(ErrorCode.USER_NOT_FOUND)
@@ -401,7 +417,8 @@ class AdminController(
         exchange: ServerWebExchange
     ): Map<String, Any> {
         val adminUserId = requireStaffUserId()
-        val status = body["status"] ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Status is required"))
+        val status = body["status"]
+            ?: throw ApiException(ErrorCode.INVALID_PARAMETER, mapOf("error" to "Status is required"))
         feedbackService.updateStatus(feedbackId, status)
         log.info("Admin updated feedback {} status to {}", feedbackId, status)
         audit(adminUserId, "UPDATE_FEEDBACK_STATUS", exchange, details = "feedbackId=$feedbackId,status=$status")
@@ -467,21 +484,24 @@ class AdminController(
         )
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private fun getMeterValue(name: String): Long {
         return try {
             meterRegistry.get(name).gauge().value().toLong()
         } catch (e: Exception) {
+            log.error("Failed to get meter value for {}: {}", name, e.message, e)
             0L
         }
     }
 
+    @Suppress("ReturnCount")
     private fun formatBytes(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val kb = bytes / 1024.0
-        if (kb < 1024) return "%.1f KB".format(kb)
-        val mb = kb / 1024.0
-        if (mb < 1024) return "%.1f MB".format(mb)
-        val gb = mb / 1024.0
+        if (bytes < BYTES_PER_KILOBYTE) return "$bytes B"
+        val kb = bytes / BYTES_PER_KILOBYTE.toDouble()
+        if (kb < BYTES_PER_KILOBYTE) return "%.1f KB".format(kb)
+        val mb = kb / BYTES_PER_KILOBYTE.toDouble()
+        if (mb < BYTES_PER_KILOBYTE) return "%.1f MB".format(mb)
+        val gb = mb / BYTES_PER_KILOBYTE.toDouble()
         return "%.2f GB".format(gb)
     }
 
@@ -563,13 +583,13 @@ class AdminController(
 
     private fun formatDuration(ms: Long): String {
         val seconds = ms / 1000
-        val minutes = seconds / 60
-        val hours = minutes / 60
-        val days = hours / 24
+        val minutes = seconds / SECONDS_PER_MINUTE
+        val hours = minutes / MINUTES_PER_HOUR
+        val days = hours / HOURS_PER_DAY
         return when {
-            days > 0 -> "${days}d ${hours % 24}h ${minutes % 60}m"
-            hours > 0 -> "${hours}h ${minutes % 60}m"
-            minutes > 0 -> "${minutes}m ${seconds % 60}s"
+            days > 0 -> "${days}d ${hours % HOURS_PER_DAY}h ${minutes % MINUTES_PER_HOUR}m"
+            hours > 0 -> "${hours}h ${minutes % MINUTES_PER_HOUR}m"
+            minutes > 0 -> "${minutes}m ${seconds % SECONDS_PER_MINUTE}s"
             else -> "${seconds}s"
         }
     }

@@ -26,6 +26,7 @@ import java.time.ZoneId
 import java.util.UUID
 
 @Service
+@Suppress("TooManyFunctions")
 class MeetingsService(
     val meetingsRepository: MeetingsRepository,
     val meetingStatusUpdater: MeetingStatusUpdater,
@@ -57,6 +58,7 @@ class MeetingsService(
     }
 
     @Transactional
+    @Suppress("LongMethod")
     suspend fun createMeetings(userId: UUID, meetings: List<UserMeeting>): List<Meeting> {
         userVerificationService.requireVerified(userId)
         val meetingList = meetings.filter { it.isFilledInput() && it.userId != userId }
@@ -137,6 +139,7 @@ class MeetingsService(
     }
 
     @Transactional
+    @Suppress("ThrowsCount")
     suspend fun deleteMetingWithUserId(currentUserId: UUID, otherUserId: UUID): List<Meeting> {
         val meeting = meetingsRepository.findBySenderAndRecipient(currentUserId, otherUserId)
         if (meeting == null) {
@@ -164,6 +167,7 @@ class MeetingsService(
     }
 
     @Transactional
+    @Suppress("ReturnCount")
     suspend fun declineMeeting(currentUserId: UUID, senderUserId: UUID): Meeting? {
         log.info("declineMeeting: currentUserId={}, senderUserId={}", currentUserId, senderUserId)
         val meeting = meetingsRepository.findBySenderAndRecipient(senderUserId, currentUserId)
@@ -200,6 +204,7 @@ class MeetingsService(
     }
 
     @Transactional
+    @Suppress("ReturnCount")
     suspend fun acceptMeeting(currentUserId: UUID, otherUserId: UUID): Meeting? {
         log.info("acceptMeeting: currentUserId={}, otherUserId={}", currentUserId, otherUserId)
         val meeting = meetingsRepository.findBySenderAndRecipient(otherUserId, currentUserId)

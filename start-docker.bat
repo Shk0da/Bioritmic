@@ -21,7 +21,11 @@ if exist ".env" (
     for /f "usebackq eol=# tokens=1,* delims==" %%a in (`findstr /B "UI_PORT=" ".env"`) do set "UI_PORT=%%b"
 )
 
-echo [1/2] Building and starting...
+echo [1/3] Cleaning up orphan containers...
+docker rm -f bioritmic-redis >nul 2>&1
+docker container prune -f >nul 2>&1
+
+echo [2/3] Building and starting...
 docker compose up --build -d
 if errorlevel 1 (
     echo Failed to start. Check: docker compose logs bioritmic
@@ -29,7 +33,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [2/2] Waiting for health check...
+echo [3/3] Waiting for health check...
 timeout /t 30 /nobreak >nul
 
 docker compose ps

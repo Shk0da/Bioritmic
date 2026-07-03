@@ -69,6 +69,8 @@ if errorlevel 1 exit /b 1
 docker rm -f bioritmic-api bioritmic-ui >nul 2>&1
 docker rm -f bioritmic-postgres >nul 2>&1
 docker rm -f bioritmic-mail >nul 2>&1
+docker rm -f bioritmic-redis >nul 2>&1
+docker container prune -f >nul 2>&1
 docker compose up -d postgres mail
 if errorlevel 1 (
     echo   Failed to start infrastructure. Check: docker compose logs

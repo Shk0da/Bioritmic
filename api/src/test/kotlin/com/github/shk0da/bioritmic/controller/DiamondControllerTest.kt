@@ -47,7 +47,11 @@ class DiamondControllerTest : ApiApplicationTests() {
             .uri("$API_WITH_VERSION_1/diamonds/transfer")
             .header(HttpHeaders.AUTHORIZATION, "Bearer $senderToken")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(mapOf("toUserId" to recipientId, "amount" to 100, "requireBookmark" to false)))
+            .body(
+                BodyInserters.fromValue(
+                    mapOf("toUserId" to recipientId, "amount" to 100, "requireBookmark" to false)
+                )
+            )
             .exchange()
             .expectStatus().isBadRequest
     }
@@ -100,7 +104,11 @@ class DiamondControllerTest : ApiApplicationTests() {
             .uri("$API_WITH_VERSION_1/diamonds/transfer")
             .header(HttpHeaders.AUTHORIZATION, "Bearer $adminToken")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(mapOf("toUserId" to recipientId, "amount" to 10, "requireBookmark" to false)))
+            .body(
+                BodyInserters.fromValue(
+                    mapOf("toUserId" to recipientId, "amount" to 10, "requireBookmark" to false)
+                )
+            )
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -122,7 +130,11 @@ class DiamondControllerTest : ApiApplicationTests() {
             .uri("$API_WITH_VERSION_1/diamonds/transfer")
             .header(HttpHeaders.AUTHORIZATION, "Bearer $senderToken")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(mapOf("toUserId" to recipientId, "amount" to 10, "requireBookmark" to false)))
+            .body(
+                BodyInserters.fromValue(
+                    mapOf("toUserId" to recipientId, "amount" to 10, "requireBookmark" to false)
+                )
+            )
             .exchange()
             .expectStatus().isBadRequest
             .expectBody()

@@ -18,6 +18,15 @@ object ImageUtils {
 
     private val log = LoggerFactory.getLogger(ImageUtils::class.java)
 
+    private const val EXIF_NORMAL = 1
+    private const val EXIF_MIRROR_HORIZONTAL = 2
+    private const val EXIF_ROTATE_180 = 3
+    private const val EXIF_MIRROR_VERTICAL = 4
+    private const val EXIF_MIRROR_HORIZONTAL_ROTATE_270 = 5
+    private const val EXIF_ROTATE_90 = 6
+    private const val EXIF_MIRROR_HORIZONTAL_ROTATE_90 = 7
+    private const val EXIF_ROTATE_270 = 8
+
     private val defaultImageBytes: ByteArray by lazy {
         javaClass.classLoader.getResourceAsStream("images/no_image.png")?.readBytes()
             ?: throw IllegalStateException("Default image not found")
@@ -66,47 +75,48 @@ object ImageUtils {
         return outputImage
     }
 
+    @Suppress("ReturnCount")
     private fun normalizeOrientation(inputBytes: ByteArray, image: BufferedImage): BufferedImage {
         val orientation = readExifOrientation(inputBytes)
-        if (orientation == 1) return image
+        if (orientation == EXIF_NORMAL) return image
 
         val transform = AffineTransform()
         var newWidth = image.width
         var newHeight = image.height
 
         when (orientation) {
-            2 -> {
+            EXIF_MIRROR_HORIZONTAL -> {
                 transform.scale(-1.0, 1.0)
                 transform.translate(-image.width.toDouble(), 0.0)
             }
-            3 -> {
+            EXIF_ROTATE_180 -> {
                 transform.translate(image.width.toDouble(), image.height.toDouble())
                 transform.rotate(Math.PI)
             }
-            4 -> {
+            EXIF_MIRROR_VERTICAL -> {
                 transform.scale(1.0, -1.0)
                 transform.translate(0.0, -image.height.toDouble())
             }
-            5 -> {
+            EXIF_MIRROR_HORIZONTAL_ROTATE_270 -> {
                 transform.rotate(Math.PI / 2)
                 transform.scale(1.0, -1.0)
                 newWidth = image.height
                 newHeight = image.width
             }
-            6 -> {
+            EXIF_ROTATE_90 -> {
                 transform.translate(image.height.toDouble(), 0.0)
                 transform.rotate(Math.PI / 2)
                 newWidth = image.height
                 newHeight = image.width
             }
-            7 -> {
+            EXIF_MIRROR_HORIZONTAL_ROTATE_90 -> {
                 transform.translate(image.height.toDouble(), 0.0)
                 transform.rotate(Math.PI / 2)
                 transform.scale(-1.0, 1.0)
                 newWidth = image.height
                 newHeight = image.width
             }
-            8 -> {
+            EXIF_ROTATE_270 -> {
                 transform.translate(0.0, image.width.toDouble())
                 transform.rotate(-Math.PI / 2)
                 newWidth = image.height

@@ -12,6 +12,7 @@ import java.util.UUID
 
 @Repository
 @Transactional(transactionManager = transactionManager)
+@Suppress("TooManyFunctions")
 interface UserRepository : CoroutineCrudRepository<User, UUID> {
 
     @Transactional(readOnly = true)

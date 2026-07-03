@@ -45,6 +45,7 @@ import org.springframework.web.server.ServerWebExchange
 import javax.validation.Valid
 import javax.validation.constraints.NotEmpty
 
+@Suppress("TooManyFunctions")
 @Validated
 @RestController
 @RequestMapping(ApiRoutes.API_PATH + ApiRoutes.VERSION_1)
@@ -63,10 +64,12 @@ class AuthController(
     companion object {
         private const val REGISTRATION_CONSENTS_REQUIRED_MESSAGE =
             "Необходимо принять пользовательское соглашение и дать согласие на обработку персональных данных"
+        private const val TOKEN_SUFFIX_LENGTH = 8
     }
 
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping(value = ["/registration"], produces = [APPLICATION_JSON_VALUE])
+    @Suppress("TooGenericExceptionCaught", "ThrowsCount")
     suspend fun registration(@RequestBody @Valid userModel: UserModel): ResponseEntity<UserModel> {
         with(userModel) {
             if (!isFilledInput()) throw ApiException(INVALID_PARAMETER, mapOf(Pair(PARAMETER_NAME, "user")))
@@ -198,11 +201,12 @@ class AuthController(
     suspend fun logout(exchange: ServerWebExchange): ResponseEntity<Void> {
         resolveAccessToken(exchange)?.let { token ->
             authService.deleteAuthByAccessToken(token)
-            log.debug("Logged out session ending with {}", token.takeLast(8))
+            log.debug("Logged out session ending with {}", token.takeLast(TOKEN_SUFFIX_LENGTH))
         }
         return clearAuthCookies()
     }
 
+    @Suppress("ReturnCount")
     private fun resolveAccessToken(exchange: ServerWebExchange): String? {
         exchange.request.cookies.getFirst(AuthCookieHelper.ACCESS_TOKEN)?.value?.let { return it }
         val bearer = "Bearer "

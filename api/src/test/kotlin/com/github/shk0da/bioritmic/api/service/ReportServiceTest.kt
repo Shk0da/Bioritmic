@@ -5,6 +5,8 @@ import com.github.shk0da.bioritmic.api.repository.ReportRepository
 import com.github.shk0da.bioritmic.api.repository.UserRoleRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_BANNED
+import com.github.shk0da.bioritmic.api.constants.UserRoleConstants.Companion.ROLE_USER
 import org.mockito.Mockito
 import java.util.UUID
 
@@ -28,8 +30,8 @@ class ReportServiceTest {
 
         service.banUser(userId, "test ban")
 
-        Mockito.verify(userRoleRepository).removeRole(userId, com.github.shk0da.bioritmic.api.constants.UserRoleConstants.ROLE_USER)
-        Mockito.verify(userRoleRepository).addRole(userId, com.github.shk0da.bioritmic.api.constants.UserRoleConstants.ROLE_BANNED)
+        Mockito.verify(userRoleRepository).removeRole(userId, ROLE_USER)
+        Mockito.verify(userRoleRepository).addRole(userId, ROLE_BANNED)
         Mockito.verify(authService).deleteAuthByUserId(userId)
         Mockito.verify(banRepository).save(Mockito.any())
     }

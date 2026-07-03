@@ -130,6 +130,7 @@ class DiamondAtomicRepository(
             .awaitSingle()
     }.getOrElse { throw mapDiamondDbException(it) }
 
+    @Suppress("ReturnCount")
     private fun mapDiamondDbException(error: Throwable): Throwable {
         var current: Throwable? = error
         while (current != null) {
