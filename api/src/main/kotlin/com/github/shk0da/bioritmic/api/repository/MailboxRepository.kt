@@ -17,13 +17,17 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
 
     @Query(
         """
-        SELECT * FROM mailbox
-        WHERE (from_user_id = :userId OR to_user_id = :userId)
-          AND (
-            COALESCE(media_type, '') <> 'SYSTEM'
-            OR to_user_id = :userId
-          )
-        ORDER BY timestamp DESC
+        SELECT DISTINCT ON (other_user_id)
+            from_user_id, to_user_id,
+            CASE WHEN from_user_id = :userId THEN to_user_id ELSE from_user_id END AS other_user_id,
+            id, message, media_type, media_s3_key, timestamp, is_read, reply_to_message_id, reply_target_unavailable
+        FROM mailbox
+            WHERE (from_user_id = :userId OR to_user_id = :userId)
+              AND (
+                COALESCE(media_type, '') <> 'SYSTEM'
+                OR to_user_id = :userId
+              )
+        ORDER BY other_user_id, timestamp DESC, id DESC
         LIMIT :limit OFFSET :offset
         """
     )
@@ -117,14 +121,15 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
     @Query(
         """
         SELECT * FROM mailbox
-        WHERE (from_user_id = :userId1 AND to_user_id = :userId2)
+        WHERE (
+            (from_user_id = :userId1 AND to_user_id = :userId2)
            OR (from_user_id = :userId2 AND to_user_id = :userId1)
+          )
         """
     )
     suspend fun findAllBetweenUsers(userId1: UUID, userId2: UUID): List<UserMail>
 
     fun findAllByFromUserIdAndToUserId(from: UUID, to: UUID, pageable: Pageable?): Flow<UserMail>
-
     @Modifying
     @Query(
         """
@@ -134,7 +139,6 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
         """
     )
     suspend fun deleteAllMailByBetweenTwoUserId(currentUserId: UUID, userId: UUID)
-
     @Query(
         """
         SELECT COUNT(DISTINCT from_user_id) FROM mailbox
@@ -142,7 +146,6 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
         """
     )
     suspend fun countUnreadSenders(userId: UUID, since: java.sql.Timestamp): Long
-
     @Modifying
     @Query(
         """
@@ -154,7 +157,6 @@ interface MailboxRepository : CoroutineCrudRepository<UserMail, Long> {
         """
     )
     suspend fun markIncomingAsRead(readerId: UUID, senderId: UUID): Int
-
     @Query(
         """
         SELECT id FROM mailbox

@@ -15,6 +15,7 @@ import com.github.shk0da.bioritmic.api.repository.MailboxReactionRepository
 import com.github.shk0da.bioritmic.api.repository.MailboxRepository
 import com.github.shk0da.bioritmic.api.repository.UserBlockRepository
 import com.github.shk0da.bioritmic.api.service.mailbox.MailboxRealtimeNotifier
+import com.github.shk0da.bioritmic.api.service.mailbox.MailboxRealtimeService
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkFileExtension
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkNotEmpty
 import com.github.shk0da.bioritmic.api.utils.ValidateUtils.checkSize
@@ -42,6 +43,7 @@ class MailboxService(
     private val pushNotificationService: PushNotificationService,
     private val s3Service: S3Service,
     private val mailboxRealtimeNotifier: MailboxRealtimeNotifier,
+    private val mailboxRealtimeService: MailboxRealtimeService,
     private val profanityFilterService: ProfanityFilterService,
     private val userVerificationService: UserVerificationService,
     selfProvider: ObjectProvider<MailboxService>,
@@ -371,7 +373,11 @@ class MailboxService(
         val sender = userService.findUserById(senderId)
         val senderName = sender?.name?.takeIf { it.isNotBlank() } ?: "Пользователь"
         val preview = pushPreview(userMail)
-        pushNotificationService.notifyNewMessage(userMail.toUserId!!, senderId, senderName, preview)
+
+        // Don't send push if recipient is already active in chat with sender
+        if (!mailboxRealtimeService.isUserActiveInChat(userMail.toUserId!!, senderId)) {
+            pushNotificationService.notifyNewMessage(userMail.toUserId!!, senderId, senderName, preview)
+        }
     }
 
     private fun pushPreview(userMail: UserMail): String {

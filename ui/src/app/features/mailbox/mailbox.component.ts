@@ -302,6 +302,9 @@ interface UserConversation {
     .conversation-preview {
       color: var(--text-secondary);
       font-size: 0.875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
 
       .conversation-item.unread & {
         color: var(--text-primary);

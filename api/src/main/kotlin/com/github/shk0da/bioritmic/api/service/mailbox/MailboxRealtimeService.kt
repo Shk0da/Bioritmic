@@ -35,6 +35,15 @@ class MailboxRealtimeService(
         }
     }
 
+    /**
+     * Check if user is currently active in chat with specific interlocutor (subscribed via WebSocket).
+     * Returns true if user has at least one connection subscribed to otherUserId.
+     */
+    fun isUserActiveInChat(userId: UUID, otherUserId: UUID): Boolean {
+        val connections = connectionsByUser[userId] ?: return false
+        return connections.any { it.subscribedOtherUserId == otherUserId }
+    }
+
     fun handleInbound(connection: MailboxWsConnection, payload: String) {
         val inbound = runCatching {
             objectMapper.readValue(payload, MailboxWsInbound::class.java)
